@@ -8,7 +8,7 @@
   --bg:#101012; --bg2:#17181a; --surface:#1e1f22; --card:#1e1f22;
   --text:#f4f4f5; --muted:#b9bbc0; --line:#2c2d31;
   --header-bg:#000000; --header-text:#ffffff; --mega-bg:#050505;
-  --footer-bg:#0a0a0b; --input-bg:#1e1f22;
+  --footer-bg:#242426; --input-bg:#1e1f22;
   --blue:#3f8cff; --blue-bright:#307fe2; --blue-dark:#2b6cd4;
   --yellow:#f5a623; --navy:#0a1930;
   --shadow:0 18px 44px rgba(0,0,0,.5);
@@ -17,7 +17,7 @@ html[data-theme="light"]{
   --bg:#ffffff; --bg2:#f4f5f7; --surface:#ffffff; --card:#ffffff;
   --text:#191919; --muted:#5a5a5a; --line:#e6e8eb;
   --header-bg:#ffffff; --header-text:#141414; --mega-bg:#ffffff;
-  --footer-bg:#232327; --input-bg:#ffffff;
+  --footer-bg:#242426; --input-bg:#ffffff;
   --blue:#1b4f9c; --blue-bright:#307fe2; --blue-dark:#1b4f9c;
   --yellow:#e08c00; --navy:#0a1930;
   --shadow:0 18px 44px rgba(10,25,48,.14);
@@ -308,3 +308,21 @@ header.scrolled .logo-img{height:44px}
   .foot-main{grid-template-columns:1fr;gap:8px}
   .foot-logo-img{height:56px}
 }
+
+/* V7 — Clean Tata-style footer (only essentials) */
+footer{padding:58px 0 34px}
+.t-socials{justify-content:space-between;max-width:540px;margin:0 auto 36px;gap:0}
+.t-socials svg{width:26px;height:26px}
+.t-subscribe{display:flex;border:1px solid rgba(255,255,255,.42);max-width:480px;margin:0 auto}
+.t-subscribe input{flex:1;min-width:0;background:transparent;border:0;color:#fff;padding:15px 16px;font:inherit;font-size:15px;outline:none}
+.t-subscribe input::placeholder{color:#a9a9af}
+.t-subscribe button{background:transparent;border:0;border-left:1px solid rgba(255,255,255,.42);color:#fff;font-size:20px;padding:0 20px;cursor:pointer;transition:.25s}
+.t-subscribe button:hover{color:var(--yellow)}
+.sub-done{text-align:center;color:#c6c6cb;font-size:14px;margin-top:12px}
+.t-links{display:flex;justify-content:space-between;max-width:580px;margin:42px auto 0;flex-wrap:wrap;gap:10px 22px}
+.t-links a{color:#e9e9ec;font-size:15.5px;transition:.2s}
+.t-links a:hover{color:var(--yellow)}
+.t-logo{margin:46px 0 24px;text-align:center}
+.t-logo img{height:86px;width:auto;margin:0 auto}
+.t-copy{text-align:center;color:#93959b;font-size:13.5px}
+@media(max-width:640px){.t-links{justify-content:center;gap:8px 26px}.t-logo img{height:70px}}

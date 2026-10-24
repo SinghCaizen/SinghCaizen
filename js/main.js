@@ -1,10 +1,7 @@
 // SINGH CAIZEN — main.js (V4)
-// Auto-add progress bar & back-to-top
-if(!document.querySelector('.to-top')){const b=document.createElement('button');b.className='to-top';b.innerHTML='&uarr;';b.setAttribute('aria-label','Back to top');document.body.appendChild(b)}
-const header=document.querySelector('header'),toTop=document.querySelector('.to-top');
-addEventListener('scroll',()=>{header.classList.toggle('scrolled',scrollY>40);
- if(toTop)toTop.classList.toggle('show',scrollY>600)},{passive:true});
-if(toTop)toTop.addEventListener('click',()=>scrollTo({top:0,behavior:'smooth'}));
+// SINGH CAIZEN — main.js
+const header=document.querySelector('header');
+addEventListener('scroll',()=>{header.classList.toggle('scrolled',scrollY>40);},{passive:true});
 // Theme toggle (dark / light, remembered)
 const tBtn=document.querySelector('.theme-toggle');
 if(tBtn)tBtn.addEventListener('click',()=>{const cur=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',cur);try{localStorage.setItem('sc-theme',cur)}catch(e){}});
