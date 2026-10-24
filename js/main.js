@@ -119,3 +119,20 @@ const WEB3FORMS_KEY = '94e01d94-8fae-4cdc-b9b9-716cf169d7dc';
    btn.disabled=false; btn.textContent='Send Message';
  });
 })();
+
+// Newsletter subscribe (footer, all pages) — posts to the newsletter service's public
+// form endpoint (Brevo). Paste the form action URL between the quotes to go live.
+const NEWSLETTER_FORM_URL = '';
+document.querySelectorAll('form.subscribe[data-newsletter]').forEach(f=>{
+ f.addEventListener('submit', async e=>{ e.preventDefault();
+   const input=f.querySelector('input[type=email]'); const email=input.value.trim();
+   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ input.focus(); input.reportValidity(); return; }
+   let note=f.parentElement.querySelector('.sub-note');
+   if(!note){ note=document.createElement('p'); note.className='sub-note'; note.style.cssText='font-size:13px;margin-top:10px;opacity:.85'; f.after(note); }
+   if(!NEWSLETTER_FORM_URL){ note.textContent='Newsletter is being connected — please check back shortly.'; return; }
+   const fd=new FormData(); fd.append('EMAIL', email); fd.append('email_address', email); fd.append('locale','en');
+   try{ await fetch(NEWSLETTER_FORM_URL,{method:'POST',body:fd,mode:'no-cors'});
+     f.reset(); note.textContent='\u2713 Thank you for subscribing to the Singh Caizen newsletter.';
+   }catch(err){ note.textContent='Could not subscribe right now. Please try again.'; }
+ });
+});
