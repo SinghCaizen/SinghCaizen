@@ -249,3 +249,11 @@ header .nav{height:76px;transition:height .3s}
 header.scrolled .nav{height:64px}
 header.scrolled .topbar{max-height:0;opacity:0}
 .hero{margin-top:0}
+
+/* V3.1 hotfix: dropdown safety + overflow guards */
+.drop{pointer-events:none;max-width:94vw}
+.has-drop:hover .drop,.has-drop:focus-within .drop{pointer-events:auto}
+.drop.mega{max-width:94vw}
+body{overflow-x:hidden}
+.socials svg{width:18px!important;height:18px!important;flex:none}
+.socials a svg{max-width:18px;max-height:18px}
