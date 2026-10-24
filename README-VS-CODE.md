@@ -24,7 +24,7 @@ scroll animations, slow hero zoom, animated counters, sticky shrinking header.
 No internet package, no npm, no build step needed. Editing any file + saving = browser auto-refreshes.
 
 ## Pages
-index.html (Home) • about.html • worldwide.html • businesses.html • leadership.html • news.html • careers.html • contact.html
+index.html (Home) • about.html • worldwide.html • businesses.html • leadership.html • saurabh-singh.html • news.html • careers.html • contact.html
 Shared design: css/style.css  •  Animations & menu: js/main.js
 
 ## What to edit first (search for EDIT in the code)
