@@ -8,7 +8,7 @@
   --bg:#101012; --bg2:#17181a; --surface:#1e1f22; --card:#1e1f22;
   --text:#f4f4f5; --muted:#b9bbc0; --line:#2c2d31;
   --header-bg:#000000; --header-text:#ffffff; --mega-bg:#050505;
-  --footer-bg:#242426; --input-bg:#1e1f22;
+  --footer-bg:#0a0a0b; --input-bg:#1e1f22;
   --blue:#3f8cff; --blue-bright:#307fe2; --blue-dark:#2b6cd4;
   --yellow:#f5a623; --navy:#0a1930;
   --shadow:0 18px 44px rgba(0,0,0,.5);
@@ -17,7 +17,7 @@ html[data-theme="light"]{
   --bg:#ffffff; --bg2:#f4f5f7; --surface:#ffffff; --card:#ffffff;
   --text:#191919; --muted:#5a5a5a; --line:#e6e8eb;
   --header-bg:#ffffff; --header-text:#141414; --mega-bg:#ffffff;
-  --footer-bg:#242426; --input-bg:#ffffff;
+  --footer-bg:#0a1930; --input-bg:#ffffff;
   --blue:#1b4f9c; --blue-bright:#307fe2; --blue-dark:#1b4f9c;
   --yellow:#e08c00; --navy:#0a1930;
   --shadow:0 18px 44px rgba(10,25,48,.14);
@@ -339,3 +339,12 @@ header.hdr-light .logo-w{display:none!important}
 header.hdr-light .logo-d{display:block!important}
 header.hdr-dark .mega{background:#050505;--text:#f4f4f5;--muted:#b9bbc0;--line:#2c2d31;--header-text:#ffffff}
 header.hdr-light .mega{background:#ffffff;--text:#191919;--muted:#5a5a5a;--line:#e6e8eb;--header-text:#141414}
+
+/* V9 — Desktop keeps the classic column footer; phone keeps the clean Tata footer */
+.foot-m{display:none}
+@media(max-width:1020px){
+  .foot-d{display:none}
+  .foot-m{display:block}
+  footer{background:#242426}
+}
+@media(min-width:1021px){footer{padding:70px 0 0}}

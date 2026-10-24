@@ -74,9 +74,15 @@ if(rail){document.querySelectorAll('.rail-nav button').forEach((b,i)=>b.addEvent
    if(y>340 && y>lastY+4 && !document.querySelector('nav.main.open')) hdr.classList.add('hdr-hide');
    else if(y<lastY-4 || y<=340) hdr.classList.remove('hdr-hide');
    lastY=y;
-   clearTimeout(idleT); idleT=setTimeout(()=>hdr.classList.remove('hdr-hide'),1400);
+   clearTimeout(idleT); idleT=setTimeout(()=>hdr.classList.remove('hdr-hide'),900);
    if(!ticking){ticking=true;requestAnimationFrame(()=>{adapt();ticking=false})}
  }
+ let lastEvt=Date.now(), lastSeenY=scrollY;
+ addEventListener('wheel',()=>{lastEvt=Date.now()},{passive:true});
+ addEventListener('touchmove',()=>{lastEvt=Date.now()},{passive:true});
+ const _origScroll=onScroll;
+ addEventListener('scroll',()=>{lastEvt=Date.now()},{passive:true});
+ setInterval(()=>{ if(hdr.classList.contains('hdr-hide') && Date.now()-lastEvt>900 && scrollY===lastSeenY) hdr.classList.remove('hdr-hide'); lastSeenY=scrollY; },350);
  addEventListener('scroll',onScroll,{passive:true});
  addEventListener('resize',adapt);
  const mb=document.querySelector('.menu-btn'); if(mb)mb.addEventListener('click',()=>hdr.classList.remove('hdr-hide'));
