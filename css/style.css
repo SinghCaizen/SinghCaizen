@@ -326,3 +326,16 @@ footer{padding:58px 0 34px}
 .t-logo img{height:86px;width:auto;margin:0 auto}
 .t-copy{text-align:center;color:#93959b;font-size:13.5px}
 @media(max-width:640px){.t-links{justify-content:center;gap:8px 26px}.t-logo img{height:70px}}
+
+/* V8 — Smart header: hides on scroll down, returns on scroll up/stop; colour adapts to the section behind it (Tata-style) */
+header{transition:transform .45s cubic-bezier(.22,.8,.24,1),background .35s,box-shadow .35s}
+header.hdr-hide{transform:translateY(-101%)}
+header.hdr-dark{--header-text:#ffffff;background:rgba(6,6,7,.92);backdrop-filter:blur(10px)}
+header.hdr-light{--header-text:#141414;background:rgba(255,255,255,.94);backdrop-filter:blur(10px)}
+header.hdr-dark:not(.scrolled),header.hdr-light:not(.scrolled){background:transparent;border-bottom-color:transparent;backdrop-filter:none;box-shadow:none}
+header.hdr-dark .logo-w{display:block!important}
+header.hdr-dark .logo-d{display:none!important}
+header.hdr-light .logo-w{display:none!important}
+header.hdr-light .logo-d{display:block!important}
+header.hdr-dark .mega{background:#050505;--text:#f4f4f5;--muted:#b9bbc0;--line:#2c2d31;--header-text:#ffffff}
+header.hdr-light .mega{background:#ffffff;--text:#191919;--muted:#5a5a5a;--line:#e6e8eb;--header-text:#141414}

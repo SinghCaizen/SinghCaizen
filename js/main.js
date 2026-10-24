@@ -45,3 +45,41 @@ if(sIn)sIn.addEventListener('input',()=>renderSearch(sIn.value));}
 // Story rail arrows
 const rail=document.querySelector('.rail');
 if(rail){document.querySelectorAll('.rail-nav button').forEach((b,i)=>b.addEventListener('click',()=>rail.scrollBy({left:(i?1:-1)*400,behavior:'smooth'})))}
+// Smart header: hide on scroll down, show on scroll up or when scrolling stops; adapt colour to section behind
+(function(){
+ const hdr=document.querySelector('header'); if(!hdr)return;
+ let lastY=scrollY, idleT=null, ticking=false;
+ function adapt(){
+   let dark=null;
+   try{
+     const els=document.elementsFromPoint(Math.min(innerWidth*0.5,600), 30);
+     for(const el of els){
+       if(hdr.contains(el)||el===hdr) continue;
+       const sec=el.closest('section,footer'); if(!sec) continue;
+       if(sec.matches('.hero,.parallax-band,footer')){dark=true;break}
+       const bg=getComputedStyle(sec).backgroundColor;
+       const m=bg.match(/[\d.]+/g);
+       if(!m) continue;
+       if(m.length>3 && +m[3]===0) continue;
+       const r=+m[0],g=+m[1],b=+m[2];
+       dark=(0.2126*r+0.7152*g+0.0722*b)<140; break;
+     }
+   }catch(e){}
+   if(dark===null) dark=document.documentElement.getAttribute('data-theme')!=='light';
+   hdr.classList.toggle('hdr-dark',dark);
+   hdr.classList.toggle('hdr-light',!dark);
+ }
+ function onScroll(){
+   const y=scrollY;
+   if(y>340 && y>lastY+4 && !document.querySelector('nav.main.open')) hdr.classList.add('hdr-hide');
+   else if(y<lastY-4 || y<=340) hdr.classList.remove('hdr-hide');
+   lastY=y;
+   clearTimeout(idleT); idleT=setTimeout(()=>hdr.classList.remove('hdr-hide'),1400);
+   if(!ticking){ticking=true;requestAnimationFrame(()=>{adapt();ticking=false})}
+ }
+ addEventListener('scroll',onScroll,{passive:true});
+ addEventListener('resize',adapt);
+ const mb=document.querySelector('.menu-btn'); if(mb)mb.addEventListener('click',()=>hdr.classList.remove('hdr-hide'));
+ const tt=document.querySelector('.theme-toggle'); if(tt)tt.addEventListener('click',()=>setTimeout(adapt,60));
+ adapt();
+})();
