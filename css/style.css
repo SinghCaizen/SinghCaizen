@@ -440,3 +440,8 @@ a.h-icon{text-decoration:none}
 .comm.open .comm-ic{transform:rotate(45deg);background:var(--yellow);color:#0a1930}
 .comm-body{display:none;padding:0 22px 20px;color:var(--muted);font-size:15.5px}
 .comm.open .comm-body{display:block}
+
+/* V15 — audit fixes: stronger TBA dashed border, division focus lines */
+.person-card.tba{border:1.5px dashed rgba(148,163,184,.7)}
+.region-txt .focus{margin-top:14px;font-size:15px}
+.region-txt .focus strong{display:block;color:var(--yellow);font-size:12px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:5px}
