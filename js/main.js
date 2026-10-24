@@ -94,7 +94,7 @@ if(rail){document.querySelectorAll('.rail-nav button').forEach((b,i)=>b.addEvent
 // Contact form — every field is required (*). Messages are delivered to the owner's
 // inbox via Web3Forms (free). Paste the access key between the quotes to go live;
 // until then the form politely reports that the service is being connected.
-const WEB3FORMS_KEY = '';
+const WEB3FORMS_KEY = '94e01d94-8fae-4cdc-b9b9-716cf169d7dc';
 (function(){
  const form=document.getElementById('contactForm'); if(!form) return;
  const status=document.getElementById('cfStatus'), btn=document.getElementById('cfSubmit');
