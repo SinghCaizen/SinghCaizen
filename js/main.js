@@ -90,77 +90,91 @@ if(rail){document.querySelectorAll('.rail-nav button').forEach((b,i)=>b.addEvent
  adapt();
 })();
 
-// Contact form — mobile OTP verification gate.
-// Mode: if a Firebase config is pasted below (OTP_FIREBASE_CONFIG), real SMS OTP is used.
-// Until then it runs in DEMO mode: the OTP is shown on-screen so the full flow can be tested.
-const OTP_FIREBASE_CONFIG = null; // <-- paste Firebase web config object here to go live
+// Contact form — mobile AND email OTP verification gate.
+// Live services: paste a Firebase web config (mobile SMS OTP) and/or an EmailJS config
+// (email OTP: {publicKey, serviceId, templateId} — template must accept {{to_email}} and {{passcode}}).
+// Until a service is connected, each gate runs in DEMO mode and shows its OTP on-screen for testing.
+const OTP_FIREBASE_CONFIG = null;
+const OTP_EMAILJS_CONFIG = null;
 (function(){
  const form=document.getElementById('contactForm'); if(!form) return;
- const phone=document.getElementById('cfPhone'), sendBtn=document.getElementById('sendOtpBtn'),
-       row=document.getElementById('otpRow'), otpIn=document.getElementById('cfOtp'),
-       verifyBtn=document.getElementById('verifyOtpBtn'), resendBtn=document.getElementById('resendOtpBtn'),
-       timerEl=document.getElementById('otpTimer'), status=document.getElementById('otpStatus'),
-       submit=document.getElementById('cfSubmit'), hint=document.getElementById('cfHint'),
-       note=document.getElementById('otpNote');
- let currentOtp=null, verifiedNumber=null, timerId=null, confirmation=null, fbReady=false;
- const validPhone=()=>/^[6-9]\d{9}$/.test(phone.value.trim());
- function setStatus(msg,kind){status.textContent=msg;status.className='otp-status '+(kind||'')}
- function startTimer(){let t=30;resendBtn.disabled=true;timerEl.textContent=t;clearInterval(timerId);
-   timerId=setInterval(()=>{t--;timerEl.textContent=t;if(t<=0){clearInterval(timerId);resendBtn.disabled=false;resendBtn.innerHTML='Resend OTP'}},1000)}
+ const submit=document.getElementById('cfSubmit'), hint=document.getElementById('cfHint');
+ const ok={phone:false,email:false};
+ function refresh(){ const all=ok.phone&&ok.email; submit.disabled=!all;
+   hint.textContent = all ? '' : ('Send Message activates after ' + (!ok.email&&!ok.phone ? 'mobile and email verification.' : !ok.email ? 'email verification.' : 'mobile verification.')); }
+ function makeGate(o){
+   const els={}; ['input','send','row','code','verify','resend','timer','status','note'].forEach(k=>els[k]=document.getElementById(o.ids[k]));
+   let current=null, timerId=null, confirmation=null, verifiedValue=null;
+   function setStatus(m,k){els.status.textContent=m;els.status.className='otp-status '+(k||'')}
+   function startTimer(){let t=30;els.resend.disabled=true;els.resend.innerHTML='Resend OTP (<span>'+t+'s</span>)';clearInterval(timerId);
+     timerId=setInterval(()=>{t--;const sp=els.resend.querySelector('span');if(sp)sp.textContent=t+'s';if(t<=0){clearInterval(timerId);els.resend.disabled=false;els.resend.textContent='Resend OTP'}},1000)}
+   async function send(){
+     const v=els.input.value.trim();
+     if(!o.validate(v)){setStatus(o.invalidMsg,'err');els.input.focus();return}
+     const code=await o.deliver(v, v2=>{confirmation=v2});
+     if(code===false){setStatus('Could not send OTP. Please try again.','err');return}
+     current=code; els.row.hidden=false; els.code.value=''; startTimer();
+     if(code==='LIVE') setStatus('OTP sent to '+o.label(v)+'. Please enter it below.','');
+     else setStatus('Demo mode (OTP service not connected yet) — your OTP is '+code+'. Live OTP will start once the service is connected.','demo');
+   }
+   async function verify(){
+     const code=els.code.value.trim();
+     if(!/^\d{6}$/.test(code)){setStatus('Please enter the 6-digit OTP.','err');return}
+     let good=false;
+     if(current==='LIVE'){ try{ await confirmation.confirm(code); good=true; }catch(e){ good=false; } }
+     else good=(code===current);
+     if(!good){setStatus('Incorrect OTP. Please check and try again.','err');return}
+     verifiedValue=els.input.value.trim(); ok[o.key]=true;
+     els.row.hidden=true; if(els.note)els.note.hidden=true;
+     els.input.readOnly=true; els.send.disabled=true; els.send.textContent='Verified \u2713';
+     setStatus('\u2713 '+o.doneMsg(verifiedValue),'ok'); refresh();
+   }
+   function reset(){ ok[o.key]=false; verifiedValue=null; current=null;
+     els.input.readOnly=false; els.send.disabled=false; els.send.textContent='Send OTP'; setStatus('',''); refresh(); }
+   els.send.addEventListener('click',send);
+   els.resend.addEventListener('click',send);
+   els.verify.addEventListener('click',verify);
+   els.input.addEventListener('input',()=>{ if(o.sanitize) els.input.value=o.sanitize(els.input.value);
+     if(verifiedValue!==null && els.input.value.trim()!==verifiedValue) reset(); });
+   return {reset};
+ }
+ let fbReady=false;
  async function ensureFirebase(){
-   if(fbReady) return true;
+   if(fbReady) return;
    const [{initializeApp},authMod]=await Promise.all([
      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js')]);
    const app=initializeApp(OTP_FIREBASE_CONFIG); const auth=authMod.getAuth(app);
    window._fbAuth=auth; window._fbAuthMod=authMod;
    window._recaptcha=new authMod.RecaptchaVerifier(auth,'recaptchaBox',{size:'invisible'});
-   fbReady=true; return true;
+   fbReady=true;
  }
- async function sendOtp(){
-   if(!validPhone()){setStatus('Please enter a valid 10-digit Indian mobile number.','err');phone.focus();return}
-   if(OTP_FIREBASE_CONFIG){
-     try{ setStatus('Sending OTP by SMS...','');
-       await ensureFirebase();
-       confirmation=await window._fbAuthMod.signInWithPhoneNumber(window._fbAuth,'+91'+phone.value.trim(),window._recaptcha);
-       row.hidden=false; setStatus('OTP sent to +91 '+phone.value.trim()+'. Please enter it below.',''); startTimer();
-     }catch(e){ setStatus('Could not send OTP. Please try again.','err'); }
-   }else{
-     currentOtp=String(Math.floor(100000+Math.random()*900000));
-     row.hidden=false; otpIn.value='';
-     setStatus('Demo mode (OTP service not connected yet) — your OTP is '+currentOtp+'. Live SMS will start once the OTP service is connected.','demo');
-     startTimer();
-   }
- }
- function resetVerification(){
-   verifiedNumber=null; submit.disabled=true; hint.hidden=false;
-   phone.readOnly=false; sendBtn.disabled=false; sendBtn.textContent='Send OTP';
- }
- function markVerified(){
-   verifiedNumber=phone.value.trim();
-   submit.disabled=false; hint.hidden=true; row.hidden=true; note.hidden=true;
-   phone.readOnly=true; sendBtn.disabled=true; sendBtn.textContent='Verified \u2713';
-   setStatus('\u2713 Mobile number +91 '+verifiedNumber+' verified. You can now send your message.','ok');
- }
- async function verifyOtp(){
-   const code=otpIn.value.trim();
-   if(!/^\d{6}$/.test(code)){setStatus('Please enter the 6-digit OTP.','err');return}
-   if(OTP_FIREBASE_CONFIG){
-     try{ await confirmation.confirm(code); markVerified(); }
-     catch(e){ setStatus('Incorrect OTP. Please check and try again.','err'); }
-   }else{
-     if(code===currentOtp) markVerified();
-     else setStatus('Incorrect OTP. Please check and try again.','err');
-   }
- }
- sendBtn.addEventListener('click',sendOtp);
- resendBtn.addEventListener('click',sendOtp);
- verifyBtn.addEventListener('click',verifyOtp);
- phone.addEventListener('input',()=>{phone.value=phone.value.replace(/\D/g,'').slice(0,10);
-   if(verifiedNumber && phone.value.trim()!==verifiedNumber) resetVerification();});
+ const phoneGate=makeGate({key:'phone',
+   ids:{input:'cfPhone',send:'sendOtpBtn',row:'otpRow',code:'cfOtp',verify:'verifyOtpBtn',resend:'resendOtpBtn',timer:'otpTimer',status:'otpStatus',note:'otpNote'},
+   validate:v=>/^[6-9]\d{9}$/.test(v), invalidMsg:'Please enter a valid 10-digit Indian mobile number.',
+   sanitize:v=>v.replace(/\D/g,'').slice(0,10),
+   label:v=>'+91 '+v, doneMsg:v=>'Mobile number +91 '+v+' verified. You can now send your message.',
+   deliver:async(v,setConf)=>{
+     if(OTP_FIREBASE_CONFIG){ try{ await ensureFirebase();
+       const c=await window._fbAuthMod.signInWithPhoneNumber(window._fbAuth,'+91'+v,window._recaptcha);
+       setConf(c); return 'LIVE'; }catch(e){ return false; } }
+     return String(Math.floor(100000+Math.random()*900000)); }});
+ const emailGate=makeGate({key:'email',
+   ids:{input:'cfEmail',send:'sendEmailOtpBtn',row:'emailOtpRow',code:'cfEmailOtp',verify:'verifyEmailOtpBtn',resend:'resendEmailOtpBtn',timer:'emailOtpTimer',status:'emailOtpStatus',note:'emailOtpNote'},
+   validate:v=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v), invalidMsg:'Please enter a valid email address.',
+   label:v=>v, doneMsg:v=>'Email '+v+' verified.',
+   deliver:async(v)=>{
+     if(OTP_EMAILJS_CONFIG){ try{
+       if(!window.emailjs){ await new Promise((res,rej)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';sc.onload=res;sc.onerror=rej;document.head.appendChild(sc)}); window.emailjs.init({publicKey:OTP_EMAILJS_CONFIG.publicKey}); }
+       const code=String(Math.floor(100000+Math.random()*900000));
+       await window.emailjs.send(OTP_EMAILJS_CONFIG.serviceId,OTP_EMAILJS_CONFIG.templateId,{to_email:v,passcode:code});
+       return code; }catch(e){ return false; } }
+     return String(Math.floor(100000+Math.random()*900000)); }});
+ refresh();
  form.addEventListener('submit',e=>{e.preventDefault();
-   if(!verifiedNumber){setStatus('Please verify your mobile number with OTP first — the message cannot be sent without it.','err');phone.focus();return}
-   if(!document.getElementById('cfName').value.trim()||!document.getElementById('cfEmail').value.trim()){setStatus('Please fill your name and email.','err');return}
+   if(!(ok.phone&&ok.email)){hint.scrollIntoView({behavior:'smooth',block:'center'});return}
+   if(!document.getElementById('cfName').value.trim()){alert('Please enter your name.');return}
    alert('Thank you! Your message has been recorded (demo inbox). Connect the live service to receive messages on email.');
-   form.reset(); resetVerification(); setStatus('',''); note.hidden=false;});
+   form.reset(); phoneGate.reset(); emailGate.reset();
+   document.getElementById('otpNote').hidden=false; document.getElementById('emailOtpNote').hidden=false; refresh();});
 })();

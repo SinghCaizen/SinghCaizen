@@ -378,3 +378,12 @@ header.hdr-light.scrolled{box-shadow:0 10px 28px rgba(10,25,48,.13)}
 .otp-status.demo{color:var(--yellow);background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.45);padding:10px 12px;border-radius:4px}
 .form-hint{font-size:13.5px;color:var(--muted)}
 #cfSubmit:disabled{opacity:.5;cursor:not-allowed}
+
+/* V11 — Professional touches: info-style demo notice, owner card */
+.otp-status.demo{color:var(--text);background:rgba(48,127,226,.12);border:1px solid rgba(48,127,226,.5);padding:10px 12px;border-radius:4px}
+.owner-card{background:linear-gradient(150deg,#0a1930,#123058 55%,#0a1930);border:1px solid rgba(245,166,35,.4);border-radius:6px;min-height:430px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;padding:48px 30px;text-align:center}
+.owner-mono{width:126px;height:126px;border-radius:50%;border:2px solid var(--yellow);background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:43px;font-weight:800;color:#fff;letter-spacing:.05em}
+.owner-card h3{color:#fff;font-size:26px}
+.owner-card p{color:#c9d2e0;font-size:13.5px;letter-spacing:.22em;text-transform:uppercase}
+.owner-sign{margin-top:26px;font-size:21px;font-weight:700;color:var(--text)}
+.owner-sign span{display:block;font-size:13.5px;font-weight:500;color:var(--yellow);letter-spacing:.08em;margin-top:4px;text-transform:uppercase}
