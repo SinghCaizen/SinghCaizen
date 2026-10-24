@@ -178,14 +178,3 @@ const OTP_EMAILJS_CONFIG = null;
    form.reset(); phoneGate.reset(); emailGate.reset();
    document.getElementById('otpNote').hidden=false; document.getElementById('emailOtpNote').hidden=false; refresh();});
 })();
-// Worldwide overlay (globe icon)
-(function(){
- const ov=document.getElementById('worldOverlay'); if(!ov) return;
- const open=()=>{ const nav=document.querySelector('nav.main');
-   if(nav&&nav.classList.contains('open')){ const b=document.querySelector('.menu-btn'); if(b) b.click(); }
-   ov.classList.add('open'); ov.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; };
- const close=()=>{ ov.classList.remove('open'); ov.setAttribute('aria-hidden','true'); document.body.style.overflow=''; };
- document.querySelectorAll('[data-open-world]').forEach(b=>b.addEventListener('click',open));
- ov.querySelectorAll('[data-close-world]').forEach(b=>b.addEventListener('click',close));
- addEventListener('keydown',e=>{ if(e.key==='Escape') close(); });
-})();
