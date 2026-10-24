@@ -348,3 +348,33 @@ header.hdr-light .mega{background:#ffffff;--text:#191919;--muted:#5a5a5a;--line:
   footer{background:#242426}
 }
 @media(min-width:1021px){footer{padding:70px 0 0}}
+
+/* V10 — Mobile panel always dark (both themes) + OTP form + softer light-header shadow */
+header.hdr-light.scrolled{box-shadow:0 10px 28px rgba(10,25,48,.13)}
+@media(max-width:1020px){
+  nav.main .mega{background:transparent!important;--text:#f4f4f5;--muted:#9c9ca3;--line:#2c2d31;--header-text:#ffffff}
+  nav.main .mega-title{color:#fff!important}
+  nav.main .mega-sub{color:#9c9ca3!important}
+  nav.main a.mlink{color:#e8e8ec!important}
+  nav.main a.mlink:hover{color:var(--yellow)!important}
+}
+.phone-row{display:flex;gap:10px;align-items:stretch}
+.phone-field{flex:1;display:flex;align-items:center;border:1px solid var(--line);border-radius:4px;background:var(--input-bg);overflow:hidden}
+.phone-field .cc{padding:0 6px 0 14px;font-weight:700;color:var(--muted)}
+.phone-field input{border:0!important;background:transparent!important;padding-left:2px!important}
+.phone-field input:focus{outline:none}
+.phone-field:focus-within{outline:2px solid var(--blue-bright)}
+.btn.otp-btn{white-space:nowrap;padding:0 18px;font-size:15px}
+.btn.otp-btn:disabled{opacity:.55;cursor:default}
+.otp-note{font-size:13.5px;color:var(--muted);margin-top:-6px}
+.otp-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.otp-row[hidden]{display:none}
+.otp-row input{flex:1;min-width:150px;letter-spacing:.25em}
+.resend{background:none;border:0;color:var(--blue-bright);font:inherit;font-size:14.5px;cursor:pointer;padding:6px 2px}
+.resend:disabled{color:var(--muted);cursor:default}
+.otp-status{font-size:14.5px;min-height:20px}
+.otp-status.ok{color:#2fa84f;font-weight:600}
+.otp-status.err{color:#e04848;font-weight:600}
+.otp-status.demo{color:var(--yellow);background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.45);padding:10px 12px;border-radius:4px}
+.form-hint{font-size:13.5px;color:var(--muted)}
+#cfSubmit:disabled{opacity:.5;cursor:not-allowed}

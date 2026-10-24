@@ -7,7 +7,7 @@
 <script>(function(){try{var t=localStorage.getItem('sc-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=13"></head><body>
+<link rel="stylesheet" href="css/style.css?v=14"></head><body>
 <div id="preloader"><img class="pl-logo-img" src="images/logo-white.svg" alt="Singh Caizen"><div class="pl-bar"><i></i></div></div>
 <header><div class="container nav">
 <a class="logo" href="index.html" aria-label="Singh Caizen Group — Home"><img class="logo-img logo-w" src="images/logo-white.svg" alt="Singh Caizen"><img class="logo-img logo-d" src="images/logo-dark.svg" alt="Singh Caizen"></a>
@@ -51,8 +51,24 @@
 <input type="text" placeholder="Search the group..." aria-label="Search the group"><div class="search-results"></div></div>
 <section class="section" style="padding-top:150px"><div class="container split">
 <div class="reveal"><h2 class="section-title">Head office</h2><p class="section-lead">India<br><br>Email: <b>info@singhcaizen.com</b><!-- EDIT: add real phone & full address here when ready --></p></div>
-<div class="reveal d1"><form class="form" onsubmit="alert('Thank you! This form is a demo — connect it to your email to receive messages.');return false">
-<input required placeholder="Your name"><input required type="email" placeholder="Your email"><input placeholder="Subject"><textarea required rows="5" placeholder="Your message"></textarea><button class="btn" type="submit">Send Message</button></form></div>
+<div class="reveal d1"><form class="form" id="contactForm" novalidate>
+<input required placeholder="Your name" id="cfName"><input required type="email" placeholder="Your email" id="cfEmail">
+<div class="phone-row">
+<div class="phone-field"><span class="cc">+91</span><input id="cfPhone" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="Mobile number" aria-label="Mobile number"></div>
+<button type="button" class="btn otp-btn" id="sendOtpBtn">Send OTP</button>
+</div>
+<p class="otp-note" id="otpNote">Your mobile number must be verified with an OTP before the message can be sent.</p>
+<div class="otp-row" id="otpRow" hidden>
+<input id="cfOtp" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit OTP" aria-label="One-time password">
+<button type="button" class="btn otp-btn" id="verifyOtpBtn">Verify</button>
+<button type="button" class="resend" id="resendOtpBtn" disabled>Resend OTP (<span id="otpTimer">30</span>s)</button>
+</div>
+<p class="otp-status" id="otpStatus" role="status"></p>
+<div id="recaptchaBox"></div>
+<input placeholder="Subject"><textarea required rows="5" placeholder="Your message"></textarea>
+<button class="btn" type="submit" id="cfSubmit" disabled>Send Message</button>
+<p class="form-hint" id="cfHint">&#128274; Send Message activates after mobile verification.</p>
+</form></div>
 </div></section>
 
 
@@ -97,4 +113,4 @@
 <p class="t-copy">&copy; 2026 Singh Caizen. All rights reserved.</p>
 </div></div>
 </footer>
-<script src="js/main.js?v=10"></script></body></html>
+<script src="js/main.js?v=11"></script></body></html>
