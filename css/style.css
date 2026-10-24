@@ -246,3 +246,7 @@ footer a.fl:hover{color:#fff;transform:translateX(3px)}
 :focus-visible{outline:2px solid var(--yellow);outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.reveal,.reveal-left,.reveal-right,.reveal-zoom{opacity:1;transform:none;transition:none}.hero-slide.active{animation:none}.parallax-band{background-attachment:scroll}}
 @media(min-width:981px){.m-wide{grid-column:span 2}}
+/* V4.1: mega panel must be fully opaque (no hero bleed-through) */
+html[data-theme="dark"] .mega{background:#050505}
+html[data-theme="light"] .mega{background:#ffffff}
+.mega{transition:opacity .18s ease,transform .18s ease,visibility .18s}
