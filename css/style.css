@@ -532,12 +532,12 @@ a.h-icon{text-decoration:none}
 
 /* ===== Homepage fullpage snap scroll (Tata-style): one scroll glides to the next section and rests ===== */
 @media (min-width:1021px) and (pointer:fine){
-  html.snap-home{scroll-snap-type:y mandatory;scroll-padding-top:92px}
-  html.snap-home .snap-sec{scroll-snap-align:start;scroll-snap-stop:always}
+  html.snap-home{scroll-snap-type:y mandatory}
+  html.snap-home .snap-sec{scroll-snap-align:start;scroll-snap-stop:always;scroll-margin-top:84px}
 }
 @media (max-width:1020px){
   html.snap-home{scroll-snap-type:y proximity}
-  html.snap-home .snap-sec{scroll-snap-align:start}
+  html.snap-home .snap-sec{scroll-snap-align:start;scroll-margin-top:76px}
 }
 @media (prefers-reduced-motion:reduce){
   html.snap-home{scroll-snap-type:none}
