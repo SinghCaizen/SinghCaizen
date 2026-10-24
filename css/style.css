@@ -295,3 +295,16 @@ header.scrolled .logo-img{height:44px}
   .f-socials{gap:24px}
   .f-socials svg{width:24px;height:24px}
 }
+
+/* V6.1 — mobile header order: logo left, actions + hamburger right (Tata phone UI) */
+@media(max-width:1020px){
+  .container.nav{flex-wrap:nowrap}
+  .container.nav .logo{order:1}
+  .container.nav .nav-actions{order:2;margin-left:auto}
+  .container.nav .menu-btn{order:3;margin-left:16px}
+  .container.nav nav.main{order:4}
+}
+@media(max-width:640px){
+  .foot-main{grid-template-columns:1fr;gap:8px}
+  .foot-logo-img{height:56px}
+}

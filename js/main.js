@@ -12,7 +12,7 @@ if(tBtn)tBtn.addEventListener('click',()=>{const cur=document.documentElement.ge
 const btn=document.querySelector('.menu-btn'),nav=document.querySelector('nav.main');
 if(btn&&nav){
  const ov=document.createElement('div');ov.className='nav-overlay';document.body.appendChild(ov);
- const setMenu=open=>{nav.classList.toggle('open',open);ov.classList.toggle('show',open);btn.innerHTML=open?'&times;':'&#9776;';document.body.style.overflow=open?'hidden':''};
+ const setMenu=open=>{nav.classList.toggle('open',open);ov.classList.toggle('show',open);btn.innerHTML=open?'&times;':'&#9776;';document.body.style.overflow=open?'hidden':'';if(open){nav.scrollTop=0;nav.querySelectorAll('.has-drop.expanded').forEach(d=>d.classList.remove('expanded'))}};
  btn.addEventListener('click',()=>setMenu(!nav.classList.contains('open')));
  ov.addEventListener('click',()=>setMenu(false));
  nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',e=>{
