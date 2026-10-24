@@ -178,3 +178,11 @@ const OTP_EMAILJS_CONFIG = null;
    form.reset(); phoneGate.reset(); emailGate.reset();
    document.getElementById('otpNote').hidden=false; document.getElementById('emailOtpNote').hidden=false; refresh();});
 })();
+// Board committees accordion
+(function(){
+ document.querySelectorAll('.comm-head').forEach(h=>h.addEventListener('click',()=>{
+   const c=h.parentElement, was=c.classList.contains('open');
+   document.querySelectorAll('.comm.open').forEach(o=>o.classList.remove('open'));
+   if(!was) c.classList.add('open');
+ }));
+})();

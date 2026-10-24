@@ -421,3 +421,22 @@ a.h-icon{text-decoration:none}
 .region-status{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;padding:6px 11px;border:1px solid var(--border);color:var(--muted)}
 .region-status.home{background:var(--blue-bright);border-color:var(--blue-bright);color:#fff}
 @media(max-width:900px){.region{grid-template-columns:1fr;gap:22px}.region.rev img{order:0}.world-stats{grid-template-columns:1fr 1fr}.world-stats div{border-bottom:1px solid var(--border)}}
+
+/* V14 — Leadership: people cards + board committees (Singh Caizen's own style) */
+.people{margin-top:34px}
+.person-card{background:linear-gradient(160deg,#0a1930,#0e2547);border:1px solid rgba(245,166,35,.35);border-radius:10px;padding:32px 26px;color:#fff;transition:.3s}
+.person-card:hover{transform:translateY(-5px);border-color:var(--yellow)}
+.person-card .p-mono{width:74px;height:74px;border-radius:50%;border:2px solid var(--yellow);background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:800;color:#fff;margin-bottom:18px}
+.person-card h3{color:#fff;font-size:20.5px}
+.person-card .p-role{color:var(--yellow);font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;margin:7px 0 12px}
+.person-card p{color:#bcc9da;font-size:14.5px}
+.person-card.tba{background:var(--card);border:1.5px dashed var(--border);color:var(--text)}
+.person-card.tba h3{color:var(--text)}
+.person-card.tba p{color:var(--muted)}
+.person-card .p-mono.dim{border-color:var(--border);background:transparent;color:var(--muted);font-size:17px}
+.comm{border:1px solid var(--border);border-radius:8px;margin-bottom:12px;background:var(--card);overflow:hidden}
+.comm-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;background:none;border:0;padding:19px 22px;font:inherit;font-size:17px;font-weight:700;color:var(--text);cursor:pointer;text-align:left}
+.comm-ic{flex:none;width:30px;height:30px;border:1.5px solid var(--yellow);border-radius:50%;color:var(--yellow);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;transition:.3s}
+.comm.open .comm-ic{transform:rotate(45deg);background:var(--yellow);color:#0a1930}
+.comm-body{display:none;padding:0 22px 20px;color:var(--muted);font-size:15.5px}
+.comm.open .comm-body{display:block}
