@@ -250,3 +250,12 @@ footer a.fl:hover{color:#fff;transform:translateX(3px)}
 html[data-theme="dark"] .mega{background:#050505}
 html[data-theme="light"] .mega{background:#ffffff}
 .mega{transition:opacity .18s ease,transform .18s ease,visibility .18s}
+
+/* V5 — Real logo (theme-aware) */
+.logo-img{height:48px;width:auto;display:block}
+header.scrolled .logo-img{height:40px}
+.logo-d{display:none}
+html[data-theme="light"] .logo-w{display:none}
+html[data-theme="light"] .logo-d{display:block}
+#preloader .pl-logo-img{height:74px;width:auto;animation:plPulse 1.2s ease infinite alternate}
+.foot-logo-img{height:58px;width:auto}
