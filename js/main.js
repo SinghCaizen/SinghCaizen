@@ -1,10 +1,8 @@
 // SINGH CAIZEN — main.js (V4)
 // Auto-add progress bar & back-to-top
-if(!document.querySelector('.progress')){const d=document.createElement('div');d.className='progress';document.body.prepend(d)}
 if(!document.querySelector('.to-top')){const b=document.createElement('button');b.className='to-top';b.innerHTML='&uarr;';b.setAttribute('aria-label','Back to top');document.body.appendChild(b)}
-const header=document.querySelector('header'),prog=document.querySelector('.progress'),toTop=document.querySelector('.to-top');
+const header=document.querySelector('header'),toTop=document.querySelector('.to-top');
 addEventListener('scroll',()=>{header.classList.toggle('scrolled',scrollY>40);
- const h=document.documentElement;if(prog)prog.style.width=(scrollY/(h.scrollHeight-innerHeight)*100)+'%';
  if(toTop)toTop.classList.toggle('show',scrollY>600)},{passive:true});
 if(toTop)toTop.addEventListener('click',()=>scrollTo({top:0,behavior:'smooth'}));
 // Theme toggle (dark / light, remembered)
@@ -12,7 +10,17 @@ const tBtn=document.querySelector('.theme-toggle');
 if(tBtn)tBtn.addEventListener('click',()=>{const cur=document.documentElement.getAttribute('data-theme')==='light'?'dark':'light';document.documentElement.setAttribute('data-theme',cur);try{localStorage.setItem('sc-theme',cur)}catch(e){}});
 // Mobile menu
 const btn=document.querySelector('.menu-btn'),nav=document.querySelector('nav.main');
-if(btn)btn.addEventListener('click',()=>nav.classList.toggle('open'));
+if(btn&&nav){
+ const ov=document.createElement('div');ov.className='nav-overlay';document.body.appendChild(ov);
+ const setMenu=open=>{nav.classList.toggle('open',open);ov.classList.toggle('show',open);btn.innerHTML=open?'&times;':'&#9776;';document.body.style.overflow=open?'hidden':''};
+ btn.addEventListener('click',()=>setMenu(!nav.classList.contains('open')));
+ ov.addEventListener('click',()=>setMenu(false));
+ nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',e=>{
+   const drop=a.parentElement;
+   if(innerWidth<=1020&&drop.classList.contains('has-drop')&&!drop.classList.contains('expanded')){e.preventDefault();nav.querySelectorAll('.has-drop.expanded').forEach(d=>{if(d!==drop)d.classList.remove('expanded')});drop.classList.add('expanded');}
+   else if(innerWidth<=1020&&!drop.classList.contains('has-drop')){setMenu(false)}
+ }));
+}
 // Preloader
 addEventListener('load',()=>setTimeout(()=>{const p=document.getElementById('preloader');if(p)p.classList.add('hide')},500));
 // Reveal on scroll
