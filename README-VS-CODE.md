@@ -1,11 +1,16 @@
-# Singh Caizen — Parent Group Website (V3)
+# Singh Caizen — Parent Group Website (V4)
 
-V3: Tata-grade header (navy topbar, About dropdown, Businesses mega-menu, live
-site-search overlay, Get in Touch button), footer with social icons
-(LinkedIn / X / Instagram / Facebook / YouTube — @singhcaizen handles, reserve
-them free if not done yet) + newsletter box, preloader, Lead Stories rail.
-Animations: hero slider + Ken Burns, ticker, parallax bands, scroll reveals,
-counters, timeline, scroll-progress bar, back-to-top.
+V4 — redesigned from tata.com screenshots: BLACK header like Tata (logo,
+Business + About Us full-width mega panels, Newsroom/Careers/Contact, and
+globe / mail / search / sun-moon icons on the right). DARK theme by default
+with a working LIGHT mode — the sun/moon icon in the header switches, choice
+is remembered. Homepage has Tata-style hero slider + "In the News" mosaic
+(image card, dark press card, blue news card, Did-you-know card, Instagram
+gradient card). Footer like Tata's: dark, 4 link columns + plain social
+icons (Facebook/LinkedIn/X/YouTube/Instagram/Mail, all @singhcaizen) +
+"Enter your email ID to subscribe" box + big SINGH CAIZEN logo.
+Animations: mega-panel slide/fade, hero crossfade + Ken Burns, scroll
+reveals, counters, parallax, timeline, progress bar, back-to-top.
 
 Tata.com-style corporate site: white + deep blue (#307FE2 / #1B4F9C / navy #0A1930),
 Inter font (closest free match to Tata's clean corporate sans), soft fade-up
