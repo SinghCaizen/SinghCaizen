@@ -53,25 +53,17 @@
 <section class="section" style="padding-top:150px"><div class="container split">
 <div class="reveal"><h2 class="section-title">Head office</h2><p class="section-lead">India<br><br>Email: <b>info@singhcaizen.com</b><!-- EDIT: add real phone & full address here when ready --></p></div>
 <div class="reveal d1"><form class="form" id="contactForm" novalidate>
-<input required placeholder="Your name" id="cfName">
+<input required placeholder="Your name *" id="cfName" name="name" autocomplete="name" aria-label="Your name (required)">
+<input required type="email" placeholder="Your email *" id="cfEmail" name="email" autocomplete="email" aria-label="Your email (required)">
 <div class="phone-row">
-<input required type="email" placeholder="Your email" id="cfEmail" aria-label="Your email">
-<button type="button" class="btn otp-btn" id="sendEmailOtpBtn">Send OTP</button>
+<div class="phone-field"><span class="cc">+91</span><input id="cfPhone" name="phone" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="Mobile number *" aria-label="Mobile number (required)"></div>
 </div>
-<p class="otp-note" id="emailOtpNote">Verify your email with an OTP.</p>
-<div class="otp-row" id="emailOtpRow" hidden>
-<input id="cfEmailOtp" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit OTP" aria-label="Email one-time password">
-<button type="button" class="btn otp-btn" id="verifyEmailOtpBtn">Verify</button>
-<button type="button" class="resend" id="resendEmailOtpBtn" disabled>Resend OTP (<span id="emailOtpTimer">30</span>s)</button>
-</div>
-<p class="otp-status" id="emailOtpStatus" role="status"></p>
-<div class="phone-row">
-<div class="phone-field"><span class="cc">+91</span><input id="cfPhone" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="Mobile number" aria-label="Mobile number"></div>
-</div>
-<p class="otp-note">Your mobile number — so we can reach you. (No OTP on mobile.)</p>
-<input placeholder="Subject"><textarea required rows="5" placeholder="Your message"></textarea>
-<button class="btn" type="submit" id="cfSubmit" disabled>Send Message</button>
-<p class="form-hint" id="cfHint">Send Message activates after email verification.</p>
+<input required placeholder="Subject *" id="cfSubject" name="subject" aria-label="Subject (required)">
+<textarea required rows="5" placeholder="Your message *" id="cfMessage" name="message" aria-label="Your message (required)"></textarea>
+<input type="checkbox" name="botcheck" style="display:none" tabindex="-1" autocomplete="off">
+<button class="btn" type="submit" id="cfSubmit">Send Message</button>
+<p class="otp-status" id="cfStatus" role="status"></p>
+<p class="form-hint">Fields marked * are required. Your message goes straight to our inbox.</p>
 </form></div>
 </div></section>
 
@@ -119,4 +111,4 @@
 <p class="t-copy">&copy; 2026 Singh Caizen. All rights reserved.</p>
 </div></div>
 </footer>
-<script src="js/main.js?v=19"></script></body></html>
+<script src="js/main.js?v=20"></script></body></html>

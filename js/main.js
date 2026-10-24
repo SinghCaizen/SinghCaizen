@@ -91,61 +91,31 @@ if(rail){document.querySelectorAll('.rail-nav button').forEach((b,i)=>b.addEvent
  adapt();
 })();
 
-// Contact form — EMAIL OTP verification gate (mobile number is a plain field, no OTP on it).
-// Live email OTP: paste an EmailJS config {publicKey, serviceId, templateId} — the template must
-// accept {{to_email}} and {{passcode}}. Until connected, the gate runs in DEMO mode and shows
-// the OTP on-screen for testing.
-const OTP_EMAILJS_CONFIG = {publicKey:'46H5jMEn1tmmZvmBkE', serviceId:'service_p2eojms', templateId:'template_kfwc2yh'};
+// Contact form — every field is required (*). Messages are delivered to the owner's
+// inbox via Web3Forms (free). Paste the access key between the quotes to go live;
+// until then the form politely reports that the service is being connected.
+const WEB3FORMS_KEY = '';
 (function(){
  const form=document.getElementById('contactForm'); if(!form) return;
- const submit=document.getElementById('cfSubmit'), hint=document.getElementById('cfHint');
- let emailOk=false;
- const ids=['cfEmail','sendEmailOtpBtn','emailOtpRow','cfEmailOtp','verifyEmailOtpBtn','resendEmailOtpBtn','emailOtpTimer','emailOtpStatus','emailOtpNote'];
- const keys=['input','send','row','code','verify','resend','timer','status','note'];
- const els={}; keys.forEach((k,i)=>els[k]=document.getElementById(ids[i]));
- let current=null, timerId=null, verifiedValue=null, expiresAt=null;
- function refresh(){ submit.disabled=!emailOk; hint.textContent = emailOk ? '' : 'Send Message activates after email verification.'; }
- function setStatus(m,k){ els.status.textContent=m; els.status.className='otp-status '+(k||''); }
- function startTimer(){ let t=30; els.resend.disabled=true; els.resend.innerHTML='Resend OTP (<span>'+t+'s</span>)'; clearInterval(timerId);
-   timerId=setInterval(()=>{ t--; const sp=els.resend.querySelector('span'); if(sp) sp.textContent=t+'s'; if(t<=0){ clearInterval(timerId); els.resend.disabled=false; els.resend.textContent='Resend OTP'; } },1000); }
- async function send(){
-   const v=els.input.value.trim();
-   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)){ setStatus('Please enter a valid email address.','err'); els.input.focus(); return; }
-   let code=null;
-   if(OTP_EMAILJS_CONFIG){ try{
-     if(!window.emailjs){ await new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src='https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }); window.emailjs.init({publicKey:OTP_EMAILJS_CONFIG.publicKey}); }
-     code=String(Math.floor(100000+Math.random()*900000));
-     const expT=new Date(Date.now()+15*60000); expiresAt=expT.getTime();
-     await window.emailjs.send(OTP_EMAILJS_CONFIG.serviceId, OTP_EMAILJS_CONFIG.templateId, {to_email:v, email:v, passcode:code, time:expT.toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true})});
-   }catch(e){ code=null; } }
-   else code=String(Math.floor(100000+Math.random()*900000));
-   if(code===null){ setStatus('Could not send OTP. Please try again.','err'); return; }
-   current=code; els.row.hidden=false; els.code.value=''; startTimer();
-   if(OTP_EMAILJS_CONFIG) setStatus('OTP sent to '+v+'. Please enter it below.','');
-   else setStatus('Demo mode (OTP service not connected yet) — your OTP is '+code+'. Live OTP will start once the service is connected.','demo');
- }
- function verify(){
-   const code=els.code.value.trim();
-   if(!/^\d{6}$/.test(code)){ setStatus('Please enter the 6-digit OTP.','err'); return; }
-   if(expiresAt && Date.now()>expiresAt){ setStatus('This OTP has expired (15 minutes). Please resend a new one.','err'); return; }
-   if(code!==current){ setStatus('Incorrect OTP. Please check and try again.','err'); return; }
-   verifiedValue=els.input.value.trim(); emailOk=true;
-   els.row.hidden=true; if(els.note) els.note.hidden=true;
-   els.input.readOnly=true; els.send.disabled=true; els.send.textContent='Verified \u2713';
-   setStatus('\u2713 Email '+verifiedValue+' verified. You can now send your message.','ok'); refresh();
- }
- function reset(){ emailOk=false; verifiedValue=null; current=null; expiresAt=null;
-   els.input.readOnly=false; els.send.disabled=false; els.send.textContent='Send OTP'; setStatus('',''); refresh(); }
- els.send.addEventListener('click',send);
- els.resend.addEventListener('click',send);
- els.verify.addEventListener('click',verify);
- els.input.addEventListener('input',()=>{ if(verifiedValue!==null && els.input.value.trim()!==verifiedValue) reset(); });
- refresh();
- form.addEventListener('submit',e=>{ e.preventDefault();
-   if(!emailOk){ hint.scrollIntoView({behavior:'smooth',block:'center'}); return; }
-   if(!document.getElementById('cfName').value.trim()){ alert('Please enter your name.'); return; }
-   const ph=document.getElementById('cfPhone');
-   if(ph && !/^[6-9]\d{9}$/.test(ph.value.trim())){ alert('Please enter a valid 10-digit mobile number.'); ph.focus(); return; }
-   alert('Thank you! Your message has been recorded (demo inbox). Connect the live service to receive messages on email.');
-   form.reset(); reset(); const n=document.getElementById('emailOtpNote'); if(n) n.hidden=false; refresh(); });
+ const status=document.getElementById('cfStatus'), btn=document.getElementById('cfSubmit');
+ function setStatus(m,k){ status.textContent=m; status.className='otp-status '+(k||''); }
+ form.addEventListener('submit', async e=>{ e.preventDefault();
+   const name=document.getElementById('cfName').value.trim();
+   const email=document.getElementById('cfEmail').value.trim();
+   const phone=document.getElementById('cfPhone').value.trim();
+   const subject=document.getElementById('cfSubject').value.trim();
+   const message=document.getElementById('cfMessage').value.trim();
+   if(!name||!email||!phone||!subject||!message){ setStatus('Please fill all the required fields (marked *).','err'); return; }
+   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ setStatus('Please enter a valid email address.','err'); document.getElementById('cfEmail').focus(); return; }
+   if(!/^[6-9]\d{9}$/.test(phone)){ setStatus('Please enter a valid 10-digit mobile number.','err'); document.getElementById('cfPhone').focus(); return; }
+   if(!WEB3FORMS_KEY){ setStatus('The message service is being connected. Please try again shortly.','err'); return; }
+   btn.disabled=true; btn.textContent='Sending...';
+   try{
+     const r=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({access_key:WEB3FORMS_KEY, subject:'New enquiry from the Singh Caizen website: '+subject, from_name:'Singh Caizen Website', name:name, email:email, phone:'+91 '+phone, message:message})});
+     const data=await r.json();
+     if(data && data.success){ setStatus('\u2713 Thank you, '+name.split(' ')[0]+'. Your message has been sent — we will get back to you shortly.','ok'); form.reset(); }
+     else setStatus('Could not send your message. Please try again.','err');
+   }catch(err){ setStatus('Could not send your message. Please check your connection and try again.','err'); }
+   btn.disabled=false; btn.textContent='Send Message';
+ });
 })();
