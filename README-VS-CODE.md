@@ -1,4 +1,11 @@
-# Singh Caizen — Parent Group Website
+# Singh Caizen — Parent Group Website (V3)
+
+V3: Tata-grade header (navy topbar, About dropdown, Businesses mega-menu, live
+site-search overlay, Get in Touch button), footer with social icons
+(LinkedIn / X / Instagram / Facebook / YouTube — @singhcaizen handles, reserve
+them free if not done yet) + newsletter box, preloader, Lead Stories rail.
+Animations: hero slider + Ken Burns, ticker, parallax bands, scroll reveals,
+counters, timeline, scroll-progress bar, back-to-top.
 
 Tata.com-style corporate site: white + deep blue (#307FE2 / #1B4F9C / navy #0A1930),
 Inter font (closest free match to Tata's clean corporate sans), soft fade-up
