@@ -529,3 +529,16 @@ a.h-icon{text-decoration:none}
  .spot-card{max-width:none}
  .grid-chip{transform:translate(10px,50%);font-size:19px}
 }
+
+/* ===== Homepage fullpage snap scroll (Tata-style): one scroll glides to the next section and rests ===== */
+@media (min-width:1021px) and (pointer:fine){
+  html.snap-home{scroll-snap-type:y mandatory}
+  html.snap-home .snap-sec{scroll-snap-align:start;scroll-snap-stop:always}
+}
+@media (max-width:1020px){
+  html.snap-home{scroll-snap-type:y proximity}
+  html.snap-home .snap-sec{scroll-snap-align:start}
+}
+@media (prefers-reduced-motion:reduce){
+  html.snap-home{scroll-snap-type:none}
+}
