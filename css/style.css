@@ -532,7 +532,7 @@ a.h-icon{text-decoration:none}
 
 /* ===== Homepage fullpage snap scroll (Tata-style): one scroll glides to the next section and rests ===== */
 @media (min-width:1021px) and (pointer:fine){
-  html.snap-home{scroll-snap-type:y mandatory}
+  html.snap-home{scroll-snap-type:y mandatory;scroll-padding-top:92px}
   html.snap-home .snap-sec{scroll-snap-align:start;scroll-snap-stop:always}
 }
 @media (max-width:1020px){
