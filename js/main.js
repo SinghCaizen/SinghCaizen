@@ -95,7 +95,7 @@ if(rail){document.querySelectorAll('.rail-nav button').forEach((b,i)=>b.addEvent
 // Live email OTP: paste an EmailJS config {publicKey, serviceId, templateId} — the template must
 // accept {{to_email}} and {{passcode}}. Until connected, the gate runs in DEMO mode and shows
 // the OTP on-screen for testing.
-const OTP_EMAILJS_CONFIG = null;
+const OTP_EMAILJS_CONFIG = {publicKey:'46H5jMEn1tmmZvmBkE', serviceId:'service_p2eojms', templateId:'template_kfwc2yh'};
 (function(){
  const form=document.getElementById('contactForm'); if(!form) return;
  const submit=document.getElementById('cfSubmit'), hint=document.getElementById('cfHint');
@@ -103,7 +103,7 @@ const OTP_EMAILJS_CONFIG = null;
  const ids=['cfEmail','sendEmailOtpBtn','emailOtpRow','cfEmailOtp','verifyEmailOtpBtn','resendEmailOtpBtn','emailOtpTimer','emailOtpStatus','emailOtpNote'];
  const keys=['input','send','row','code','verify','resend','timer','status','note'];
  const els={}; keys.forEach((k,i)=>els[k]=document.getElementById(ids[i]));
- let current=null, timerId=null, verifiedValue=null;
+ let current=null, timerId=null, verifiedValue=null, expiresAt=null;
  function refresh(){ submit.disabled=!emailOk; hint.textContent = emailOk ? '' : 'Send Message activates after email verification.'; }
  function setStatus(m,k){ els.status.textContent=m; els.status.className='otp-status '+(k||''); }
  function startTimer(){ let t=30; els.resend.disabled=true; els.resend.innerHTML='Resend OTP (<span>'+t+'s</span>)'; clearInterval(timerId);
@@ -115,7 +115,8 @@ const OTP_EMAILJS_CONFIG = null;
    if(OTP_EMAILJS_CONFIG){ try{
      if(!window.emailjs){ await new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src='https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js'; sc.onload=res; sc.onerror=rej; document.head.appendChild(sc); }); window.emailjs.init({publicKey:OTP_EMAILJS_CONFIG.publicKey}); }
      code=String(Math.floor(100000+Math.random()*900000));
-     await window.emailjs.send(OTP_EMAILJS_CONFIG.serviceId, OTP_EMAILJS_CONFIG.templateId, {to_email:v, passcode:code});
+     const expT=new Date(Date.now()+15*60000); expiresAt=expT.getTime();
+     await window.emailjs.send(OTP_EMAILJS_CONFIG.serviceId, OTP_EMAILJS_CONFIG.templateId, {to_email:v, email:v, passcode:code, time:expT.toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true})});
    }catch(e){ code=null; } }
    else code=String(Math.floor(100000+Math.random()*900000));
    if(code===null){ setStatus('Could not send OTP. Please try again.','err'); return; }
@@ -126,13 +127,14 @@ const OTP_EMAILJS_CONFIG = null;
  function verify(){
    const code=els.code.value.trim();
    if(!/^\d{6}$/.test(code)){ setStatus('Please enter the 6-digit OTP.','err'); return; }
+   if(expiresAt && Date.now()>expiresAt){ setStatus('This OTP has expired (15 minutes). Please resend a new one.','err'); return; }
    if(code!==current){ setStatus('Incorrect OTP. Please check and try again.','err'); return; }
    verifiedValue=els.input.value.trim(); emailOk=true;
    els.row.hidden=true; if(els.note) els.note.hidden=true;
    els.input.readOnly=true; els.send.disabled=true; els.send.textContent='Verified \u2713';
    setStatus('\u2713 Email '+verifiedValue+' verified. You can now send your message.','ok'); refresh();
  }
- function reset(){ emailOk=false; verifiedValue=null; current=null;
+ function reset(){ emailOk=false; verifiedValue=null; current=null; expiresAt=null;
    els.input.readOnly=false; els.send.disabled=false; els.send.textContent='Send OTP'; setStatus('',''); refresh(); }
  els.send.addEventListener('click',send);
  els.resend.addEventListener('click',send);
