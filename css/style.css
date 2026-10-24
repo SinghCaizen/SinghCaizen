@@ -445,3 +445,24 @@ a.h-icon{text-decoration:none}
 .person-card.tba{border:1.5px dashed rgba(148,163,184,.7)}
 .region-txt .focus{margin-top:14px;font-size:15px}
 .region-txt .focus strong{display:block;color:var(--yellow);font-size:12px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:5px}
+
+/* V16 — Leadership redesign: dark bands, richer cards, numbered committees */
+.darkband{background:#0a0c0f;color:#e8ecf2}
+.darkband .section-title{color:#fff}
+.darkband .section-lead{color:#a9b4c2}
+.darkband .eyebrow{color:var(--yellow)}
+.darkband .person-card{background:linear-gradient(165deg,#111a29,#0b111d);border-color:#2a3446}
+.darkband .person-card.tba{background:rgba(255,255,255,.02);border:1.5px dashed rgba(245,166,35,.45);color:#e8ecf2}
+.darkband .person-card.tba h3{color:#fff}
+.darkband .person-card.tba p{color:#9fb0c3}
+.darkband .person-card.tba .p-role{color:var(--yellow)}
+.darkband .person-card .p-mono.dim{border-color:rgba(245,166,35,.5);color:#d8c391;background:transparent}
+.darkband .comm{background:#10131a;border-color:#242b39}
+.darkband .comm-head{color:#fff}
+.darkband .comm-body{color:#a7b2c0}
+.comm-num{color:var(--yellow);font-weight:800;font-size:14.5px;letter-spacing:.12em;margin-right:16px}
+.person-card.mgmt{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--yellow);color:var(--text)}
+.person-card.mgmt h3{color:var(--text)}
+.person-card.mgmt p{color:var(--muted)}
+.person-card.mgmt .p-role{color:var(--yellow)}
+.p-initials{font-size:42px;font-weight:800;letter-spacing:.04em;color:var(--yellow);line-height:1;margin-bottom:16px}
