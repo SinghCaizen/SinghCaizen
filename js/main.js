@@ -14,8 +14,8 @@ if(btn&&nav){
  ov.addEventListener('click',()=>setMenu(false));
  nav.querySelectorAll('a').forEach(a=>a.addEventListener('click',e=>{
    const drop=a.parentElement;
-   if(innerWidth<=1020&&drop.classList.contains('has-drop')&&!drop.classList.contains('expanded')){e.preventDefault();nav.querySelectorAll('.has-drop.expanded').forEach(d=>{if(d!==drop)d.classList.remove('expanded')});drop.classList.add('expanded');}
-   else if(innerWidth<=1020&&!drop.classList.contains('has-drop')){setMenu(false)}
+   if(innerWidth<=1020&&drop.classList.contains('has-drop')){e.preventDefault();const was=drop.classList.contains('expanded');nav.querySelectorAll('.has-drop.expanded').forEach(d=>d.classList.remove('expanded'));if(!was)drop.classList.add('expanded');}
+   else if(innerWidth<=1020){setMenu(false)}
  }));
 }
 // Preloader
