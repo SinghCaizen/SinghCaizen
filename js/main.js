@@ -122,7 +122,7 @@ const WEB3FORMS_KEY = '94e01d94-8fae-4cdc-b9b9-716cf169d7dc';
 
 // Newsletter subscribe (footer, all pages) — posts to the newsletter service's public
 // form endpoint (Brevo). Paste the form action URL between the quotes to go live.
-const NEWSLETTER_FORM_URL = '';
+const NEWSLETTER_FORM_URL = 'https://00357f29.sibforms.com/serve/MUIFACuWuttvtkJY-Vo4EceLGDDTrsadnnIOchj3cRyghep51k02r1MpHmPAeK27cPoUIG4WIu3uaxLNmMLbSRN2RducMtujyygnCp26XOE5MgSrKh65YQwBSyrK78YmbWmGu0716ixdF_gYUGV125y6hV6F3K2rmARka4eqSe6wkThzaYsk2Fa_TuSu3utYgxwIabtg5K_jKRn1zQ==';
 document.querySelectorAll('form.subscribe[data-newsletter]').forEach(f=>{
  f.addEventListener('submit', async e=>{ e.preventDefault();
    const input=f.querySelector('input[type=email]'); const email=input.value.trim();
@@ -130,7 +130,7 @@ document.querySelectorAll('form.subscribe[data-newsletter]').forEach(f=>{
    let note=f.parentElement.querySelector('.sub-note');
    if(!note){ note=document.createElement('p'); note.className='sub-note'; note.style.cssText='font-size:13px;margin-top:10px;opacity:.85'; f.after(note); }
    if(!NEWSLETTER_FORM_URL){ note.textContent='Newsletter is being connected — please check back shortly.'; return; }
-   const fd=new FormData(); fd.append('EMAIL', email); fd.append('email_address', email); fd.append('locale','en');
+   const fd=new FormData(); fd.append('EMAIL', email); fd.append('locale','en'); fd.append('email_address_check','');
    try{ await fetch(NEWSLETTER_FORM_URL,{method:'POST',body:fd,mode:'no-cors'});
      f.reset(); note.textContent='\u2713 Thank you for subscribing to the Singh Caizen newsletter.';
    }catch(err){ note.textContent='Could not subscribe right now. Please try again.'; }
