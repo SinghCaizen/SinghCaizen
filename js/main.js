@@ -95,7 +95,7 @@ if(rail){document.querySelectorAll('.rail-nav button').forEach((b,i)=>b.addEvent
 // inbox via Web3Forms (free). Paste the access key between the quotes to go live;
 // until then the form politely reports that the service is being connected.
 // Accordions (board committees, careers FAQ)
-document.querySelectorAll('.comm-head').forEach(function(b){ b.addEventListener('click',function(){ b.parentElement.classList.toggle('open'); }); });
+document.querySelectorAll('.comm-head,.faq-head').forEach(function(b){ b.addEventListener('click',function(){ b.parentElement.classList.toggle('open'); }); });
 
 const WEB3FORMS_KEY = '94e01d94-8fae-4cdc-b9b9-716cf169d7dc';
 (function(){
@@ -217,4 +217,36 @@ document.querySelectorAll('form.subscribe[data-newsletter]').forEach(f=>{
   });
   var rz; window.addEventListener('resize',function(){ clearTimeout(rz); rz=setTimeout(build,250); });
   build(); window.addEventListener('load',function(){ build(); setTimeout(build,900); });
+})();
+
+// ===== Legal popup (Privacy / Terms / Equal Opportunity) + cookie consent =====
+(function(){
+  var LEGAL={
+   privacy:{t:'Privacy Policy',h:'<p class="legal-updated">Last updated: 25 October 2026</p><h3>1. Who we are</h3><p>Singh Caizen (\u201cwe\u201d, \u201cour\u201d) operates this website. We respect your privacy and handle the information you share with us carefully and only for the purposes described here.</p><h3>2. Information we collect</h3><ul><li><b>Contact enquiries</b> \u2014 your name, email address, mobile number and message, when you use the Contact form.</li><li><b>Newsletter</b> \u2014 your email address, when you subscribe from the footer.</li><li><b>Careers</b> \u2014 any profile or resume details you choose to send us while expressing interest in a role.</li></ul><h3>3. How we use it</h3><p>We use your information only to respond to your enquiry, send the newsletter to subscribers, and consider profiles for present or future roles. We do not sell, rent or trade your personal information to anyone.</p><h3>4. Who processes it for us</h3><p>Contact-form messages are delivered to our mailbox through Web3Forms, newsletter subscriptions are managed through Brevo, and this website is hosted on GitHub Pages. These providers process the data only to provide their service to us.</p><h3>5. Cookies and local storage</h3><p>This website stores small settings on your device \u2014 your dark/light theme preference and your cookie choice \u2014 so the site works the way you left it. We do not use advertising or cross-site tracking cookies.</p><h3>6. Your choices and rights</h3><p>You may ask us what information we hold about you, and request its correction or deletion, at any time by writing to info@singhcaizen.com. Every newsletter email carries an unsubscribe option.</p><h3>7. Retention and security</h3><p>We keep enquiry and subscription information only as long as it is needed for the purpose it was shared, and we take reasonable care to protect it. No method of transmission over the internet is completely secure, so please share sensitive documents only when we specifically ask for them.</p><h3>8. Changes to this policy</h3><p>If this policy changes, the updated version will be published on this page with a new date. Questions about privacy: info@singhcaizen.com.</p>'},
+   terms:{t:'Terms of Use',h:'<p class="legal-updated">Last updated: 25 October 2026</p><h3>1. Acceptance</h3><p>By using this website, you accept these Terms of Use. If you do not agree with them, please do not use the website.</p><h3>2. About this website</h3><p>This website provides general information about the Singh Caizen Group. Some businesses, projects and plans described here are announced or under formation, and details may change as they are formalised. Nothing on this website is an offer, invitation or promise of investment, employment or business unless expressly stated in writing by the group.</p><h3>3. Intellectual property</h3><p>The Singh Caizen name, logo, text, design and other content on this website belong to Singh Caizen. You may view and share links to pages for personal, non-commercial purposes. Any other use \u2014 including copying the name or logo for another business \u2014 requires our prior written permission.</p><h3>4. Recruitment fraud warning</h3><p>Singh Caizen never charges any fee or security deposit from job seekers at any stage of recruitment, and we do not appoint agents to collect money. If anyone demands payment in our name, it is a fraud \u2014 please report it through the Contact page.</p><h3>5. Third-party links</h3><p>This website links to third-party platforms (such as social media). We are not responsible for the content or practices of those websites.</p><h3>6. Accuracy and liability</h3><p>We work to keep this website accurate and current, but we do not warrant that it is complete or error-free at all times. To the extent permitted by law, Singh Caizen is not liable for any loss arising from reliance on this website.</p><h3>7. Governing law</h3><p>These terms are governed by the laws of India. Courts in India shall have jurisdiction over any dispute arising from the use of this website.</p><h3>8. Changes and contact</h3><p>We may update these terms from time to time; the current version will always be available on this page. Questions: info@singhcaizen.com.</p>'},
+   equal:{t:'Equal Opportunity',h:'<h3>Our commitment</h3><p>Singh Caizen is an equal opportunity employer. We believe a group is judged by the standard it keeps for everyone \u2014 and that standard does not change with who a person is.</p><h3>What this means</h3><ul><li>Hiring, pay and growth decisions are based on merit, ability and performance.</li><li>We do not discriminate on the basis of religion, caste, race, gender, age, disability, marital status, region or any other personal characteristic protected by law.</li><li>Every candidate and colleague is treated with dignity and respect, in every division of the group.</li></ul><h3>Raising a concern</h3><p>If you experience or witness discrimination in any interaction with the group \u2014 including during recruitment \u2014 please write to info@singhcaizen.com or use the Contact page. Every concern is read and taken seriously.</p>'}
+  };
+  var ov=document.createElement('div'); ov.className='legal-overlay';
+  ov.innerHTML='<div class="legal-modal" role="dialog" aria-modal="true"><div class="legal-head"><h2></h2><button type="button" class="legal-x" aria-label="Close">\u00d7</button></div><div class="legal-body"></div></div>';
+  document.body.appendChild(ov);
+  var title=ov.querySelector('.legal-head h2'), body=ov.querySelector('.legal-body');
+  function openLegal(key){ var d=LEGAL[key]; if(!d)return; title.textContent=d.t; body.innerHTML=d.h; body.scrollTop=0; ov.classList.add('show'); document.body.style.overflow='hidden'; }
+  function closeLegal(){ ov.classList.remove('show'); document.body.style.overflow=''; }
+  ov.addEventListener('click',function(e){ if(e.target===ov)closeLegal(); });
+  ov.querySelector('.legal-x').addEventListener('click',closeLegal);
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape')closeLegal(); });
+  var MAP={'Privacy Policy':'privacy','Terms of Use':'terms','Equal Opportunity':'equal'};
+  document.querySelectorAll('footer a').forEach(function(a){ var k=MAP[(a.textContent||'').trim()]; if(k){ a.addEventListener('click',function(e){ e.preventDefault(); openLegal(k); }); } });
+  window.__openLegal=openLegal;
+  // Cookie consent
+  try{ if(!localStorage.getItem('sc-cookie-choice')){
+    var bar=document.createElement('div'); bar.className='cookie-bar';
+    bar.innerHTML='<div class="cookie-ic"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="9" r="1.4" fill="#fff" stroke="none"/><circle cx="15.2" cy="10.6" r="1.4" fill="#fff" stroke="none"/><circle cx="10.4" cy="15.2" r="1.4" fill="#fff" stroke="none"/><circle cx="15.6" cy="15.8" r="1.1" fill="#fff" stroke="none"/></svg></div><p><b>We use cookies</b>We store small settings on your device to give you a better experience. By using our website you agree to <a class="cookie-pol">our policies</a>.</p><div class="cookie-btns"><button type="button" class="btn cookie-ok">Accept</button><button type="button" class="cookie-no">Decline</button></div>';
+    document.body.appendChild(bar);
+    setTimeout(function(){ bar.classList.add('show'); },1400);
+    function choose(v){ try{ localStorage.setItem('sc-cookie-choice',v); }catch(e){} bar.classList.remove('show'); setTimeout(function(){ bar.remove(); },650); }
+    bar.querySelector('.cookie-ok').addEventListener('click',function(){ choose('accepted'); });
+    bar.querySelector('.cookie-no').addEventListener('click',function(){ choose('declined'); });
+    bar.querySelector('.cookie-pol').addEventListener('click',function(){ openLegal('privacy'); });
+  } }catch(e){}
 })();
