@@ -185,3 +185,25 @@ document.querySelectorAll('form.subscribe[data-newsletter]').forEach(f=>{
   var rz; window.addEventListener('resize',function(){ clearTimeout(rz); rz=setTimeout(build,250); });
   build(); window.addEventListener('load',function(){ build(); setTimeout(build,900); });
 })();
+
+// ===== TEMP diagnostic badge: open the homepage with ?diag=1 to see why the glide is on/off =====
+(function(){
+  if(location.search.indexOf('diag')<0)return;
+  function ready(){
+    var b=document.createElement('div');
+    b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;background:#000;color:#0f0;font:13px/1.7 monospace;padding:10px 14px;border:2px solid #0f0;border-radius:8px;max-width:92vw';
+    var wOK=window.matchMedia('(min-width:1021px)').matches,
+        pOK=window.matchMedia('(pointer:fine)').matches,
+        rm=window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+        cls=document.documentElement.classList.contains('snap-home'),
+        on=document.documentElement.classList.contains('fp-on');
+    b.innerHTML='GLIDE DIAGNOSIS<br>screen width: '+window.innerWidth+'px '+(wOK?'(OK)':'(TOO NARROW!)')+
+      '<br>mouse/trackpad: '+(pOK?'yes (OK)':'NO (!)')+
+      '<br>Windows animations OFF (reduced motion): '+(rm?'YES (!)':'no (OK)')+
+      '<br>homepage tag: '+(cls?'present (OK)':'MISSING (!)')+
+      '<br>GLIDE ENGINE: '+(on?'<b style="color:#7dff8a">ON</b>':'<b style="color:#ff8080">OFF</b>');
+    document.body.appendChild(b);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(ready,600);});
+  else setTimeout(ready,600);
+})();
