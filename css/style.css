@@ -140,7 +140,7 @@ html[data-theme="light"] .theme-icon-moon{display:block}
 .m-card .arr{margin-top:auto;align-self:flex-end;font-size:22px;color:#fff;transition:.3s}
 .m-card:hover .arr{transform:translateX(6px)}
 .m-dark{background:#232326}.m-dark .tag{color:var(--blue-bright)}
-.m-blue{background:#1c6fb8}.m-blue .tag{color:#dbeafe}
+.m-blue{background:linear-gradient(140deg,#e8263f,#b90f27)}.m-blue .tag{color:#ffd9d2}
 .m-teal{background:#33261f}.m-teal .tag{color:#ffb59d}.m-teal h3{font-size:21px}
 .m-grad{background:linear-gradient(130deg,#feda75,#fa7e1e 35%,#d62976 68%,#962fbf)}
 .m-grad .tag{color:#fff}.m-grad p{border-color:#fff}
