@@ -115,7 +115,7 @@ html[data-theme="light"] .theme-icon-moon{display:block}
 .hero-anim.d1{animation-delay:.15s}.hero-anim.d2{animation-delay:.3s}
 @keyframes riseIn{from{opacity:0;transform:translateY(34px)}to{opacity:1;transform:none}}
 .btn{display:inline-block;position:relative;overflow:hidden;z-index:1;background:var(--blue-bright);color:#fff;padding:14px 30px;font-weight:600;font-size:15.5px;border-radius:3px;transition:.3s;border:1px solid var(--blue-bright)}
-.btn::after{content:"";position:absolute;inset:0;background:#000;opacity:.22;transform:scaleX(0);transform-origin:left;transition:.4s;z-index:-1}
+.btn::after{content:"";position:absolute;inset:0;background:#fff;transform:scaleX(0);transform-origin:left;transition:transform .45s cubic-bezier(.2,.8,.25,1);z-index:-1}
 .btn:hover::after{transform:scaleX(1)}
 .btn:hover{transform:translateY(-2px)}
 .btn.ghost{background:transparent;border-color:#fff;margin-left:10px}
@@ -569,7 +569,7 @@ a.h-icon{text-decoration:none}
 .chero h1{color:#fff;font-size:clamp(42px,6vw,76px);line-height:1.04}
 .chero-sub{color:#dde4ee;font-size:19px;max-width:540px;margin:20px 0 32px}
 .btn.light-btn{background:#fff;color:#141416}
-.btn.light-btn:hover{background:var(--yellow);color:#141416}
+.btn.light-btn:hover{color:#fff}
 .offer-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:44px}
 .offer-card{position:relative;border-radius:12px;overflow:hidden;min-height:460px;background:#0d1017}
 .offer-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
@@ -691,3 +691,9 @@ a.h-icon{text-decoration:none}
 .cookie-bar .btn:hover{background:#b90f27;color:#fff}
 .cookie-bar .cookie-no{border-color:#d9d2bd;color:#1c1e22;background:transparent}
 .cookie-bar .cookie-no:hover{border-color:#e31837;color:#e31837}
+
+/* ===== Button hover: white sweep (Mahindra-style) ===== */
+.btn:hover{color:#141416;border-color:transparent;box-shadow:0 10px 24px rgba(0,0,0,.22)}
+.btn.light-btn::after{background:#e31837}
+.btn.light-btn:hover{border-color:transparent}
+.cookie-bar .btn:hover{color:#141416}
