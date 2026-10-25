@@ -680,3 +680,14 @@ a.h-icon{text-decoration:none}
 .pref-foot .btn{background:#e31837}
 .pref-foot .btn:hover{background:#b90f27}
 @media(max-width:760px){.pref-grid{grid-template-columns:1fr}.pref-cats{flex-direction:row;flex-wrap:wrap;padding-right:0;margin-bottom:16px}}
+
+/* ===== Cookie bar: Mahindra colours (cream-white card, red buttons) — same in both themes ===== */
+.cookie-bar{background:#fffdf7;color:#1c1e22;border:1px solid #e7dfca;box-shadow:0 26px 70px rgba(20,16,4,.35)}
+.cookie-bar p{color:#55585e}
+.cookie-bar p b{color:#14161a}
+.cookie-bar p a{color:#e31837}
+.cookie-ic{background:#e31837}
+.cookie-bar .btn{background:#e31837;color:#fff}
+.cookie-bar .btn:hover{background:#b90f27;color:#fff}
+.cookie-bar .cookie-no{border-color:#d9d2bd;color:#1c1e22;background:transparent}
+.cookie-bar .cookie-no:hover{border-color:#e31837;color:#e31837}
