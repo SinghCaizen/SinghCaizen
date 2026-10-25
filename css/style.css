@@ -716,6 +716,6 @@ header:has(.has-drop:hover),header:has(.mega:hover){background:var(--header-bg)}
 .faq-title{text-transform:none}
 
 /* V40 — smooth dark/light theme switch: whole page cross-fades its colours */
-html.theme-anim,html.theme-anim *,html.theme-anim *::before,html.theme-anim *::after{transition:background-color .6s ease,color .6s ease,border-color .6s ease,fill .6s ease,stroke .6s ease,box-shadow .6s ease,outline-color .6s ease!important}
-html.theme-anim .logo-img{animation:logoFade .6s ease}
+html.theme-anim,html.theme-anim *,html.theme-anim *::before,html.theme-anim *::after{transition:background-color .95s ease,color .95s ease,border-color .95s ease,fill .95s ease,stroke .95s ease,box-shadow .95s ease,outline-color .95s ease!important}
+html.theme-anim .logo-img{animation:logoFade .95s ease}
 @keyframes logoFade{from{opacity:.15}to{opacity:1}}

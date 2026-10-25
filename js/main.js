@@ -4,7 +4,7 @@ const header=document.querySelector('header');
 addEventListener('scroll',()=>{header.classList.toggle('scrolled',scrollY>40);},{passive:true});
 // Theme toggle (dark / light, remembered)
 const tBtn=document.querySelector('.theme-toggle');
-if(tBtn)tBtn.addEventListener('click',()=>{const root=document.documentElement;root.classList.add('theme-anim');const cur=root.getAttribute('data-theme')==='light'?'dark':'light';root.setAttribute('data-theme',cur);try{localStorage.setItem('sc-theme',cur)}catch(e){}setTimeout(()=>root.classList.remove('theme-anim'),780);});
+if(tBtn)tBtn.addEventListener('click',()=>{const root=document.documentElement;const cur=root.getAttribute('data-theme')==='light'?'dark':'light';root.classList.add('theme-anim');requestAnimationFrame(()=>requestAnimationFrame(()=>{root.setAttribute('data-theme',cur);try{localStorage.setItem('sc-theme',cur)}catch(e){}setTimeout(()=>root.classList.remove('theme-anim'),1150);}));});
 // Mobile menu
 const btn=document.querySelector('.menu-btn'),nav=document.querySelector('nav.main');
 if(btn&&nav){
