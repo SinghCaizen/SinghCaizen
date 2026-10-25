@@ -224,12 +224,12 @@ footer a.fl:hover{color:#fff;transform:translateX(3px)}
 .f-socials svg.stk{fill:none}
 .subscribe{display:flex;border:1px solid rgba(255,255,255,.35);max-width:100%}
 .subscribe input{flex:1;background:transparent;border:0;color:#fff;padding:13px 14px;font:inherit;font-size:14px;min-width:0;outline:none}
-.subscribe input::placeholder{color:#9aa3b2}
+.subscribe input::placeholder{color:#a8a49a}
 .subscribe button{background:transparent;border:0;border-left:1px solid rgba(255,255,255,.35);color:var(--yellow);font-size:19px;padding:0 16px;cursor:pointer;transition:.25s}
 .subscribe button:hover{background:var(--blue-bright);color:#fff}
 .foot-logo-big{margin-top:44px;color:#fff;font-size:clamp(30px,4vw,44px);font-weight:800;letter-spacing:.05em;line-height:1;text-align:left}
 .foot-logo-big small{display:block;font-size:11px;letter-spacing:.5em;color:var(--blue-bright);margin-top:6px;font-weight:600}
-.copyright{border-top:1px solid rgba(255,255,255,.14);padding:18px 0;font-size:13.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;color:#9aa3b2}
+.copyright{border-top:1px solid rgba(255,255,255,.14);padding:18px 0;font-size:13.5px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;color:#a8a49a}
 .copyright a{color:#c9ccd4}
 
 /* ---------- Reveal animations ---------- */
@@ -381,10 +381,10 @@ header.hdr-light.scrolled{box-shadow:0 10px 28px rgba(0,0,0,.13)}
 
 /* V11 — Professional touches: info-style demo notice, owner card */
 .otp-status.demo{color:var(--text);background:rgba(227,24,55,.12);border:1px solid rgba(227,24,55,.5);padding:10px 12px;border-radius:4px}
-.owner-card{background:linear-gradient(150deg,#141416,#123058 55%,#141416);border:1px solid rgba(245,166,35,.4);border-radius:6px;min-height:430px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;padding:48px 30px;text-align:center}
+.owner-card{background:linear-gradient(150deg,#141416,#292420 55%,#141416);border:1px solid rgba(245,166,35,.4);border-radius:6px;min-height:430px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;padding:48px 30px;text-align:center}
 .owner-mono{width:126px;height:126px;border-radius:50%;border:2px solid var(--yellow);background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:43px;font-weight:800;color:#fff;letter-spacing:.05em}
 .owner-card h3{color:#fff;font-size:26px}
-.owner-card p{color:#c9d2e0;font-size:13.5px;letter-spacing:.22em;text-transform:uppercase}
+.owner-card p{color:#d5d0c2;font-size:13.5px;letter-spacing:.22em;text-transform:uppercase}
 .owner-sign{margin-top:26px;font-size:21px;font-weight:700;color:var(--text)}
 .owner-sign span{display:block;font-size:13.5px;font-weight:500;color:var(--yellow);letter-spacing:.08em;margin-top:4px;text-transform:uppercase}
 
@@ -424,12 +424,12 @@ a.h-icon{text-decoration:none}
 
 /* V14 — Leadership: people cards + board committees (Singh Caizen's own style) */
 .people{margin-top:34px}
-.person-card{background:linear-gradient(160deg,#141416,#0e2547);border:1px solid rgba(245,166,35,.35);border-radius:10px;padding:32px 26px;color:#fff;transition:.3s}
+.person-card{background:linear-gradient(160deg,#141416,#221f1a);border:1px solid rgba(245,166,35,.35);border-radius:10px;padding:32px 26px;color:#fff;transition:.3s}
 .person-card:hover{transform:translateY(-5px);border-color:var(--yellow)}
 .person-card .p-mono{width:74px;height:74px;border-radius:50%;border:2px solid var(--yellow);background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:800;color:#fff;margin-bottom:18px}
 .person-card h3{color:#fff;font-size:20.5px}
 .person-card .p-role{color:var(--yellow);font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;margin:7px 0 12px}
-.person-card p{color:#bcc9da;font-size:14.5px}
+.person-card p{color:#cfc9ba;font-size:14.5px}
 .person-card.tba{background:var(--card);border:1.5px dashed var(--border);color:var(--text)}
 .person-card.tba h3{color:var(--text)}
 .person-card.tba p{color:var(--muted)}
@@ -449,17 +449,17 @@ a.h-icon{text-decoration:none}
 /* V16 — Leadership redesign: dark bands, richer cards, numbered committees */
 .darkband{background:#0a0c0f;color:#e9e6dc}
 .darkband .section-title{color:#fff}
-.darkband .section-lead{color:#a9b4c2}
+.darkband .section-lead{color:#b2ab9c}
 .darkband .eyebrow{color:var(--yellow)}
-.darkband .person-card{background:linear-gradient(165deg,#111a29,#0b111d);border-color:#2a3446}
+.darkband .person-card{background:linear-gradient(165deg,#1b1a17,#0b111d);border-color:#322d24}
 .darkband .person-card.tba{background:rgba(255,255,255,.02);border:1.5px dashed rgba(245,166,35,.45);color:#e9e6dc}
 .darkband .person-card.tba h3{color:#fff}
-.darkband .person-card.tba p{color:#9fb0c3}
+.darkband .person-card.tba p{color:#b3aa99}
 .darkband .person-card.tba .p-role{color:var(--yellow)}
 .darkband .person-card .p-mono.dim{border-color:rgba(245,166,35,.5);color:#d8c391;background:transparent}
-.darkband .comm{background:#10131a;border-color:#242b39}
+.darkband .comm{background:#10131a;border-color:#2a2721}
 .darkband .comm-head{color:#fff}
-.darkband .comm-body{color:#a7b2c0}
+.darkband .comm-body{color:#b0a996}
 .comm-num{color:var(--yellow);font-weight:800;font-size:14.5px;letter-spacing:.12em;margin-right:16px}
 .person-card.mgmt{background:var(--card);border:1px solid var(--border);border-top:3px solid var(--yellow);color:var(--text)}
 .person-card.mgmt h3{color:var(--text)}
@@ -492,11 +492,11 @@ a.h-icon{text-decoration:none}
 .lc-photo{position:absolute;left:50%;top:30px;transform:translateX(-50%);width:58%;aspect-ratio:1/1.06;z-index:1;display:flex;align-items:center;justify-content:center;transition:all .55s cubic-bezier(.22,.8,.24,1)}
 .lc-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(4,6,10,.78));opacity:0;transition:.45s}
 .lc-photo span{position:relative;z-index:2;font-weight:800;color:#fff}
-.lc-photo.ss{background:linear-gradient(160deg,#12305c,#141416)}
+.lc-photo.ss{background:linear-gradient(160deg,#292420,#141416)}
 .lc-photo.ss span{font-size:64px;letter-spacing:.03em}
 .lc-photo.tba{background:linear-gradient(160deg,#3a4048,#23262b)}
-.lc-photo.tba span{font-size:40px;color:#9aa4ae}
-.lc-photo.role{background:linear-gradient(160deg,#2c3e57,#16233a)}
+.lc-photo.tba span{font-size:40px;color:#a9a59c}
+.lc-photo.role{background:linear-gradient(160deg,#38322a,#201d17)}
 .lc-photo.role span{font-size:37px;letter-spacing:.05em}
 .lc-info{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:20px 22px;transition:.4s}
 .lc-info h3{font-size:19.5px;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:10px;transition:.4s}
