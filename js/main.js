@@ -107,17 +107,47 @@ const WEB3FORMS_KEY = '94e01d94-8fae-4cdc-b9b9-716cf169d7dc';
    const message=document.getElementById('cfMessage').value.trim();
    if(!name||!email||!phone||!subject||!message){ setStatus('Please fill all the required fields (marked *).','err'); return; }
    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ setStatus('Please enter a valid email address.','err'); document.getElementById('cfEmail').focus(); return; }
-   if(!/^[6-9]\d{9}$/.test(phone)){ setStatus('Please enter a valid 10-digit mobile number.','err'); document.getElementById('cfPhone').focus(); return; }
+   const digits=phone.replace(/\D/g,''); const cc=(window.__scCountry?window.__scCountry():{name:'India',dial:'91',len:10});
+   if(cc.len? digits.length!==cc.len : (digits.length<5||digits.length>15)){ setStatus('Please enter a valid mobile number for '+cc.name+(cc.len?' ('+cc.len+' digits)':'')+'.','err'); document.getElementById('cfPhone').focus(); return; }
    if(!WEB3FORMS_KEY){ setStatus('The message service is being connected. Please try again shortly.','err'); return; }
    btn.disabled=true; btn.textContent='Sending...';
    try{
-     const r=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({access_key:WEB3FORMS_KEY, subject:'New enquiry from the Singh Caizen website: '+subject, from_name:'Singh Caizen Website', name:name, email:email, phone:'+91 '+phone, message:message})});
+     const r=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({access_key:WEB3FORMS_KEY, subject:'New enquiry from the Singh Caizen website: '+subject, from_name:'Singh Caizen Website', name:name, email:email, phone:'+'+cc.dial+' '+digits, phone_country:cc.name, message:message})});
      const data=await r.json();
-     if(data && data.success){ setStatus('\u2713 Thank you, '+name.split(' ')[0]+'. Your message has been sent — we will get back to you shortly.','ok'); form.reset(); }
+     if(data && data.success){ setStatus('\u2713 Thank you, '+name.split(' ')[0]+'. Your message has been sent — we will get back to you shortly.','ok'); form.reset(); if(window.__scResetCountry)window.__scResetCountry(); }
      else setStatus('Could not send your message. Please try again.','err');
    }catch(err){ setStatus('Could not send your message. Please check your connection and try again.','err'); }
    btn.disabled=false; btn.textContent='Send Message';
  });
+})();
+
+
+// ===== Contact form: country-code selector =====
+const CC_DATA=("India|91|10;United States|1|10;Canada|1|10;United Kingdom|44|10;United Arab Emirates|971|9;Australia|61|9;Singapore|65|8;Saudi Arabia|966|9;Qatar|974|8;Kuwait|965|8;Oman|968|8;Bahrain|973|8;Germany|49|;France|33|9;Netherlands|31|9;Switzerland|41|9;Spain|34|9;Italy|39|;Portugal|351|9;Ireland|353|;Belgium|32|9;Austria|43|;Sweden|46|9;Norway|47|8;Denmark|45|8;Finland|358|;Poland|48|9;Greece|30|10;Turkey|90|10;Russia|7|10;Ukraine|380|9;Israel|972|9;Egypt|20|10;South Africa|27|9;Nigeria|234|10;Kenya|254|9;Ghana|233|9;Ethiopia|251|9;Morocco|212|9;Algeria|213|9;China|86|11;Japan|81|10;South Korea|82|10;Hong Kong|852|8;Taiwan|886|9;Malaysia|60|;Indonesia|62|;Thailand|66|;Vietnam|84|;Philippines|63|10;Bangladesh|880|10;Pakistan|92|10;Sri Lanka|94|9;Nepal|977|10;Bhutan|975|8;Maldives|960|7;Myanmar|95|;Cambodia|855|;Laos|856|;Brunei|673|7;Afghanistan|93|9;Iraq|964|10;Iran|98|10;Jordan|962|9;Lebanon|961|;Yemen|967|9;Uzbekistan|998|9;Kazakhstan|7|10;Kyrgyzstan|996|9;Tajikistan|992|9;Azerbaijan|994|9;Georgia|995|9;Armenia|374|8;New Zealand|64|;Fiji|679|;Brazil|55|11;Mexico|52|10;Argentina|54|;Chile|56|9;Colombia|57|10;Peru|51|9;Venezuela|58|;Ecuador|593|9;Bolivia|591|8;Paraguay|595|9;Uruguay|598|8;Czech Republic|420|9;Slovakia|421|9;Hungary|36|;Romania|40|9;Bulgaria|359|;Croatia|385|;Serbia|381|;Slovenia|386|8;Lithuania|370|8;Latvia|371|8;Estonia|372|;Iceland|354|7;Luxembourg|352|;Malta|356|8;Cyprus|357|8;Montenegro|382|;Bosnia and Herzegovina|387|;North Macedonia|389|;Albania|355|;Moldova|373|;Belarus|375|9;Mauritius|230|8;Mozambique|258|9;Zambia|260|9;Zimbabwe|263|9;Uganda|256|9;Tanzania|255|9;Angola|244|9;Sudan|249|9;Libya|218|9;Tunisia|216|8;Sri Lanka (Mobile)|94|9").split(';').map(function(s){var p=s.split('|');return{name:p[0],dial:p[1],len:p[2]?parseInt(p[2],10):0};});
+(function(){
+  var sel=document.getElementById('ccSelect'); if(!sel)return;
+  var btn=document.getElementById('ccBtn'), label=document.getElementById('ccLabel'),
+      panel=document.getElementById('ccPanel'), search=document.getElementById('ccSearch'),
+      list=document.getElementById('ccList'), phoneIn=document.getElementById('cfPhone');
+  var current=CC_DATA[0];
+  function render(f){ f=(f||'').toLowerCase(); list.innerHTML='';
+    CC_DATA.filter(function(c){return !f||c.name.toLowerCase().indexOf(f)>-1||('+'+c.dial).indexOf(f)>-1||c.dial.indexOf(f)>-1;})
+    .forEach(function(c){ var li=document.createElement('li'); li.className='cc-item'+(c===current?' sel':''); li.setAttribute('role','option');
+      li.innerHTML='<span></span><span class="cc-code">+'+c.dial+'</span>'; li.firstChild.textContent=c.name;
+      li.addEventListener('click',function(){ pick(c,true); }); list.appendChild(li); });
+    if(!list.children.length){ list.innerHTML='<li class="cc-empty">No country found</li>'; } }
+  function apply(){ label.textContent='+'+current.dial; phoneIn.maxLength=current.len?current.len:15; }
+  function pick(c,focus){ current=c; apply(); close(); if(focus)phoneIn.focus(); }
+  function open(){ render(''); search.value=''; panel.hidden=false; btn.setAttribute('aria-expanded','true'); setTimeout(function(){search.focus();},40); }
+  function close(){ panel.hidden=true; btn.setAttribute('aria-expanded','false'); }
+  btn.addEventListener('click',function(e){ e.stopPropagation(); panel.hidden?open():close(); });
+  panel.addEventListener('click',function(e){ e.stopPropagation(); });
+  document.addEventListener('click',function(){ if(!panel.hidden)close(); });
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&!panel.hidden)close(); });
+  search.addEventListener('input',function(){ render(search.value); });
+  apply();
+  window.__scCountry=function(){ return current; };
+  window.__scResetCountry=function(){ current=CC_DATA[0]; apply(); close(); };
 })();
 
 // Newsletter subscribe (footer, all pages) — posts to the newsletter service's public
@@ -184,26 +214,4 @@ document.querySelectorAll('form.subscribe[data-newsletter]').forEach(f=>{
   });
   var rz; window.addEventListener('resize',function(){ clearTimeout(rz); rz=setTimeout(build,250); });
   build(); window.addEventListener('load',function(){ build(); setTimeout(build,900); });
-})();
-
-// ===== TEMP diagnostic badge: open the homepage with ?diag=1 to see why the glide is on/off =====
-(function(){
-  if(location.search.indexOf('diag')<0)return;
-  function ready(){
-    var b=document.createElement('div');
-    b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;background:#000;color:#0f0;font:13px/1.7 monospace;padding:10px 14px;border:2px solid #0f0;border-radius:8px;max-width:92vw';
-    var wOK=window.matchMedia('(min-width:1021px)').matches,
-        pOK=window.matchMedia('(pointer:fine)').matches,
-        rm=window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-        cls=document.documentElement.classList.contains('snap-home'),
-        on=document.documentElement.classList.contains('fp-on');
-    b.innerHTML='GLIDE DIAGNOSIS<br>screen width: '+window.innerWidth+'px '+(wOK?'(OK)':'(TOO NARROW!)')+
-      '<br>mouse/trackpad: '+(pOK?'yes (OK)':'NO (!)')+
-      '<br>Windows animations OFF (reduced motion): '+(rm?'YES (!)':'no (OK)')+
-      '<br>homepage tag: '+(cls?'present (OK)':'MISSING (!)')+
-      '<br>GLIDE ENGINE: '+(on?'<b style="color:#7dff8a">ON</b>':'<b style="color:#ff8080">OFF</b>');
-    document.body.appendChild(b);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(ready,600);});
-  else setTimeout(ready,600);
 })();

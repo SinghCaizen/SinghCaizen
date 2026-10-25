@@ -359,9 +359,9 @@ header.hdr-light.scrolled{box-shadow:0 10px 28px rgba(10,25,48,.13)}
   nav.main a.mlink:hover{color:var(--yellow)!important}
 }
 .phone-row{display:flex;gap:10px;align-items:stretch}
-.phone-field{flex:1;display:flex;align-items:center;border:1px solid var(--line);border-radius:4px;background:var(--input-bg);overflow:hidden}
+.phone-field{flex:1;display:flex;align-items:stretch;border:1px solid var(--line);border-radius:4px;background:var(--input-bg);position:relative}
 .phone-field .cc{padding:0 6px 0 14px;font-weight:700;color:var(--muted)}
-.phone-field input{border:0!important;background:transparent!important;padding-left:2px!important}
+.phone-field input{border:0!important;background:transparent!important;padding-left:12px!important}
 .phone-field input:focus{outline:none}
 .phone-field:focus-within{outline:2px solid var(--blue-bright)}
 .btn.otp-btn{white-space:nowrap;padding:0 18px;font-size:15px}
@@ -543,3 +543,19 @@ a.h-icon{text-decoration:none}
 @media (prefers-reduced-motion:reduce){
   html.snap-home{scroll-snap-type:none}
 }
+
+/* Country-code selector (contact form) */
+.cc-select{position:relative;display:flex}
+.cc-btn{display:flex;align-items:center;gap:7px;padding:0 12px 0 14px;background:transparent;border:0;border-right:1px solid var(--line);color:var(--text);font:inherit;font-weight:700;cursor:pointer;white-space:nowrap;border-radius:4px 0 0 4px}
+.cc-btn:hover{background:var(--bg2)}
+.cc-arrow{font-size:10px;color:var(--muted);transition:transform .25s}
+.cc-btn[aria-expanded="true"] .cc-arrow{transform:rotate(180deg)}
+.cc-panel{position:absolute;top:calc(100% + 8px);left:-1px;width:302px;max-width:86vw;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 24px 60px rgba(0,0,0,.38);z-index:90;overflow:hidden;text-align:left}
+.cc-search{width:100%;border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;background:transparent!important;padding:12px 14px!important;color:var(--text);font:inherit}
+.cc-list{list-style:none;margin:0;padding:6px;max-height:250px;overflow:auto}
+.cc-item{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:9px 10px;border-radius:6px;cursor:pointer;color:var(--text);font-size:14.5px}
+.cc-item:hover{background:var(--bg2)}
+.cc-item.sel{background:var(--bg2);font-weight:700}
+.cc-item .cc-code{color:var(--muted);font-weight:600;white-space:nowrap}
+.cc-empty{padding:12px 10px;color:var(--muted);font-size:14px;list-style:none}
+@media(max-width:640px){.cc-panel{width:80vw}}

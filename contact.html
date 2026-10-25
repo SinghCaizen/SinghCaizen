@@ -7,7 +7,7 @@
 <script>(function(){try{var t=localStorage.getItem('sc-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=25"></head><body>
+<link rel="stylesheet" href="css/style.css?v=26"></head><body>
 <div id="preloader"><img class="pl-logo-img" src="images/logo-white.svg" alt="Singh Caizen"><div class="pl-bar"><i></i></div></div>
 <header><div class="container nav">
 <a class="logo" href="index.html" aria-label="Singh Caizen Group — Home"><img class="logo-img logo-w" src="images/logo-white.svg" alt="Singh Caizen"><img class="logo-img logo-d" src="images/logo-dark.svg" alt="Singh Caizen"></a>
@@ -56,7 +56,7 @@
 <input required placeholder="Your name *" id="cfName" name="name" autocomplete="name" aria-label="Your name (required)">
 <input required type="email" placeholder="Your email *" id="cfEmail" name="email" autocomplete="email" aria-label="Your email (required)">
 <div class="phone-row">
-<div class="phone-field"><span class="cc">+91</span><input id="cfPhone" name="phone" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="Mobile number *" aria-label="Mobile number (required)"></div>
+<div class="phone-field"><div class="cc-select" id="ccSelect"><button type="button" class="cc-btn" id="ccBtn" aria-haspopup="listbox" aria-expanded="false"><span id="ccLabel">+91</span><span class="cc-arrow">&#9662;</span></button><div class="cc-panel" id="ccPanel" hidden><input type="text" class="cc-search" id="ccSearch" placeholder="Search country" aria-label="Search country"><ul class="cc-list" id="ccList" role="listbox" aria-label="Country codes"></ul></div></div><input id="cfPhone" name="phone" inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="Mobile number *" aria-label="Mobile number (required)"></div>
 </div>
 <input required placeholder="Subject *" id="cfSubject" name="subject" aria-label="Subject (required)">
 <textarea required rows="5" placeholder="Your message *" id="cfMessage" name="message" aria-label="Your message (required)"></textarea>
@@ -111,4 +111,4 @@
 <p class="t-copy">&copy; 2026 Singh Caizen. All rights reserved.</p>
 </div></div>
 </footer>
-<script src="js/main.js?v=25"></script></body></html>
+<script src="js/main.js?v=26"></script></body></html>
