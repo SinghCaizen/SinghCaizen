@@ -239,7 +239,9 @@ document.querySelectorAll('form.subscribe[data-newsletter]').forEach(f=>{
   ov.addEventListener('click',function(e){ if(e.target===ov)closeLegal(); });
   ov.querySelector('.legal-x').addEventListener('click',closeLegal);
   var MAP={'Privacy Policy':'privacy','Terms of Use':'terms','Equal Opportunity':'equal'};
-  document.querySelectorAll('footer a').forEach(function(a){ var k=MAP[(a.textContent||'').trim()]; if(k){ a.addEventListener('click',function(e){ e.preventDefault(); openLegal(k); }); } });
+  document.querySelectorAll('footer a').forEach(function(a){ var tx=(a.textContent||'').trim(); var k=MAP[tx];
+    if(k){ a.addEventListener('click',function(e){ e.preventDefault(); openLegal(k); }); }
+    else if(tx==='Cookie Preferences'){ a.addEventListener('click',function(e){ e.preventDefault(); if(window.__openPrefs)window.__openPrefs(); }); } });
   window.__openLegal=openLegal;
 
   /* ---------- Cookie preferences ---------- */
@@ -265,6 +267,7 @@ document.querySelectorAll('form.subscribe[data-newsletter]').forEach(f=>{
     paneEl.innerHTML='<div class="pref-pane-top"><h3>'+ct.name+'</h3><span class="pref-always">'+(ct.always?'Always active':'')+'<label class="switch"><input type="checkbox" '+(prefs[ct.id]?'checked':'')+(ct.always?' disabled':'')+'><span class="track"></span></label></span></div><p>'+ct.desc+'</p>'+(ct.providers.length?'<p style="font-weight:700;color:var(--text);letter-spacing:.03em">COOKIE PROVIDERS</p>'+prov:'');
     var tog=paneEl.querySelector('.switch input'); if(tog&&!ct.always){ tog.addEventListener('change',function(){ prefs[ct.id]=tog.checked; }); } }
   function openPrefs(){ renderCats(); renderPane(); pov.classList.add('show'); document.body.style.overflow='hidden'; }
+  window.__openPrefs=openPrefs;
   function closePrefs(){ pov.classList.remove('show'); if(!ov.classList.contains('show'))document.body.style.overflow=''; }
   pov.addEventListener('click',function(e){ if(e.target===pov)closePrefs(); });
   pov.querySelector('.pref-x').addEventListener('click',closePrefs);
