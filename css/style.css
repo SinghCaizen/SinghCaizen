@@ -607,9 +607,10 @@ a.h-icon{text-decoration:none}
 :root[data-theme="dark"] .faq-head{background:#1d1f24;color:#ff8a80}
 .faq-head:hover{filter:brightness(.985)}
 :root[data-theme="dark"] .faq-head:hover{background:#24262c}
-.faq-chev{font-size:14px;transition:transform .35s;flex:none}
+.faq-chev{flex:none;width:34px;height:34px;border:1.6px solid currentColor;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform .5s cubic-bezier(.34,1.45,.44,1),background .3s ease}
+.faq-chev svg{width:16px;height:16px;display:block}
 .faq-item.open .faq-head{background:#e31837;color:#fff;border-radius:10px 10px 0 0}
-.faq-item.open .faq-chev{transform:rotate(180deg)}
+.faq-item.open .faq-chev{transform:rotate(180deg);background:rgba(255,255,255,.18)}
 .faq-body{display:block;max-height:0;overflow:hidden;background:#faf7ee;color:#33363c;padding:0 28px;border-radius:0 0 10px 10px;font-size:16px;line-height:1.65;transition:max-height .5s cubic-bezier(.2,.8,.25,1),padding .4s ease}
 :root[data-theme="dark"] .faq-body{background:#17181c;color:#c9ccd4}
 .faq-item.open .faq-body{padding:24px 28px}
