@@ -494,7 +494,7 @@ a.h-icon{text-decoration:none}
 .lc-photo span{position:relative;z-index:2;font-weight:800;color:#fff}
 .lc-photo.ss{background:linear-gradient(160deg,#292420,#141416)}
 .lc-photo.ss span{font-size:64px;letter-spacing:.03em}
-.lc-photo.tba{background:linear-gradient(160deg,#3a4048,#23262b)}
+.lc-photo.tba{background:linear-gradient(160deg,#413d36,#26231f)}
 .lc-photo.tba span{font-size:40px;color:#a9a59c}
 .lc-photo.role{background:linear-gradient(160deg,#38322a,#201d17)}
 .lc-photo.role span{font-size:37px;letter-spacing:.05em}
@@ -586,17 +586,17 @@ a.h-icon{text-decoration:none}
 @media(min-width:1021px){
   :root[data-theme="light"] footer{background:#f7f3ea;color:#3f434b}
   :root[data-theme="light"] footer h4{color:#14161a}
-  :root[data-theme="light"] footer a.fl{color:#454a53}
+  :root[data-theme="light"] footer a.fl{color:#4c4c51}
   :root[data-theme="light"] footer a.fl:hover{color:#141416}
-  :root[data-theme="light"] .foot-d .f-socials a{color:#1d2129}
+  :root[data-theme="light"] .foot-d .f-socials a{color:#212124}
   :root[data-theme="light"] .foot-d .f-socials a:hover{color:#a97b12}
   :root[data-theme="light"] .foot-d .subscribe{border-color:rgba(20,22,26,.3)}
-  :root[data-theme="light"] .foot-d .subscribe input{color:#1d2129}
+  :root[data-theme="light"] .foot-d .subscribe input{color:#212124}
   :root[data-theme="light"] .foot-d .subscribe input::placeholder{color:#8a8578}
   :root[data-theme="light"] .foot-d .subscribe button{border-left-color:rgba(20,22,26,.3);color:#a97b12}
   :root[data-theme="light"] .foot-d .foot-logo-img{filter:invert(1)}
   :root[data-theme="light"] .foot-d .copyright{border-top-color:rgba(20,22,26,.14);color:#75705f}
-  :root[data-theme="light"] .foot-d .copyright a{color:#454a53}
+  :root[data-theme="light"] .foot-d .copyright a{color:#4c4c51}
 }
 
 /* ===== Careers FAQs (Mahindra-style) ===== */
@@ -698,3 +698,19 @@ a.h-icon{text-decoration:none}
 .btn.light-btn::after{background:#e31837}
 .btn.light-btn:hover{border-color:transparent}
 .cookie-bar .btn:hover{color:#141416}
+
+/* V38 — glitch fixes (2026-10-25): bulletproof solid mega menu, grid-rows accordions (no truncation), cookie tick truth, careers hero inset */
+html[data-theme="dark"] .mega{background:#050505!important}
+html[data-theme="light"] .mega{background:#ffffff!important}
+header.kill-mega .mega{opacity:0!important;visibility:hidden!important;pointer-events:none!important;transform:translateY(10px)!important}
+header:has(.has-drop:hover),header:has(.mega:hover){background:var(--header-bg)}
+.faq-body,.comm-body{display:grid;grid-template-rows:0fr;max-height:none;transition:grid-template-rows .55s cubic-bezier(.2,.8,.25,1),padding .4s ease}
+.faq-item.open .faq-body,.comm.open .comm-body{grid-template-rows:1fr}
+.comm-body{padding-top:0;padding-bottom:0}
+.comm.open .comm-body{padding-bottom:20px}
+.acc-in{overflow:hidden;min-height:0;min-width:0}
+.pref-cat .tick{opacity:0;transition:opacity .2s}
+.pref-cat.on .tick{opacity:1}
+.cookie-bar.bar-hide{opacity:0;pointer-events:none}
+.chero-in{padding-left:20px;padding-right:20px}
+.faq-title{text-transform:none}
