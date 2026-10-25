@@ -280,7 +280,8 @@ document.querySelectorAll('form.subscribe[data-newsletter]').forEach(f=>{
   /* ---------- Cookie bar: Accept / Reject / Preferences ---------- */
   var bar=null;
   function hideBar(){ if(bar){ bar.classList.remove('show'); var b=bar; setTimeout(function(){ b.remove(); },650); bar=null; } }
-  try{ if(!localStorage.getItem('sc-cookie-choice')){
+  var ckForce=location.search.indexOf('ckbar')>-1;
+  try{ if(ckForce||!localStorage.getItem('sc-cookie-choice')){
     bar=document.createElement('div'); bar.className='cookie-bar';
     bar.innerHTML='<div class="cookie-ic"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="9" r="1.4" fill="#fff" stroke="none"/><circle cx="15.2" cy="10.6" r="1.4" fill="#fff" stroke="none"/><circle cx="10.4" cy="15.2" r="1.4" fill="#fff" stroke="none"/><circle cx="15.6" cy="15.8" r="1.1" fill="#fff" stroke="none"/></svg></div><p><b>We use cookies</b>We store small settings on your device to give you a better experience. By using our website you agree to <a class="cookie-pol">our policies</a>.</p><div class="cookie-btns"><button type="button" class="btn cookie-ok">Accept</button><button type="button" class="cookie-no cookie-rej">Reject</button><button type="button" class="cookie-no cookie-pref">Preferences</button></div>';
     document.body.appendChild(bar);
