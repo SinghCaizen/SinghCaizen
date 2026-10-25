@@ -559,3 +559,42 @@ a.h-icon{text-decoration:none}
 .cc-item .cc-code{color:var(--muted);font-weight:600;white-space:nowrap}
 .cc-empty{padding:12px 10px;color:var(--muted);font-size:14px;list-style:none}
 @media(max-width:640px){.cc-panel{width:80vw}}
+
+/* ===== Careers (Mahindra-style) ===== */
+.chero{position:relative;min-height:88vh;display:flex;align-items:center;overflow:hidden;background:#0a1220}
+.chero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.chero-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,8,15,.82) 0%,rgba(5,8,15,.55) 46%,rgba(5,8,15,.12) 100%)}
+.chero-in{position:relative;z-index:2;padding:170px 0 100px;width:100%}
+.chero-eyebrow{color:var(--yellow);font-weight:700;letter-spacing:.34em;text-transform:uppercase;font-size:13px;margin-bottom:20px}
+.chero h1{color:#fff;font-size:clamp(42px,6vw,76px);line-height:1.04}
+.chero-sub{color:#dde4ee;font-size:19px;max-width:540px;margin:20px 0 32px}
+.btn.light-btn{background:#fff;color:#0a1930}
+.btn.light-btn:hover{background:var(--yellow);color:#0a1930}
+.offer-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:44px}
+.offer-card{position:relative;border-radius:12px;overflow:hidden;min-height:460px;background:#0d1017}
+.offer-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+.offer-card:hover img{transform:scale(1.05)}
+.offer-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,15,.06) 40%,rgba(5,8,15,.88) 100%)}
+.offer-txt{position:absolute;left:0;right:0;bottom:0;padding:28px;z-index:2}
+.offer-txt h3{color:#fff;font-size:23px;line-height:1.25;margin-bottom:10px}
+.offer-txt p{color:#e4e9f1;font-size:15px;line-height:1.55}
+.open-card{margin-top:36px;background:var(--card);border:1px solid var(--line);padding:30px;border-radius:8px}
+.open-card p{color:var(--muted);margin:8px 0 18px}
+.fraud-note{margin-top:26px;color:var(--muted);font-size:14.5px}
+@media(max-width:1020px){.offer-grid{grid-template-columns:1fr}.offer-card{min-height:380px}.chero{min-height:78vh}}
+/* ===== Desktop footer in LIGHT mode: warm cream (Mahindra-style) ===== */
+@media(min-width:1021px){
+  :root[data-theme="light"] footer{background:#f7f3ea;color:#3f434b}
+  :root[data-theme="light"] footer h4{color:#14161a}
+  :root[data-theme="light"] footer a.fl{color:#454a53}
+  :root[data-theme="light"] footer a.fl:hover{color:#0a1930}
+  :root[data-theme="light"] .foot-d .f-socials a{color:#1d2129}
+  :root[data-theme="light"] .foot-d .f-socials a:hover{color:#a97b12}
+  :root[data-theme="light"] .foot-d .subscribe{border-color:rgba(20,22,26,.3)}
+  :root[data-theme="light"] .foot-d .subscribe input{color:#1d2129}
+  :root[data-theme="light"] .foot-d .subscribe input::placeholder{color:#8a8578}
+  :root[data-theme="light"] .foot-d .subscribe button{border-left-color:rgba(20,22,26,.3);color:#a97b12}
+  :root[data-theme="light"] .foot-d .foot-logo-img{filter:invert(1)}
+  :root[data-theme="light"] .foot-d .copyright{border-top-color:rgba(20,22,26,.14);color:#75705f}
+  :root[data-theme="light"] .foot-d .copyright a{color:#454a53}
+}
