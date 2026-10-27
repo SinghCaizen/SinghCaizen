@@ -904,3 +904,14 @@ form.subscribe.dova-hl,form.t-subscribe.dova-hl{outline:3px solid #e8b923;outlin
 /* V55 — stronger, longer subscribe-box highlight */
 form.subscribe.dova-hl,form.t-subscribe.dova-hl{outline:none;box-shadow:0 0 0 3px #e8b923,0 0 26px rgba(232,185,35,.65);border-radius:8px;animation:dovaHl 1.05s ease-in-out infinite alternate}
 @keyframes dovaHl{from{box-shadow:0 0 0 3px #e8b923,0 0 12px rgba(232,185,35,.4)}to{box-shadow:0 0 0 4px #e8b923,0 0 32px rgba(232,185,35,.8)}}
+
+/* V56 — professional preloader: glow stage, one elegant logo entrance, determinate gold line */
+#preloader{background:radial-gradient(ellipse at 50% 42%,#1b1b20 0%,#08080a 62%,#050506 100%);gap:0;transition:opacity .8s ease,visibility .8s}
+#preloader .pl-logo-img{height:84px;animation:plIn 1s cubic-bezier(.22,.8,.3,1) both;filter:drop-shadow(0 6px 24px rgba(0,0,0,.6))}
+@keyframes plIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+.pl-tag{margin-top:20px;font-size:10.5px;letter-spacing:.42em;text-indent:.42em;color:#b9a05e;text-transform:uppercase;animation:plIn 1s .15s cubic-bezier(.22,.8,.3,1) both}
+.pl-bar{margin-top:26px;width:190px;height:2px;background:rgba(255,255,255,.14);border-radius:2px;overflow:visible}
+.pl-bar i{width:0;background:linear-gradient(90deg,#b98a1e,#e8b923);border-radius:2px;box-shadow:0 0 10px rgba(232,185,35,.75);animation:plFill 1.05s cubic-bezier(.3,.7,.3,1) forwards}
+@keyframes plFill{from{width:0}to{width:100%}}
+#preloader.hide .pl-logo-img{transform:translateY(-10px);opacity:0;transition:all .5s ease}
+#preloader.hide .pl-tag{opacity:0;transition:opacity .4s ease}
