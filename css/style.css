@@ -792,3 +792,26 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 .teaser-overlay.bye{opacity:0!important;transition:opacity .55s ease .5s}
 .particle{width:8px;height:8px;animation:pFly2 1s ease-out forwards}
 @keyframes pFly2{0%{transform:translate(0,0) scale(1);opacity:1}70%{opacity:.9}100%{transform:translate(var(--dx),var(--dy)) scale(.25);opacity:0}}
+
+/* V48 — popup becomes a true small popup on phones: compact, liquid-glass, springy morph-in */
+.teaser-card{max-height:88dvh;overflow-y:auto}
+@media(max-width:640px){
+ .teaser-overlay{padding:22px 16px}
+ .teaser-card{width:100%;max-height:78dvh;padding:30px 22px 24px;border-radius:22px;background:rgba(255,253,246,.94);backdrop-filter:blur(8px);box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.85)}
+ .teaser-overlay.show .teaser-card{animation:tPopLiq .7s cubic-bezier(.22,.9,.26,1.08) forwards}
+ .teaser-card::before{inset:8px;border-radius:16px}
+ .teaser-card::after{inset:11px;border-radius:13px}
+ .teaser-logo{height:42px;margin-bottom:10px}
+ .teaser-eyebrow{font-size:10.5px;letter-spacing:.22em}
+ .teaser-head{font-size:37px;margin-top:8px}
+ .teaser-line{margin-top:16px}
+ .teaser-copy{font-size:14.5px;margin-top:14px;line-height:1.6}
+ .teaser-form{margin-top:18px}
+ .teaser-note{margin-top:10px}
+ .teaser-enter{margin-top:10px}
+ .teaser-done{margin-top:16px}
+ .teaser-check{width:60px;height:60px}
+ .teaser-done-title{font-size:23px}
+ .teaser-done-sub{font-size:14.5px}
+}
+@keyframes tPopLiq{0%{transform:scale(.84) translateY(22px);border-radius:40px;opacity:0}55%{transform:scale(1.02) translateY(-2px);border-radius:19px;opacity:1}75%{transform:scale(.995)}100%{transform:none;border-radius:22px;opacity:1}}
