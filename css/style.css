@@ -765,3 +765,23 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 .teaser-note.ok{color:#2e7d32}
 .teaser-enter{color:#c00f2a}
 .teaser-x{background:#ffffff;border-color:#ddd3b8;color:#33312c}
+
+/* V46 — popup success state, countdown, scatter-close, registered state */
+.teaser-done{display:none;text-align:center;margin-top:22px}
+.teaser-done.show{display:block;animation:tPop .5s cubic-bezier(.2,.9,.25,1.12) both}
+.teaser-check{width:74px;height:74px;margin:0 auto 8px;display:block}
+.teaser-check circle{fill:none;stroke:#2e9e5b;stroke-width:2.4;stroke-dasharray:166;stroke-dashoffset:166;animation:chkC .7s ease forwards}
+.teaser-check path{fill:none;stroke:#2e9e5b;stroke-width:3.4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:60;stroke-dashoffset:60;animation:chkP .45s ease .55s forwards}
+@keyframes chkC{to{stroke-dashoffset:0}}
+@keyframes chkP{to{stroke-dashoffset:0}}
+.teaser-done-title{font-family:Georgia,'Times New Roman',serif;font-size:27px;font-weight:600;color:#17171a}
+.teaser-done-sub{color:#4c463c;font-size:15.5px;margin-top:8px;line-height:1.6}
+.teaser-count{display:none;margin-top:16px;font-size:13.5px;color:#6f6a5e}
+.teaser-done.counting .teaser-count{display:block}
+.teaser-count b{color:#c00f2a;font-size:17px}
+.teaser-card.bye{animation:tBye .5s ease forwards}
+@keyframes tBye{to{transform:scale(1.06) translateY(-10px);filter:blur(9px);opacity:0}}
+.teaser-overlay.bye{opacity:0!important;transition:opacity .5s ease}
+.particle{position:absolute;width:7px;height:7px;border-radius:50%;background:#e8b923;pointer-events:none;z-index:6;animation:pFly .55s ease-out forwards}
+.particle.red{background:#e31837}
+@keyframes pFly{to{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}}

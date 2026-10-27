@@ -167,10 +167,11 @@ document.querySelectorAll('form.subscribe[data-newsletter]').forEach(f=>{
    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ input.focus(); input.reportValidity(); return; }
    let note=f.parentElement.querySelector('.sub-note');
    if(!note){ note=document.createElement('p'); note.className='sub-note'; note.style.cssText='font-size:13px;margin-top:10px;opacity:.85'; f.after(note); }
+   if(window.__scRegHas&&window.__scRegHas(email)){ note.textContent='This email is already registered \u2014 you are already on the list.'; return; }
    if(!NEWSLETTER_FORM_URL){ note.textContent='Newsletter is being connected — please check back shortly.'; return; }
    const fd=new FormData(); fd.append('EMAIL', email); fd.append('locale','en'); fd.append('email_address_check','');
    try{ await fetch(NEWSLETTER_FORM_URL,{method:'POST',body:fd,mode:'no-cors'});
-     f.reset(); note.textContent='\u2713 Thank you for subscribing to the Singh Caizen newsletter.';
+     if(window.__scRegAdd)window.__scRegAdd(email); f.reset(); note.textContent='\u2713 Thank you for subscribing to the Singh Caizen newsletter.';
    }catch(err){ note.textContent='Could not subscribe right now. Please try again.'; }
  });
 });
@@ -181,9 +182,10 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
    const input=f.querySelector('input[type=email]'); const email=input.value.trim();
    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ input.focus(); input.reportValidity(); return; }
    const note=(f.nextElementSibling && f.nextElementSibling.classList.contains('sub-done')) ? f.nextElementSibling : null;
+   if(window.__scRegHas&&window.__scRegHas(email)){ if(note){ note.textContent='This email is already registered \u2014 you are already on the list.'; note.hidden=false; } return; }
    const fd=new FormData(); fd.append('EMAIL', email); fd.append('locale','en'); fd.append('email_address_check','');
    try{ await fetch(NEWSLETTER_FORM_URL,{method:'POST',body:fd,mode:'no-cors'});
-     f.reset(); if(note){ note.textContent='Thank you for subscribing to Singh Caizen updates.'; note.hidden=false; }
+     if(window.__scRegAdd)window.__scRegAdd(email); f.reset(); if(note){ note.textContent='Thank you for subscribing to Singh Caizen updates.'; note.hidden=false; }
    }catch(err){ if(note){ note.textContent='Could not subscribe right now. Please try again.'; note.hidden=false; } }
  });
 });
@@ -318,6 +320,14 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
 
 // ===== Coming Soon / Revealing Soon teaser: entry popup + Tower reveal modal =====
 (function(){
+  // Device registry: emails already registered / subscribed from this device
+  function regList(){ try{ var a=JSON.parse(localStorage.getItem('sc-reg-emails')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  function regHas(email){ return regList().indexOf(String(email||'').trim().toLowerCase())>-1; }
+  function regAdd(email){ var e=String(email||'').trim().toLowerCase(); if(!e)return; var a=regList(); if(a.indexOf(e)<0){ a.push(e); try{ localStorage.setItem('sc-reg-emails',JSON.stringify(a)); }catch(err){} } }
+  function legacyReg(){ try{ return !!localStorage.getItem('sc-reveal-reg'); }catch(e){ return false; } }
+  function isReg(){ return regList().length>0||legacyReg(); }
+  window.__scRegHas=regHas; window.__scRegAdd=regAdd;
+
   var ov=document.createElement('div'); ov.className='teaser-overlay';
   ov.innerHTML='<div class="teaser-card" role="dialog" aria-modal="true">'
    +'<button type="button" class="teaser-x" aria-label="Close">×</button>'
@@ -327,23 +337,67 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
    +'<p class="teaser-copy"></p>'
    +'<form class="teaser-form"><input type="email" required placeholder="Your email address" aria-label="Your email address"><button type="submit" class="btn">Register for the Reveal</button></form>'
    +'<p class="teaser-note"></p>'
+   +'<div class="teaser-done"><svg class="teaser-check" viewBox="0 0 56 56"><circle cx="28" cy="28" r="26"/><path d="M17 29.5l7.5 7.5L39 21"/></svg>'
+   +'<div class="teaser-done-title"></div><p class="teaser-done-sub"></p>'
+   +'<p class="teaser-count">This popup will close in <b class="cd-num">10</b> seconds.<br>You can close it now, or simply wait to enter the site.</p></div>'
    +'<button type="button" class="teaser-enter">Enter the site →</button></div>';
   document.body.appendChild(ov);
-  var eb=ov.querySelector('.teaser-eyebrow'), tt=ov.querySelector('.teaser-title'), hd=ov.querySelector('.teaser-head'),
-      cp=ov.querySelector('.teaser-copy'), fm=ov.querySelector('.teaser-form'), nt=ov.querySelector('.teaser-note');
+  var card=ov.querySelector('.teaser-card'),
+      eb=ov.querySelector('.teaser-eyebrow'), tt=ov.querySelector('.teaser-title'), hd=ov.querySelector('.teaser-head'),
+      cp=ov.querySelector('.teaser-copy'), fm=ov.querySelector('.teaser-form'), nt=ov.querySelector('.teaser-note'),
+      dn=ov.querySelector('.teaser-done'), dt=dn.querySelector('.teaser-done-title'), ds=dn.querySelector('.teaser-done-sub'), cn=dn.querySelector('.cd-num');
   var VARIANTS={
     group:{eb:'The Singh Caizen Group',tt:'',head:'COMING <em>SOON</em>',copy:'Something is being built. The group&rsquo;s businesses, its people and its plans are being prepared for their reveal. Register, and be the first to know when the curtain lifts.'},
     tower:{eb:'Group Company · Division 04',tt:'Singh Caizen Tower',head:'REVEALING <em>SOON</em>',copy:'The group&rsquo;s first announced company is being prepared for its reveal. Its address, its design and its opening will be published the moment each is final — register, and hear it first.'}
   };
+  var cdTimer=null;
+  function stopCount(){ if(cdTimer){ clearInterval(cdTimer); cdTimer=null; } }
+  function showDone(title, sub, withCount){
+    cp.style.display='none'; fm.style.display='none'; nt.style.display='none';
+    dn.classList.remove('show'); void dn.offsetWidth;
+    dt.textContent=title; ds.innerHTML=sub;
+    dn.classList.toggle('counting', !!withCount);
+    dn.classList.add('show');
+    if(withCount){ var n=10; cn.textContent=n; stopCount(); cdTimer=setInterval(function(){ n--; if(n<=0){ stopCount(); closeTeaser(); } else { cn.textContent=n; } },1000); }
+  }
   function openTeaser(key){
     var v=VARIANTS[key]||VARIANTS.group;
+    stopCount();
     eb.textContent=v.eb; tt.textContent=v.tt; tt.style.display=v.tt?'block':'none';
     hd.innerHTML=v.head; cp.innerHTML=v.copy;
-    nt.textContent=''; nt.className='teaser-note'; fm.style.display='';
+    nt.textContent=''; nt.className='teaser-note'; nt.style.display='';
+    if(fm.reset)fm.reset(); fm.style.display=''; cp.style.display='';
+    dn.classList.remove('show','counting');
+    card.classList.remove('bye'); ov.classList.remove('bye');
     ov.classList.remove('show'); void ov.offsetWidth; ov.classList.add('show');
     document.body.style.overflow='hidden';
+    if(isReg()){
+      var list=regList(); var em=list.length?list[list.length-1]:'';
+      em=em.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      showDone('You Are Already Registered','This device has already registered for the reveal'+(em?' with <b>'+em+'</b>':'')+'.<br>Watch your inbox — the reveal will reach you first.', false);
+    }
   }
-  function closeTeaser(){ ov.classList.remove('show'); if(!document.querySelector('.legal-overlay.show,.pref-overlay.show'))document.body.style.overflow=''; }
+  function scatter(){
+    try{
+      var r=card.getBoundingClientRect(), o=ov.getBoundingClientRect();
+      var cx=r.left-o.left+r.width/2, cy=r.top-o.top+r.height/2;
+      for(var k=0;k<16;k++){
+        var p=document.createElement('span'); p.className='particle'+(k%3===0?' red':'');
+        var ang=Math.random()*Math.PI*2, dist=90+Math.random()*130;
+        p.style.left=cx+'px'; p.style.top=cy+'px';
+        p.style.setProperty('--dx',(Math.cos(ang)*dist)+'px');
+        p.style.setProperty('--dy',(Math.sin(ang)*dist-40)+'px');
+        ov.appendChild(p);
+        (function(el){ setTimeout(function(){ el.remove(); },650); })(p);
+      }
+    }catch(e){}
+  }
+  function closeTeaser(){
+    if(!ov.classList.contains('show'))return;
+    stopCount(); scatter();
+    card.classList.add('bye'); ov.classList.add('bye');
+    setTimeout(function(){ ov.classList.remove('show','bye'); card.classList.remove('bye'); if(!document.querySelector('.legal-overlay.show,.pref-overlay.show'))document.body.style.overflow=''; },520);
+  }
   window.__openTeaser=openTeaser;
   ov.addEventListener('click',function(e){ if(e.target===ov)closeTeaser(); });
   ov.querySelector('.teaser-x').addEventListener('click',closeTeaser);
@@ -353,10 +407,12 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
   fm.addEventListener('submit', async function(e){ e.preventDefault();
     var input=fm.querySelector('input[type=email]'); var email=input.value.trim();
     if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ input.focus(); return; }
+    if(regHas(email)){ nt.textContent='This email is already registered — you are already on the list for the reveal.'; nt.className='teaser-note ok'; return; }
     var fd=new FormData(); fd.append('EMAIL',email); fd.append('locale','en'); fd.append('email_address_check','');
     try{ await fetch(NEWSLETTER_FORM_URL,{method:'POST',body:fd,mode:'no-cors'});
+      regAdd(email);
       try{ localStorage.setItem('sc-reveal-reg',String(Date.now())); }catch(err){}
-      fm.style.display='none'; nt.textContent='✓ You are on the list. Watch your inbox — the reveal will reach you first.'; nt.classList.add('ok');
+      showDone('Successfully Registered!','You are on the list. Watch your inbox — the reveal will reach you first.', true);
     }catch(err){ nt.textContent='Could not register right now. Please try again.'; }
   });
   // Entry popup: appears on every page load / refresh
