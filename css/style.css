@@ -748,3 +748,20 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 .teaser-enter{margin-top:14px;background:none;border:0;color:#e8b923;font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;letter-spacing:.04em;padding:6px}
 .teaser-x{position:absolute;top:10px;right:12px;width:38px;height:38px;border-radius:50%;border:1px solid #333338;background:#141416;color:#fff;font-size:19px;cursor:pointer;line-height:1}
 @media(max-width:560px){.teaser-form{flex-direction:column}.teaser-card{padding:36px 22px 28px}}
+
+/* V45 — teaser popup in LIGHT mode, invitation-card design with special serif headline */
+.teaser-card{background:#fffdf6;color:#17171a;border:1px solid #e6dcbe;border-radius:16px;box-shadow:0 44px 120px rgba(0,0,0,.55);padding:48px 44px 36px}
+.teaser-card::before{content:"";position:absolute;inset:10px;border:1px solid rgba(169,123,18,.5);border-radius:10px;pointer-events:none}
+.teaser-card::after{content:"";position:absolute;inset:14px;border:1px solid rgba(169,123,18,.22);border-radius:8px;pointer-events:none}
+.teaser-eyebrow{color:#a97b12;display:flex;align-items:center;justify-content:center;gap:14px}
+.teaser-eyebrow::before,.teaser-eyebrow::after{content:"";width:36px;height:1px;background:#caa132}
+.teaser-title{color:#17171a;font-family:Georgia,'Times New Roman',serif;letter-spacing:.3em}
+.teaser-head{font-family:Georgia,'Times New Roman',serif;font-weight:600;color:#17171a;background:none;-webkit-background-clip:initial;background-clip:initial;animation:none;letter-spacing:.02em}
+.teaser-head em{font-style:italic;background:linear-gradient(100deg,#a97b12 15%,#e8b923 38%,#fff0b3 50%,#e8b923 62%,#a97b12 85%);background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:soonShine 3.2s linear infinite}
+.teaser-copy{color:#4c463c}
+.teaser-form input{background:#ffffff;border-color:#ddd3b8;color:#17171a}
+.teaser-form input:focus{outline-color:#a97b12}
+.teaser-note{color:#6f6a5e}
+.teaser-note.ok{color:#2e7d32}
+.teaser-enter{color:#c00f2a}
+.teaser-x{background:#ffffff;border-color:#ddd3b8;color:#33312c}
