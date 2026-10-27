@@ -785,3 +785,10 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 .particle{position:absolute;width:7px;height:7px;border-radius:50%;background:#e8b923;pointer-events:none;z-index:6;animation:pFly .55s ease-out forwards}
 .particle.red{background:#e31837}
 @keyframes pFly{to{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0}}
+
+/* V47 — slower, clearly visible scatter-close */
+.teaser-card.bye{animation:tBye2 1.05s ease forwards}
+@keyframes tBye2{0%{transform:none;filter:blur(0);opacity:1}35%{transform:scale(1.03);filter:blur(2px);opacity:.92}100%{transform:scale(1.09) translateY(-16px);filter:blur(12px);opacity:0}}
+.teaser-overlay.bye{opacity:0!important;transition:opacity .55s ease .5s}
+.particle{width:8px;height:8px;animation:pFly2 1s ease-out forwards}
+@keyframes pFly2{0%{transform:translate(0,0) scale(1);opacity:1}70%{opacity:.9}100%{transform:translate(var(--dx),var(--dy)) scale(.25);opacity:0}}

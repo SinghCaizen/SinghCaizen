@@ -381,14 +381,14 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
     try{
       var r=card.getBoundingClientRect(), o=ov.getBoundingClientRect();
       var cx=r.left-o.left+r.width/2, cy=r.top-o.top+r.height/2;
-      for(var k=0;k<16;k++){
+      for(var k=0;k<22;k++){
         var p=document.createElement('span'); p.className='particle'+(k%3===0?' red':'');
-        var ang=Math.random()*Math.PI*2, dist=90+Math.random()*130;
+        var ang=Math.random()*Math.PI*2, dist=110+Math.random()*190;
         p.style.left=cx+'px'; p.style.top=cy+'px';
         p.style.setProperty('--dx',(Math.cos(ang)*dist)+'px');
         p.style.setProperty('--dy',(Math.sin(ang)*dist-40)+'px');
         ov.appendChild(p);
-        (function(el){ setTimeout(function(){ el.remove(); },650); })(p);
+        (function(el){ setTimeout(function(){ el.remove(); },1100); })(p);
       }
     }catch(e){}
   }
@@ -396,7 +396,7 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
     if(!ov.classList.contains('show'))return;
     stopCount(); scatter();
     card.classList.add('bye'); ov.classList.add('bye');
-    setTimeout(function(){ ov.classList.remove('show','bye'); card.classList.remove('bye'); if(!document.querySelector('.legal-overlay.show,.pref-overlay.show'))document.body.style.overflow=''; },520);
+    setTimeout(function(){ ov.classList.remove('show','bye'); card.classList.remove('bye'); if(!document.querySelector('.legal-overlay.show,.pref-overlay.show'))document.body.style.overflow=''; },1120);
   }
   window.__openTeaser=openTeaser;
   ov.addEventListener('click',function(e){ if(e.target===ov)closeTeaser(); });
