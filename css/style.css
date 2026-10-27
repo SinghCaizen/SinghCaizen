@@ -819,3 +819,6 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 /* V50 — fix: the entry animation rule outranked the close animation, so the blur-dissolve never played.
    Equal-specificity, later-in-file selector makes the scatter-close win. */
 .teaser-overlay .teaser-card.bye{animation:tBye2 1.05s ease forwards}
+
+/* V51 — footer socials use proper filled brand glyphs */
+.f-socials .fbi{width:19px;height:19px;flex:none}
