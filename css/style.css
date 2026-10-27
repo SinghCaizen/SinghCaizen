@@ -915,3 +915,16 @@ form.subscribe.dova-hl,form.t-subscribe.dova-hl{outline:none;box-shadow:0 0 0 3p
 @keyframes plFill{from{width:0}to{width:100%}}
 #preloader.hide .pl-logo-img{transform:translateY(-10px);opacity:0;transition:all .5s ease}
 #preloader.hide .pl-tag{opacity:0;transition:opacity .4s ease}
+
+/* V57 — mega menu colours follow the SITE THEME on desktop (they followed the header's
+   over-section adaptation while the panel background followed the theme = white-on-white in light mode) */
+@media(min-width:1021px){
+ [data-theme="light"] .mega{background:#ffffff!important;--text:#191919!important;--muted:#55565c!important;--line:#e4e1d9!important;--header-text:#141414!important}
+ [data-theme="light"] .mega .mega-title{color:#141414!important}
+ [data-theme="light"] .mega .mega-sub{color:#55565c!important}
+ [data-theme="light"] .mega a.mlink{color:#55565c!important}
+ [data-theme="light"] .mega a.mlink:hover{color:#c00f2a!important}
+ [data-theme="dark"] .mega{background:#070708!important;--text:#f4f4f5!important;--muted:#a7a9ae!important;--line:#2c2d31!important;--header-text:#ffffff!important}
+ [data-theme="dark"] .mega .mega-title{color:#ffffff!important}
+ [data-theme="dark"] .mega a.mlink:hover{color:#ff5b74!important}
+}
