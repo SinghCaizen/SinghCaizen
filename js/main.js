@@ -469,6 +469,14 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
   var KB=[
    {k:['hello','hi','hey','namaste','hii','hola'],a:'Hello, and welcome to Singh Caizen. I am <b>Dova</b>, the group&rsquo;s assistant. Ask me about the group, its businesses, its founder, careers or how to reach us.',chips:1},
    {k:['your name','who are you','tum kaun','bot','dova','robot','assistant'],a:'I am <b>Dova</b>, the Singh Caizen group&rsquo;s own assistant. I have been trained on everything this website carries about the group, and I answer instantly. For anything beyond that, our team is one message away on the Contact page.',link:['Contact Us','contact.html']},
+   {k:['how are you','how r you','kaise ho','kaisi ho','how is it','aur batao','kaisa hai'],a:'I am doing well, thank you for asking. Ready whenever you are — ask me anything about the <b>Singh Caizen Group</b>: its businesses, its founder, careers, or the coming reveal.',chips:1},
+   {k:['good morning','good afternoon','good evening','namaskar','ram ram'],a:'Welcome to Singh Caizen. I am <b>Dova</b>, the group&rsquo;s assistant. How may I help you today?',chips:1},
+   {k:['bye','goodbye','alvida','see you','ok bye'],a:'Thank you for visiting Singh Caizen. I will be right here whenever you return.'},
+   {k:['help','madad','kya kar sakte ho','options','menu','kya kya bata'],a:'I can help you with:<br>&bull; What the Singh Caizen Group is<br>&bull; Its businesses &amp; Singh Caizen Tower<br>&bull; Founder &amp; leadership<br>&bull; Careers<br>&bull; Contact &amp; the coming reveal<br>Tap a topic below, or type your question.',chips:1},
+   {k:['human','real person','agent','call me','baat karni','kisi se baat','customer care','support'],a:'I am an automated assistant, but the group&rsquo;s team is easy to reach — the Contact page form comes straight to us, and the email is <b>info@singhcaizen.com</b>.',link:['Contact Us','contact.html']},
+   {k:['partner','partnership','proposal','invest','investment','franchise','judna','saath kaam','dealership'],a:'The group welcomes serious partnership conversations. Please share your proposal through the Contact page, and the team will take it from there.',link:['Contact Us','contact.html']},
+   {k:['instagram','facebook','social','youtube','linkedin','twitter','follow'],a:'You can follow the group as <b>@singhcaizen</b> on Instagram, Facebook, LinkedIn, X and YouTube — the social links are in the footer of every page.',link:['Instagram','https://www.instagram.com/singhcaizen']},
+   {k:['website','site','pages','is website','ye website'],a:'This is the corporate website of the <b>Singh Caizen Group</b> — its home on the internet. You will find the group&rsquo;s story, its businesses, leadership, newsroom, careers and worldwide outlook in the menu above.',link:['About the group','about.html']},
    {k:['singh caizen','company','group','about','kya hai','what is','parichay'],a:'<b>Singh Caizen</b> is a young Indian group, being built patiently, business by business. The name joins <b>Singh</b> with <b>Caizen</b> — continuous improvement — the standard the group will be run by. Its businesses are being prepared now and revealed step by step.',link:['About the group','about.html']},
    {k:['business','businesses','divisions','companies','company','vertical','sector','kya karti','kya karegi','kaam'],a:'Four businesses are being prepared under the group. Divisions 01–03 are still under wraps — <b>Revealing Soon</b> — and the first announced company is <b>Singh Caizen Tower</b> (Division 04). Each business will be introduced properly, only when it is ready.',link:['See Our Businesses','businesses.html']},
    {k:['singh caizen tower','tower','division 04','04'],a:'<b>Singh Caizen Tower</b> is the group&rsquo;s first announced company (Division 04). Its address, design and opening will be published the moment each is final. Tap its card on the Businesses page to see its reveal panel.',link:['Singh Caizen Tower','businesses.html']},
@@ -490,7 +498,7 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
   btn.innerHTML='<svg viewBox="0 0 24 24" width="27" height="27" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-8 8c-1.2 0-2.4-.26-3.4-.72L4 20l.74-5.6A8 8 0 1 1 21 12z"/><circle cx="9" cy="12" r=".4" fill="#fff"/><circle cx="12.5" cy="12" r=".4" fill="#fff"/><circle cx="16" cy="12" r=".4" fill="#fff"/></svg><span class="dova-pulse"></span>';
   document.body.appendChild(btn);
   var panel=document.createElement('div'); panel.className='dova-panel'; panel.setAttribute('role','dialog'); panel.setAttribute('aria-label','Chat with Dova');
-  panel.innerHTML='<div class="dova-head"><div class="dova-avatar">D</div><div class="dova-htext"><b>Dova</b><small>Singh Caizen Assistant &middot; replies instantly</small></div><button type="button" class="dova-x" aria-label="Close chat">&times;</button></div>'
+  panel.innerHTML='<div class="dova-head"><div class="dova-avatar"><img src="images/logo-white.svg" alt="Singh Caizen"></div><div class="dova-htext"><b>Dova</b><small>Singh Caizen Assistant &middot; replies instantly</small></div><button type="button" class="dova-x" aria-label="Close chat">&times;</button></div>'
    +'<div class="dova-msgs"></div>'
    +'<div class="dova-chips"></div>'
    +'<form class="dova-form"><input type="text" placeholder="Ask about Singh Caizen\u2026" aria-label="Type your question" autocomplete="off"><button type="submit" aria-label="Send"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></button></form>';
@@ -508,8 +516,8 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
   function answerFor(q){
     var nq=' '+q.toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ')+' ', best=null, bs=0;
     KB.forEach(function(it){ var mx=0, cnt=0; it.k.forEach(function(kw){ var hit = kw.length<4 ? (nq.indexOf(' '+kw+' ')>-1) : (nq.indexOf(kw)>-1); if(hit){ cnt++; if(kw.length>mx) mx=kw.length; } }); var sc=mx+cnt*0.1; if(sc>bs){bs=sc;best=it;} });
-    if(best&&bs>=3){ var html=best.a; if(best.link) html+='<br><a class="dova-link" href="'+best.link[1]+'">'+best.link[0]+' &rarr;</a>'; return html; }
-    return 'I don&rsquo;t have that detail yet — the group is still revealing things step by step, and I only answer from what the website carries. You may find it on one of these pages, or our team can help directly.<br><a class="dova-link" href="contact.html">Contact Us &rarr;</a>';
+    if(best&&bs>=2){ var html=best.a; if(best.link) html+='<br><a class="dova-link" href="'+best.link[1]+'">'+best.link[0]+' &rarr;</a>'; return html; }
+    return 'That one is beyond what this website has shared so far, so I would rather not guess. Try a topic below — or ask our team directly, they reply to every message.<br><a class="dova-link" href="contact.html">Contact Us &rarr;</a>'; // was: 'I don&rsquo;t have that detail yet — the group is still revealing things step by step, and I only answer from what the website carries. You may find it on one of these pages, or our team can help directly.<br><a class="dova-link" href="contact.html">Contact Us &rarr;</a>';
   }
   function reply(q){
     var t=addMsg('<span class="dova-typing"><i></i><i></i><i></i></span>', false);
@@ -518,7 +526,7 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
   function ask(q){ q=(q||'').trim(); if(!q)return; addMsg(q.replace(/</g,'&lt;'), true); reply(q); }
   function openPanel(){
     panel.classList.add('open'); btn.classList.add('seen'); opened=true;
-    if(!greeted){ greeted=true; setTimeout(function(){ addMsg('Namaste. I am <b>Dova</b>, the Singh Caizen assistant. Ask me anything about the group — or tap a topic below.', false); showChips(); }, 250); }
+    if(!greeted){ greeted=true; setTimeout(function(){ addMsg('Namaste. I am <b>Dova</b>, the Singh Caizen assistant. Ask me anything about the group — or tap a topic below.', false); showChips(); msgs.scrollTop=0; }, 250); }
     setTimeout(function(){ input.focus(); }, 350);
   }
   function closePanel(){ panel.classList.remove('open'); opened=false; }

@@ -866,3 +866,28 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 .dova-form button{width:42px;height:42px;border-radius:50%;border:0;background:#c00f2a;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}
 .dova-form button:hover{background:#a50d24}
 @media(max-width:640px){.dova-panel{right:12px;left:12px;width:auto;bottom:86px;height:min(62dvh,540px)}.dova-btn{right:16px;bottom:16px}}
+
+/* V53 — Dova polish: logo avatar, pro layout, dark-theme dress, phone sizing */
+.dova-panel{width:min(94vw,392px);height:min(72dvh,600px);border:1px solid rgba(232,185,35,.4)}
+.dova-avatar{background:rgba(255,255,255,.14);border:1.5px solid rgba(232,185,35,.85);overflow:hidden}
+.dova-avatar img{height:24px;width:auto;display:block}
+.dova-htext small{display:flex;align-items:center;gap:6px}
+.dova-htext small::before{content:'';width:7px;height:7px;border-radius:50%;background:#3ddc74;box-shadow:0 0 7px #3ddc74;flex:none}
+.dova-msg.bot{border-left:3px solid #e8b923}
+.dova-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;border-top:1px solid #f0e4c4}
+.dova-chips::-webkit-scrollbar{display:none}
+.dova-chip{flex:none;white-space:nowrap}
+[data-theme="dark"] .dova-panel{background:#17181c;border-color:rgba(232,185,35,.35)}
+[data-theme="dark"] .dova-msgs{background:linear-gradient(180deg,#17181c,#101114)}
+[data-theme="dark"] .dova-msg.bot{background:#222329;border-color:#34353d;border-left:3px solid #e8b923;color:#e9e7e0;box-shadow:none}
+[data-theme="dark"] .dova-chips{background:#121317;border-top-color:#26272d}
+[data-theme="dark"] .dova-chip{background:#1d1e24;color:#e3c766;border-color:#8a6d1f}
+[data-theme="dark"] .dova-form{background:#17181c;border-top-color:#2c2d33}
+[data-theme="dark"] .dova-form input{background:#101114;border-color:#34353d;color:#f0eee8}
+[data-theme="dark"] .dova-link{color:#ff8fa0;border-bottom-color:rgba(255,143,160,.4)}
+@media(max-width:640px){
+ .dova-panel{left:14px;right:14px;width:auto;bottom:84px;height:min(58dvh,520px)}
+ .dova-btn{width:54px;height:54px;right:16px;bottom:16px}
+ .dova-head{padding:12px 14px}
+ .dova-avatar img{height:21px}
+}
