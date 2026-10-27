@@ -891,3 +891,12 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
  .dova-head{padding:12px 14px}
  .dova-avatar img{height:21px}
 }
+
+/* V54 — Dova header goes professional cream; subscribe-box highlight */
+.dova-head{background:linear-gradient(120deg,#fffaf0,#f6ead0);color:#262019;border-bottom:2.5px solid #e8b923}
+.dova-avatar{background:#fff;border-color:#d9b64a;box-shadow:0 2px 8px rgba(120,90,20,.18)}
+.dova-htext b{color:#8f0f24}
+.dova-htext small{color:#6f6350;opacity:1}
+.dova-x{background:rgba(38,32,25,.07);color:#5a4a2a}
+.dova-x:hover{background:rgba(38,32,25,.14)}
+form.subscribe.dova-hl,form.t-subscribe.dova-hl{outline:3px solid #e8b923;outline-offset:5px;border-radius:6px;transition:outline-color .3s}
