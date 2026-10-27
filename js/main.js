@@ -315,3 +315,52 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
  var tick=false; window.addEventListener('scroll',function(){ if(tick)return; tick=true; requestAnimationFrame(function(){ tick=false; if(document.querySelector('.has-drop:hover'))kill(); }); },{passive:true});
  document.querySelectorAll('.has-drop').forEach(function(li){ li.addEventListener('mouseenter',function(){ hdr.classList.remove('kill-mega'); }); li.addEventListener('mouseleave',function(){ hdr.classList.remove('kill-mega'); }); });
 })();
+
+// ===== Coming Soon / Revealing Soon teaser: entry popup + Tower reveal modal =====
+(function(){
+  var ov=document.createElement('div'); ov.className='teaser-overlay';
+  ov.innerHTML='<div class="teaser-card" role="dialog" aria-modal="true">'
+   +'<button type="button" class="teaser-x" aria-label="Close">×</button>'
+   +'<img class="teaser-logo" src="images/logo-white.svg" alt="Singh Caizen">'
+   +'<p class="teaser-eyebrow"></p><div class="teaser-title"></div>'
+   +'<div class="teaser-head"></div><div class="teaser-line"></div>'
+   +'<p class="teaser-copy"></p>'
+   +'<form class="teaser-form"><input type="email" required placeholder="Your email address" aria-label="Your email address"><button type="submit" class="btn">Register for the Reveal</button></form>'
+   +'<p class="teaser-note"></p>'
+   +'<button type="button" class="teaser-enter">Enter the site →</button></div>';
+  document.body.appendChild(ov);
+  var eb=ov.querySelector('.teaser-eyebrow'), tt=ov.querySelector('.teaser-title'), hd=ov.querySelector('.teaser-head'),
+      cp=ov.querySelector('.teaser-copy'), fm=ov.querySelector('.teaser-form'), nt=ov.querySelector('.teaser-note');
+  var VARIANTS={
+    group:{eb:'The Singh Caizen Group',tt:'',head:'COMING SOON',copy:'Something is being built. The group&rsquo;s businesses, its people and its plans are being prepared for their reveal. Register, and be the first to know when the curtain lifts.'},
+    tower:{eb:'Group Company · Division 04',tt:'Singh Caizen Tower',head:'REVEALING SOON',copy:'The group&rsquo;s first announced company is being prepared for its reveal. Its address, its design and its opening will be published the moment each is final — register, and hear it first.'}
+  };
+  function openTeaser(key){
+    var v=VARIANTS[key]||VARIANTS.group;
+    eb.textContent=v.eb; tt.textContent=v.tt; tt.style.display=v.tt?'block':'none';
+    hd.textContent=v.head; cp.innerHTML=v.copy;
+    nt.textContent=''; nt.className='teaser-note'; fm.style.display='';
+    ov.classList.remove('show'); void ov.offsetWidth; ov.classList.add('show');
+    document.body.style.overflow='hidden';
+  }
+  function closeTeaser(){ ov.classList.remove('show'); if(!document.querySelector('.legal-overlay.show,.pref-overlay.show'))document.body.style.overflow=''; }
+  window.__openTeaser=openTeaser;
+  ov.addEventListener('click',function(e){ if(e.target===ov)closeTeaser(); });
+  ov.querySelector('.teaser-x').addEventListener('click',closeTeaser);
+  ov.querySelector('.teaser-enter').addEventListener('click',closeTeaser);
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape')closeTeaser(); });
+  document.addEventListener('click',function(e){ var t=e.target.closest?e.target.closest('[data-reveal]'):null; if(t){ e.preventDefault(); openTeaser(t.getAttribute('data-reveal')); } });
+  fm.addEventListener('submit', async function(e){ e.preventDefault();
+    var input=fm.querySelector('input[type=email]'); var email=input.value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){ input.focus(); return; }
+    var fd=new FormData(); fd.append('EMAIL',email); fd.append('locale','en'); fd.append('email_address_check','');
+    try{ await fetch(NEWSLETTER_FORM_URL,{method:'POST',body:fd,mode:'no-cors'});
+      try{ localStorage.setItem('sc-reveal-reg',String(Date.now())); }catch(err){}
+      fm.style.display='none'; nt.textContent='✓ You are on the list. Watch your inbox — the reveal will reach you first.'; nt.classList.add('ok');
+    }catch(err){ nt.textContent='Could not register right now. Please try again.'; }
+  });
+  // Entry popup: once per visit session; not again for 30 days after registering. Force with ?reveal=1
+  var force=/[?&]reveal=1/.test(location.search), seen=false, regFresh=false;
+  try{ seen=!!sessionStorage.getItem('sc-teaser-seen'); var ts=+localStorage.getItem('sc-reveal-reg')||0; regFresh=(Date.now()-ts)<30*864e5; }catch(err){}
+  if(force||(!seen&&!regFresh)){ setTimeout(function(){ openTeaser('group'); try{ sessionStorage.setItem('sc-teaser-seen','1'); }catch(err){} },900); }
+})();
