@@ -900,3 +900,7 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 .dova-x{background:rgba(38,32,25,.07);color:#5a4a2a}
 .dova-x:hover{background:rgba(38,32,25,.14)}
 form.subscribe.dova-hl,form.t-subscribe.dova-hl{outline:3px solid #e8b923;outline-offset:5px;border-radius:6px;transition:outline-color .3s}
+
+/* V55 — stronger, longer subscribe-box highlight */
+form.subscribe.dova-hl,form.t-subscribe.dova-hl{outline:none;box-shadow:0 0 0 3px #e8b923,0 0 26px rgba(232,185,35,.65);border-radius:8px;animation:dovaHl 1.05s ease-in-out infinite alternate}
+@keyframes dovaHl{from{box-shadow:0 0 0 3px #e8b923,0 0 12px rgba(232,185,35,.4)}to{box-shadow:0 0 0 4px #e8b923,0 0 32px rgba(232,185,35,.8)}}

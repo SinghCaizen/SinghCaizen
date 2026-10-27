@@ -537,7 +537,7 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
   function closePanel(){ panel.classList.remove('open'); opened=false; }
   form.addEventListener('submit', function(e){ e.preventDefault(); var q=input.value; input.value=''; ask(q); });
   panel.querySelector('.dova-x').addEventListener('click', closePanel);
-  panel.addEventListener('click', function(e){ var a=e.target.closest?e.target.closest('[data-act="subscribe"]'):null; if(!a)return; e.preventDefault(); closePanel(); var frm=document.querySelector('form.subscribe[data-newsletter]')||document.querySelector('form.t-subscribe'); if(frm){ setTimeout(function(){ frm.scrollIntoView({behavior:'smooth', block:'center'}); frm.classList.add('dova-hl'); var inp=frm.querySelector('input'); if(inp) setTimeout(function(){ inp.focus(); },650); setTimeout(function(){ frm.classList.remove('dova-hl'); },2600); },80); } });
+  panel.addEventListener('click', function(e){ var a=e.target.closest?e.target.closest('[data-act="subscribe"]'):null; if(!a)return; e.preventDefault(); closePanel(); var frm=document.querySelector('form.subscribe[data-newsletter]')||document.querySelector('form.t-subscribe'); if(frm){ setTimeout(function(){ frm.scrollIntoView({behavior:'smooth', block:'center'}); frm.classList.add('dova-hl'); var inp=frm.querySelector('input'); if(inp) setTimeout(function(){ inp.focus(); },650); setTimeout(function(){ frm.classList.remove('dova-hl'); },4200); },80); } });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape'&&opened) closePanel(); });
   // Draggable launcher: drag to move, tap to open
   var drag=null;
