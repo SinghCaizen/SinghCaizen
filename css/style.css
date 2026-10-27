@@ -822,3 +822,47 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 
 /* V51 — footer socials use proper filled brand glyphs */
 .f-socials .fbi{width:19px;height:19px;flex:none}
+
+/* V52 — search no-results panel + Dova assistant */
+.search-none{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:26px 24px;color:#fff;text-align:left}
+.sn-title{font-size:20px;font-weight:600}
+.sn-sub{opacity:.75;margin-top:8px;font-size:14.5px;line-height:1.6}
+.sn-links{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+.sn-links a{background:rgba(255,255,255,.1);color:#fff;padding:9px 15px;border-radius:20px;font-size:13.5px}
+.sn-links a:hover{background:#c00f2a}
+.sn-ask{margin-top:18px;background:#c00f2a;color:#fff;border:0;padding:11px 18px;border-radius:6px;font-size:14px;cursor:pointer;font-weight:600}
+.sn-ask:hover{background:#a50d24}
+.dova-btn{position:fixed;right:20px;bottom:20px;width:58px;height:58px;border-radius:50%;border:2px solid rgba(232,185,35,.9);background:linear-gradient(135deg,#e31837,#8f0f24);box-shadow:0 12px 30px rgba(0,0,0,.35);cursor:grab;z-index:280;display:flex;align-items:center;justify-content:center;touch-action:none;padding:0}
+.dova-btn:active{cursor:grabbing}
+.dova-pulse{position:absolute;inset:-2px;border-radius:50%;border:2px solid rgba(232,185,35,.75);animation:dovaPulse 2.2s ease-out infinite;pointer-events:none}
+.dova-btn.seen .dova-pulse{display:none}
+@keyframes dovaPulse{0%{transform:scale(1);opacity:1}70%{transform:scale(1.45);opacity:0}100%{opacity:0}}
+.dova-panel{position:fixed;right:20px;bottom:90px;width:min(92vw,378px);height:min(66dvh,560px);background:#fffdf6;border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.45);z-index:290;display:flex;flex-direction:column;overflow:hidden;opacity:0;visibility:hidden;transform:translateY(16px) scale(.94);transform-origin:bottom right;transition:opacity .3s ease,transform .38s cubic-bezier(.22,.9,.26,1.15),visibility .3s}
+.dova-panel.open{opacity:1;visibility:visible;transform:none}
+.dova-head{background:linear-gradient(120deg,#b30d26,#8f0f24);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:11px}
+.dova-avatar{width:38px;height:38px;border-radius:50%;background:#e8b923;color:#5c4300;font-family:Georgia,serif;font-weight:700;font-size:19px;display:flex;align-items:center;justify-content:center;flex:none}
+.dova-htext{display:flex;flex-direction:column;line-height:1.25}
+.dova-htext b{font-size:16.5px}
+.dova-htext small{font-size:11.5px;opacity:.82}
+.dova-x{margin-left:auto;background:rgba(255,255,255,.14);color:#fff;border:0;width:30px;height:30px;border-radius:50%;font-size:18px;cursor:pointer;line-height:1}
+.dova-msgs{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:10px;background:linear-gradient(180deg,#fffdf6,#faf5e9)}
+.dova-msg{max-width:86%;padding:11px 13px;border-radius:14px;font-size:14px;line-height:1.55;animation:dovaIn .3s ease both}
+.dova-msg.bot{background:#fff;border:1px solid #eadfc6;border-bottom-left-radius:4px;color:#33302a;align-self:flex-start;box-shadow:0 2px 8px rgba(90,70,20,.06)}
+.dova-msg.me{background:#c00f2a;color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
+@keyframes dovaIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.dova-link{display:inline-block;margin-top:8px;color:#b30d26;font-weight:600;text-decoration:none;border-bottom:1px solid rgba(179,13,38,.4)}
+.dova-typing{display:inline-flex;gap:4px;padding:2px 0}
+.dova-typing i{width:7px;height:7px;border-radius:50%;background:#c9b98a;animation:dovaTy 1s infinite}
+.dova-typing i:nth-child(2){animation-delay:.15s}
+.dova-typing i:nth-child(3){animation-delay:.3s}
+@keyframes dovaTy{0%,60%,100%{transform:none;opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+.dova-chips{display:flex;flex-wrap:wrap;gap:7px;padding:10px 12px 4px;background:#faf5e9}
+.dova-chips:empty{padding:0}
+.dova-chip{border:1.5px solid #d9b64a;background:#fff;color:#7a5c00;font-size:12.5px;padding:7px 11px;border-radius:16px;cursor:pointer}
+.dova-chip:hover{background:#e8b923;color:#3d2e00}
+.dova-form{display:flex;gap:9px;padding:12px;border-top:1px solid #eee2c8;background:#fffdf6}
+.dova-form input{flex:1;border:1.5px solid #ddd3ba;border-radius:22px;padding:11px 15px;font-size:14px;outline:none;background:#fff}
+.dova-form input:focus{border-color:#c00f2a}
+.dova-form button{width:42px;height:42px;border-radius:50%;border:0;background:#c00f2a;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}
+.dova-form button:hover{background:#a50d24}
+@media(max-width:640px){.dova-panel{right:12px;left:12px;width:auto;bottom:86px;height:min(62dvh,540px)}.dova-btn{right:16px;bottom:16px}}
