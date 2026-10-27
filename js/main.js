@@ -415,6 +415,11 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
       showDone('Successfully Registered!','You are on the list. Watch your inbox — the reveal will reach you first.', true);
     }catch(err){ nt.textContent='Could not register right now. Please try again.'; }
   });
-  // Entry popup: appears on every page load / refresh
-  setTimeout(function(){ openTeaser('group'); },900);
+  // Entry popup: appears ONLY when the page is refreshed (reload) — not on fresh opens or navigation
+  var navType='navigate';
+  try{ var nte=performance.getEntriesByType('navigation')[0];
+    if(nte&&nte.type){ navType=nte.type; }
+    else if(performance.navigation){ navType=(performance.navigation.type===1?'reload':(performance.navigation.type===2?'back_forward':'navigate')); }
+  }catch(e){}
+  if(navType==='reload'){ setTimeout(function(){ openTeaser('group'); },900); }
 })();
