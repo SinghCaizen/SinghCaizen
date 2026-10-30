@@ -19,7 +19,7 @@ if(btn&&nav){
  }));
 }
 // Preloader
-addEventListener('load',()=>setTimeout(()=>{const p=document.getElementById('preloader');if(p)p.classList.add('hide')},400));
+var __plT0=Date.now();addEventListener('load',()=>setTimeout(()=>{const p=document.getElementById('preloader');if(p)p.classList.add('hide')},Math.max(0,1250-(Date.now()-__plT0))));setTimeout(()=>{const p=document.getElementById('preloader');if(p)p.classList.add('hide')},4200);
 // Reveal on scroll
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');io.unobserve(e.target)}}),{threshold:.12});
 document.querySelectorAll('.reveal,.reveal-left,.reveal-right,.reveal-zoom,.img-reveal,.timeline').forEach(el=>io.observe(el));

@@ -867,3 +867,16 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 .teaser-card.bye{animation:v58Bye .45s ease forwards!important}
 @keyframes v58Bye{to{opacity:0;transform:scale(.95) translateY(8px)}}
 .thumb img,.img-reveal img{background:#0e0e11}
+
+/* V59 — preloader redesigned: ALWAYS a light stage (both themes), dark logo, smooth professional entrance */
+#preloader{background:radial-gradient(115% 90% at 50% 36%,#fffdf6 0%,#f8f2e4 58%,#f0e7d2 100%)!important;transition:opacity .6s ease,visibility .6s ease}
+#preloader::before{content:'';position:absolute;left:50%;top:44%;width:340px;height:340px;margin:-170px 0 0 -170px;border-radius:50%;background:radial-gradient(circle,rgba(232,185,35,.22),rgba(232,185,35,0) 65%);animation:plGlow 1.15s ease-out both;pointer-events:none}
+@keyframes plGlow{from{transform:scale(.55);opacity:0}to{transform:scale(1);opacity:1}}
+#preloader .pl-logo-img{filter:none!important;animation:plRise .9s cubic-bezier(.22,1,.36,1) .05s both!important}
+@keyframes plRise{from{opacity:0;transform:translateY(18px) scale(.955)}to{opacity:1;transform:translateY(0) scale(1)}}
+#preloader .pl-tag{color:#8a6d1f!important;animation:plTag .8s ease .38s both!important}
+@keyframes plTag{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+#preloader .pl-bar{background:rgba(101,79,22,.16)!important}
+#preloader.hide{opacity:0;visibility:hidden}
+#preloader.hide .pl-logo-img{transform:translateY(-12px);opacity:0;transition:all .5s ease}
+#preloader.hide .pl-tag{opacity:0;transition:opacity .35s ease}
