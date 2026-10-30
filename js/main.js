@@ -80,7 +80,7 @@ if(sIn){sIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault(
 const sc=document.querySelector('.search-close');if(sc)sc.addEventListener('click',()=>ov.classList.remove('open'));
 addEventListener('keydown',e=>{if(e.key==='Escape')ov.classList.remove('open')});
 if(sIn)sIn.addEventListener('input',()=>renderSearch(sIn.value));
-
+}
 // Story rail arrows
 const rail=document.querySelector('.rail');
 if(rail){document.querySelectorAll('.rail-nav button').forEach((b,i)=>b.addEventListener('click',()=>rail.scrollBy({left:(i?1:-1)*400,behavior:'smooth'})))}
