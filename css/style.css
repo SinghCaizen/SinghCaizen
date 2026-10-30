@@ -925,3 +925,9 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 [data-theme="dark"] #preloader .pl-bar{background:rgba(255,255,255,.14)!important}
 [data-theme="light"] #preloader .pl-bar{background:rgba(101,79,22,.16)!important}
 #preloader.hide .pl-logo-wrap{transform:scale(1.035);opacity:0;transition:all .55s ease}
+
+/* V62 — About logo panel follows the theme: cream panel + dark logo in light mode, dark panel + white logo in dark mode */
+.logo-panel .lp-d{display:none}
+[data-theme="light"] .logo-panel{background:linear-gradient(150deg,#fffdf6,#f3ecd9);border-color:#e3d5ac}
+[data-theme="light"] .logo-panel .lp-w{display:none}
+[data-theme="light"] .logo-panel .lp-d{display:block}
