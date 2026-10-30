@@ -74,7 +74,7 @@ function renderSearch(q){if(!sRes)return;q=(q||'').trim();
  sRes.innerHTML='<div class="search-none"><p class="sn-title">No match for &ldquo;'+q.replace(/</g,'&lt;')+'&rdquo; yet</p>'
  +'<p class="sn-sub">It may not be on the website yet — the group is still revealing things step by step. Meanwhile, these may help:</p>'
  +'<div class="sn-links"><a href="businesses.html">Our Businesses</a><a href="careers.html">Careers</a><a href="news.html">Newsroom</a><a href="contact.html">Contact Us</a></div>'
- </div>'}
++'</div>'}
 if(ov){document.querySelectorAll('[data-open-search]').forEach(b=>b.addEventListener('click',()=>{ov.classList.add('open');renderSearch('');setTimeout(()=>sIn&&sIn.focus(),80)}));
 if(sIn){sIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const first=sRes?sRes.querySelector('a:not([hidden])'):null;if(first)location.href=first.getAttribute('href');}});}
 const sc=document.querySelector('.search-close');if(sc)sc.addEventListener('click',()=>ov.classList.remove('open'));
