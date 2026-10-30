@@ -56,7 +56,6 @@ const INDEX=[
 ['Focused on quality, project after project','news.html','How our divisions hold a single standard of quality','quality standard project story news'],
 ['Committees before companies','news.html','Why the group is setting up its oversight before its businesses','committees governance oversight story news'],
 ['India first, with the world in view','news.html','One home ground — and a roadmap that reaches further','india world global story news'],
-['Why \u2018Caizen\u2019 is more than a word','news.html','The discipline inside the group\u2019s name — and the standard it sets','caizen kaizen meaning philosophy word matlab continuous improvement'],
 ['Careers','careers.html','Jobs, life at the group & FAQs','careers jobs naukri vacancy hiring work job apply life faq'],
 ['Worldwide','worldwide.html','Rooted in India — global outlook, regions & roadmap','worldwide global world international regions middle east europe north america asia pacific abroad countries'],
 ['Contact Us','contact.html','Enquiries, email & the contact form','contact email phone address sampark pata enquiry form reach mail info'],
@@ -75,13 +74,13 @@ function renderSearch(q){if(!sRes)return;q=(q||'').trim();
  sRes.innerHTML='<div class="search-none"><p class="sn-title">No match for &ldquo;'+q.replace(/</g,'&lt;')+'&rdquo; yet</p>'
  +'<p class="sn-sub">It may not be on the website yet — the group is still revealing things step by step. Meanwhile, these may help:</p>'
  +'<div class="sn-links"><a href="businesses.html">Our Businesses</a><a href="careers.html">Careers</a><a href="news.html">Newsroom</a><a href="contact.html">Contact Us</a></div>'
- +'<button type="button" class="sn-ask" data-ask="'+q.replace(/"/g,'&quot;').replace(/</g,'&lt;')+'">Ask Dova, our assistant &rarr;</button></div>'}
+ </div>'}
 if(ov){document.querySelectorAll('[data-open-search]').forEach(b=>b.addEventListener('click',()=>{ov.classList.add('open');renderSearch('');setTimeout(()=>sIn&&sIn.focus(),80)}));
 if(sIn){sIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();const first=sRes?sRes.querySelector('a:not([hidden])'):null;if(first)location.href=first.getAttribute('href');}});}
 const sc=document.querySelector('.search-close');if(sc)sc.addEventListener('click',()=>ov.classList.remove('open'));
 addEventListener('keydown',e=>{if(e.key==='Escape')ov.classList.remove('open')});
 if(sIn)sIn.addEventListener('input',()=>renderSearch(sIn.value));
-if(sRes)sRes.addEventListener('click',e=>{var b=e.target.closest?e.target.closest('[data-ask]'):null;if(b){var q=b.getAttribute('data-ask');ov.classList.remove('open');if(window.__dovaAsk)window.__dovaAsk(q);}});}
+
 // Story rail arrows
 const rail=document.querySelector('.rail');
 if(rail){document.querySelectorAll('.rail-nav button').forEach((b,i)=>b.addEventListener('click',()=>rail.scrollBy({left:(i?1:-1)*400,behavior:'smooth'})))}
@@ -463,96 +462,11 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
   if(navType==='reload'){ setTimeout(function(){ openTeaser('group'); },900); }
 })();
 
-// ===== Dova — Singh Caizen assistant (trained on the group's website knowledge) =====
+// ===== Image fallback: any remote photo that fails to load is replaced by a branded Coming Soon placeholder =====
 (function(){
-  if(document.querySelector('.dova-btn'))return;
-  var KB=[
-   {k:['hello','hi','hey','namaste','hii','hola'],a:'Hello, and welcome to Singh Caizen. I am <b>Dova</b>, the group&rsquo;s assistant. Ask me about the group, its businesses, its founder, careers or how to reach us.',chips:1},
-   {k:['your name','who are you','tum kaun','bot','dova','robot','assistant'],a:'I am <b>Dova</b>, the Singh Caizen group&rsquo;s own assistant. I have been trained on everything this website carries about the group, and I answer instantly. For anything beyond that, our team is one message away on the Contact page.',link:['Contact Us','contact.html']},
-   {k:['how are you','how r you','kaise ho','kaisi ho','how is it','aur batao','kaisa hai'],a:'I am doing well, thank you for asking. Ready whenever you are — ask me anything about the <b>Singh Caizen Group</b>: its businesses, its founder, careers, or the coming reveal.',chips:1},
-   {k:['good morning','good afternoon','good evening','namaskar','ram ram'],a:'Welcome to Singh Caizen. I am <b>Dova</b>, the group&rsquo;s assistant. How may I help you today?',chips:1},
-   {k:['bye','goodbye','alvida','see you','ok bye'],a:'Thank you for visiting Singh Caizen. I will be right here whenever you return.'},
-   {k:['help','madad','kya kar sakte ho','options','menu','kya kya bata'],a:'I can help you with:<br>&bull; What the Singh Caizen Group is<br>&bull; Its businesses &amp; Singh Caizen Tower<br>&bull; Founder &amp; leadership<br>&bull; Careers<br>&bull; Contact &amp; the coming reveal<br>Tap a topic below, or type your question.',chips:1},
-   {k:['human','real person','agent','call me','baat karni','kisi se baat','customer care','support'],a:'I am an automated assistant, but the group&rsquo;s team is easy to reach — the Contact page form comes straight to us, and the email is <b>info@singhcaizen.com</b>.',link:['Contact Us','contact.html']},
-   {k:['partner','partnership','proposal','invest','investment','franchise','judna','saath kaam','dealership','vendor','supplier','distributor'],a:'The group welcomes serious partnership conversations. Please share your proposal through the Contact page, and the team will take it from there.',link:['Contact Us','contact.html']},
-   {k:['instagram','facebook','social','social media','youtube','linkedin','twitter','follow','insta','par hai','handles'],a:'Yes &mdash; <b>Singh Caizen is on social media</b>, as <b>@singhcaizen</b> on Instagram, Facebook, LinkedIn, X and YouTube. Tap any of them to open it directly:',links:[{label:'Instagram',url:'https://www.instagram.com/singhcaizen'},{label:'Facebook',url:'https://www.facebook.com/singhcaizen'},{label:'LinkedIn',url:'https://www.linkedin.com/company/singhcaizen'},{label:'X (Twitter)',url:'https://x.com/singhcaizen'},{label:'YouTube',url:'https://www.youtube.com/@singhcaizen'}]},
-
-   {k:['location','kahan','based','head office','city','address kya','kahan hai','india me'],a:'The group is based in <b>India</b> — its home ground. Its full head-office address will be published on the Contact page when it is final; until then, the contact form and email reach us directly.',link:['Contact Us','contact.html']},
-   {k:['timing','timings','hours','kab khulta','open hours','kab milega','time'],a:'There is no shop counter here — the group is reachable at any hour through the Contact page form and by email, and every message is read.'},
-   {k:['complaint','feedback','suggestion','shikayat','sujhav'],a:'Your feedback matters to the group. Please share it through the Contact page — it comes straight to us.',link:['Contact Us','contact.html']},
-   {k:['privacy','terms','cookie','policy','legal'],a:'The group&rsquo;s Privacy Policy, Terms of Use and Cookie Preferences are linked in the footer of every page of this website.'},
-   {k:['founded','established','since','kab bani','kab se','old','history','kab shuru','start hua','formed'],a:'<b>Singh Caizen</b> is a newly built group — its foundation is being laid right now, business by business, and its story is being written in the open on this website.',link:['About the group','about.html']},
-   {k:['share','shares','stock','ipo','listed','share market','share price'],a:'The Singh Caizen Group is <b>privately held</b>. It is not listed on any stock exchange, and no shares are offered to the public.'},
-   {k:['brochure','catalog','catalogue','download','pdf','company profile'],a:'Everything about the group lives on this website itself — its story, businesses, leadership and newsroom are all in the menu above. There is no separate brochure to download.',link:['Our Businesses','businesses.html']},
-   {k:['ok','acha','theek','great','awesome','badhiya','mast','superb','nice','wow','perfect'],a:'Glad I could help. If anything else comes to mind — the group, its businesses, careers, anything at all — just ask.',chips:1},
-   {k:['website','site','pages','is website','ye website'],a:'This is the corporate website of the <b>Singh Caizen Group</b> — its home on the internet. You will find the group&rsquo;s story, its businesses, leadership, newsroom, careers and worldwide outlook in the menu above.',link:['About the group','about.html']},
-   {k:['singh caizen','company','group','about','parichay','ye company','is company'],a:'<b>Singh Caizen</b> is a young Indian group, being built patiently, business by business. The name joins <b>Singh</b> with <b>Caizen</b> — continuous improvement — the standard the group will be run by. Its businesses are being prepared now and revealed step by step.',link:['About the group','about.html']},
-   {k:['business','businesses','divisions','companies','company','vertical','sector','kya karti','kya karegi','kaam'],a:'Four businesses are being prepared under the group. Divisions 01–03 are still under wraps — <b>Revealing Soon</b> — and the first announced company is <b>Singh Caizen Tower</b> (Division 04). Each business will be introduced properly, only when it is ready.',link:['See Our Businesses','businesses.html']},
-   {k:['singh caizen tower','tower','division 04','04'],a:'<b>Singh Caizen Tower</b> is the group&rsquo;s first announced company (Division 04). Its address, design and opening will be published the moment each is final. Tap its card on the Businesses page to see its reveal panel.',link:['Singh Caizen Tower','businesses.html']},
-   {k:['saurabh singh','founder','owner','saurabh','malik','chairman','boss','who founded','kisne','kaun hai','kaun'],a:'The group&rsquo;s Founder &amp; Owner is <b>Saurabh Singh</b>. You can read his profile on the Leadership side of this website.',link:['Meet Saurabh Singh','saurabh-singh.html']},
-   {k:['leader','leadership','management','board','director','committee','committees','team'],a:'The group is led by its Founder &amp; Owner, Saurabh Singh, and its governance is being constituted through five board committees — Audit, Nomination &amp; Remuneration, Risk Management, IT Strategy, and CSR &amp; ESG.',link:['Leadership','leadership.html']},
-   {k:['career','careers','job','jobs','naukri','vacancy','vacancies','hiring','hire','apply','work with','kaam chahiye','internship','intern','fresher','resume','cv bhejna'],a:'As the group&rsquo;s businesses are built, its teams will grow with them. The Careers page explains life at the group and how profiles are shared — the group welcomes profiles through the Contact page as well.',link:['Careers','careers.html']},
-   {k:['contact','email','mail','phone','address','sampark','pata','reach','enquiry','inquiry','message','whatsapp','email id','mail id'],a:'You can reach the group through the Contact page — the form there comes straight to us. The group&rsquo;s email is <b>info@singhcaizen.com</b>.',link:['Contact Us','contact.html']},
-   {k:['reveal','coming soon','coming','launch','kab','when','open','start','shuru','inauguration','udghatan','opening'],a:'Everything is being revealed <b>step by step</b> — a business is shown only when it is real and ready. Register for the Reveal (the popup on this site) or subscribe to the newsletter below, and you will hear each reveal first.'},
-   {k:['newsletter','subscribe','subscription','updates','register','registration','follow','news letter'],a:'To hear every reveal first, subscribe with your email in the subscribe box in the footer of any page — or use the <b>Register for the Reveal</b> form in this site&rsquo;s popup. One email is enough — no spam, only the group&rsquo;s own news. Tap below and I will take you straight to the subscribe box:',links:[{label:'Take me to the subscribe box',act:'subscribe'}]},
-   {k:['worldwide','global','world','international','abroad','countries','middle east','europe','america','asia'],a:'The group is at home in <b>India</b>, and its roadmap looks at the Middle East, Europe, North America and Asia-Pacific — each honestly marked &ldquo;on the roadmap&rdquo; until it is real.',link:['Worldwide','worldwide.html']},
-   {k:['news','press','media','updates','khabar','samachar','announcement'],a:'Every announcement lands in the Newsroom first — new stories on the group, its standards and its road ahead.',link:['Newsroom','news.html']},
-   {k:['caizen','kaizen','meaning','matlab','philosophy','kyu','why'],a:'<b>Caizen</b> carries the spirit of <i>kaizen</i> — continuous improvement: small, honest steps, taken every day, to a standard that keeps rising. It is the philosophy the whole group will be run by.'},
-   {k:['trust','trusts','charity','csr','daan','donation','donate'],a:'Responsibility to society is built into the group&rsquo;s governance — it has a dedicated <b>CSR &amp; ESG Committee</b> on its Leadership page.',link:['Leadership','leadership.html']},
-   {k:['thank','thanks','dhanyavad','shukriya','great','nice','good'],a:'You are most welcome. If anything else comes to mind — about the group, its businesses or its reveal — I am right here.'},
-   {k:['buy','price','cost','product','products','shop','order','paise','khareed','sell','offerings','services'],a:'The group&rsquo;s businesses and their offerings will be published on the Businesses page as each one is revealed — nothing is on sale before it is announced there. For a specific enquiry, our team will be glad to help.',link:['Contact Us','contact.html']}
-  ];
-  var CHIPS=['What is Singh Caizen?','Which businesses are coming?','What is Singh Caizen Tower?','Who is the founder?','Careers & jobs','How can I contact you?','When is the reveal?','Is Singh Caizen on social media?','How do I subscribe?'];
-  var btn=document.createElement('button'); btn.type='button'; btn.className='dova-btn'; btn.setAttribute('aria-label','Chat with Dova, the Singh Caizen assistant');
-  btn.innerHTML='<svg viewBox="0 0 24 24" width="27" height="27" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"><path d="M21 12a8 8 0 0 1-8 8c-1.2 0-2.4-.26-3.4-.72L4 20l.74-5.6A8 8 0 1 1 21 12z"/><circle cx="9" cy="12" r=".4" fill="#fff"/><circle cx="12.5" cy="12" r=".4" fill="#fff"/><circle cx="16" cy="12" r=".4" fill="#fff"/></svg><span class="dova-pulse"></span>';
-  document.body.appendChild(btn);
-  var panel=document.createElement('div'); panel.className='dova-panel'; panel.setAttribute('role','dialog'); panel.setAttribute('aria-label','Chat with Dova');
-  panel.innerHTML='<div class="dova-head"><div class="dova-avatar"><img src="images/logo-dark.svg" alt="Singh Caizen"></div><div class="dova-htext"><b>Dova</b><small>Singh Caizen Assistant &middot; replies instantly</small></div><button type="button" class="dova-x" aria-label="Close chat">&times;</button></div>'
-   +'<div class="dova-msgs"></div>'
-   +'<div class="dova-chips"></div>'
-   +'<form class="dova-form"><input type="text" placeholder="Ask about Singh Caizen\u2026" aria-label="Type your question" autocomplete="off"><button type="submit" aria-label="Send"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></button></form>';
-  document.body.appendChild(panel);
-  var msgs=panel.querySelector('.dova-msgs'), chipsBox=panel.querySelector('.dova-chips'), form=panel.querySelector('.dova-form'), input=form.querySelector('input');
-  var opened=false, greeted=false;
-  function scrollDown(){ msgs.scrollTop=msgs.scrollHeight; }
-  function addMsg(html, me){
-    var d=document.createElement('div'); d.className='dova-msg '+(me?'me':'bot'); d.innerHTML=html; msgs.appendChild(d); scrollDown(); return d;
-  }
-  function showChips(){
-    chipsBox.innerHTML='';
-    CHIPS.forEach(function(c){ var b=document.createElement('button'); b.type='button'; b.className='dova-chip'; b.textContent=c; b.addEventListener('click',function(){ ask(c); }); chipsBox.appendChild(b); });
-  }
-  function answerFor(q){
-    var raw=q.toLowerCase();
-    var DEV=[['\u0928\u092e\u0938\u094d\u0924\u0947','namaste'],['\u0928\u092e\u0938\u094d\u0915\u093e\u0930','namaste'],['\u0928\u094c\u0915\u0930\u0940','naukri hai kya'],['\u0938\u0902\u092a\u0930\u094d\u0915','contact'],['\u091f\u093e\u0935\u0930','tower'],['\u0915\u0902\u092a\u0928\u0940','company'],['\u0927\u0928\u094d\u092f\u0935\u093e\u0926','thanks']];
-    for(var di=0;di<DEV.length;di++){ if(raw.indexOf(DEV[di][0])>-1){ q=DEV[di][1]; break; } }
-    var nq0=' '+q.toLowerCase().replace(/[^a-z0-9\s]/g,' ')+' ';
-    var GUARD=['net worth','networth','salary','income','kamai kitni','personal phone','personal email','personal number','personal details','personal address','wife','umar','his age','her age','how rich','kitna paisa','kitne paise','bank balance','mobile number','phone number','home address'];
-    for(var gi=0;gi<GUARD.length;gi++){ if(nq0.indexOf(GUARD[gi])>-1){ return (nq0.indexOf('saurabh')>-1||nq0.indexOf('founder')>-1||nq0.indexOf('owner')>-1||nq0.indexOf('malik')>-1) ? 'That is <b>personal information</b> about an individual, and it is not something this website publishes — I only share what the group itself has made public. What I can show you is his public profile as the group&rsquo;s Founder &amp; Owner.<br><a class="dova-link" href="saurabh-singh.html">Meet Saurabh Singh &rarr;</a>' : 'That detail is not published on this website, and I only share what the group itself has made public. For anything specific like this, please ask the team directly — they reply to every message.<br><a class="dova-link" href="contact.html">Contact Us &rarr;</a>'; } }
-    var nq=' '+q.toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ')+' ', best=null, bs=0;
-    KB.forEach(function(it){ var mx=0, cnt=0; it.k.forEach(function(kw){ var hit = kw.length<4 ? (nq.indexOf(' '+kw+' ')>-1) : (nq.indexOf(kw)>-1); if(hit){ cnt++; if(kw.length>mx) mx=kw.length; } }); var sc=mx+cnt*0.1; if(sc>bs){bs=sc;best=it;} });
-    if(best&&bs>=2){ var html=best.a; var L=best.links||(best.link?[{label:best.link[0],url:best.link[1]}]:[]); L.forEach(function(l){ if(l.act){ html+='<br><a class="dova-link" href="#" data-act="'+l.act+'">'+l.label+' &rarr;</a>'; } else { html+='<br><a class="dova-link" href="'+l.url+'"'+(l.url.indexOf('http')===0?' target="_blank" rel="noopener"':'')+'>'+l.label+' &rarr;</a>'; } }); return html; }
-    return 'That one is beyond what this website has shared so far, so I would rather not guess. Try a topic below — or ask our team directly, they reply to every message.<br><a class="dova-link" href="contact.html">Contact Us &rarr;</a>'; // was: 'I don&rsquo;t have that detail yet — the group is still revealing things step by step, and I only answer from what the website carries. You may find it on one of these pages, or our team can help directly.<br><a class="dova-link" href="contact.html">Contact Us &rarr;</a>';
-  }
-  function reply(q){
-    var t=addMsg('<span class="dova-typing"><i></i><i></i><i></i></span>', false);
-    setTimeout(function(){ t.innerHTML=answerFor(q); scrollDown(); }, 1800+Math.random()*900);
-  }
-  function ask(q){ q=(q||'').trim(); if(!q)return; addMsg(q.replace(/</g,'&lt;'), true); reply(q); }
-  function openPanel(){
-    panel.classList.add('open'); btn.classList.add('seen'); opened=true;
-    if(!greeted){ greeted=true; setTimeout(function(){ addMsg('Namaste. I am <b>Dova</b>, the Singh Caizen assistant. Ask me anything about the group — or tap a topic below.', false); showChips(); msgs.scrollTop=0; }, 250); }
-    setTimeout(function(){ input.focus(); }, 350);
-  }
-  function closePanel(){ panel.classList.remove('open'); opened=false; }
-  form.addEventListener('submit', function(e){ e.preventDefault(); var q=input.value; input.value=''; ask(q); });
-  panel.querySelector('.dova-x').addEventListener('click', closePanel);
-  panel.addEventListener('click', function(e){ var a=e.target.closest?e.target.closest('[data-act="subscribe"]'):null; if(!a)return; e.preventDefault(); closePanel(); var frm=document.querySelector('form.subscribe[data-newsletter]')||document.querySelector('form.t-subscribe'); if(frm){ setTimeout(function(){ frm.scrollIntoView({behavior:'smooth', block:'center'}); frm.classList.add('dova-hl'); var inp=frm.querySelector('input'); if(inp) setTimeout(function(){ inp.focus(); },650); setTimeout(function(){ frm.classList.remove('dova-hl'); },4200); },80); } });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape'&&opened) closePanel(); });
-  // Draggable launcher: drag to move, tap to open
-  var drag=null;
-  btn.addEventListener('pointerdown', function(e){ drag={x:e.clientX, y:e.clientY, moved:false, r:btn.getBoundingClientRect()}; try{ btn.setPointerCapture(e.pointerId); }catch(err){} });
-  btn.addEventListener('pointermove', function(e){ if(!drag)return; var dx=e.clientX-drag.x, dy=e.clientY-drag.y; if(Math.abs(dx)+Math.abs(dy)>7) drag.moved=true; if(drag.moved){ var nx=Math.max(6, Math.min(innerWidth-64, drag.r.left+dx)), ny=Math.max(6, Math.min(innerHeight-64, drag.r.top+dy)); btn.style.left=nx+'px'; btn.style.top=ny+'px'; btn.style.right='auto'; btn.style.bottom='auto'; } });
-  btn.addEventListener('pointerup', function(){ var wasDrag=drag&&drag.moved; drag=null; if(!wasDrag){ opened?closePanel():openPanel(); } });
-  window.__dovaAsk=function(q){ if(!opened) openPanel(); if(q) setTimeout(function(){ ask(q); }, 400); };
+  var PH='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="#101014"/><rect x="26" y="26" width="1148" height="748" fill="none" stroke="#c9a227" stroke-width="2"/><text x="600" y="376" font-family="Georgia,serif" font-size="54" fill="#f2ead2" text-anchor="middle" letter-spacing="6">SINGH CAIZEN</text><text x="600" y="440" font-family="Georgia,serif" font-size="27" fill="#c9a227" text-anchor="middle" letter-spacing="10">IMAGE COMING SOON</text></svg>');
+  function swap(im){ if(im.getAttribute('data-ph'))return; im.setAttribute('data-ph','1'); im.src=PH; }
+  function scan(){ var list=document.querySelectorAll('img'); for(var k=0;k<list.length;k++){ (function(im){ var s=im.getAttribute('src')||''; if(s.indexOf('http')!==0) return; im.setAttribute('loading','lazy'); if(im.complete&&im.naturalWidth===0) swap(im); else im.addEventListener('error',function(){ swap(im); }); })(list[k]); } }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',scan); else scan();
+  addEventListener('load',scan);
 })();
