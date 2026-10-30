@@ -889,9 +889,9 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 .done-pulse{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(201,162,39,.65);opacity:0;pointer-events:none}
 .teaser-done.show .done-pulse{animation:pulseOnce 1.05s ease-out .5s forwards}
 @keyframes pulseOnce{0%{transform:scale(.82);opacity:.6}100%{transform:scale(1.55);opacity:0}}
-.done-ring{width:88px;height:88px;display:block;transform:rotate(-90deg)}
+.done-ring{width:88px;height:88px;display:block}
 .done-ring .dr-track{fill:none;stroke:#e7dfc9;stroke-width:2.5}
-.done-ring .dr-prog{fill:none;stroke:#c9a227;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:233;stroke-dashoffset:233}
+.done-ring .dr-prog{fill:none;stroke:#c9a227;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:233;stroke-dashoffset:233;transform:rotate(-90deg);transform-box:fill-box;transform-origin:center}
 .teaser-done.show .dr-prog{animation:ringDraw .72s cubic-bezier(.6,0,.3,1) .08s forwards}
 @keyframes ringDraw{to{stroke-dashoffset:0}}
 .done-ring .dr-check{fill:none;stroke:#2e9e5b;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:52;stroke-dashoffset:52}
