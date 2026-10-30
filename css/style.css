@@ -880,3 +880,48 @@ html.theme-anim .logo-img{animation:logoFade .95s ease}
 #preloader.hide{opacity:0;visibility:hidden}
 #preloader.hide .pl-logo-img{transform:translateY(-12px);opacity:0;transition:all .5s ease}
 #preloader.hide .pl-tag{opacity:0;transition:opacity .35s ease}
+
+/* V60 — registration success choreography (gold ring draws, check follows, one soft pulse, text settles) and a quiet fold-away close, distinct from entry */
+.teaser-done.show{animation:none}
+.done-badge{position:relative;width:88px;height:88px;margin:2px auto 10px;transform:scale(.92);opacity:0}
+.teaser-done.show .done-badge{animation:badgeIn .45s cubic-bezier(.22,1,.36,1) forwards}
+@keyframes badgeIn{to{transform:scale(1);opacity:1}}
+.done-pulse{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(201,162,39,.65);opacity:0;pointer-events:none}
+.teaser-done.show .done-pulse{animation:pulseOnce 1.05s ease-out .5s forwards}
+@keyframes pulseOnce{0%{transform:scale(.82);opacity:.6}100%{transform:scale(1.55);opacity:0}}
+.done-ring{width:88px;height:88px;display:block;transform:rotate(-90deg)}
+.done-ring .dr-track{fill:none;stroke:#e7dfc9;stroke-width:2.5}
+.done-ring .dr-prog{fill:none;stroke:#c9a227;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:233;stroke-dashoffset:233}
+.teaser-done.show .dr-prog{animation:ringDraw .72s cubic-bezier(.6,0,.3,1) .08s forwards}
+@keyframes ringDraw{to{stroke-dashoffset:0}}
+.done-ring .dr-check{fill:none;stroke:#2e9e5b;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:52;stroke-dashoffset:52}
+.teaser-done.show .dr-check{animation:checkDraw .4s ease .68s forwards}
+@keyframes checkDraw{to{stroke-dashoffset:0}}
+.teaser-done.show .teaser-done-title{animation:fadeUp .55s ease .6s both}
+.teaser-done.show .teaser-done-sub{animation:fadeUp .55s ease .76s both}
+.teaser-done.show .teaser-count{animation:fadeUp .55s ease .92s both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+.teaser-card.bye{animation:v60Bye .4s cubic-bezier(.5,0,.75,0) forwards!important}
+@keyframes v60Bye{to{opacity:0;transform:translateY(-12px) scale(.962)}}
+.teaser-overlay.bye{transition:opacity .42s ease}
+
+/* V61 — preloader redesigned again on LILA's direction: stage FOLLOWS the site theme (dark theme = dark stage + white logo; light theme = light stage + dark logo), one gold sheen sweep across the logo, a gold hairline that grows beneath it */
+[data-theme="dark"] #preloader{background:radial-gradient(115% 90% at 50% 36%,#17171b 0%,#0c0c0f 58%,#060607 100%)!important}
+[data-theme="light"] #preloader{background:radial-gradient(115% 90% at 50% 36%,#fffdf6 0%,#f8f2e4 58%,#f0e7d2 100%)!important}
+#preloader::before{display:none!important}
+#preloader .pl-logo-img{animation:none!important;filter:none!important}
+#preloader .pl-w{display:none}
+#preloader .pl-d{display:block}
+[data-theme="dark"] #preloader .pl-w{display:block}
+[data-theme="dark"] #preloader .pl-d{display:none}
+.pl-logo-wrap{position:relative;display:inline-block;overflow:hidden;line-height:0;animation:plRise .9s cubic-bezier(.22,1,.36,1) .05s both}
+.pl-sheen{position:absolute;top:-12%;bottom:-12%;left:0;width:34%;background:linear-gradient(100deg,rgba(255,220,130,0),rgba(255,220,130,.38),rgba(255,220,130,0));transform:skewX(-18deg) translateX(-260%);animation:plSheen 1.05s ease .6s forwards;pointer-events:none}
+@keyframes plSheen{to{transform:skewX(-18deg) translateX(600%)}}
+.pl-rule{width:0;height:1px;background:linear-gradient(90deg,rgba(201,162,39,0),#c9a227,rgba(201,162,39,0));margin:20px auto 0;animation:plRule .85s cubic-bezier(.22,1,.36,1) .5s forwards}
+@keyframes plRule{to{width:136px}}
+#preloader .pl-tag{margin-top:14px}
+[data-theme="dark"] #preloader .pl-tag{color:#c8ab5f!important}
+[data-theme="light"] #preloader .pl-tag{color:#8a6d1f!important}
+[data-theme="dark"] #preloader .pl-bar{background:rgba(255,255,255,.14)!important}
+[data-theme="light"] #preloader .pl-bar{background:rgba(101,79,22,.16)!important}
+#preloader.hide .pl-logo-wrap{transform:scale(1.035);opacity:0;transition:all .55s ease}

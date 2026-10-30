@@ -19,7 +19,7 @@ if(btn&&nav){
  }));
 }
 // Preloader
-var __plT0=Date.now();addEventListener('load',()=>setTimeout(()=>{const p=document.getElementById('preloader');if(p)p.classList.add('hide')},Math.max(0,1250-(Date.now()-__plT0))));setTimeout(()=>{const p=document.getElementById('preloader');if(p)p.classList.add('hide')},4200);
+var __plT0=Date.now();addEventListener('load',()=>setTimeout(()=>{const p=document.getElementById('preloader');if(p)p.classList.add('hide')},Math.max(0,1650-(Date.now()-__plT0))));setTimeout(()=>{const p=document.getElementById('preloader');if(p)p.classList.add('hide')},4200);
 // Reveal on scroll
 const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');io.unobserve(e.target)}}),{threshold:.12});
 document.querySelectorAll('.reveal,.reveal-left,.reveal-right,.reveal-zoom,.img-reveal,.timeline').forEach(el=>io.observe(el));
@@ -375,7 +375,7 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
    +'<p class="teaser-copy"></p>'
    +'<form class="teaser-form"><input type="email" required placeholder="Your email address" aria-label="Your email address"><button type="submit" class="btn">Register for the Reveal</button></form>'
    +'<p class="teaser-note"></p>'
-   +'<div class="teaser-done"><svg class="teaser-check" viewBox="0 0 56 56"><circle cx="28" cy="28" r="26"/><path d="M17 29.5l7.5 7.5L39 21"/></svg>'
+   +'<div class="teaser-done"><div class="done-badge"><span class="done-pulse"></span><svg class="done-ring" viewBox="0 0 84 84"><circle class="dr-track" cx="42" cy="42" r="37"/><circle class="dr-prog" cx="42" cy="42" r="37"/><path class="dr-check" d="M28 43.5l9.5 9.5L57 32"/></svg></div>'
    +'<div class="teaser-done-title"></div><p class="teaser-done-sub"></p>'
    +'<p class="teaser-count">This popup will close in <b class="cd-num">10</b> seconds.<br>You can close it now, or simply wait to enter the site.</p></div>'
    +'<button type="button" class="teaser-enter">Enter the site →</button></div>';
@@ -415,26 +415,11 @@ document.querySelectorAll('form.t-subscribe').forEach(f=>{
       showDone('You Are Already Registered','This device has already registered for the reveal'+(em?' with <b>'+em+'</b>':'')+'.<br>Watch your inbox — the reveal will reach you first.', false);
     }
   }
-  function scatter(){
-    try{
-      var r=card.getBoundingClientRect(), o=ov.getBoundingClientRect();
-      var cx=r.left-o.left+r.width/2, cy=r.top-o.top+r.height/2;
-      for(var k=0;k<22;k++){
-        var p=document.createElement('span'); p.className='particle'+(k%3===0?' red':'');
-        var ang=Math.random()*Math.PI*2, dist=110+Math.random()*190;
-        p.style.left=cx+'px'; p.style.top=cy+'px';
-        p.style.setProperty('--dx',(Math.cos(ang)*dist)+'px');
-        p.style.setProperty('--dy',(Math.sin(ang)*dist-40)+'px');
-        ov.appendChild(p);
-        (function(el){ setTimeout(function(){ el.remove(); },1100); })(p);
-      }
-    }catch(e){}
-  }
   function closeTeaser(){
     if(!ov.classList.contains('show'))return;
-    stopCount(); scatter();
+    stopCount();
     card.classList.add('bye'); ov.classList.add('bye');
-    setTimeout(function(){ ov.classList.remove('show','bye'); card.classList.remove('bye'); if(!document.querySelector('.legal-overlay.show,.pref-overlay.show'))document.body.style.overflow=''; },1120);
+    setTimeout(function(){ ov.classList.remove('show','bye'); card.classList.remove('bye'); if(!document.querySelector('.legal-overlay.show,.pref-overlay.show'))document.body.style.overflow=''; },430);
   }
   window.__openTeaser=openTeaser;
   ov.addEventListener('click',function(e){ if(e.target===ov)closeTeaser(); });
