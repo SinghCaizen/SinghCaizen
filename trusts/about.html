@@ -9,15 +9,23 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,560;0,9..144,640;1,9..144,560&family=Inter:wght@400;550;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1">
+<link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
 <div id="preloader"><img src="../images/logo-dark.svg" alt="Singh Caizen Trusts"><div class="pl-line"></div><div class="pl-tag">Singh Caizen Trusts</div></div>
 
 <header>
-  <div class="container bar">
-    <a class="logo" href="index.html" aria-label="Singh Caizen Trusts — home"><img src="../images/logo-dark.svg" alt="Singh Caizen Trusts"></a>
-    <nav class="main">
+  <div class="masthead">
+    <div class="container mast-in">
+      <span class="mast-side">India · In Formation</span>
+      <a class="logo" href="index.html" aria-label="Singh Caizen Trusts — home"><img src="../images/logo-dark.svg" alt="Singh Caizen Trusts"></a>
+      <span class="mast-side right">A Singh Caizen Group Institution</span>
+    </div>
+  </div>
+  <div class="navbar">
+    <div class="container bar">
+      <a class="logo" href="index.html" aria-label="Singh Caizen Trusts — home"><img src="../images/logo-dark.svg" alt="Singh Caizen Trusts"></a>
+      <nav class="main">
       <a href="index.html">Home</a>
       <a href="about.html" class="on">About</a>
       <a href="focus-areas.html">Focus Areas</a>
@@ -25,9 +33,11 @@
       <a href="updates.html">Updates</a>
       <a href="contact.html">Contact</a>
       <a class="grp" href="../index.html">Singh Caizen Group ↗</a>
-    </nav>
-    <button class="burger" aria-label="Menu"><i></i><i></i><i></i></button>
+      </nav>
+      <button class="burger" aria-label="Menu"><i></i><i></i><i></i></button>
+    </div>
   </div>
+  <div class="scrollprog"></div>
 </header>
 <nav class="mnav">
   <a href="index.html">Home <small>Start</small></a>
@@ -101,11 +111,19 @@
 </section>
 
 <footer>
+  <div class="foot-giant" aria-hidden="true">SINGH CAIZEN TRUSTS<span class="sheen">SINGH CAIZEN TRUSTS</span></div>
   <div class="container">
     <div class="grid">
       <div>
         <a class="logo" href="index.html"><img src="../images/logo-white.svg" alt="Singh Caizen Trusts"></a>
         <p>The philanthropic arm of the Singh Caizen group — being established to work in health, education, livelihoods, water and the environment.</p>
+        <div class="socials">
+          <a href="https://www.instagram.com/singhcaizen" target="_blank" rel="noopener">Instagram</a>
+          <a href="https://www.facebook.com/singhcaizen" target="_blank" rel="noopener">Facebook</a>
+          <a href="https://x.com/singhcaizen" target="_blank" rel="noopener">X</a>
+          <a href="https://www.youtube.com/@singhcaizen" target="_blank" rel="noopener">YouTube</a>
+          <a href="https://www.linkedin.com/company/singhcaizen" target="_blank" rel="noopener">LinkedIn</a>
+        </div>
       </div>
       <div>
         <h4>The Trust</h4>
@@ -122,8 +140,14 @@
         <a class="fl" href="focus-areas.html#water">Water &amp; Sanitation</a>
         <a class="fl" href="focus-areas.html#environment">Environment</a>
       </div>
-      <div>
-        <h4>Singh Caizen Group</h4>
+      <div class="fnews">
+        <h4>Stay Informed</h4>
+        <p>Trust announcements and, in time, annual reports — by email. Nothing else, ever.</p>
+        <form class="fnews-form" novalidate>
+          <div class="row"><input type="email" placeholder="Enter your email ID" aria-label="Email for Trust updates"><button type="submit">Join</button></div>
+          <p class="fn-status"></p>
+        </form>
+        <h4 style="margin-top:26px">Singh Caizen Group</h4>
         <a class="fl" href="../index.html">Group Website</a>
         <a class="fl" href="../businesses.html">Businesses</a>
         <a class="fl" href="../news.html">Newsroom</a>
@@ -136,6 +160,7 @@
     </div>
   </div>
 </footer>
-<script src="js/main.js?v=1"></script>
+<button class="backtop" aria-label="Back to top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+<script src="js/main.js?v=2"></script>
 </body>
 </html>

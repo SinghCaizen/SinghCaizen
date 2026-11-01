@@ -53,3 +53,34 @@
 })();
 // Year
 (function(){ var y=document.getElementById('yr'); if(y) y.textContent=new Date().getFullYear(); })();
+
+// Scroll progress bar + back-to-top
+(function(){
+  var bar=document.querySelector('.scrollprog'), top=document.querySelector('.backtop');
+  function on(){
+    var h=document.documentElement, max=h.scrollHeight-h.clientHeight, y=window.scrollY||0;
+    if(bar) bar.style.width=(max>0 ? (y/max*100) : 0)+'%';
+    if(top) top.classList.toggle('show', y>600);
+  }
+  addEventListener('scroll', on, {passive:true}); on();
+  if(top) top.addEventListener('click', function(){ window.scrollTo({top:0, behavior:'smooth'}); });
+})();
+// Footer newsletter (Brevo — same Website Subscribers list as the group site)
+(function(){
+  var f=document.querySelector('.fnews-form'); if(!f) return;
+  var input=f.querySelector('input'), st=f.querySelector('.fn-status');
+  var U='https://00357f29.sibforms.com/serve/MUIFACuWuttvtkJY-Vo4EceLGDDTrsadnnIOchj3cRyghep51k02r1MpHmPAeK27cPoUIG4WIu3uaxLNmMLbSRN2RducMtujyygnCp26XOE5MgSrKh65YQwBSyrK78YmbWmGu0716ixdF_gYUGV125y6hV6F3K2rmARka4eqSe6wkThzaYsk2Fa_TuSu3utYgxwIabtg5K_jKRn1zQ==';
+  function reg(){ try{ return JSON.parse(localStorage.getItem('sc-reg-emails')||'[]'); }catch(e){ return []; } }
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    var em=(input.value||'').trim().toLowerCase();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)){ st.textContent='Please enter a valid email address.'; return; }
+    if(reg().indexOf(em)>-1){ st.textContent='This email is already on the list — you are already registered.'; return; }
+    st.textContent='Joining…';
+    var fd=new FormData(); fd.append('EMAIL', em); fd.append('locale','en'); fd.append('email_address_check','');
+    fetch(U, {method:'POST', body:fd, mode:'no-cors'}).then(function(){
+      var r=reg(); r.push(em); try{ localStorage.setItem('sc-reg-emails', JSON.stringify(r)); }catch(e){}
+      input.value=''; st.textContent='Done — please confirm from the email we have just sent you.';
+    }).catch(function(){ st.textContent='Could not join right now — please try again.'; });
+  });
+})();
