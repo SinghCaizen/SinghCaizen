@@ -403,3 +403,14 @@ header nav.main a.grp,.hdr-ready header nav.main a.grp{background:linear-gradien
 @keyframes grpSlide{from{background-position:0 0}to{background-position:-220% 0}}
 header nav.main a.grp::before{background:linear-gradient(105deg,transparent 28%,rgba(255,255,255,.65) 50%,transparent 72%);animation-duration:3s}
 header nav.main a.grp:hover{animation:grpSlide 5s linear infinite;transform:translateY(-2px) scale(1.03)}
+
+/* === v11: slower, longer entrance cascade (starts mid-fade, runs ~2.7s) === */
+@keyframes hdrIn4{from{opacity:0;transform:translateY(-30px)}to{opacity:1;transform:none}}
+.hdr-ready .mast-socials a{animation:hdrIn4 1.05s cubic-bezier(.22,1,.36,1) backwards}
+.hdr-ready .mast-socials a:nth-child(2){animation-delay:.16s}.hdr-ready .mast-socials a:nth-child(3){animation-delay:.32s}.hdr-ready .mast-socials a:nth-child(4){animation-delay:.48s}.hdr-ready .mast-socials a:nth-child(5){animation-delay:.64s}
+.hdr-ready .masthead .logo{animation:logoIn 1.15s cubic-bezier(.22,1,.36,1) .3s backwards}
+.hdr-ready .mast-side.right{animation:hdrIn4 1.05s ease .8s backwards}
+.hdr-ready header nav.main a{animation:hdrIn4 1s cubic-bezier(.22,1,.36,1) backwards;animation-delay:.55s}
+.hdr-ready header nav.main a:nth-child(2){animation-delay:.71s}.hdr-ready header nav.main a:nth-child(3){animation-delay:.87s}.hdr-ready header nav.main a:nth-child(4){animation-delay:1.03s}.hdr-ready header nav.main a:nth-child(5){animation-delay:1.19s}.hdr-ready header nav.main a:nth-child(6){animation-delay:1.35s}.hdr-ready header nav.main a:nth-child(7){animation-delay:1.51s}
+.hdr-ready .rise{animation:plUp 1.2s cubic-bezier(.22,1,.36,1) backwards}
+.hdr-ready .rise.d1{animation-delay:.2s}.hdr-ready .rise.d2{animation-delay:.45s}.hdr-ready .rise.d3{animation-delay:.7s}
