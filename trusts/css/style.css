@@ -385,3 +385,21 @@ header nav.main a.grp{animation:grpGlow 3.4s ease-in-out infinite}
 header nav.main a.grp::before{background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);animation-duration:3.4s}
 header nav.main a.grp:hover{animation:none;transform:translateY(-2px) scale(1.03)}
 .hdr-ready header nav.main a.grp{animation:grpGlow 3.4s ease-in-out infinite}
+
+/* === v10: unmistakable header motion === */
+@keyframes hdrIn3{from{opacity:0;transform:translateY(-26px)}to{opacity:1;transform:none}}
+.hdr-ready .mast-socials a{animation:hdrIn3 .85s cubic-bezier(.22,1,.36,1) backwards}
+.hdr-ready .mast-socials a:nth-child(2){animation-delay:.1s}.hdr-ready .mast-socials a:nth-child(3){animation-delay:.2s}.hdr-ready .mast-socials a:nth-child(4){animation-delay:.3s}.hdr-ready .mast-socials a:nth-child(5){animation-delay:.4s}
+.hdr-ready .masthead .logo{animation:logoIn 1s cubic-bezier(.22,1,.36,1) .18s backwards}
+.hdr-ready .mast-side.right{animation:hdrIn3 .85s ease .5s backwards}
+.hdr-ready header nav.main a{animation:hdrIn3 .8s cubic-bezier(.22,1,.36,1) backwards}
+.hdr-ready header nav.main a:nth-child(2){animation-delay:.62s}.hdr-ready header nav.main a:nth-child(3){animation-delay:.74s}.hdr-ready header nav.main a:nth-child(4){animation-delay:.86s}.hdr-ready header nav.main a:nth-child(5){animation-delay:.98s}.hdr-ready header nav.main a:nth-child(6){animation-delay:1.1s}.hdr-ready header nav.main a:nth-child(7){animation-delay:1.22s}
+/* hero words join the same entrance, after the preloader */
+.rise{animation:none}
+.hdr-ready .rise{animation:plUp 1.05s cubic-bezier(.22,1,.36,1) backwards}
+.hdr-ready .rise.d1{animation-delay:.15s}.hdr-ready .rise.d2{animation-delay:.3s}.hdr-ready .rise.d3{animation-delay:.45s}
+/* Group button: living gradient + brisk bright sheen */
+header nav.main a.grp,.hdr-ready header nav.main a.grp{background:linear-gradient(110deg,#7e1a20,#a92c34 25%,#7e1a20 50%,#a92c34 75%,#7e1a20);background-size:220% 100%;animation:grpSlide 5s linear infinite}
+@keyframes grpSlide{from{background-position:0 0}to{background-position:-220% 0}}
+header nav.main a.grp::before{background:linear-gradient(105deg,transparent 28%,rgba(255,255,255,.65) 50%,transparent 72%);animation-duration:3s}
+header nav.main a.grp:hover{animation:grpSlide 5s linear infinite;transform:translateY(-2px) scale(1.03)}
