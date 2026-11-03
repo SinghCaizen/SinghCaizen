@@ -362,3 +362,26 @@ footer .base{border-top-color:rgba(126,26,32,.22);color:#a3766a}
   header nav.main a.grp::before{animation:none}
   .mast-socials a,.masthead .logo,.mast-side.right,header nav.main a{animation:none}
 }
+
+/* === v9: header animation that is actually seen === */
+/* load-in now starts only when the preloader lifts (JS adds .hdr-ready) */
+.mast-socials a,.masthead .logo,.mast-side.right,header nav.main a{animation:none}
+@keyframes hdrIn2{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:none}}
+@keyframes logoIn{from{opacity:0;transform:translateY(-16px) scale(.93)}to{opacity:1;transform:none}}
+.hdr-ready .mast-socials a{animation:hdrIn2 .6s cubic-bezier(.22,1,.36,1) backwards}
+.hdr-ready .mast-socials a:nth-child(2){animation-delay:.07s}.hdr-ready .mast-socials a:nth-child(3){animation-delay:.14s}.hdr-ready .mast-socials a:nth-child(4){animation-delay:.21s}.hdr-ready .mast-socials a:nth-child(5){animation-delay:.28s}
+.hdr-ready .masthead .logo{animation:logoIn .8s cubic-bezier(.22,1,.36,1) .1s backwards}
+.hdr-ready .mast-side.right{animation:hdrIn2 .6s ease .3s backwards}
+.hdr-ready header nav.main a{animation:hdrIn2 .55s cubic-bezier(.22,1,.36,1) backwards}
+.hdr-ready header nav.main a:nth-child(2){animation-delay:.06s}.hdr-ready header nav.main a:nth-child(3){animation-delay:.12s}.hdr-ready header nav.main a:nth-child(4){animation-delay:.18s}.hdr-ready header nav.main a:nth-child(5){animation-delay:.24s}.hdr-ready header nav.main a:nth-child(6){animation-delay:.3s}.hdr-ready header nav.main a:nth-child(7){animation-delay:.36s}
+/* rolling-word hover on nav points */
+header nav.main a{overflow:hidden}
+header nav.main a .rl{display:inline-block;position:relative;transition:transform .38s cubic-bezier(.22,1,.36,1)}
+header nav.main a .rl::after{content:attr(data-t);position:absolute;left:0;top:108%;color:var(--gold2);font-weight:600}
+header nav.main a:hover .rl,header nav.main a:focus-visible .rl{transform:translateY(-108%)}
+/* Group button: continuous glow + faster, brighter sheen */
+header nav.main a.grp{animation:grpGlow 3.4s ease-in-out infinite}
+@keyframes grpGlow{0%,100%{box-shadow:0 8px 20px rgba(103,18,24,.30)}50%{box-shadow:0 10px 28px rgba(189,148,38,.50)}}
+header nav.main a.grp::before{background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);animation-duration:3.4s}
+header nav.main a.grp:hover{animation:none;transform:translateY(-2px) scale(1.03)}
+.hdr-ready header nav.main a.grp{animation:grpGlow 3.4s ease-in-out infinite}

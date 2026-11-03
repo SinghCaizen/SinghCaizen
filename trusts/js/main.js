@@ -2,7 +2,7 @@
 // Preloader
 (function(){
   var t0=Date.now();
-  function hide(){ var p=document.getElementById('preloader'); if(p) p.classList.add('hide'); }
+  function hide(){ var p=document.getElementById('preloader'); if(p) p.classList.add('hide'); document.documentElement.classList.add('hdr-ready'); }
   addEventListener('load',function(){ setTimeout(hide, Math.max(0, 950-(Date.now()-t0))); });
   setTimeout(hide, 3800);
 })();
