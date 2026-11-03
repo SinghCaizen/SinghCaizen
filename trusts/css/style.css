@@ -309,3 +309,7 @@ a.fcard:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .fcard:hover .go .go-t,.fcard:focus-visible .go .go-t{max-width:72px;opacity:1;margin-right:8px}
 .fcard:hover .go svg{transform:translateX(2px)}
 @keyframes goPulse{0%{box-shadow:0 0 0 0 rgba(189,148,38,.38)}70%{box-shadow:0 0 0 13px rgba(189,148,38,0)}100%{box-shadow:0 0 0 0 rgba(189,148,38,0)}}
+
+/* v5.1: tag steps aside while the Explore pill is open */
+.fcard .tag{transition:opacity .3s}
+.fcard:hover .tag,.fcard:focus-visible .tag{opacity:0}
