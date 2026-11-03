@@ -200,7 +200,7 @@ body.menu-open .mnav{transform:none}
 
 /* Footer */
 footer{background:var(--green2);color:#d9d2b4;padding:0;overflow:hidden;position:relative}
-.foot-giant{font-family:'Fraunces',Georgia,serif;font-weight:640;font-size:clamp(40px,8.6vw,118px);line-height:1.05;text-align:center;letter-spacing:.05em;padding:52px 2% 4px;color:transparent;-webkit-text-stroke:1.5px rgba(227,199,102,.38);white-space:nowrap;position:relative;user-select:none}
+.foot-giant{font-family:'Fraunces',Georgia,serif;font-weight:640;font-size:clamp(28px,4.4vw,54px);line-height:1.1;text-align:center;letter-spacing:.14em;padding:36px 2% 2px;color:transparent;-webkit-text-stroke:1.5px rgba(227,199,102,.38);white-space:nowrap;position:relative;user-select:none}
 .foot-giant .sheen{position:absolute;inset:0;padding:inherit;font:inherit;letter-spacing:inherit;text-align:center;color:transparent;background:linear-gradient(100deg,transparent 32%,rgba(227,199,102,.5) 50%,transparent 68%);background-size:230% 100%;-webkit-background-clip:text;background-clip:text;animation:giantSheen 7.5s ease-in-out infinite}
 @keyframes giantSheen{0%{background-position:125% 0}55%,100%{background-position:-125% 0}}
 footer .grid{display:grid;grid-template-columns:1.25fr .8fr .9fr 1.3fr;gap:44px;padding:38px 0 54px}
