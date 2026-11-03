@@ -25,7 +25,7 @@
 })();
 // Image fallback: any remote photo that fails becomes a branded placeholder
 (function(){
-  var PH='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="#123f2a"/><rect x="26" y="26" width="1148" height="748" fill="none" stroke="#c9a227" stroke-width="2"/><text x="600" y="376" font-family="Georgia,serif" font-size="50" fill="#f3eedd" text-anchor="middle" letter-spacing="5">SINGH CAIZEN TRUSTS</text><text x="600" y="438" font-family="Georgia,serif" font-size="26" fill="#c9a227" text-anchor="middle" letter-spacing="9">IMAGE COMING SOON</text></svg>');
+  var PH='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><rect width="1200" height="800" fill="#7e1a20"/><rect x="26" y="26" width="1148" height="748" fill="none" stroke="#c9a227" stroke-width="2"/><text x="600" y="376" font-family="Georgia,serif" font-size="50" fill="#f3eedd" text-anchor="middle" letter-spacing="5">SINGH CAIZEN TRUSTS</text><text x="600" y="438" font-family="Georgia,serif" font-size="26" fill="#c9a227" text-anchor="middle" letter-spacing="9">IMAGE COMING SOON</text></svg>');
   function swap(im){ if(im.getAttribute('data-ph')) return; im.setAttribute('data-ph','1'); im.src=PH; }
   function scan(){ document.querySelectorAll('img').forEach(function(im){ var s=im.getAttribute('src')||''; if(s.indexOf('http')!==0) return; if(im.complete && im.naturalWidth===0) swap(im); else im.addEventListener('error', function(){ swap(im); }); }); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', scan); else scan();

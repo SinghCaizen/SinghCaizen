@@ -1,7 +1,7 @@
 /* Singh Caizen Trusts — design system: warm ivory, deep green, gold. Editorial serif (Fraunces) + Inter. */
 :root{
   --bg:#faf6ec; --bg2:#f3ecd9; --panel:#fffdf7; --ink:#221d12; --muted:#5e563e;
-  --green:#123f2a; --green2:#0b2c1d; --gold:#bd9426; --gold2:#97751d; --line:#dbcd9f;
+  --green:#7e1a20; --green2:#5c1116; --gold:#bd9426; --gold2:#97751d; --line:#dbcd9f;
   --shadow:0 24px 60px rgba(24,32,20,.14); --r:14px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -16,14 +16,14 @@ h1,h2,h3,.serif{font-family:'Fraunces',Georgia,'Times New Roman',serif;font-weig
 .eyebrow.center{justify-content:center}
 .eyebrow.center::after{content:'';width:38px;height:2px;background:var(--gold)}
 .section{padding:96px 0}
-.section.alt{background:#f2e7c6}
+.section.alt{background:#f9e8e1}
 .section.green{background:var(--green);color:#f3eedd}
 .section.green .eyebrow{color:#e3c766}
 .section-title{font-size:clamp(30px,4.2vw,46px);margin:14px 0 16px}
 .section-lead{font-size:18px;color:var(--muted);max-width:720px}
 .section.green .section-lead{color:#cfc9ae}
 .btn{display:inline-flex;align-items:center;gap:10px;background:var(--green);color:#fdf9ec;font-weight:600;font-size:15.5px;padding:14px 28px;border-radius:999px;border:1.5px solid var(--green);transition:.3s;cursor:pointer}
-.btn:hover{background:var(--green2);transform:translateY(-2px);box-shadow:0 14px 30px rgba(11,44,29,.28)}
+.btn:hover{background:var(--green2);transform:translateY(-2px);box-shadow:0 14px 30px rgba(60,12,16,.28)}
 .btn.gold{background:var(--gold);border-color:var(--gold);color:#241c04}
 .btn.gold:hover{background:var(--gold2);border-color:var(--gold2)}
 .btn.ghost{background:transparent;color:var(--green);border-color:var(--green)}
@@ -82,7 +82,7 @@ body.menu-open .mnav{transform:none}
 .hero .bg{position:absolute;inset:0}
 .hero .bg img{width:100%;height:100%;object-fit:cover;animation:kb 16s ease-in-out infinite alternate}
 @keyframes kb{from{transform:scale(1.02)}to{transform:scale(1.12)}}
-.hero .bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(9,32,20,.42) 0%,rgba(9,32,20,.18) 40%,rgba(9,32,20,.82) 100%)}
+.hero .bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(43,9,12,.42) 0%,rgba(43,9,12,.18) 40%,rgba(43,9,12,.82) 100%)}
 .hero .inner{position:relative;z-index:2;padding:205px 0 90px;width:min(1180px,92%);margin:0 auto}
 .hero .eyebrow{color:#e3c766}
 .hero h1{font-size:clamp(42px,6.4vw,76px);max-width:840px;margin:18px 0 20px}
@@ -149,7 +149,7 @@ body.menu-open .mnav{transform:none}
 .band{position:relative;padding:130px 0;color:#fdf9ec;overflow:hidden}
 .band .bg{position:absolute;inset:0}
 .band .bg img{width:100%;height:100%;object-fit:cover}
-.band .bg::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(9,32,20,.86),rgba(9,32,20,.35))}
+.band .bg::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(43,9,12,.86),rgba(43,9,12,.35))}
 .band .inner{position:relative;z-index:2}
 .band h2{font-size:clamp(30px,4.4vw,50px);max-width:720px}
 .band p{margin-top:14px;color:#e9e2c8;max-width:560px;font-size:17.5px}
@@ -223,7 +223,7 @@ footer a.fl:hover{color:#fff;transform:translateX(4px)}
 .fnews button:hover{background:#e3c766}
 .fnews .fn-status{font-size:13.5px;margin-top:10px;min-height:19px;color:#e3c766;max-width:none}
 footer .base{border-top:1px solid rgba(217,210,180,.16);padding:22px 0;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13.5px;color:#a89f7d}
-.backtop{position:fixed;right:22px;bottom:22px;z-index:300;width:50px;height:50px;border-radius:50%;background:var(--green);color:#e3c766;border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;visibility:hidden;transform:translateY(14px);transition:.4s;box-shadow:0 14px 30px rgba(11,44,29,.35)}
+.backtop{position:fixed;right:22px;bottom:22px;z-index:300;width:50px;height:50px;border-radius:50%;background:var(--green);color:#e3c766;border:1.5px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;visibility:hidden;transform:translateY(14px);transition:.4s;box-shadow:0 14px 30px rgba(60,12,16,.35)}
 .backtop.show{opacity:1;visibility:visible;transform:none}
 .backtop:hover{background:var(--gold);color:#241c04;transform:translateY(-3px)}
 .backtop svg{width:20px;height:20px}
@@ -312,3 +312,53 @@ a.fcard:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 /* v5.1: tag steps aside while the Explore pill is open */
 .fcard .tag{transition:opacity .3s}
 .fcard:hover .tag,.fcard:focus-visible .tag{opacity:0}
+
+/* === v8: red family, header animation, light-red footer, phone fixes === */
+header nav.main a.grp{background:linear-gradient(135deg,#931f27,#671218);color:#fdf9ec;border:1.5px solid #671218;position:relative;overflow:hidden;box-shadow:0 8px 20px rgba(103,18,24,.30);transition:.35s}
+header nav.main a.grp:hover{transform:translateY(-2px);box-shadow:0 14px 28px rgba(103,18,24,.42);color:#fff}
+header nav.main a.grp::before{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);transform:translateX(-130%);animation:grpSheen 4.6s ease-in-out infinite;pointer-events:none}
+@keyframes grpSheen{0%,55%{transform:translateX(-130%)}85%,100%{transform:translateX(130%)}}
+@keyframes hdrIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+.mast-socials a{animation:hdrIn .55s cubic-bezier(.22,1,.36,1) backwards}
+.mast-socials a:nth-child(2){animation-delay:.06s}.mast-socials a:nth-child(3){animation-delay:.12s}.mast-socials a:nth-child(4){animation-delay:.18s}.mast-socials a:nth-child(5){animation-delay:.24s}
+.masthead .logo{animation:hdrIn .7s cubic-bezier(.22,1,.36,1) .08s backwards}
+.mast-side.right{animation:hdrIn .55s ease .22s backwards}
+header nav.main a{animation:hdrIn .5s cubic-bezier(.22,1,.36,1) backwards}
+header nav.main a:nth-child(2){animation-delay:.05s}header nav.main a:nth-child(3){animation-delay:.1s}header nav.main a:nth-child(4){animation-delay:.15s}header nav.main a:nth-child(5){animation-delay:.2s}header nav.main a:nth-child(6){animation-delay:.25s}header nav.main a:nth-child(7){animation-delay:.3s}
+header nav.main a::after{transition:width .38s cubic-bezier(.22,1,.36,1)}
+.btn{position:relative;overflow:hidden}
+.btn::before{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.35) 50%,transparent 60%);transform:translateX(-130%);transition:transform .8s ease;pointer-events:none}
+.btn:hover::before{transform:translateX(130%)}
+footer{background:#f8e2da;color:#5a2a24}
+.foot-giant{-webkit-text-stroke:1.5px rgba(126,26,32,.42)}
+.foot-giant .sheen{background:linear-gradient(100deg,transparent 32%,rgba(126,26,32,.32) 50%,transparent 68%);background-size:230% 100%;-webkit-background-clip:text;background-clip:text}
+footer p{color:#7c4a41}
+footer h4{color:#7e1a20}
+footer a.fl{color:#5a2a24}
+footer a.fl:hover{color:#7e1a20}
+.socials a{border-color:rgba(126,26,32,.45)}
+.socials a svg{fill:#7e1a20}
+.socials a:hover{background:#7e1a20;border-color:#7e1a20;box-shadow:0 12px 24px rgba(126,26,32,.30)}
+.socials a:hover svg{fill:#fdf9ec}
+.fnews .row{border-color:rgba(126,26,32,.42);background:rgba(255,255,255,.45)}
+.fnews .row:focus-within{border-color:#7e1a20;box-shadow:0 0 0 4px rgba(126,26,32,.14)}
+.fnews input{color:#3d1a16}
+.fnews input::placeholder{color:#a97a6e}
+.fnews button{background:#7e1a20;color:#fdf9ec}
+.fnews button:hover{background:#671218}
+.fnews .fn-status{color:#7e1a20}
+footer .base{border-top-color:rgba(126,26,32,.22);color:#a3766a}
+@media(max-width:560px){
+  .foot-giant{font-size:22px;letter-spacing:.06em;padding:28px 1% 0}
+  .backtop{right:16px;bottom:16px;width:46px;height:46px}
+  .band{padding:84px 0}
+  .fcard .ph{height:180px}
+  .mnav a{font-size:26px}
+  .hero .inner{padding:132px 0 64px}
+  .cform input,.cform textarea,.cform select,.fnews input{font-size:16px}
+  footer .grid{gap:30px;padding:30px 0 40px}
+}
+@media (prefers-reduced-motion: reduce){
+  header nav.main a.grp::before{animation:none}
+  .mast-socials a,.masthead .logo,.mast-side.right,header nav.main a{animation:none}
+}
