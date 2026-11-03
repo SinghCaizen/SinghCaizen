@@ -1,7 +1,7 @@
 /* Singh Caizen Trusts — design system: warm ivory, deep green, gold. Editorial serif (Fraunces) + Inter. */
 :root{
-  --bg:#faf6ec; --bg2:#f3ecd9; --panel:#fffdf7; --ink:#221d12; --muted:#6f6650;
-  --green:#123f2a; --green2:#0b2c1d; --gold:#c9a227; --gold2:#a9861d; --line:#e4d9bd;
+  --bg:#faf6ec; --bg2:#f3ecd9; --panel:#fffdf7; --ink:#221d12; --muted:#5e563e;
+  --green:#123f2a; --green2:#0b2c1d; --gold:#bd9426; --gold2:#97751d; --line:#dbcd9f;
   --shadow:0 24px 60px rgba(24,32,20,.14); --r:14px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -16,7 +16,7 @@ h1,h2,h3,.serif{font-family:'Fraunces',Georgia,'Times New Roman',serif;font-weig
 .eyebrow.center{justify-content:center}
 .eyebrow.center::after{content:'';width:38px;height:2px;background:var(--gold)}
 .section{padding:96px 0}
-.section.alt{background:var(--bg2)}
+.section.alt{background:#f2e7c6}
 .section.green{background:var(--green);color:#f3eedd}
 .section.green .eyebrow{color:#e3c766}
 .section-title{font-size:clamp(30px,4.2vw,46px);margin:14px 0 16px}
@@ -112,7 +112,7 @@ body.menu-open .mnav{transform:none}
 
 /* Focus cards */
 .cards{display:grid;grid-template-columns:repeat(6,1fr);gap:22px;margin-top:46px}
-.fcard{grid-column:span 2;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:.4s;display:flex;flex-direction:column}
+.fcard{grid-column:span 2;background:#fffaf0;box-shadow:0 8px 26px rgba(24,32,20,.07);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:.4s;display:flex;flex-direction:column}
 .fcard:nth-child(4){grid-column:2/span 2}
 .fcard:hover{transform:translateY(-7px);box-shadow:var(--shadow);border-color:#d8c78f}
 .fcard .ph{height:190px;overflow:hidden}
@@ -121,7 +121,7 @@ body.menu-open .mnav{transform:none}
 .fcard .bd{padding:24px 24px 26px;display:flex;flex-direction:column;gap:9px;flex:1}
 .fcard h3{font-size:22px;color:var(--green)}
 .fcard p{font-size:15px;color:var(--muted);flex:1}
-.tag{align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold2);border:1px solid #dcc987;padding:5px 10px;border-radius:999px}
+.tag{align-self:flex-start;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold2);background:#faf0d2;border:1px solid #cdb26a;padding:5px 10px;border-radius:999px}
 
 /* Marquee */
 .marquee{background:var(--green);color:#e9e2c8;overflow:hidden;padding:20px 0;border-block:1px solid var(--green2)}
@@ -209,9 +209,11 @@ footer p{font-size:14.5px;color:#b7af8f;margin-top:16px;max-width:320px}
 footer h4{font-size:13px;letter-spacing:.22em;text-transform:uppercase;color:#e3c766;margin-bottom:18px;font-family:'Inter',sans-serif;font-weight:700}
 footer a.fl{display:block;padding:5px 0;font-size:15px;color:#d9d2b4;transition:.2s}
 footer a.fl:hover{color:#fff;transform:translateX(4px)}
-.socials{display:flex;gap:9px;flex-wrap:wrap;margin-top:22px}
-.socials a{font-size:12.5px;font-weight:600;letter-spacing:.06em;border:1px solid rgba(217,210,180,.35);padding:8px 14px;border-radius:999px;color:#d9d2b4;transition:.3s}
-.socials a:hover{background:var(--gold);border-color:var(--gold);color:#241c04;transform:translateY(-2px)}
+.socials{display:flex;gap:11px;flex-wrap:wrap;margin-top:22px}
+.socials a{width:45px;height:45px;border-radius:50%;border:1.5px solid rgba(217,210,180,.42);display:flex;align-items:center;justify-content:center;transition:.32s}
+.socials a svg{width:19px;height:19px;fill:#e6ddba;transition:.32s}
+.socials a:hover{background:var(--gold);border-color:var(--gold);transform:translateY(-3px);box-shadow:0 12px 24px rgba(0,0,0,.3)}
+.socials a:hover svg{fill:#241c04}
 .fnews p{margin-top:0}
 .fnews .row{display:flex;border:1.5px solid rgba(217,210,180,.4);border-radius:999px;overflow:hidden;margin-top:14px;background:rgba(255,255,255,.04);transition:.25s}
 .fnews .row:focus-within{border-color:var(--gold);box-shadow:0 0 0 4px rgba(201,162,39,.18)}
@@ -285,3 +287,17 @@ footer .base{border-top:1px solid rgba(217,210,180,.16);padding:22px 0;display:f
   .foot-giant .sheen{animation:none}
   .rv{transition:none;opacity:1;transform:none}
 }
+
+/* === v3: masthead socials, bold card arrow, link cards === */
+.mast-socials{display:flex;gap:8px;flex:1;align-items:center}
+.mast-socials a{width:34px;height:34px;border-radius:50%;border:1.5px solid #c9b98d;display:flex;align-items:center;justify-content:center;transition:.3s;background:rgba(255,253,247,.6)}
+.mast-socials a svg{width:15px;height:15px;fill:var(--green);transition:.3s}
+.mast-socials a:hover{background:var(--green);border-color:var(--green);transform:translateY(-2px)}
+.mast-socials a:hover svg{fill:#f3eedd}
+a.fcard{color:inherit;cursor:pointer;transition:transform .45s cubic-bezier(.22,1,.36,1),box-shadow .45s,border-color .45s}
+a.fcard:active{transform:translateY(-2px) scale(.995)}
+a.fcard:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.fcard .go{width:46px;height:46px;background:#fffdf7;border:2px solid var(--gold);color:var(--green);opacity:1;transform:none;box-shadow:0 8px 20px rgba(24,32,20,.14)}
+.fcard .go svg{width:21px;height:21px;transition:transform .35s cubic-bezier(.22,1,.36,1)}
+.fcard:hover .go{background:var(--gold);color:#241c04;box-shadow:0 12px 26px rgba(151,117,29,.45)}
+.fcard:hover .go svg{transform:translateX(3.5px)}
