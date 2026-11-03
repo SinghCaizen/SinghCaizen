@@ -54,12 +54,11 @@
 // Year
 (function(){ var y=document.getElementById('yr'); if(y) y.textContent=new Date().getFullYear(); })();
 
-// Scroll progress bar + back-to-top
+// Back-to-top
 (function(){
-  var bar=document.querySelector('.scrollprog'), top=document.querySelector('.backtop');
+  var top=document.querySelector('.backtop');
   function on(){
-    var h=document.documentElement, max=h.scrollHeight-h.clientHeight, y=window.scrollY||0;
-    if(bar) bar.style.width=(max>0 ? (y/max*100) : 0)+'%';
+    var y=window.scrollY||0;
     if(top) top.classList.toggle('show', y>600);
   }
   addEventListener('scroll', on, {passive:true}); on();

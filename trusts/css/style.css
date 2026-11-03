@@ -66,7 +66,6 @@ header.scrolled .masthead{max-height:0;opacity:0}
 header.scrolled .navbar{border-color:transparent;background:transparent}
 header.scrolled .bar .logo{width:132px;opacity:1;transform:none}
 header.scrolled nav.main{margin:0 0 0 auto}
-.scrollprog{position:absolute;left:0;bottom:0;height:3px;width:0;background:linear-gradient(90deg,var(--gold),#e3c766);z-index:6}
 .burger{display:none;margin-left:auto;background:none;border:0;cursor:pointer;width:44px;height:44px;position:relative;flex:none}
 .burger i{position:absolute;left:10px;right:10px;height:2px;background:var(--ink);transition:.3s}
 .burger i:nth-child(1){top:15px}.burger i:nth-child(2){top:22px}.burger i:nth-child(3){top:29px}
