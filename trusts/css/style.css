@@ -414,3 +414,12 @@ header nav.main a.grp:hover{animation:grpSlide 5s linear infinite;transform:tran
 .hdr-ready header nav.main a:nth-child(2){animation-delay:.71s}.hdr-ready header nav.main a:nth-child(3){animation-delay:.87s}.hdr-ready header nav.main a:nth-child(4){animation-delay:1.03s}.hdr-ready header nav.main a:nth-child(5){animation-delay:1.19s}.hdr-ready header nav.main a:nth-child(6){animation-delay:1.35s}.hdr-ready header nav.main a:nth-child(7){animation-delay:1.51s}
 .hdr-ready .rise{animation:plUp 1.2s cubic-bezier(.22,1,.36,1) backwards}
 .hdr-ready .rise.d1{animation-delay:.2s}.hdr-ready .rise.d2{animation-delay:.45s}.hdr-ready .rise.d3{animation-delay:.7s}
+
+/* === v12: hero film slider === */
+.hero .bg video.hv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 1.6s ease;pointer-events:none}
+.hero .bg video.hv.on{opacity:1}
+.hero-dots{position:absolute;right:4%;bottom:34px;z-index:3;display:flex;gap:9px}
+.hdot{width:11px;height:11px;border-radius:50%;border:2px solid rgba(253,249,236,.85);background:transparent;cursor:pointer;padding:0;transition:.35s}
+.hdot:hover{background:rgba(253,249,236,.5)}
+.hdot.on{background:var(--gold);border-color:var(--gold);transform:scale(1.2)}
+@media(max-width:560px){.hero-dots{bottom:22px;right:5%}}

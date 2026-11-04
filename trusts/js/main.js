@@ -83,3 +83,44 @@
     }).catch(function(){ st.textContent='Could not join right now — please try again.'; });
   });
 })();
+
+// Hero film slider: slow-motion crossfade between films, photo stays as fallback
+(function(){
+  var vids=Array.prototype.slice.call(document.querySelectorAll('.hero .bg video.hv'));
+  if(!vids.length) return;
+  var dots=Array.prototype.slice.call(document.querySelectorAll('.hdot'));
+  var reduced=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var dead=[], cur=-1, timer=null;
+  vids.forEach(function(v,i){
+    v.playbackRate=0.55;
+    v.addEventListener('error', function(){ if(dead.indexOf(i)<0) dead.push(i); if(i===cur) next(); });
+  });
+  function alive(i){ return dead.indexOf(i)<0; }
+  function show(i){
+    if(!alive(i)) return;
+    var v=vids[i];
+    if(!v.getAttribute('src') && v.dataset.src){ v.src=v.dataset.src; v.load(); }
+    v.playbackRate=0.55;
+    var p=v.play(); if(p && p.catch) p.catch(function(){});
+    vids.forEach(function(o,j){ o.classList.toggle('on', j===i); if(j!==i && !o.paused) o.pause(); });
+    dots.forEach(function(d,j){ d.classList.toggle('on', j===i); });
+    cur=i;
+    clearTimeout(timer);
+    timer=setTimeout(next, 9000);
+    // preload the following film quietly
+    var n=(i+1)%vids.length, nv=vids[n];
+    if(alive(n) && !nv.getAttribute('src') && nv.dataset.src){ nv.src=nv.dataset.src; nv.load(); }
+  }
+  function next(){
+    if(dead.length>=vids.length) return;
+    var n=cur;
+    do{ n=(n+1)%vids.length; }while(!alive(n) && n!==cur);
+    if(alive(n)) show(n);
+  }
+  dots.forEach(function(d,i){ d.addEventListener('click', function(){ if(alive(i)){ clearTimeout(timer); show(i); } }); });
+  document.addEventListener('visibilitychange', function(){
+    if(document.hidden){ vids.forEach(function(v){ if(!v.paused) v.pause(); }); clearTimeout(timer); }
+    else if(cur>=0 && !reduced){ show(cur); }
+  });
+  if(!reduced) show(0);
+})();
