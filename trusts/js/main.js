@@ -42,6 +42,7 @@
         subject=f.querySelector('[name=subject]').value,
         msg=f.querySelector('[name=message]').value.trim();
     if(!name || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || !msg){ st.className='fstatus err'; st.textContent='Please fill your name, a valid email and your message.'; return; }
+    if(f.querySelector('[name=website]').value){ f.reset(); st.className='fstatus ok'; st.style.display='block'; st.textContent='Thank you — your message has been sent. We will reply as soon as we can.'; return; }
     st.className='fstatus'; st.style.display='block'; st.textContent='Sending…';
     fetch('https://api.web3forms.com/submit', {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
       body: JSON.stringify({access_key:'94e01d94-8fae-4cdc-b9b9-716cf169d7dc', subject:'Singh Caizen Trusts — '+subject+': '+name, from_name:'Singh Caizen Trusts Website', name:name, email:email, phone:f.querySelector('[name=phone]').value.trim(), message:msg})

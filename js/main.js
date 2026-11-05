@@ -156,6 +156,7 @@ const WEB3FORMS_KEY = '94e01d94-8fae-4cdc-b9b9-716cf169d7dc';
    const digits=phone.replace(/\D/g,''); const cc=(window.__scCountry?window.__scCountry():{name:'India',dial:'91',len:10});
    if(cc.len? digits.length!==cc.len : (digits.length<5||digits.length>15)){ setStatus('Please enter a valid mobile number for '+cc.name+(cc.len?' ('+cc.len+' digits)':'')+'.','err'); document.getElementById('cfPhone').focus(); return; }
    if(!WEB3FORMS_KEY){ setStatus('The message service is being connected. Please try again shortly.','err'); return; }
+   var hp=document.getElementById('cfWebsite'); if(hp&&hp.value){ setStatus('\u2713 Thank you, '+name.split(' ')[0]+'. Your message has been sent \u2014 we will get back to you shortly.','ok'); form.reset(); return; }
    btn.disabled=true; btn.textContent='Sending...';
    try{
      const r=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({access_key:WEB3FORMS_KEY, subject:'New enquiry from the Singh Caizen website: '+subject, from_name:'Singh Caizen Website', name:name, email:email, phone:'+'+cc.dial+' '+digits, phone_country:cc.name, message:message})});
