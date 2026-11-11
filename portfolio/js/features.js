@@ -341,6 +341,7 @@ function renderInsights(d) {
     $("insScoreNum").textContent = "–";
     ["insDivScore", "insMomScore", "insRiskScore"].forEach(id => { $(id).textContent = "–"; $(id).className = ""; });
     const arc = $("insGaugeArc"); if (arc) arc.style.strokeDashoffset = "326.7";
+    renderInsViz(d); renderInsPerf(d);
     insKey = ""; insDiv = insMom = insRisk = null;
     return;
   }
@@ -390,6 +391,8 @@ function renderInsights(d) {
 
   renderSignalsSync(d);
   renderCapGrid();
+  renderInsViz(d);
+  renderInsPerf(d);
   updateGauge();
   const key = rows.map(r => r.sym).join(",");
   if (key !== insKey) { insKey = key; loadInsScores(d); }
@@ -498,5 +501,100 @@ document.addEventListener("DOMContentLoaded", () => {
     insCapFilter = c.dataset.cap;
     chips.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x === c));
     renderCapGrid();
+  }));
+});
+
+/* ---------- insights visuals: donuts, heatmap, portfolio graph ---------- */
+function donutInto(svgEl, legendEl, items, centerLabel) {
+  if (!svgEl || !legendEl) return;
+  const total = items.reduce((s, x) => s + x.value, 0);
+  if (!total) { svgEl.innerHTML = ""; legendEl.innerHTML = '<p class="empty-note">No data yet.</p>'; return; }
+  const R = 80, C = 2 * Math.PI * R;
+  let acc = 0, parts = "";
+  items.forEach(x => {
+    const frac = x.value / total;
+    const len = Math.max(0, frac * C - 2);
+    parts += '<circle cx="100" cy="100" r="' + R + '" fill="none" stroke="' + x.color + '" stroke-width="26" stroke-dasharray="' + len.toFixed(1) + ' ' + C.toFixed(1) + '" stroke-dashoffset="' + (-acc * C).toFixed(1) + '" transform="rotate(-90 100 100)"/>';
+    acc += frac;
+  });
+  svgEl.innerHTML = parts +
+    '<text x="100" y="95" text-anchor="middle" fill="var(--muted)" font-size="10.5" letter-spacing="1.5">' + centerLabel + '</text>' +
+    '<text x="100" y="116" text-anchor="middle" fill="var(--text)" font-size="14.5" font-weight="bold">' + inr(total) + '</text>';
+  legendEl.innerHTML = items.map(x => '<div class="donut-leg-row"><span class="donut-dot" style="background:' + x.color + '"></span><span class="donut-leg-name">' + esc(x.label) + '</span><b>' + (x.value / total * 100).toFixed(1) + '%</b></div>').join("");
+}
+function renderInsViz(d) {
+  const s1 = $("insDonutStock");
+  if (s1) {
+    const items = [...d.rows].sort((a, b) => b.cur - a.cur).map((r, i) => ({ label: r.sym, value: r.cur, color: PIE[i % PIE.length] }));
+    donutInto(s1, $("insDonutStockLegend"), items, "TOTAL VALUE");
+    const secMap = {};
+    d.rows.forEach(r => {
+      const k = r.sector || "Other";
+      if (!secMap[k]) secMap[k] = { label: k, value: 0, color: PIE[Object.keys(secMap).length % PIE.length] };
+      secMap[k].value += r.cur;
+    });
+    donutInto($("insDonutSector"), $("insDonutSectorLegend"), Object.values(secMap).sort((a, b) => b.value - a.value), "BY SECTOR");
+  }
+  const heat = $("insHeat");
+  if (heat) {
+    if (!d.rows.length) { heat.innerHTML = '<p class="empty-note">Add stocks — the heatmap shows today\'s move of every holding at one glance.</p>'; return; }
+    const rows = [...d.rows].sort((a, b) => b.cur - a.cur);
+    heat.innerHTML = rows.map(r => {
+      const dayPct = (r.ltp !== null && r.prevClose) ? (r.ltp - r.prevClose) / r.prevClose * 100 : null;
+      let bg, fg;
+      if (dayPct === null) { bg = "var(--panel-2)"; fg = "var(--text)"; }
+      else if (dayPct >= 0) {
+        const k = Math.min(68, 14 + Math.abs(dayPct) * 18);
+        bg = "color-mix(in srgb, var(--text) " + k + "%, var(--panel-2))";
+        fg = k > 46 ? "var(--bg)" : "var(--text)";
+      } else {
+        const k = Math.min(72, 16 + Math.abs(dayPct) * 18);
+        bg = "color-mix(in srgb, #e03131 " + k + "%, var(--panel-2))";
+        fg = "#ffffff";
+      }
+      const flex = Math.max(1, (d.value ? r.cur / d.value : 0) * 10).toFixed(2);
+      return '<button type="button" class="heat-tile" data-heat2="' + esc(r.sym) + '" style="flex:' + flex + ' 1 100px;background:' + bg + ';color:' + fg + '">' +
+        '<span class="heat-sym">' + esc(r.sym) + '</span>' +
+        '<span class="heat-pct">' + (dayPct === null ? "—" : pct(dayPct) + " today") + '</span>' +
+        '<span class="heat-val">' + inr(r.cur) + '</span></button>';
+    }).join("");
+    heat.querySelectorAll("[data-heat2]").forEach(b => b.addEventListener("click", () => openStock(b.dataset.heat2)));
+  }
+}
+let insPerfRange = "6mo", insPerfKey = "";
+async function renderInsPerf(d) {
+  const box = $("insPerfBox");
+  if (!box) return;
+  if (!d.rows.length) { box.innerHTML = '<p class="empty-note">Add stocks — your portfolio graph will appear here.</p>'; $("insPerfMeta").textContent = ""; return; }
+  const key = insPerfRange + "|" + d.rows.map(r => r.sym + ":" + r.qty).join(",");
+  if (key === insPerfKey) return;
+  insPerfKey = key;
+  box.innerHTML = '<p class="empty-note">Building your graph…</p>';
+  const hists = await Promise.all(d.rows.map(r => fetchHistory(r.sym, insPerfRange)));
+  const series = {};
+  const allTs = new Set();
+  hists.forEach((h, i) => { if (h) { series[d.rows[i].sym] = new Map(h.points.map(p => [p.t, p.c])); h.points.forEach(p => allTs.add(p.t)); } });
+  const ts = [...allTs].sort((a, b) => a - b);
+  if (ts.length < 2) { box.innerHTML = '<p class="empty-note">Graph data could not load right now.</p>'; return; }
+  const lastClose = {};
+  const vals = ts.map(t => {
+    let v = 0;
+    d.rows.forEach(r => {
+      const m = series[r.sym];
+      if (m) { if (m.has(t)) lastClose[r.sym] = m.get(t); if (lastClose[r.sym]) v += r.qty * lastClose[r.sym]; }
+    });
+    return v;
+  }).filter(v => v > 0);
+  if (vals.length < 2) { box.innerHTML = '<p class="empty-note">Not enough data for a graph yet.</p>'; return; }
+  box.innerHTML = lineChartSvg(vals, 200);
+  const chg = (vals[vals.length - 1] - vals[0]) / vals[0] * 100;
+  $("insPerfMeta").innerHTML = "Portfolio value: " + inr(vals[0]) + " → <b>" + inr(vals[vals.length - 1]) + "</b> · <span class=\"" + (chg >= 0 ? "gain" : "loss") + "\">" + pct(chg) + "</span> over this period (at today's quantities, approximate).";
+}
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("#insPerfSeg .seg-btn").forEach(b => b.addEventListener("click", () => {
+    insPerfRange = b.dataset.r;
+    document.querySelectorAll("#insPerfSeg .seg-btn").forEach(x => x.classList.toggle("active", x === b));
+    insPerfKey = "";
+    renderInsPerf(enriched());
   }));
 });

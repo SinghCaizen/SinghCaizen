@@ -537,3 +537,25 @@ form textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rg
   .bt-optbox label:last-child{grid-column:span 2}
   .txn-foot .btn{flex:1}
 }
+
+/* ===== v13: watchlist swipe/select + sparklines, insights visuals ===== */
+.watch-row{display:block;position:relative;overflow:hidden}
+.watch-del{position:absolute;top:0;right:0;bottom:0;width:84px;background:#e03131;color:#fff;border:none;font-weight:700;font-size:.95rem;cursor:pointer;z-index:0}
+.watch-main{display:flex;align-items:center;gap:.7rem;padding:.5rem .15rem;background:var(--panel);position:relative;z-index:1;transition:transform .18s ease;cursor:pointer}
+.watch-row.swiped .watch-main{transform:translateX(-84px)}
+.watch-row.selected .watch-main{background:var(--panel-2)}
+.watch-id{flex:1;min-width:0;display:flex;align-items:center;gap:.45rem}
+.watch-spark svg{width:96px;height:26px;display:block}
+.watch-price{white-space:nowrap;font-weight:600}
+.watch-actions{display:flex;gap:.5rem;padding:.5rem .15rem .65rem;background:var(--panel);position:relative;z-index:1}
+.viz-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem}
+.viz-h{margin:.1rem 0 .6rem}
+.donut-leg-row{display:flex;align-items:center;gap:.5rem;padding:.28rem 0;border-bottom:1px dashed var(--line)}
+.donut-leg-row:last-child{border-bottom:none}
+.donut-dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.donut-leg-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:760px){
+  .viz-grid{grid-template-columns:1fr}
+  .watch-spark svg{width:70px;height:22px}
+  .watch-main{gap:.45rem}
+}

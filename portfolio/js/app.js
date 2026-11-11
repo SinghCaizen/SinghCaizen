@@ -265,7 +265,7 @@ function computeHoldings() {
   for (const t of txns) {
     if (t.type === "DIV") { divTotal += Number(t.price) || 0; continue; }
     if (!lots[t.sym]) { lots[t.sym] = []; order.push(t.sym); realised[t.sym] = 0; }
-    if (t.type === "BUY") lots[t.sym].push({ qty: Number(t.qty), price: effPrice(t), date: t.date, name: t.name, sector: (t.sector && t.sector !== "Other") ? t.sector : ((window.INDUSTRY_MAP && window.INDUSTRY_MAP[t.sym]) || t.sector || "Other") });
+    if (t.type === "BUY") lots[t.sym].push({ qty: Number(t.qty), price: effPrice(t), date: t.date, name: t.name, sector: (t.sector && t.sector !== "Other") ? t.sector : ((window.INDUSTRY_MAP && window.INDUSTRY_MAP[t.sym]) || (window.FALLBACK_SECTOR && window.FALLBACK_SECTOR[t.sym]) || t.sector || "Other") });
     else if (t.type === "SELL") {
       let q = Number(t.qty);
       while (q > 0 && lots[t.sym].length) {
@@ -528,18 +528,52 @@ function renderWatch() {
   el.innerHTML = rows.map(w => {
     const p = priceOf(w.sym);
     const chg = p && p.prevClose ? (p.price - p.prevClose) / p.prevClose * 100 : null;
-    return `<div class="watch-row">
-      <div><button class="star-btn ${w.fav ? "fav" : ""}" data-star="${esc(w.sym)}">${w.fav ? "★" : "☆"}</button>
-      <span class="w-sym">${esc(w.sym)}</span> <span class="hold-name">${esc(w.name)}</span></div>
-      <div>${p ? inr2(p.price) : "—"} ${chg !== null ? `<b class="${chg >= 0 ? "gain" : "loss"}">${pct(chg)}</b>` : ""}
-      <button class="mini-btn danger" data-unwatch="${esc(w.sym)}">Remove</button></div></div>`;
+    return `<div class="watch-row" data-wrow="${esc(w.sym)}">
+      <button class="watch-del" data-unwatch="${esc(w.sym)}" type="button">Delete</button>
+      <div class="watch-main">
+        <div class="watch-id"><button class="star-btn ${w.fav ? "fav" : ""}" data-star="${esc(w.sym)}" type="button">${w.fav ? "★" : "☆"}</button>
+        <span class="w-sym">${esc(w.sym)}</span> <span class="hold-name">${esc(w.name)}</span></div>
+        <div class="watch-spark">${p && p.spark && p.spark.length > 1 ? sparkSvg(p.spark) : ""}</div>
+        <div class="watch-price">${p ? inr2(p.price) : "—"} ${chg !== null ? `<b class="${chg >= 0 ? "gain" : "loss"}">${pct(chg)}</b>` : ""}</div>
+      </div>
+      <div class="watch-actions hidden">
+        <button class="mini-btn" data-wchart="${esc(w.sym)}" type="button">📈 Chart</button>
+        <button class="mini-btn danger" data-unwatch="${esc(w.sym)}" type="button">🗑 Delete</button>
+      </div>
+    </div>`;
   }).join("");
-  el.querySelectorAll("[data-star]").forEach(b => b.addEventListener("click", () => {
+  const closeOthers = except => el.querySelectorAll(".watch-row").forEach(r => {
+    if (r !== except) { r.classList.remove("swiped", "selected"); const a = r.querySelector(".watch-actions"); if (a) a.classList.add("hidden"); }
+  });
+  el.querySelectorAll("[data-star]").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation();
     const w = state.watch.find(x => x.sym === b.dataset.star); if (w) { w.fav = !w.fav; persist(); renderWatch(); }
   }));
-  el.querySelectorAll("[data-unwatch]").forEach(b => b.addEventListener("click", () => {
-    state.watch = state.watch.filter(x => x.sym !== b.dataset.unwatch); persist(); renderWatch();
+  el.querySelectorAll("[data-unwatch]").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation();
+    state.watch = state.watch.filter(x => x.sym !== b.dataset.unwatch); persist(); renderWatch(); toast("Removed from watchlist");
   }));
+  el.querySelectorAll("[data-wchart]").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation(); openStock(b.dataset.wchart);
+  }));
+  el.querySelectorAll(".watch-row").forEach(row => {
+    const main = row.querySelector(".watch-main");
+    let sx = null;
+    main.addEventListener("touchstart", e => { sx = e.touches[0].clientX; }, { passive: true });
+    main.addEventListener("touchend", e => {
+      if (sx === null) return;
+      const dx = e.changedTouches[0].clientX - sx; sx = null;
+      if (dx < -45) { closeOthers(row); row.classList.add("swiped"); }
+      else if (dx > 45) row.classList.remove("swiped");
+    }, { passive: true });
+    main.addEventListener("click", () => {
+      if (row.classList.contains("swiped")) { row.classList.remove("swiped"); return; }
+      const was = row.classList.contains("selected");
+      closeOthers(row);
+      row.classList.toggle("selected", !was);
+      row.querySelector(".watch-actions").classList.toggle("hidden", was);
+    });
+  });
 }
 function renderHistory() {
   const el = $("historyList");
