@@ -536,14 +536,10 @@ function renderWatch() {
         <div class="watch-spark">${p && p.spark && p.spark.length > 1 ? sparkSvg(p.spark) : ""}</div>
         <div class="watch-price">${p ? inr2(p.price) : "—"} ${chg !== null ? `<b class="${chg >= 0 ? "gain" : "loss"}">${pct(chg)}</b>` : ""}</div>
       </div>
-      <div class="watch-actions hidden">
-        <button class="mini-btn" data-wchart="${esc(w.sym)}" type="button">📈 Chart</button>
-        <button class="mini-btn danger" data-unwatch="${esc(w.sym)}" type="button">🗑 Delete</button>
-      </div>
     </div>`;
   }).join("");
   const closeOthers = except => el.querySelectorAll(".watch-row").forEach(r => {
-    if (r !== except) { r.classList.remove("swiped", "selected"); const a = r.querySelector(".watch-actions"); if (a) a.classList.add("hidden"); }
+    if (r !== except) r.classList.remove("swiped");
   });
   el.querySelectorAll("[data-star]").forEach(b => b.addEventListener("click", e => {
     e.stopPropagation();
@@ -552,9 +548,6 @@ function renderWatch() {
   el.querySelectorAll("[data-unwatch]").forEach(b => b.addEventListener("click", e => {
     e.stopPropagation();
     state.watch = state.watch.filter(x => x.sym !== b.dataset.unwatch); persist(); renderWatch(); toast("Removed from watchlist");
-  }));
-  el.querySelectorAll("[data-wchart]").forEach(b => b.addEventListener("click", e => {
-    e.stopPropagation(); openStock(b.dataset.wchart);
   }));
   el.querySelectorAll(".watch-row").forEach(row => {
     const main = row.querySelector(".watch-main");
@@ -568,10 +561,7 @@ function renderWatch() {
     }, { passive: true });
     main.addEventListener("click", () => {
       if (row.classList.contains("swiped")) { row.classList.remove("swiped"); return; }
-      const was = row.classList.contains("selected");
-      closeOthers(row);
-      row.classList.toggle("selected", !was);
-      row.querySelector(".watch-actions").classList.toggle("hidden", was);
+      openStock(row.dataset.wrow);
     });
   });
 }
@@ -666,11 +656,11 @@ function saveTxn(ev) {
     if (!stockTxt) continue;
     const type = q(".bt-action").value;
     const st = resolveStock(stockTxt);
-    if (!st.sym) { $("txnError").textContent = "Ek row me stock samajh nahi aaya — naam ya symbol check karo."; return; }
+    if (!st.sym) { $("txnError").textContent = "One row's stock could not be recognised — check its name or symbol."; return; }
     const date = q(".bt-date").value;
     const price = Number(q(".bt-price").value);
     const qty = type === "DIV" ? 0 : Number(q(".bt-qty").value);
-    if (!date || !(price >= 0) || (type !== "DIV" && !(price > 0))) { $("txnError").textContent = st.sym + ": date aur price sahi dalo."; return; }
+    if (!date || !(price >= 0) || (type !== "DIV" && !(price > 0))) { $("txnError").textContent = st.sym + ": please enter a valid date and price."; return; }
     if (type !== "DIV" && !(qty > 0)) { $("txnError").textContent = st.sym + ": quantity 0 se zyada ho."; return; }
     if (type === "SELL") {
       const h = computeHoldings().holdings.find(x => x.sym === st.sym);
@@ -680,7 +670,7 @@ function saveTxn(ev) {
     }
     adds.push({ id: uid(), type: type, sym: st.sym, name: st.name, sector: st.sector, qty: qty, price: price, date: date, exch: q(".bt-exch").value, broker: q(".bt-broker").value, charges: Number(q(".bt-charges").value) || 0, note: q(".bt-note").value.trim() });
   }
-  if (!adds.length) { $("txnError").textContent = "Pehle kam se kam ek stock ki detail dalo."; return; }
+  if (!adds.length) { $("txnError").textContent = "Add at least one stock first."; return; }
   state.txns.push(...adds);
   persist(); closeTxn(); renderAll(); refreshPrices();
   toast(adds.length + (adds.length > 1 ? " transactions" : " transaction") + " added");

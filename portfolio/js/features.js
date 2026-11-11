@@ -101,7 +101,7 @@ async function loadTicker() {
 }
 
 /* ---------- dashboard extras: perf graph + heatmap + tax ---------- */
-function renderExtras(d) { renderHeat(d); renderTax(d); renderPerf(d); renderInsights(d); }
+function renderExtras(d) { renderHeat(d); renderTax(d); renderPerf(d); renderInsights(d); renderNews(d); renderEvents(d); }
 
 let perfRange = "3mo", perfKey = "", perfToken = 0;
 function closeAt(points, t) { let c = null; for (const p of points) { if (p.t <= t) c = p.c; else break; } return c; }
@@ -319,6 +319,12 @@ function trendBadge(ret) {
   return '<span class="trend-badge tb-down">▼▼ Very Bearish</span>';
 }
 function updateGauge() {
+  if (insMom === null && insRisk === null && typeof insDiv === "number") {
+    $("insScoreNum").textContent = "…";
+    const arc0 = $("insGaugeArc");
+    if (arc0) { arc0.style.strokeDashoffset = String(326.7 * (1 - insDiv / 100)); arc0.style.stroke = "var(--muted)"; }
+    return;
+  }
   const parts = [insDiv, insMom, insRisk].filter(v => typeof v === "number");
   if (!parts.length) return;
   const total = Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
@@ -597,4 +603,312 @@ document.addEventListener("DOMContentLoaded", () => {
     insPerfKey = "";
     renderInsPerf(enriched());
   }));
+});
+
+/* ================================================================
+   v14 — company data, news, events, glossary
+   Sources (all free, via the same public proxies as prices):
+   - Yahoo quoteSummary: company profile, earnings calendar, results
+   - Yahoo search / Google News RSS: headlines
+   Everything degrades honestly when a source is unavailable.
+   ================================================================ */
+async function fetchViaProxies(url, asText) {
+  const routes = [
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+    u => "https://api.codetabs.com/v1/proxy?quest=" + u,
+    u => "https://api.cors.lol/?url=" + encodeURIComponent(u)
+  ];
+  for (const mk of routes) {
+    try {
+      const ctl = new AbortController();
+      const to = setTimeout(() => ctl.abort(), 9000);
+      const r = await fetch(mk(url), { signal: ctl.signal });
+      clearTimeout(to);
+      if (!r.ok) continue;
+      const t = await r.text();
+      if (!t) continue;
+      if (asText) return t;
+      try { return JSON.parse(t); } catch (e) { continue; }
+    } catch (e) {}
+  }
+  return null;
+}
+function lsCacheGet(key, ttlMs) {
+  try {
+    const o = JSON.parse(localStorage.getItem(key) || "null");
+    if (o && Date.now() - o.ts < ttlMs) return o.data;
+  } catch (e) {}
+  return null;
+}
+function lsCacheSet(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
+}
+function relTime(tsMs) {
+  const s = Math.max(1, Math.round((Date.now() - tsMs) / 1000));
+  if (s < 3600) return Math.round(s / 60) + "m ago";
+  if (s < 86400) return Math.round(s / 3600) + "h ago";
+  if (s < 86400 * 30) return Math.round(s / 86400) + "d ago";
+  return new Date(tsMs).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+function fmtDate(ms) {
+  return new Date(ms).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+function crores(raw) {
+  if (typeof raw !== "number") return "—";
+  return "₹" + Math.round(raw / 1e7).toLocaleString("en-IN") + " Cr";
+}
+
+/* ---------- company info (profile + earnings calendar + results) ---------- */
+async function fetchCompanyInfo(sym) {
+  const ck = "folio_ci_" + sym;
+  const cached = lsCacheGet(ck, 6 * 3600 * 1000);
+  if (cached) return cached;
+  const url = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/" + sym + ".NS?modules=assetProfile,calendarEvents,incomeStatementHistoryQuarterly";
+  const j = await fetchViaProxies(url, false);
+  let out = { ok: false };
+  try {
+    const r = j.quoteSummary.result[0];
+    out = { ok: true };
+    if (r.assetProfile) {
+      out.industry = r.assetProfile.industry || "";
+      out.sectorY = r.assetProfile.sector || "";
+      out.website = r.assetProfile.website || "";
+      out.summary = (r.assetProfile.longBusinessSummary || "").slice(0, 700);
+    }
+    if (r.calendarEvents && r.calendarEvents.earnings) {
+      const e = r.calendarEvents.earnings;
+      const dates = (e.earningsDate || []).map(x => x.raw ? x.raw * 1000 : (x.fmt ? Date.parse(x.fmt) : null)).filter(Boolean);
+      if (dates.length) {
+        const upcoming = dates.filter(x => x > Date.now() - 86400000 * 2);
+        out.nextEarnings = upcoming.length ? Math.min(...upcoming) : dates[0];
+      }
+      if (e.earningsAverageEstimate && typeof e.earningsAverageEstimate.raw === "number") out.epsEst = e.earningsAverageEstimate.raw;
+    }
+    if (r.incomeStatementHistoryQuarterly && r.incomeStatementHistoryQuarterly.incomeStatementHistory) {
+      out.results = r.incomeStatementHistoryQuarterly.incomeStatementHistory.slice(0, 4).map(q => ({
+        period: q.endDate ? (q.endDate.fmt || "") : "",
+        revenue: q.totalRevenue ? q.totalRevenue.raw : null,
+        profit: q.netIncome ? q.netIncome.raw : null
+      })).filter(q => q.period);
+    }
+  } catch (e) {}
+  if (out.ok) lsCacheSet(ck, out);
+  return out;
+}
+
+/* ---------- news (Yahoo search, Google News RSS fallback) ---------- */
+async function fetchNews(query, count) {
+  const ck = "folio_news_" + query.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  const cached = lsCacheGet(ck, 20 * 60 * 1000);
+  if (cached) return cached;
+  let items = [];
+  const j = await fetchViaProxies("https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(query) + "&newsCount=" + (count || 6) + "&quotesCount=0", false);
+  try {
+    items = (j.news || []).map(n => ({ title: n.title, link: n.link, source: n.publisher || "News", ts: (n.providerPublishTime || 0) * 1000 })).filter(n => n.title && n.link && n.ts);
+  } catch (e) {}
+  if (!items.length) {
+    const xml = await fetchViaProxies("https://news.google.com/rss/search?q=" + encodeURIComponent(query + " share") + "&hl=en-IN&gl=IN&ceid=IN:en", true);
+    if (xml) {
+      try {
+        const doc = new DOMParser().parseFromString(xml, "text/xml");
+        items = [...doc.querySelectorAll("item")].slice(0, count || 6).map(it => ({
+          title: (it.querySelector("title") || {}).textContent || "",
+          link: (it.querySelector("link") || {}).textContent || "",
+          source: ((it.querySelector("source") || {}).textContent || "Google News"),
+          ts: Date.parse((it.querySelector("pubDate") || {}).textContent || "") || 0
+        })).filter(n => n.title && n.link);
+      } catch (e) {}
+    }
+  }
+  if (items.length) lsCacheSet(ck, items);
+  return items;
+}
+function newsRowHtml(n, chipSym) {
+  return '<div class="news-row">' +
+    (chipSym ? '<span class="news-chip">' + esc(chipSym) + '</span>' : '') +
+    '<a class="news-title" href="' + esc(n.link) + '" target="_blank" rel="noopener">' + esc(n.title) + '</a>' +
+    '<span class="news-meta">' + esc(n.source) + ' · ' + relTime(n.ts) + '</span></div>';
+}
+
+/* ---------- portfolio news (dashboard) ---------- */
+let newsKey = "", newsBusy = false;
+async function renderNews(d) {
+  const box = $("newsList");
+  if (!box) return;
+  if (!d.rows.length) { box.innerHTML = '<p class="empty-note">Add stocks — news about your companies will appear here.</p>'; return; }
+  const key = d.rows.map(r => r.sym).join(",");
+  if (key === newsKey || newsBusy) return;
+  newsKey = key; newsBusy = true;
+  const top = [...d.rows].sort((a, b) => b.cur - a.cur).slice(0, 8);
+  const per = await Promise.all(top.map(async r => {
+    const items = await fetchNews(r.name || r.sym, 4);
+    return items.map(n => ({ ...n, sym: r.sym }));
+  }));
+  newsBusy = false;
+  const seen = new Set();
+  const merged = per.flat().filter(n => {
+    const k = n.title.toLowerCase().slice(0, 60);
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  }).sort((a, b) => b.ts - a.ts).slice(0, 12);
+  if (!merged.length) {
+    box.innerHTML = '<p class="empty-note">News could not be loaded right now — the free news sources are busy. It will retry when prices refresh.</p>';
+    newsKey = "";
+    return;
+  }
+  box.innerHTML = merged.map(n => newsRowHtml(n, n.sym)).join("");
+}
+
+/* ---------- results & announcements (dashboard + popup) ---------- */
+let evKey = "", evBusy = false;
+const RESULT_WORDS = /(result|quarter|q[1-4]\b|earnings|profit (up|down|rises|falls)|announce|dividend|board meeting|bonus|split)/i;
+async function renderEvents(d) {
+  const box = $("eventsBox");
+  if (!box) return;
+  if (!d.rows.length) { box.innerHTML = '<p class="empty-note">Add stocks — their result dates and announcements will appear here.</p>'; return; }
+  const key = d.rows.map(r => r.sym).join(",");
+  if (key === evKey || evBusy) return;
+  evKey = key; evBusy = true;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const infos = await Promise.all(d.rows.slice(0, 10).map(async r => ({ r: r, info: await fetchCompanyInfo(r.sym) })));
+  const newsPer = await Promise.all(d.rows.slice(0, 8).map(async r => {
+    const items = await fetchNews(r.name || r.sym, 4);
+    return items.filter(n => RESULT_WORDS.test(n.title) && Date.now() - n.ts < 12 * 86400000).map(n => ({ ...n, sym: r.sym }));
+  }));
+  evBusy = false;
+  const dated = [];
+  infos.forEach(({ r, info }) => {
+    if (info && info.ok && info.nextEarnings) {
+      const days = Math.round((info.nextEarnings - today.getTime()) / 86400000);
+      if (days >= -7 && days <= 60) dated.push({ sym: r.sym, name: r.name, date: info.nextEarnings, days: days });
+    }
+  });
+  dated.sort((a, b) => a.date - b.date);
+  const hits = newsPer.flat().sort((a, b) => b.ts - a.ts).slice(0, 6);
+  if (!dated.length && !hits.length) {
+    box.innerHTML = '<p class="empty-note">No result dates found for your stocks in the free data right now. When a company announces a date or a result makes the news, it will appear here — and pop up when you open Folio.</p>';
+    return;
+  }
+  let html = "";
+  dated.forEach(e => {
+    const when = e.days < 0 ? "declared " + Math.abs(e.days) + "d ago" : e.days === 0 ? "expected TODAY" : e.days === 1 ? "expected tomorrow" : "in " + e.days + " days";
+    html += '<div class="event-row"><span class="news-chip">' + esc(e.sym) + '</span><span class="event-text"><b>' + esc(e.name) + '</b> — quarterly results ' + when + ' · ' + fmtDate(e.date) + '</span></div>';
+  });
+  hits.forEach(n => { html += newsRowHtml(n, n.sym); });
+  box.innerHTML = html;
+  maybeEventPopup(dated, hits);
+}
+function maybeEventPopup(dated, hits) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  try { if (localStorage.getItem("folio_evpop") === todayStr) return; } catch (e) {}
+  const urgent = dated.filter(e => e.days >= -3 && e.days <= 7);
+  const fresh = hits.filter(n => Date.now() - n.ts < 3 * 86400000);
+  if (!urgent.length && !fresh.length) return;
+  let html = "";
+  urgent.forEach(e => {
+    const when = e.days < 0 ? "declared " + Math.abs(e.days) + "d ago" : e.days === 0 ? "expected today" : "coming in " + e.days + " days";
+    html += '<div class="event-row"><span class="news-chip">' + esc(e.sym) + '</span><span class="event-text"><b>' + esc(e.name) + '</b> — results ' + when + ' · ' + fmtDate(e.date) + '</span></div>';
+  });
+  fresh.slice(0, 4).forEach(n => { html += newsRowHtml(n, n.sym); });
+  $("eventPopupBody").innerHTML = html;
+  $("eventModal").classList.remove("hidden");
+  const mark = () => { try { localStorage.setItem("folio_evpop", todayStr); } catch (e) {} };
+  $("eventOk").onclick = () => { mark(); $("eventModal").classList.add("hidden"); };
+  $("eventClose").onclick = () => { mark(); $("eventModal").classList.add("hidden"); };
+}
+
+/* ---------- company sheet (inside the stock chart popup) ---------- */
+let sheetToken = 0;
+const _origOpenStock = openStock;
+openStock = function (sym) {
+  _origOpenStock(sym);
+  loadCompanySheet(sym);
+};
+async function loadCompanySheet(sym) {
+  const tok = ++sheetToken;
+  const name = (STOCK_MAP[sym] && STOCK_MAP[sym].name) || sym;
+  const wr = $("stockWatchRow"), ab = $("stockAbout"), rs = $("stockResults"), nw = $("stockNews"), lk = $("stockLinks");
+  if (!ab) return;
+  const inWatch = state.watch.some(w => w.sym === sym);
+  const inPf = state.txns.some(t => t.sym === sym && t.type === "BUY");
+  wr.innerHTML = inWatch
+    ? '<span class="price-meta">★ This stock is in your watchlist.</span><button class="mini-btn danger" id="sheetUnwatch" type="button">Remove from Watchlist</button>'
+    : '<button class="mini-btn" id="sheetWatch" type="button">☆ Add to Watchlist</button>' + (inPf ? '<span class="price-meta">This stock is in your portfolio.</span>' : '');
+  const uw = $("sheetUnwatch");
+  if (uw) uw.addEventListener("click", () => {
+    state.watch = state.watch.filter(w => w.sym !== sym);
+    persist(); renderWatch(); toast("Removed from watchlist");
+    loadCompanySheet(sym);
+  });
+  const aw = $("sheetWatch");
+  if (aw) aw.addEventListener("click", () => {
+    state.watch.push({ sym: sym, name: name, fav: false });
+    persist(); renderWatch(); toast("Added to watchlist");
+    loadCompanySheet(sym);
+  });
+  lk.innerHTML =
+    '<a class="mini-btn link-btn" href="https://www.screener.in/company/' + encodeURIComponent(sym) + '/" target="_blank" rel="noopener">Full financials on Screener ↗</a>' +
+    '<a class="mini-btn link-btn" href="https://www.nseindia.com/get-quotes/equity?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">View on NSE ↗</a>';
+  ab.innerHTML = '<p class="empty-note">Loading company details…</p>';
+  rs.innerHTML = '<p class="empty-note">Loading…</p>';
+  nw.innerHTML = '<p class="empty-note">Loading news…</p>';
+  const info = await fetchCompanyInfo(sym);
+  if (tok !== sheetToken) return;
+  if (info && info.ok && (info.summary || info.industry)) {
+    ab.innerHTML =
+      (info.industry ? '<p class="comp-line"><b>Industry:</b> ' + esc(info.industry) + (info.website ? ' · <a href="' + esc(info.website) + '" target="_blank" rel="noopener">Company website ↗</a>' : '') + '</p>' : '') +
+      (info.summary ? '<p class="comp-about">' + esc(info.summary) + (info.summary.length >= 700 ? '…' : '') + '</p>' : '');
+  } else {
+    const sec = (window.INDUSTRY_MAP && window.INDUSTRY_MAP[sym]) || (window.FALLBACK_SECTOR && window.FALLBACK_SECTOR[sym]) || "";
+    ab.innerHTML = '<p class="empty-note">' + (sec ? 'Sector: ' + esc(sec) + '. ' : '') + 'A detailed company profile is not available from the free source right now — use the Screener link below for the full profile.</p>';
+  }
+  let rhtml = "";
+  if (info && info.ok && info.nextEarnings) {
+    const days = Math.round((info.nextEarnings - Date.now()) / 86400000);
+    rhtml += '<p class="comp-line"><b>Next quarterly result:</b> ' + fmtDate(info.nextEarnings) + (days >= 0 ? ' (in ' + days + ' days)' : '') + (typeof info.epsEst === "number" ? ' · Expected EPS ≈ ₹' + info.epsEst.toFixed(2) : '') + '</p>';
+  }
+  if (info && info.ok && info.results && info.results.length) {
+    rhtml += '<table class="res-table"><tr><th>Quarter ended</th><th>Revenue</th><th>Net Profit</th></tr>' +
+      info.results.map(q => '<tr><td>' + esc(q.period) + '</td><td>' + crores(q.revenue) + '</td><td>' + crores(q.profit) + '</td></tr>').join("") + '</table>';
+  }
+  rs.innerHTML = rhtml || '<p class="empty-note">Result dates and past results are not available from the free source for this stock right now.</p>';
+  const items = await fetchNews(name, 6);
+  if (tok !== sheetToken) return;
+  nw.innerHTML = items.length ? items.map(n => newsRowHtml(n, "")).join("") : '<p class="empty-note">No recent news found for this company.</p>';
+}
+
+/* ---------- glossary: Know Your Numbers ---------- */
+const GLOSSARY = [
+  ["xirr", "XIRR (per year)", "Your true yearly rate of return. It respects the dates of every buy and sell — money invested earlier counts for more than money invested yesterday. It is the fairest single number for a portfolio that was built in parts, at different times."],
+  ["value", "Invested, Current Value, Profit / Loss", "Invested is the total cost of the shares you still hold. Current Value is what those shares are worth at the latest price. The difference is your unrealised profit or loss — it becomes real (realised) only when you sell. Dividends you enter add to realised gains."],
+  ["score", "Portfolio Score", "Folio's overall health number for your portfolio, out of 100. It is the average of three scores — Momentum, Diversification and Risk — all computed from free price data. Treat it as a mirror that shows shape and behaviour, never as buy or sell advice."],
+  ["momentum", "Momentum Score", "How strongly your stocks have been trending over the last 6 months, weighted by how much money sits in each. Above 60 means most of your money is in stocks that have been rising; below 40 means most of it is in stocks that have been falling."],
+  ["diversification", "Diversification Score", "How spread out your money is. It falls when a few stocks, or one sector, carry most of your money — because then one bad season can hurt the whole portfolio. More stocks across more sectors, in balanced sizes, raise this score."],
+  ["risk", "Risk Score & Volatility", "Volatility means how wildly a stock's price swings up and down. Calm stocks score high; jumpy stocks score low. A low Risk Score does not mean a stock is bad — it means its ride is rougher, so position size matters more."],
+  ["quality", "Why is there no Quality Score?", "Moneycontrol and Tijori's Quality scores judge a company's fundamentals — profits, debt, return on equity. That data is paid, and no free source provides it reliably, so Folio does not fake it. For a company's fundamentals, open its page in Folio and use the Screener link — Screener shows them properly."],
+  ["heatmap", "Heatmap", "Every stock you hold as one tile. Bigger tile = more of your money in it. The shade shows today's move — pale for a small move, deep for a big one; the red family marks falls. Tap any tile to open that stock's full page."],
+  ["marketcap", "Large Cap, Mid Cap, Small Cap", "Company size classes from the NSE index lists. Large Cap = the NIFTY 100, India's biggest companies — usually steadier. Mid Cap = the next 150. Small Cap = the next 250 and beyond — often faster-moving, both up and down."],
+  ["tax", "STCG, LTCG & Tax Harvesting", "Shares sold within 12 months of buying give Short-Term Capital Gains (STCG), taxed at 20%. Held longer, gains are Long-Term (LTCG), taxed at 12.5%. Folio works out this split from your entry dates, before the ₹1.25 lakh per-year LTCG exemption, which is applied at filing time. Harvesting means selling a loss-making stock before 31 March so the loss can reduce tax on your gains. Estimates only — not tax advice."],
+  ["results", "Results & Announcements", "Companies declare financial results every quarter. Folio watches the free earnings calendar and the news for your stocks: upcoming result dates appear on your Dashboard, and anything close pops up once a day when you open the app. If the free source carries no date for a stock, Folio says so instead of guessing."],
+  ["watchlist", "Watchlist & Favourites", "Stocks you are tracking without owning. Tap any watchlist row to open its full company page — chart, about, results and news. Swipe a row left to delete it. The star pins a favourite to the top."]
+];
+function openHelp(term) {
+  const body = $("helpBody");
+  if (!body) return;
+  body.innerHTML = GLOSSARY.map(g => '<div class="help-term" id="help-' + g[0] + '"><h4>' + g[1] + '</h4><p>' + g[2] + '</p></div>').join("");
+  $("helpModal").classList.remove("hidden");
+  if (term && term !== "all") {
+    const el = $("help-" + term);
+    if (el) setTimeout(() => { el.scrollIntoView({ block: "start" }); el.classList.add("flash"); }, 60);
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-help]").forEach(b => b.addEventListener("click", e => {
+    e.preventDefault();
+    openHelp(b.dataset.help);
+  }));
+  const hc = $("helpClose");
+  if (hc) hc.addEventListener("click", () => $("helpModal").classList.add("hidden"));
+  const hm = $("helpModal");
+  if (hm) hm.addEventListener("click", e => { if (e.target === hm) hm.classList.add("hidden"); });
 });

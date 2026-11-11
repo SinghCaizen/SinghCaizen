@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23000000'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%23ffffff' font-family='Georgia'>F</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=13">
+<link rel="stylesheet" href="css/style.css?v=14">
 </head>
 <body>
 
@@ -81,9 +81,9 @@
       <p id="gateError" class="form-error"></p>
     </form>
     <div class="gate-alt">
-      <span>Lost the app?</span>
-      <button id="gateUseRecovery" class="mini-btn" type="button">Use a recovery code</button>
-      <button id="gateUseSeed" class="mini-btn" type="button">Use seed phrase</button>
+      <p class="gate-alt-head">Lost your authenticator app? Use a backup instead — each option works on its own:</p>
+      <button id="gateUseRecovery" class="gate-opt" type="button"><b>Recovery code</b><span>One of the 8 one-time codes you saved at setup. Each code works once.</span></button>
+      <button id="gateUseSeed" class="gate-opt" type="button"><b>Seed phrase</b><span>Your 12-word master backup. It can rebuild your authenticator completely.</span></button>
     </div>
     <form id="gateAltForm" class="hidden" autocomplete="off">
       <label><span id="gateAltLabel">Recovery code</span>
@@ -133,7 +133,7 @@
         <div class="stat-card"><span class="stat-label">Invested</span><span class="stat-value" id="stInvested">—</span></div>
         <div class="stat-card"><span class="stat-label">Current Value</span><span class="stat-value" id="stValue">—</span></div>
         <div class="stat-card"><span class="stat-label">Total Profit / Loss</span><span class="stat-value" id="stPnl">—</span><span class="stat-sub" id="stPnlPct"></span></div>
-        <div class="stat-card"><span class="stat-label">XIRR (per year)</span><span class="stat-value" id="stXirr">—</span><span class="stat-sub" id="stRealised"></span></div>
+        <div class="stat-card"><span class="stat-label">XIRR (per year) <button class="info-btn" type="button" data-help="xirr" title="What is XIRR?">i</button></span><span class="stat-value" id="stXirr">—</span><span class="stat-sub" id="stRealised"></span></div>
       </div>
 
       <div class="panel">
@@ -183,7 +183,17 @@
       </div>
 
       <div class="panel chart-panel">
-        <div class="panel-head"><h2>Tax — Harvesting &amp; Booked Profit</h2><span class="price-meta">Worked out from your entry dates</span></div>
+        <div class="panel-head"><h2>Results &amp; Announcements</h2><span class="price-meta">Result dates and announcements for your stocks, from free public data</span></div>
+        <div id="eventsBox"><p class="empty-note">Checking result dates for your stocks…</p></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Portfolio News</h2><span class="price-meta">Latest news about the companies you hold</span></div>
+        <div id="newsList"><p class="empty-note">Loading news for your stocks…</p></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Tax — Harvesting &amp; Booked Profit <button class="info-btn" type="button" data-help="tax" title="What is this?">i</button></h2><span class="price-meta">Worked out from your entry dates</span></div>
         <div id="taxBox"></div>
       </div>
     </section>
@@ -196,7 +206,7 @@
       </div>
 
       <div class="panel">
-        <div class="panel-head"><h2>PORTFOLIO SCORE</h2><span class="price-meta">Folio's own score, from free price data</span></div>
+        <div class="panel-head"><h2>PORTFOLIO SCORE <button class="info-btn" type="button" data-help="score" title="What is this?">i</button></h2><span class="price-meta">Folio's own score, from free price data</span></div>
         <div class="score-top">
           <div class="gauge-wrap">
             <svg class="gauge" viewBox="0 0 120 120">
@@ -211,7 +221,7 @@
             <div class="score-card"><b id="insRiskScore">–</b><span class="sc-name">Risk Score</span><small>Higher = calmer stocks (volatility)</small></div>
           </div>
         </div>
-        <p class="price-meta">Moneycontrol / Tijori-style Quality scores judge company fundamentals (profits, debt, ROE) — that data is paid, so no free app can compute it honestly. Folio instead scores what free price data truly shows: trend, spread and risk. Treat scores as a mirror, not advice.</p>
+        <p class="price-meta">Scores use free price data only — trend, spread and risk. <a href="#" data-help="quality">Why is there no Quality score?</a></p>
       </div>
 
       <div class="panel">
@@ -284,7 +294,7 @@
       <div class="panel">
         <div class="panel-head">
           <h2>Watchlist</h2>
-          <span class="price-meta">Tap ★ to make a favourite — favourites stay on top.</span>
+          <span class="price-meta">Tap a stock to open its company page — chart, results and news. Swipe left on a row to delete it. ★ keeps favourites on top.</span>
         </div>
         <form id="watchForm" class="inline-form">
           <input type="text" id="watchInput" placeholder="Search stock name or symbol…" autocomplete="off">
@@ -307,22 +317,23 @@
     <!-- PROFILE -->
     <section id="view-profile" class="view hidden">
       <div class="panel profile-panel">
-        <div class="profile-head">
-          <div class="avatar-box">
-            <img id="profAvatar" class="avatar-lg hidden" alt="Your photo">
-            <span id="profAvatarInit" class="avatar-lg avatar-init">?</span>
-            <div class="avatar-btns">
-              <label class="btn btn-small file-label">Change Photo<input type="file" id="dpFile" accept="image/*" hidden></label>
-              <button id="dpRemove" class="mini-btn danger" type="button">Remove</button>
-            </div>
+        <div class="acct-head">
+          <img id="profAvatar" class="avatar-xl hidden" alt="Your photo">
+          <span id="profAvatarInit" class="avatar-xl avatar-init">?</span>
+          <h2 id="profNameTitle">My Profile</h2>
+          <p class="price-meta" id="profEmailLine"></p>
+          <p class="price-meta">Manage your Folio account — your photo and details stay inside your own account.</p>
+          <div class="avatar-btns center">
+            <label class="btn btn-small file-label">Change Photo<input type="file" id="dpFile" accept="image/*" hidden></label>
+            <button id="dpRemove" class="mini-btn danger" type="button">Remove Photo</button>
           </div>
-          <div>
-            <h2 id="profNameTitle">My Profile</h2>
-            <p class="price-meta" id="profEmailLine"></p>
-            <p class="price-meta">Your photo and details stay inside your own account.</p>
-          </div>
-          <button id="logoutBtn2" class="btn btn-ghost profile-logout" type="button">Logout</button>
         </div>
+        <div class="setting-row"><span>Signed in as</span><b id="profEmailRow">—</b></div>
+        <div class="setting-row"><span>Sign out of this device</span><button id="logoutBtn2" class="btn btn-small" type="button">Logout</button></div>
+      </div>
+
+      <div class="panel">
+        <h2>Personal Info</h2>
         <form id="profileForm" autocomplete="off">
           <label>Full name
             <input type="text" id="profName" placeholder="Your name">
@@ -330,21 +341,19 @@
           <label>Mobile number
             <input type="tel" id="profPhone" placeholder="+91 ">
           </label>
-          <button type="submit" class="btn btn-gold">Save Profile</button>
+          <button type="submit" class="btn btn-gold">Save Changes</button>
           <p id="profileMsg" class="form-ok"></p>
         </form>
       </div>
 
       <div class="panel">
-        <h2>Email &amp; Password</h2>
-        <div class="setting-row"><span>Change your login email</span><button id="openEmailModal" class="btn btn-small" type="button">Change Email</button></div>
-        <div class="setting-row"><span>Change your password</span><button id="openPassModal" class="btn btn-small" type="button">Change Password</button></div>
-        <p class="auth-note">Both open in a secure popup and ask for your current password. If 2FA is on, your secret key is re-locked automatically — nothing breaks.</p>
-      </div>
-
-      <div class="panel">
-        <h2>Two-Factor Authentication (2FA)</h2>
-        <p class="auth-note">Free extra lock on your account: after your password, a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy — any). Your secret key stays <b>encrypted with your own password</b> — without your password or your seed phrase, nobody can read it, not even from the database.</p>
+        <h2>Security &amp; Sign-in</h2>
+        <div class="setting-row"><span>Login email</span><button id="openEmailModal" class="btn btn-small" type="button">Change Email</button></div>
+        <div class="setting-row"><span>Password</span><button id="openPassModal" class="btn btn-small" type="button">Change Password</button></div>
+        <div class="setting-row"><span>Recovery options</span><b id="secRecSummary" class="row-val">—</b></div>
+        <p class="auth-note">Email and password changes open in a secure popup and ask for your current password. If 2FA is on, your secret key is re-locked automatically — nothing breaks.</p>
+        <h3 class="sub-h">Two-Factor Authentication (2FA)</h3>
+        <p class="auth-note">A free extra lock on your account: after your password, a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy — any). Your secret key stays <b>encrypted with your own password</b> — without your password or your seed phrase, nobody can read it, not even from the database. Forgotten the app? Sign in with a <b>recovery code</b> or your <b>12-word seed phrase</b> — both work on the sign-in screen.</p>
         <div id="totpArea"></div>
       </div>
 
@@ -389,6 +398,7 @@
       <div class="foot-links">
         <h4>Help</h4>
         <a href="#" id="footIssue">Report an Issue</a>
+        <a href="#" data-help="all">Know Your Numbers</a>
         <a href="#" data-foot-view="settings">Settings &amp; Backup</a>
         <a href="https://singhcaizen.github.io/SinghCaizen/" target="_blank" rel="noopener">Singh Caizen — Group Website</a>
       </div>
@@ -448,7 +458,21 @@
     <div id="stockChart"></div>
     <p id="stockRangeMeta" class="price-meta"></p>
     <div id="stockStats" class="hold-grid"></div>
-    <p class="auth-note">Chart uses free delayed data (~15 min). For tracking and study — not a trading terminal.</p>
+    <div id="stockWatchRow" class="dl-row"></div>
+    <div class="company-sec">
+      <h4 class="company-h">About the Company</h4>
+      <div id="stockAbout"><p class="empty-note">Loading company details…</p></div>
+    </div>
+    <div class="company-sec">
+      <h4 class="company-h">Results &amp; Announcements</h4>
+      <div id="stockResults"><p class="empty-note">Loading…</p></div>
+    </div>
+    <div class="company-sec">
+      <h4 class="company-h">Latest News</h4>
+      <div id="stockNews"><p class="empty-note">Loading news…</p></div>
+    </div>
+    <div id="stockLinks" class="dl-row"></div>
+    <p class="auth-note">Chart uses free delayed data (~15 min). Company details, results and news come from free public sources and may occasionally be unavailable. For tracking and study — not a trading terminal.</p>
   </div>
 </div>
 
@@ -556,6 +580,24 @@
   </div>
 </div>
 
+<!-- ============ KNOW YOUR NUMBERS (glossary) MODAL ============ -->
+<div id="helpModal" class="modal hidden">
+  <div class="modal-card modal-wide">
+    <div class="modal-head"><h3>Know Your Numbers</h3><button id="helpClose" class="icon-btn" type="button">✕</button></div>
+    <div id="helpBody" class="help-body"></div>
+    <p class="auth-note">Plain-English meanings of everything Folio shows you. Scores and figures are information, not investment advice.</p>
+  </div>
+</div>
+
+<!-- ============ RESULTS ALERT POPUP ============ -->
+<div id="eventModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3>Results &amp; Announcements</h3><button id="eventClose" class="icon-btn" type="button">✕</button></div>
+    <div id="eventPopupBody"></div>
+    <button id="eventOk" class="btn btn-gold btn-block" type="button">Got It</button>
+  </div>
+</div>
+
 <datalist id="stockList"></datalist>
 <div id="toast" class="toast hidden"></div>
 
@@ -564,9 +606,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/firebase-config.js?v=6"></script>
-<script src="js/stocks.js?v=13"></script>
-<script src="js/app.js?v=13"></script>
-<script src="js/profile.js?v=8"></script>
-<script src="js/features.js?v=13"></script>
+<script src="js/stocks.js?v=14"></script>
+<script src="js/app.js?v=14"></script>
+<script src="js/profile.js?v=14"></script>
+<script src="js/features.js?v=14"></script>
 </body>
 </html>

@@ -176,6 +176,15 @@ function renderProfile() {
   if (document.activeElement !== $("profPhone")) $("profPhone").value = p.phone || "";
   $("profNameTitle").textContent = displayName() || "My Profile";
   $("profEmailLine").textContent = currentUser.email;
+  const er = $("profEmailRow"); if (er) er.textContent = currentUser.email;
+  const rs = $("secRecSummary");
+  if (rs) {
+    const t2 = state.profile.totp;
+    const left2 = (state.profile.recovery || []).length;
+    rs.textContent = t2 && t2.enabled
+      ? "2FA is ON · " + left2 + " of 8 recovery codes unused · Seed phrase backup active"
+      : "2FA is OFF — turn it on below to activate your seed phrase and recovery codes";
+  }
   $("topName").textContent = displayName() ? displayName().split(" ")[0] : "Account";
   renderAvatars();
   renderTotpArea(false);
@@ -237,11 +246,13 @@ function renderTotpArea(force) {
       '<p class="totp-status on">2FA is <b>ON</b> — after login, a code from your authenticator app is asked. This is your double lock.</p>' +
       '<div class="totp-actions">' +
       '<button class="btn btn-small" id="tShowQr" type="button">Show QR / Key Again</button>' +
+      '<button class="btn btn-small" id="tShowSeed" type="button">View Seed Phrase</button>' +
       '<button class="btn btn-small" id="tRegen" type="button">New Recovery Codes</button>' +
       '<button class="btn btn-small btn-danger" id="tDisable" type="button">Turn OFF 2FA</button>' +
       '</div>' +
-      '<p class="price-meta">Recovery codes left: ' + left + ' of 8. Each code works only once.</p>';
+      '<p class="price-meta">Recovery codes left: ' + left + ' of 8. Each code works only once. Your seed phrase and your recovery codes both work on the sign-in screen — together they are your complete backup.</p>';
     $("tShowQr").addEventListener("click", totpShowQrAgain);
+    $("tShowSeed").addEventListener("click", totpShowSeed);
     $("tRegen").addEventListener("click", totpRegenCodes);
     $("tDisable").addEventListener("click", totpDisable);
     return;
@@ -313,14 +324,14 @@ function renderWz() {
 }
 async function totpEnable() {
   const err = $("wzError2");
-  if (!$("wzSaved").checked) { err.textContent = "Pehle seed phrase aur recovery codes save karke tick karo."; return; }
-  if (!(await totpVerify(wz.secret, $("wzCode").value))) { err.textContent = "Code match nahi hua. App me dikh raha fresh code dalo."; return; }
+  if (!$("wzSaved").checked) { err.textContent = "Please save your seed phrase and recovery codes first, then tick the box."; return; }
+  if (!(await totpVerify(wz.secret, $("wzCode").value))) { err.textContent = "That code did not match. Enter the current code showing in your app."; return; }
   state.profile.totp = { enabled: true, encPw: wz.encPw, encSeed: wz.encSeed, createdAt: new Date().toISOString() };
   state.profile.recovery = wz.hashes;
   persist();
   closeTotpModal();
   renderTotpArea(true);
-  toast("2FA ON — double lock lag gaya");
+  toast("2FA is ON");
 }
 function totpShowQrAgain() {
   openTotpModal("Your Authenticator Key");
@@ -331,7 +342,7 @@ function totpShowQrAgain() {
     '<button class="btn btn-gold btn-block" id="mqGo" type="button">Show My QR &amp; Key</button>';
   $("mqGo").addEventListener("click", async () => {
     const secret = await unlockSecret($("mqPass").value);
-    if (!secret) { $("mqError").textContent = "Password galat hai — key unlock nahi hui."; return; }
+    if (!secret) { $("mqError").textContent = "Incorrect password — the key could not be unlocked."; return; }
     const keyText = base32encode(secret);
     $("totpModalBody").innerHTML =
       '<canvas id="mqQr" class="qr-canvas" width="216" height="216"></canvas>' +
@@ -344,6 +355,30 @@ function totpShowQrAgain() {
     $("mqDone").addEventListener("click", closeTotpModal);
   });
 }
+function totpShowSeed() {
+  openTotpModal("Your Seed Phrase");
+  $("totpModalBody").innerHTML =
+    '<p>Your 12-word seed phrase is the master backup of your 2FA — with it, you can always get back in, even without the app or a recovery code. Enter your password to view it.</p>' +
+    '<label>Your password<input type="password" id="msPass" autocomplete="current-password"></label>' +
+    '<p id="msError" class="form-error"></p>' +
+    '<button class="btn btn-gold btn-block" id="msGo" type="button">View Seed Phrase</button>';
+  $("msGo").addEventListener("click", async () => {
+    const secret = await unlockSecret($("msPass").value);
+    if (!secret) { $("msError").textContent = "Incorrect password — the key could not be unlocked."; return; }
+    const phrase = seedPhrase(secret.slice(0, 12));
+    $("totpModalBody").innerHTML =
+      '<p><b>Your 12-word seed phrase</b> — keep it private and offline. Anyone with these words can rebuild your authenticator.</p>' +
+      '<div class="seed-grid">' + phrase.split(" ").map((w, i) => '<span class="seed-word"><i>' + (i + 1) + '</i>' + esc(w) + '</span>').join("") + '</div>' +
+      '<div class="dl-row"><button class="btn btn-small" id="msCopy" type="button">Copy Seed Phrase</button>' +
+      '<button class="btn btn-small" id="msDl" type="button">Download</button>' +
+      '<button class="btn btn-small" id="msDone" type="button">Done</button></div>';
+    $("msCopy").addEventListener("click", () => copyText(phrase));
+    $("msDl").addEventListener("click", () => downloadText("folio-seed-phrase.txt",
+      "Folio — 2FA SEED PHRASE\nKeep this PRIVATE. Anyone with these 12 words can enter your account if you lose your phone.\n\n" +
+      phrase.split(" ").map((w, i) => (i + 1) + ". " + w).join("\n") + "\n\nPhrase: " + phrase + "\nAccount: " + currentUser.email + "\n"));
+    $("msDone").addEventListener("click", closeTotpModal);
+  });
+}
 function totpRegenCodes() {
   openTotpModal("New Recovery Codes");
   $("totpModalBody").innerHTML =
@@ -354,13 +389,13 @@ function totpRegenCodes() {
     '<button class="btn btn-gold btn-block" id="mrGo" type="button">Make New Codes</button>';
   $("mrGo").addEventListener("click", async () => {
     const secret = await unlockSecret($("mrPass").value);
-    if (!secret) { $("mrError").textContent = "Password galat hai."; return; }
-    if (!(await totpVerify(secret, $("mrCode").value))) { $("mrError").textContent = "Code match nahi hua."; return; }
+    if (!secret) { $("mrError").textContent = "Incorrect password."; return; }
+    if (!(await totpVerify(secret, $("mrCode").value))) { $("mrError").textContent = "That code did not match."; return; }
     const codes = genRecoveryCodes();
     state.profile.recovery = await hashCodes(codes);
     persist();
     $("totpModalBody").innerHTML =
-      '<p><b>Your new recovery codes</b> — purane wale ab kaam nahi karenge. Inhe abhi save kar lo:</p>' +
+      '<p><b>Your new recovery codes</b> — your old codes stop working from this moment. Save these right away:</p>' +
       '<div class="rec-grid">' + codes.map(c => '<span class="rec-code">' + esc(c) + '</span>').join("") + '</div>' +
       '<div class="dl-row"><button class="btn btn-small" id="mrCopy" type="button">Copy Codes</button>' +
       '<button class="btn btn-small" id="mrDl" type="button">Download Codes</button>' +
@@ -375,20 +410,20 @@ function totpRegenCodes() {
 function totpDisable() {
   openTotpModal("Turn OFF 2FA");
   $("totpModalBody").innerHTML =
-    '<p>2FA band karne se account ka double lock hat jayega. Confirm karne ke liye password aur app ka current code dalo.</p>' +
+    '<p>Turning 2FA off removes the double lock from your account. To confirm, enter your password and a current code from your app.</p>' +
     '<label>Your password<input type="password" id="mxPass" autocomplete="current-password"></label>' +
     '<label>6-digit code from your app<input type="text" id="mxCode" inputmode="numeric" maxlength="6" placeholder="123456"></label>' +
     '<p id="mxError" class="form-error"></p>' +
     '<button class="btn btn-danger btn-block" id="mxGo" type="button">Turn OFF 2FA</button>';
   $("mxGo").addEventListener("click", async () => {
     const secret = await unlockSecret($("mxPass").value);
-    if (!secret) { $("mxError").textContent = "Password galat hai."; return; }
-    if (!(await totpVerify(secret, $("mxCode").value))) { $("mxError").textContent = "Code match nahi hua."; return; }
+    if (!secret) { $("mxError").textContent = "Incorrect password."; return; }
+    if (!(await totpVerify(secret, $("mxCode").value))) { $("mxError").textContent = "That code did not match."; return; }
     state.profile.totp = null; state.profile.recovery = [];
     persist();
     closeTotpModal();
     renderTotpArea(true);
-    toast("2FA OFF ho gaya");
+    toast("2FA is OFF");
   });
 }
 
@@ -404,8 +439,8 @@ function wireGate() {
     const err = $("gateError");
     err.textContent = "Checking...";
     const secret = await unlockSecret($("gatePass").value);
-    if (!secret) { err.textContent = "Password galat hai, ya key unlock nahi hui."; return; }
-    if (!(await totpVerify(secret, $("gateCode").value))) { err.textContent = "Code match nahi hua. Fresh code aane do, phir try karo."; return; }
+    if (!secret) { err.textContent = "Incorrect password, or the key could not be unlocked."; return; }
+    if (!(await totpVerify(secret, $("gateCode").value))) { err.textContent = "That code did not match. Wait for a fresh code, then try again."; return; }
     err.textContent = "";
     toast("Welcome back");
     unlockSession();
@@ -434,7 +469,7 @@ function wireGate() {
     if (gateAltMode === "recovery") {
       const h = await sha256hex(val.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
       const idx = (state.profile.recovery || []).indexOf(h);
-      if (idx < 0) { err.textContent = "Ye recovery code sahi nahi hai, ya pehle use ho chuka hai."; return; }
+      if (idx < 0) { err.textContent = "This recovery code is not valid, or it has already been used."; return; }
       state.profile.recovery.splice(idx, 1);
       persist();
       err.textContent = "";
@@ -444,14 +479,14 @@ function wireGate() {
     }
     if (gateAltMode === "seed") {
       const bytes = phraseToBytes(val);
-      if (!bytes) { err.textContent = "Pure 12 words, bilkul waise hi jaise mile the."; return; }
+      if (!bytes) { err.textContent = "Enter all 12 words, in the same order as you received them."; return; }
       const phrase = seedPhrase(bytes);
       try {
         const key = await deriveAesKey("seed:" + phrase, keySalt());
         await aesDec(key, state.profile.totp.encSeed);
-      } catch (ex) { err.textContent = "Seed phrase se key unlock nahi hui. Words dobara check karo."; return; }
+      } catch (ex) { err.textContent = "The seed phrase could not unlock your key. Check the words and their order."; return; }
       err.textContent = "";
-      toast("Seed accepted — andar ja rahe ho. Profile me 'Show QR' se app dobara add kar lena.");
+      toast("Seed phrase accepted. You can re-add the app any time from My Profile.");
       unlockSession();
     }
   });
@@ -505,7 +540,7 @@ function wireProfile() {
       persist(); renderAvatars();
       toast("Photo updated");
     };
-    img.onerror = () => { URL.revokeObjectURL(url); toast("Photo load nahi hui"); };
+    img.onerror = () => { URL.revokeObjectURL(url); toast("That photo could not be loaded"); };
     img.src = url;
     e.target.value = "";
   });
@@ -519,13 +554,13 @@ function wireProfile() {
     const curPass = $("emailCurPass").value;
     const okEl = $("emailMsg"), errEl = $("emailError");
     okEl.textContent = ""; errEl.textContent = "";
-    if (!newEmail || newEmail === currentUser.email) { errEl.textContent = "Naya email dalo (purane se alag)."; return; }
+    if (!newEmail || newEmail === currentUser.email) { errEl.textContent = "Enter a new email address (different from the current one)."; return; }
     // If 2FA is on, the secret is locked to the OLD email salt — unlock first.
     let secret = null;
     const t = state.profile.totp;
     if (t && t.enabled) {
       secret = await unlockSecret(curPass);
-      if (!secret) { errEl.textContent = "Current password se 2FA key unlock nahi hui — email change rok diya gaya, warna 2FA toot jata."; return; }
+      if (!secret) { errEl.textContent = "Your current password could not unlock your 2FA key, so the email change was stopped — otherwise 2FA would have broken."; return; }
     }
     const oldEmail = currentUser.email;
     try {
@@ -535,14 +570,14 @@ function wireProfile() {
         await u.reauthenticateWithCredential(cred);
         if (typeof u.verifyBeforeUpdateEmail === "function") {
           await u.verifyBeforeUpdateEmail(newEmail);
-          okEl.textContent = "Naye email par ek confirmation link gaya hai — use click karte hi email change ho jayega. Tab tak purana email hi login rahega, aur 2FA bhi purane hisab se chalega.";
+          okEl.textContent = "A confirmation link has been sent to the new email. Click it to complete the change. Until then, your current email remains your login, and 2FA keeps working as it is.";
           return;
         }
         await u.updateEmail(newEmail);
       } else {
         const users = lsUsers();
-        if (!users[oldEmail] || users[oldEmail].pass !== curPass) { errEl.textContent = "Current password galat hai."; return; }
-        if (users[newEmail]) { errEl.textContent = "Ye email pehle se registered hai."; return; }
+        if (!users[oldEmail] || users[oldEmail].pass !== curPass) { errEl.textContent = "Current password is incorrect."; return; }
+        if (users[newEmail]) { errEl.textContent = "This email is already registered."; return; }
         users[newEmail] = users[oldEmail]; delete users[oldEmail];
         lsSaveUsers(users);
         localStorage.setItem(LS_SESSION, newEmail);
@@ -558,7 +593,7 @@ function wireProfile() {
     renderProfile();
     $("emailCurPass").value = ""; $("newEmail").value = "";
     $("emailModal").classList.add("hidden");
-    toast("Email changed — ab naye email se login hoga");
+    toast("Email changed — sign in with your new email from now on");
   });
 
   $("passForm").addEventListener("submit", async e => {
@@ -566,12 +601,12 @@ function wireProfile() {
     const curPass = $("passCur").value, newPass = $("passNew").value;
     const okEl = $("passMsg"), errEl = $("passError");
     okEl.textContent = ""; errEl.textContent = "";
-    if (newPass.length < 6) { errEl.textContent = "New password kam se kam 6 characters ka ho."; return; }
+    if (newPass.length < 6) { errEl.textContent = "New password must be at least 6 characters."; return; }
     let secret = null;
     const t = state.profile.totp;
     if (t && t.enabled) {
       secret = await unlockSecret(curPass);
-      if (!secret) { errEl.textContent = "Current password se 2FA key unlock nahi hui, isliye password change rok diya. (Agar password email se reset kiya tha, to pehle logout karke seed phrase se andar aao.)"; return; }
+      if (!secret) { errEl.textContent = "Your current password could not unlock your 2FA key, so the password change was stopped. (If you reset your password by email, first sign out and come back in with your seed phrase.)"; return; }
     }
     try {
       if (FIREBASE_ON) {
@@ -581,7 +616,7 @@ function wireProfile() {
         await u.updatePassword(newPass);
       } else {
         const users = lsUsers();
-        if (!users[currentUser.email] || users[currentUser.email].pass !== curPass) { errEl.textContent = "Current password galat hai."; return; }
+        if (!users[currentUser.email] || users[currentUser.email].pass !== curPass) { errEl.textContent = "Current password is incorrect."; return; }
         users[currentUser.email].pass = newPass;
         lsSaveUsers(users);
       }
@@ -606,7 +641,7 @@ function wireProfile() {
     e.preventDefault();
     const pass = $("delPass").value;
     const err = $("delError");
-    if (!pass) { err.textContent = "Pehle apna password dalo."; return; }
+    if (!pass) { err.textContent = "Enter your password first."; return; }
     err.textContent = "Deleting...";
     try {
       if (FIREBASE_ON) {
@@ -617,7 +652,7 @@ function wireProfile() {
         await u.delete();
       } else {
         const users = lsUsers();
-        if (!users[currentUser.email] || users[currentUser.email].pass !== pass) { err.textContent = "Password galat hai — delete nahi hua."; return; }
+        if (!users[currentUser.email] || users[currentUser.email].pass !== pass) { err.textContent = "Incorrect password — nothing was deleted."; return; }
         delete users[currentUser.email];
         lsSaveUsers(users);
       }
