@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23000000'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%23ffffff' font-family='Georgia'>F</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=8">
+<link rel="stylesheet" href="css/style.css?v=9">
 </head>
 <body>
 
@@ -316,35 +316,37 @@
   </footer>
 </div>
 
-<!-- ============ TXN MODAL ============ -->
+<!-- ============ ADD TRANSACTION PANEL (MoneyControl-style) ============ -->
 <div id="txnModal" class="modal hidden">
-  <div class="modal-card">
-    <div class="modal-head"><h3 id="txnTitle">Add Stock</h3><button id="txnClose" class="icon-btn" type="button">✕</button></div>
+  <div class="modal-card modal-wide">
+    <div class="modal-head"><h3>ADD TRANSACTION</h3><button id="txnClose" class="icon-btn" type="button">✕</button></div>
+    <div class="txn-types">
+      <span class="txn-type-chip">Stocks / ETF</span>
+      <span class="price-meta">Manual entry for your shares — no broker connection.</span>
+    </div>
+    <div class="entry-tabs">
+      <button id="entryManual" class="entry-tab active" type="button">Manual Entry</button>
+      <span class="entry-sep">|</span>
+      <button id="entryFile" class="entry-tab" type="button">File Upload</button>
+    </div>
+
     <form id="txnForm" autocomplete="off">
-      <input type="hidden" id="txnType" value="BUY">
-      <div class="seg" id="txnSeg">
-        <button type="button" data-t="BUY" class="seg-btn active">Buy</button>
-        <button type="button" data-t="SELL" class="seg-btn">Sell</button>
-        <button type="button" data-t="DIV" class="seg-btn">Dividend</button>
-      </div>
-      <label>Stock (search name or type symbol)
-        <input type="text" id="txnStock" list="stockList" placeholder="e.g. Reliance or RELIANCE" required>
-      </label>
-      <label>Date of buy / sell
-        <input type="date" id="txnDate" required>
-        <span class="opt">The real date matters — it decides short-term vs long-term tax and your XIRR.</span>
-      </label>
-      <div class="form-2col">
-        <label>Quantity
-          <input type="number" id="txnQty" min="0" step="any" placeholder="10" required>
-        </label>
-        <label id="txnPriceLabel">Buy price (per share ₹)
-          <input type="number" id="txnPrice" min="0" step="any" placeholder="2500" required>
-        </label>
-      </div>
+      <div class="bt-head"><span>Action</span><span>Stock Name</span><span>Exchange</span><span>Date</span><span>Quantity</span><span>Price / Stock</span><span>Amount</span><span></span></div>
+      <div id="batchRows"></div>
+      <button id="addRowBtn" class="mini-btn add-more" type="button">＋ Add More Transactions</button>
       <p id="txnError" class="form-error"></p>
-      <button type="submit" class="btn btn-gold btn-block">Save</button>
+      <div class="txn-foot">
+        <button type="submit" class="btn btn-gold">Add Transactions</button>
+        <button id="txnReset" class="btn" type="button">Reset</button>
+      </div>
+      <p class="auth-note">The ＋ on any row opens optional details — broker, total charges and a note. Charges are added to your buy cost (and taken out of sell proceeds), so profit stays honest. The real date matters: it decides short-term vs long-term tax and your XIRR. NSE prices are used by default.</p>
     </form>
+
+    <div id="fileBox" class="hidden">
+      <p>Upload a CSV file with columns: <b>Date, Type (BUY / SELL / DIV), Symbol, Name, Qty, Price</b>. The backup file you download from Settings works here as-is.</p>
+      <button id="filePickBtn" class="btn btn-gold" type="button">Choose CSV File</button>
+      <p class="auth-note">Entries are added to your account — nothing is overwritten or deleted.</p>
+    </div>
   </div>
 </div>
 
@@ -479,7 +481,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/firebase-config.js?v=6"></script>
 <script src="js/stocks.js?v=4"></script>
-<script src="js/app.js?v=8"></script>
+<script src="js/app.js?v=9"></script>
 <script src="js/profile.js?v=8"></script>
 <script src="js/features.js?v=8"></script>
 </body>

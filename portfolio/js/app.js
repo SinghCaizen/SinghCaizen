@@ -175,6 +175,13 @@ function resolveStock(input) {
   return { sym: sym, name: raw, sector: "Other" };
 }
 function fyStartOf(dateStr) { const d = new Date(dateStr + "T00:00:00"); return d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; }
+function effPrice(t) {
+  const p = Number(t.price) || 0, q = Number(t.qty) || 0, c = Number(t.charges) || 0;
+  if (!c || !q) return p;
+  if (t.type === "BUY") return p + c / q;
+  if (t.type === "SELL") return Math.max(0, p - c / q);
+  return p;
+}
 function computeHoldings() {
   const lots = {}; const order = []; const realised = {}; let divTotal = 0;
   const split = { stcg: 0, ltcg: 0, stcgFY: 0, ltcgFY: 0 };
@@ -183,12 +190,12 @@ function computeHoldings() {
   for (const t of txns) {
     if (t.type === "DIV") { divTotal += Number(t.price) || 0; continue; }
     if (!lots[t.sym]) { lots[t.sym] = []; order.push(t.sym); realised[t.sym] = 0; }
-    if (t.type === "BUY") lots[t.sym].push({ qty: Number(t.qty), price: Number(t.price), date: t.date, name: t.name, sector: t.sector || "Other" });
+    if (t.type === "BUY") lots[t.sym].push({ qty: Number(t.qty), price: effPrice(t), date: t.date, name: t.name, sector: t.sector || "Other" });
     else if (t.type === "SELL") {
       let q = Number(t.qty);
       while (q > 0 && lots[t.sym].length) {
         const lot = lots[t.sym][0]; const take = Math.min(q, lot.qty);
-        const gain = take * (Number(t.price) - lot.price);
+        const gain = take * (effPrice(t) - lot.price);
         realised[t.sym] += gain;
         const days = (new Date(t.date + "T00:00:00") - new Date(lot.date + "T00:00:00")) / 86400000;
         const isLong = days >= 365;
@@ -224,8 +231,8 @@ function portfolioXirr(currentValue) {
   const cfs = [];
   for (const t of state.txns) {
     const d = new Date(t.date + "T00:00:00");
-    if (t.type === "BUY") cfs.push({ date: d, amount: -Number(t.qty) * Number(t.price) });
-    else if (t.type === "SELL") cfs.push({ date: d, amount: Number(t.qty) * Number(t.price) });
+    if (t.type === "BUY") cfs.push({ date: d, amount: -Number(t.qty) * effPrice(t) });
+    else if (t.type === "SELL") cfs.push({ date: d, amount: Number(t.qty) * effPrice(t) });
     else if (t.type === "DIV") cfs.push({ date: d, amount: Number(t.price) || 0 });
   }
   if (!cfs.length || currentValue <= 0) return null;
@@ -464,40 +471,100 @@ function renderHistory() {
   }));
 }
 
-/* ================= txn modal ================= */
-function openTxn(type, sym, name) {
-  $("txnType").value = type;
-  document.querySelectorAll("#txnSeg .seg-btn").forEach(b => b.classList.toggle("active", b.dataset.t === type));
-  $("txnTitle").textContent = type === "BUY" ? "Add / Buy Stock" : type === "SELL" ? "Sell Stock" : "Add Dividend";
-  $("txnStock").value = sym ? (name && name !== sym ? name : sym) : "";
-  $("txnQty").value = ""; $("txnPrice").value = "";
-  $("txnDate").value = todayStr();
-  $("txnError").textContent = "";
-  syncTxnLabels(); $("txnModal").classList.remove("hidden");
+/* ================= add-transaction panel (MoneyControl-style) ================= */
+function batchRow(prefill) {
+  const row = document.createElement("div");
+  row.className = "bt-row";
+  row.innerHTML =
+    '<div class="bt-main">' +
+    '<select class="bt-action"><option value="BUY">Buy</option><option value="SELL">Sell</option><option value="DIV">Dividend</option></select>' +
+    '<input class="bt-stock" list="stockList" placeholder="Stock name or symbol">' +
+    '<select class="bt-exch"><option>NSE</option><option>BSE</option></select>' +
+    '<input type="date" class="bt-date">' +
+    '<input type="number" class="bt-qty" min="0" step="any" placeholder="Qty">' +
+    '<input type="number" class="bt-price" min="0" step="any" placeholder="Price">' +
+    '<input class="bt-amount" readonly placeholder="Amount">' +
+    '<span class="bt-btns"><button type="button" class="icon-btn bt-optbtn" title="Optional: broker, charges, notes">＋</button>' +
+    '<button type="button" class="icon-btn bt-del" title="Remove this row">🗑</button></span>' +
+    '</div>' +
+    '<div class="bt-optbox hidden">' +
+    '<label>Select Broker<select class="bt-broker"><option>Zerodha</option><option>Dhan</option><option>Groww</option><option>Upstox</option><option>Other</option></select></label>' +
+    '<label>Total Charges (₹)<input type="number" class="bt-charges" min="0" step="any" placeholder="0"></label>' +
+    '<label>Net Amount<input class="bt-net" readonly placeholder="—"></label>' +
+    '<label>Notes<input type="text" class="bt-note" placeholder="Note for future reference"></label>' +
+    '</div>';
+  const q = s => row.querySelector(s);
+  const act = q(".bt-action"), qty = q(".bt-qty"), price = q(".bt-price"), charges = q(".bt-charges");
+  function recalc() {
+    const type = act.value;
+    const p = Number(price.value) || 0, n = Number(qty.value) || 0, c = Number(charges.value) || 0;
+    const amt = type === "DIV" ? p : n * p;
+    q(".bt-amount").value = amt ? "₹" + amt.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "";
+    const net = type === "BUY" ? amt + c : type === "SELL" ? amt - c : amt;
+    q(".bt-net").value = amt ? "₹" + net.toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "";
+    qty.disabled = type === "DIV";
+    if (type === "DIV") qty.value = "";
+    price.placeholder = type === "DIV" ? "Total ₹ received" : "Price";
+  }
+  row.addEventListener("input", recalc);
+  row.addEventListener("change", recalc);
+  q(".bt-optbtn").addEventListener("click", () => q(".bt-optbox").classList.toggle("hidden"));
+  q(".bt-del").addEventListener("click", () => {
+    if (document.querySelectorAll(".bt-row").length > 1) row.remove();
+    else { row.querySelectorAll("input").forEach(i => { if (!i.classList.contains("bt-date")) i.value = ""; }); recalc(); }
+  });
+  if (prefill) {
+    if (prefill.type) act.value = prefill.type;
+    if (prefill.stock) q(".bt-stock").value = prefill.stock;
+  }
+  q(".bt-date").value = todayStr();
+  recalc();
+  return row;
 }
-function syncTxnLabels() {
-  const t = $("txnType").value;
-  $("txnQty").closest("label").style.display = t === "DIV" ? "none" : "block";
-  $("txnPriceLabel").firstChild.textContent = t === "BUY" ? "Buy price (per share ₹) " : t === "SELL" ? "Sell price (per share ₹) " : "Total dividend received (₹) ";
+function setEntryTab(file) {
+  $("entryManual").classList.toggle("active", !file);
+  $("entryFile").classList.toggle("active", file);
+  $("txnForm").classList.toggle("hidden", file);
+  $("fileBox").classList.toggle("hidden", !file);
+}
+function openTxn(type, sym, name) {
+  setEntryTab(false);
+  const box = $("batchRows");
+  box.innerHTML = "";
+  box.appendChild(batchRow({ type: type || "BUY", stock: sym ? (name && name !== sym ? name : sym) : "" }));
+  $("txnError").textContent = "";
+  $("txnModal").classList.remove("hidden");
 }
 function closeTxn() { $("txnModal").classList.add("hidden"); }
 function saveTxn(ev) {
   ev.preventDefault();
-  const type = $("txnType").value;
-  const st = resolveStock($("txnStock").value);
-  if (!st.sym) { $("txnError").textContent = "Please enter a stock name or symbol."; return; }
-  const qty = type === "DIV" ? 0 : Number($("txnQty").value);
-  const price = Number($("txnPrice").value);
-  const date = $("txnDate").value;
-  if (type !== "DIV" && !(qty > 0)) { $("txnError").textContent = "Quantity must be more than 0."; return; }
-  if (!(price >= 0) || !date) { $("txnError").textContent = "Please fill price and date."; return; }
-  if (type === "SELL") {
-    const h = computeHoldings().holdings.find(x => x.sym === st.sym);
-    if (!h || qty > h.qty) { $("txnError").textContent = "You hold only " + (h ? h.qty : 0) + " shares of " + st.sym + "."; return; }
+  const rows = [...document.querySelectorAll(".bt-row")];
+  const sellsQueued = {};
+  const adds = [];
+  for (const row of rows) {
+    const q = s => row.querySelector(s);
+    const stockTxt = q(".bt-stock").value.trim();
+    if (!stockTxt) continue;
+    const type = q(".bt-action").value;
+    const st = resolveStock(stockTxt);
+    if (!st.sym) { $("txnError").textContent = "Ek row me stock samajh nahi aaya — naam ya symbol check karo."; return; }
+    const date = q(".bt-date").value;
+    const price = Number(q(".bt-price").value);
+    const qty = type === "DIV" ? 0 : Number(q(".bt-qty").value);
+    if (!date || !(price >= 0) || (type !== "DIV" && !(price > 0))) { $("txnError").textContent = st.sym + ": date aur price sahi dalo."; return; }
+    if (type !== "DIV" && !(qty > 0)) { $("txnError").textContent = st.sym + ": quantity 0 se zyada ho."; return; }
+    if (type === "SELL") {
+      const h = computeHoldings().holdings.find(x => x.sym === st.sym);
+      const have = (h ? h.qty : 0) - (sellsQueued[st.sym] || 0);
+      if (qty > have) { $("txnError").textContent = "You hold only " + have + " shares of " + st.sym + "."; return; }
+      sellsQueued[st.sym] = (sellsQueued[st.sym] || 0) + qty;
+    }
+    adds.push({ id: uid(), type: type, sym: st.sym, name: st.name, sector: st.sector, qty: qty, price: price, date: date, exch: q(".bt-exch").value, broker: q(".bt-broker").value, charges: Number(q(".bt-charges").value) || 0, note: q(".bt-note").value.trim() });
   }
-  state.txns.push({ id: uid(), type: type, sym: st.sym, name: st.name, sector: st.sector, qty: qty, price: price, date: date });
+  if (!adds.length) { $("txnError").textContent = "Pehle kam se kam ek stock ki detail dalo."; return; }
+  state.txns.push(...adds);
   persist(); closeTxn(); renderAll(); refreshPrices();
-  toast(type === "BUY" ? "Added " + st.sym : type === "SELL" ? "Sold " + st.sym : "Dividend saved");
+  toast(adds.length + (adds.length > 1 ? " transactions" : " transaction") + " added");
 }
 
 /* ================= watch / settings ================= */
@@ -510,12 +577,12 @@ function addWatch(ev) {
   $("watchInput").value = ""; persist(); renderWatch(); refreshPrices();
 }
 function exportCsv() {
-  const lines = ["Date,Type,Symbol,Name,Qty,Price"];
+  const lines = ["Date,Type,Symbol,Name,Qty,Price,Charges,Broker,Exchange,Note"];
   [...state.txns].sort((a, b) => a.date < b.date ? -1 : 1).forEach(t =>
-    lines.push([t.date, t.type, t.sym, '"' + String(t.name || "").replace(/"/g, '""') + '"', t.qty, t.price].join(",")));
+    lines.push([t.date, t.type, t.sym, '"' + String(t.name || "").replace(/"/g, '""') + '"', t.qty, t.price, t.charges || 0, t.broker || "", t.exch || "", '"' + String(t.note || "").replace(/"/g, '""') + '"'].join(",")));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
-  a.download = "my-portfolio.csv"; a.click(); URL.revokeObjectURL(a.href);
+  a.download = "folio-portfolio.csv"; a.click(); URL.revokeObjectURL(a.href);
   toast("CSV downloaded — keep it safe, it is your backup.");
 }
 function importCsv(file) {
@@ -529,7 +596,7 @@ function importCsv(file) {
         if (c.length < 6) continue;
         const type = c[1].toUpperCase(); if (!["BUY", "SELL", "DIV"].includes(type)) continue;
         const hit = (window.STOCK_LIST || []).find(s => s[0] === c[2].toUpperCase());
-        state.txns.push({ id: uid(), date: c[0], type: type, sym: c[2].toUpperCase(), name: c[3], sector: hit ? (hit[2] || "Other") : "Other", qty: Number(c[4]) || 0, price: Number(c[5]) || 0 });
+        state.txns.push({ id: uid(), date: c[0], type: type, sym: c[2].toUpperCase(), name: c[3], sector: hit ? (hit[2] || "Other") : "Other", qty: Number(c[4]) || 0, price: Number(c[5]) || 0, charges: Number(c[6]) || 0, broker: c[7] || "", exch: c[8] || "", note: c[9] || "" });
         n++;
       }
       persist(); renderAll(); refreshPrices(); toast("Imported " + n + " entries.");
@@ -587,12 +654,12 @@ document.addEventListener("DOMContentLoaded", () => {
   $("addStockBtn").addEventListener("click", () => openTxn("BUY", "", ""));
   $("txnClose").addEventListener("click", closeTxn);
   $("txnModal").addEventListener("click", e => { if (e.target === $("txnModal")) closeTxn(); });
-  document.querySelectorAll("#txnSeg .seg-btn").forEach(b => b.addEventListener("click", () => {
-    $("txnType").value = b.dataset.t;
-    document.querySelectorAll("#txnSeg .seg-btn").forEach(x => x.classList.toggle("active", x === b));
-    syncTxnLabels();
-  }));
   $("txnForm").addEventListener("submit", saveTxn);
+  $("addRowBtn").addEventListener("click", () => $("batchRows").appendChild(batchRow(null)));
+  $("txnReset").addEventListener("click", () => openTxn("BUY", "", ""));
+  $("entryManual").addEventListener("click", () => setEntryTab(false));
+  $("entryFile").addEventListener("click", () => setEntryTab(true));
+  $("filePickBtn").addEventListener("click", () => $("importFile").click());
   $("watchForm").addEventListener("submit", addWatch);
   $("exportBtn").addEventListener("click", exportCsv);
   $("importFile").addEventListener("change", e => { if (e.target.files[0]) importCsv(e.target.files[0]); e.target.value = ""; });
