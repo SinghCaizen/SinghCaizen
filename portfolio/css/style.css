@@ -666,3 +666,13 @@ body.privacy-on .stat-value,body.privacy-on .stat-sub,body.privacy-on #insAssets
 .div-badge{border:1px solid var(--line);border-radius:999px;padding:.4rem .85rem;font-size:.88rem;color:var(--muted);background:var(--panel-2)}
 .div-badge b{color:var(--text)}
 .scatter text{pointer-events:none}
+
+/* ===== v18: 52-week range bar + quant chips ===== */
+.rng-wrap{margin:.7rem 0 .3rem}
+.rng-labels{display:flex;justify-content:space-between;font-size:.8rem;color:var(--muted);margin-bottom:.35rem}
+.rng-track{position:relative;height:8px;border-radius:99px;background:var(--line)}
+.rng-fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:var(--text);opacity:.35}
+.rng-dot{position:absolute;top:50%;width:14px;height:14px;border-radius:50%;background:var(--text);border:2px solid var(--bg);transform:translate(-50%,-50%);box-shadow:0 1px 5px rgba(0,0,0,.35)}
+.qwrap{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
+.qchip{border:1px solid var(--line);border-radius:10px;padding:.42rem .62rem;font-size:.86rem;color:var(--muted);background:var(--panel-2)}
+.qchip b{color:var(--text)}

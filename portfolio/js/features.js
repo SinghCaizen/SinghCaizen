@@ -155,6 +155,11 @@ switchView = function (name) {
   folioView = name;
   _origSwitchView(name);
   if ((name === "insights" || name === "news") && currentUser) renderAll();
+  if (name === "watchlist" && currentUser) {
+    setTimeout(() => {
+      (async () => { for (const w of (state.watch || []).slice(0, 12)) await fetchMaster(w.sym); })();
+    }, 500);
+  }
 };
 
 let perfRange = "3mo", perfKey = "", perfToken = 0, perfBench = false;
@@ -336,7 +341,7 @@ function renderTax(d) {
 
 /* ---------- stock chart modal ---------- */
 let stockSym = null, stockRange = "6mo";
-const RANGE_LABEL = { "1d5m": "Today · 5-minute candles", "5d15m": "5 days · 15-minute candles", "5d1h": "5 days · 1-hour candles", "7d15m": "1 week · 15-minute candles", "1mo": "1 month", "3mo": "3 months", "6mo": "6 months", "1y": "1 year", "5y": "5 years", "max": "All available history" };
+const RANGE_LABEL = { "1d5m": "Today · 5-minute candles", "5d15m": "5 days · 15-minute candles", "5d1h": "5 days · 1-hour candles", "7d15m": "1 week · daily closes", "1mo": "1 month", "3mo": "3 months", "6mo": "6 months", "1y": "1 year", "5y": "5 years", "max": "All available history" };
 function openStock(sym) {
   stockSym = sym; stockRange = "6mo";
   const row = enriched().rows.find(r => r.sym === sym);
@@ -345,7 +350,7 @@ function openStock(sym) {
   $("stockName").textContent = row ? row.name : (metaStock ? metaStock[1] : "");
   document.querySelectorAll("#stockSeg .seg-btn").forEach(b => b.classList.toggle("active", b.dataset.r === stockRange));
   $("stockModal").classList.remove("hidden");
-  drawStock();
+  requestAnimationFrame(() => requestAnimationFrame(() => drawStock()));
 }
 async function drawStock() {
   const sym = stockSym;
@@ -353,7 +358,17 @@ async function drawStock() {
   if (!sym || !box) return;
   box.innerHTML = '<div class="skel" style="height:210px"></div>';
   stats.innerHTML = ""; meta.textContent = "";
-  const h = await fetchHistory(sym, stockRange);
+  let h = null;
+  const SLICE_DAYS = { "7d15m": 7, "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366 };
+  if (SLICE_DAYS[stockRange]) {
+    const mst = await fetchMaster(sym);
+    if (sym !== stockSym) return;
+    if (mst && mst.points.length > 1) {
+      const pts = stockRange === "1y" ? mst.points : mst.points.filter(p => p.t >= Date.now() - SLICE_DAYS[stockRange] * 86400000);
+      if (pts.length > 1) h = { points: pts, meta: mst.meta };
+    }
+  }
+  if (!h) h = await fetchHistory(sym, stockRange);
   if (sym !== stockSym) return;
   const row = enriched().rows.find(r => r.sym === sym);
   const p = priceOf(sym);
@@ -774,10 +789,10 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ================================================================
-   v14 — company data, news, events, glossary
+   v14→v18 — company data, news, events, glossary
    Sources (all free, via the same public proxies as prices):
-   - Yahoo quoteSummary: company profile, earnings calendar, results
-   - Yahoo search / Google News RSS: headlines
+   - Yahoo v8 chart (single fetch): price history + meta + dividends/splits
+   - rss2json / Yahoo search / Google News RSS: headlines
    Everything degrades honestly when a source is unavailable.
    ================================================================ */
 /* Self-healing JSON fetch: races all proxies (3.5s each), validates the body
@@ -786,16 +801,22 @@ document.addEventListener("DOMContentLoaded", () => {
 let folioStaleAt = 0;
 function urlKey(u) { let h = 0; for (let i = 0; i < u.length; i++) h = (h * 31 + u.charCodeAt(i)) | 0; return "folio_raw_" + (h >>> 0).toString(36); }
 async function fetchViaProxies(url, asText) {
+  /* Four diverse routes raced in parallel (4s cap each) — JSON-wrapped,
+     raw and direct-proxy styles, so one blocked/busy route never stalls data. */
   const routes = [
-    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-    u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
-    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
-  ];
-  const attempts = routes.map(mk => (async () => {
-    const ctl = new AbortController();
-    const to = setTimeout(() => ctl.abort(), 3500);
-    try {
-      const r = await fetch(mk(url), { signal: ctl.signal });
+    async u => { /* allorigins /get — JSON envelope with the body in .contents */
+      const r = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(u), { signal: AbortSignal.timeout(4000) });
+      if (!r.ok) throw new Error("bad route");
+      const env = await r.json();
+      const t = env && env.contents;
+      if (!t) throw new Error("empty");
+      if (asText) return t;
+      const head = String(t).trim().charAt(0);
+      if (head !== "{" && head !== "[") throw new Error("not json");
+      return JSON.parse(t);
+    },
+    async u => {
+      const r = await fetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u), { signal: AbortSignal.timeout(4000) });
       if (!r.ok) throw new Error("bad route");
       const t = await r.text();
       if (!t) throw new Error("empty");
@@ -803,8 +824,29 @@ async function fetchViaProxies(url, asText) {
       const head = t.trim().charAt(0);
       if (head !== "{" && head !== "[") throw new Error("not json");
       return JSON.parse(t);
-    } finally { clearTimeout(to); }
-  })());
+    },
+    async u => {
+      const r = await fetch("https://corsproxy.io/?" + encodeURIComponent(u), { signal: AbortSignal.timeout(4000) });
+      if (!r.ok) throw new Error("bad route");
+      const t = await r.text();
+      if (!t) throw new Error("empty");
+      if (asText) return t;
+      const head = t.trim().charAt(0);
+      if (head !== "{" && head !== "[") throw new Error("not json");
+      return JSON.parse(t);
+    },
+    async u => {
+      const r = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(u), { signal: AbortSignal.timeout(4000) });
+      if (!r.ok) throw new Error("bad route");
+      const t = await r.text();
+      if (!t) throw new Error("empty");
+      if (asText) return t;
+      const head = t.trim().charAt(0);
+      if (head !== "{" && head !== "[") throw new Error("not json");
+      return JSON.parse(t);
+    }
+  ];
+  const attempts = routes.map(mk => mk(url));
   try {
     const out = await Promise.any(attempts);
     if (!asText) { try { localStorage.setItem(urlKey(url), JSON.stringify(out)); } catch (e) {} }
@@ -847,42 +889,14 @@ function crores(raw) {
   return "₹" + Math.round(raw / 1e7).toLocaleString("en-IN") + " Cr";
 }
 
-/* ---------- company info (profile + earnings calendar + results) ---------- */
+/* ---------- company info (LOCAL ONLY — instant, never hangs) ----------
+   Yahoo's v10 quoteSummary is crumb-blocked (401) without cookies, so Folio
+   no longer calls it at all. Sector/industry come from the built-in NSE
+   lists; result dates are detected from the news instead of a calendar API. */
 async function fetchCompanyInfo(sym) {
-  const ck = "folio_ci_" + sym;
-  const cached = lsCacheGet(ck, 6 * 3600 * 1000);
-  if (cached) return cached;
-  const url = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/" + sym + ".NS?modules=assetProfile,calendarEvents,incomeStatementHistoryQuarterly";
-  const j = await fetchViaProxies(url, false);
-  let out = { ok: false };
-  try {
-    const r = j.quoteSummary.result[0];
-    out = { ok: true };
-    if (r.assetProfile) {
-      out.industry = r.assetProfile.industry || "";
-      out.sectorY = r.assetProfile.sector || "";
-      out.website = r.assetProfile.website || "";
-      out.summary = (r.assetProfile.longBusinessSummary || "").slice(0, 700);
-    }
-    if (r.calendarEvents && r.calendarEvents.earnings) {
-      const e = r.calendarEvents.earnings;
-      const dates = (e.earningsDate || []).map(x => x.raw ? x.raw * 1000 : (x.fmt ? Date.parse(x.fmt) : null)).filter(Boolean);
-      if (dates.length) {
-        const upcoming = dates.filter(x => x > Date.now() - 86400000 * 2);
-        out.nextEarnings = upcoming.length ? Math.min(...upcoming) : dates[0];
-      }
-      if (e.earningsAverageEstimate && typeof e.earningsAverageEstimate.raw === "number") out.epsEst = e.earningsAverageEstimate.raw;
-    }
-    if (r.incomeStatementHistoryQuarterly && r.incomeStatementHistoryQuarterly.incomeStatementHistory) {
-      out.results = r.incomeStatementHistoryQuarterly.incomeStatementHistory.slice(0, 4).map(q => ({
-        period: q.endDate ? (q.endDate.fmt || "") : "",
-        revenue: q.totalRevenue ? q.totalRevenue.raw : null,
-        profit: q.netIncome ? q.netIncome.raw : null
-      })).filter(q => q.period);
-    }
-  } catch (e) {}
-  if (out.ok) lsCacheSet(ck, out);
-  return out;
+  const sec = (window.INDUSTRY_MAP && window.INDUSTRY_MAP[sym]) || (window.FALLBACK_SECTOR && window.FALLBACK_SECTOR[sym]) || "";
+  const metaStock = (window.STOCK_LIST || []).find(s => s[0] === sym);
+  return { ok: true, sector: sec, industry: "", website: "", summary: "", nextEarnings: null, results: null, name: metaStock ? metaStock[1] : sym };
 }
 
 /* ---------- news (Yahoo search, Google News RSS fallback) ---------- */
@@ -891,6 +905,21 @@ async function fetchNews(query, count) {
   const cached = lsCacheGet(ck, 20 * 60 * 1000);
   if (cached) return cached;
   let items = [];
+  /* Fast route first: rss2json (native CORS, no proxy) over Google News RSS */
+  try {
+    const rssUrl = "https://news.google.com/rss/search?q=" + encodeURIComponent(query + " stock") + "&hl=en-IN&gl=IN&ceid=IN:en";
+    const rj = await fetch("https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(rssUrl), { signal: AbortSignal.timeout(3000) });
+    if (rj.ok) {
+      const jj = await rj.json();
+      items = (jj.items || []).map(n => {
+        let title = n.title || "", source = "Google News";
+        const cut = title.lastIndexOf(" - ");
+        if (cut > 12) { source = title.slice(cut + 3).trim() || source; title = title.slice(0, cut).trim(); }
+        return { title: title, link: n.link, source: source, ts: Date.parse(n.pubDate || "") || 0 };
+      }).filter(n => n.title && n.link).slice(0, count || 6);
+    }
+  } catch (e) {}
+  if (!items.length) {
   const j = await fetchViaProxies("https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(query) + "&newsCount=" + (count || 6) + "&quotesCount=0", false);
   try {
     items = (j.news || []).map(n => ({ title: n.title, link: n.link, source: n.publisher || "News", ts: (n.providerPublishTime || 0) * 1000 })).filter(n => n.title && n.link && n.ts);
@@ -908,6 +937,7 @@ async function fetchNews(query, count) {
         })).filter(n => n.title && n.link);
       } catch (e) {}
     }
+  }
   }
   if (items.length) lsCacheSet(ck, items);
   return items;
@@ -1013,16 +1043,124 @@ openStock = function (sym) {
   _origOpenStock(sym);
   loadCompanySheet(sym);
 };
+/* ---------- single-fetch master engine (v8 chart powers the whole modal) ---------- */
+const masterCache = {};
+async function fetchMaster(sym) {
+  const mc = masterCache[sym];
+  if (mc && Date.now() - mc.ts < 6 * 3600 * 1000) return mc;
+  let master = null;
+  const saved = lsCacheGet("folio_master_" + sym, 6 * 3600 * 1000);
+  if (saved && saved.meta) {
+    const h = await fetchHistory(sym, "1y");
+    master = { ts: saved.ts || Date.now(), meta: saved.meta, points: h ? h.points : [], divs: saved.divs || [], splits: saved.splits || [] };
+  } else {
+    const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym + ".NS") + "?range=1y&interval=1d&events=div,split&includePrePost=false";
+    const j = await fetchViaProxies(url, false);
+    try {
+      const r0 = j.chart.result[0];
+      const tsArr = r0.timestamp || [];
+      const closes = (r0.indicators.quote[0].close) || [];
+      const points = [];
+      for (let i = 0; i < tsArr.length; i++) if (typeof closes[i] === "number") points.push({ t: tsArr[i] * 1000, c: closes[i] });
+      const ev = r0.events || {};
+      const divs = ev.dividends ? Object.values(ev.dividends).map(x => ({ ts: x.date * 1000, amount: x.amount })).sort((a, b) => b.ts - a.ts) : [];
+      const splits = ev.splits ? Object.values(ev.splits).map(x => ({ ts: x.date * 1000, text: x.splitRatio || (x.numerator + ":" + x.denominator) })).sort((a, b) => b.ts - a.ts) : [];
+      if (points.length) {
+        master = { ts: Date.now(), meta: r0.meta || {}, points: points, divs: divs, splits: splits };
+        histCache[sym + "|1y"] = { points: points, meta: r0.meta || {} };
+        histLsSet(sym + "|1y", histCache[sym + "|1y"]);
+        lsCacheSet("folio_master_" + sym, { ts: master.ts, meta: master.meta, divs: divs, splits: splits });
+      }
+    } catch (e) {}
+  }
+  if (!master) {
+    const h = await fetchHistory(sym, "1y");
+    if (!h) return null;
+    const ca = await fetchCorpActions(sym);
+    master = { ts: Date.now(), meta: h.meta || {}, points: h.points, divs: ca.divs, splits: ca.splits };
+  }
+  masterCache[sym] = master;
+  return master;
+}
+function quantStats(points) {
+  const cs = points.map(p => p.c);
+  const last = cs[cs.length - 1];
+  const ret1y = cs.length > 1 ? (last / cs[0] - 1) * 100 : null;
+  const i6 = Math.max(0, cs.length - 127);
+  const mom6 = cs.length > 20 ? (last / cs[i6] - 1) * 100 : null;
+  let vol = null;
+  const rets = [];
+  for (let k = 1; k < cs.length; k++) if (cs[k - 1] > 0) rets.push(Math.log(cs[k] / cs[k - 1]));
+  if (rets.length > 20) {
+    const m = rets.reduce((a, b) => a + b, 0) / rets.length;
+    vol = Math.sqrt(rets.reduce((a, b) => a + (b - m) * (b - m), 0) / rets.length) * Math.sqrt(252) * 100;
+  }
+  let peak = -Infinity, mdd = 0;
+  cs.forEach(c => { if (c > peak) peak = c; if (peak > 0) mdd = Math.min(mdd, (c / peak - 1) * 100); });
+  const sma = n => cs.length >= n ? cs.slice(-n).reduce((a, b) => a + b, 0) / n : null;
+  return { ret1y: ret1y, mom6: mom6, vol: vol, mdd: mdd, sma20: sma(20), sma200: sma(200), last: last };
+}
+function sectorOf(sym) {
+  return (window.INDUSTRY_MAP && window.INDUSTRY_MAP[sym]) || (window.FALLBACK_SECTOR && window.FALLBACK_SECTOR[sym]) || ((STOCK_MAP[sym] || {}).sector) || "";
+}
+function extButtonsHtml(sym) {
+  return '<div class="qwrap">' +
+    '<a class="mini-btn link-btn" href="https://www.nseindia.com/get-quotes/equity?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">View on NSE India ↗</a>' +
+    '<a class="mini-btn link-btn" href="https://www.screener.in/company/' + encodeURIComponent(sym) + '/" target="_blank" rel="noopener">View on Screener.in ↗</a>' +
+    '<a class="mini-btn link-btn" href="https://www.moneycontrol.com/stocks/cptmarket/compsearchnew.php?search_data=&cid=&mbsearch_str=&topsearch_type=1&search_str=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">Search on Moneycontrol ↗</a></div>';
+}
+function masterAboutHtml(sym, name, m) {
+  const meta = m.meta || {};
+  const q = quantStats(m.points);
+  const price = meta.regularMarketPrice || q.last;
+  const prev = meta.chartPreviousClose || meta.previousClose;
+  const dayChg = price && prev ? (price - prev) / prev * 100 : null;
+  const sec = sectorOf(sym);
+  let html = '<p class="comp-line"><b>' + esc(meta.longName || meta.shortName || name) + '</b>' +
+    (meta.fullExchangeName || meta.exchangeName ? ' · ' + esc(meta.fullExchangeName || meta.exchangeName) : ' · NSE') +
+    (sec ? ' · ' + esc(sec) : '') + '</p>';
+  if (meta.fiftyTwoWeekHigh && meta.fiftyTwoWeekLow && price) {
+    const pos = Math.max(0, Math.min(100, (price - meta.fiftyTwoWeekLow) / (meta.fiftyTwoWeekHigh - meta.fiftyTwoWeekLow) * 100));
+    html += '<div class="rng-wrap"><div class="rng-labels"><span>' + inr2(meta.fiftyTwoWeekLow) + '</span><span>52-Week Range</span><span>' + inr2(meta.fiftyTwoWeekHigh) + '</span></div>' +
+      '<div class="rng-track"><div class="rng-fill" style="width:' + pos.toFixed(1) + '%"></div><div class="rng-dot" style="left:' + pos.toFixed(1) + '%"></div></div></div>';
+  }
+  const chip = (label, val) => '<span class="qchip">' + label + ' <b>' + val + '</b></span>';
+  let chips = "";
+  if (price) chips += chip("Price", inr2(price));
+  if (dayChg !== null) chips += chip("Today", '<span class="' + (dayChg >= 0 ? "gain" : "loss") + '">' + pct(dayChg) + '</span>');
+  if (meta.regularMarketDayHigh) chips += chip("Day Range", inr2(meta.regularMarketDayLow) + " – " + inr2(meta.regularMarketDayHigh));
+  if (meta.regularMarketVolume) chips += chip("Volume", Number(meta.regularMarketVolume).toLocaleString("en-IN"));
+  if (q.ret1y !== null) chips += chip("1-Year Return", '<span class="' + (q.ret1y >= 0 ? "gain" : "loss") + '">' + pct(q.ret1y) + '</span>');
+  if (q.mom6 !== null) chips += chip("6-Month Momentum", '<span class="' + (q.mom6 >= 0 ? "gain" : "loss") + '">' + pct(q.mom6) + '</span>');
+  if (q.vol !== null) chips += chip("Volatility", q.vol.toFixed(1) + "% / yr");
+  chips += chip("Max Drawdown (1Y)", '<span class="loss">' + q.mdd.toFixed(1) + '%</span>');
+  if (q.sma200 && price) chips += chip("Trend", price >= q.sma200 ? '<span class="gain">Bullish · Above 200 DMA</span>' : '<span class="loss">Below 200 DMA</span>');
+  else if (q.sma20 && price) chips += chip("Trend (20 DMA)", price >= q.sma20 ? "Above" : "Below");
+  const divSum = m.divs.filter(x => Date.now() - x.ts < 365 * 86400000).reduce((a, x) => a + x.amount, 0);
+  if (divSum && price) chips += chip("Dividend Yield (1Y)", (divSum / price * 100).toFixed(2) + "%");
+  html += '<div class="qwrap">' + chips + '</div>';
+  html += '<p class="price-meta">Live price, range and dividend data come from the open Yahoo Finance chart feed; returns, volatility, drawdown and averages are calculated in your browser from 1 year of daily prices. For full financial statements, use the Screener link below.</p>';
+  return html;
+}
+function masterCorpHtml(m) {
+  let html = "";
+  m.divs.slice(0, 6).forEach(x => { html += '<div class="event-row"><span class="event-text"><b>Dividend ' + inr2(x.amount) + '/share</b> · ex-date ' + fmtDate(x.ts) + '</span></div>'; });
+  m.splits.slice(0, 3).forEach(x => { html += '<div class="event-row"><span class="event-text"><b>Stock split ' + esc(x.text) + '</b> · ' + fmtDate(x.ts) + '</span></div>'; });
+  return html || '<p class="empty-note">No dividends or splits in the last 12 months.</p>';
+}
+
 async function loadCompanySheet(sym) {
   const tok = ++sheetToken;
   const name = (STOCK_MAP[sym] && STOCK_MAP[sym].name) || sym;
   const wr = $("stockWatchRow"), ab = $("stockAbout"), rs = $("stockResults"), nw = $("stockNews"), lk = $("stockLinks");
   if (!ab) return;
+  const held = enriched().rows.find(r => r.sym === sym);
   const inWatch = state.watch.some(w => w.sym === sym);
-  const inPf = state.txns.some(t => t.sym === sym && t.type === "BUY");
-  wr.innerHTML = inWatch
-    ? '<span class="price-meta">★ This stock is in your watchlist.</span><button class="mini-btn danger" id="sheetUnwatch" type="button">Remove from Watchlist</button>'
-    : '<button class="mini-btn" id="sheetWatch" type="button">☆ Add to Watchlist</button>' + (inPf ? '<span class="price-meta">This stock is in your portfolio.</span>' : '');
+  if (inWatch) {
+    wr.innerHTML = '<span class="price-meta">★ In your watchlist' + (held ? ' · also in your portfolio.' : ' · <b>Not currently held</b>') + '</span><button class="mini-btn danger" id="sheetUnwatch" type="button">Remove from Watchlist</button>';
+  } else {
+    wr.innerHTML = '<button class="mini-btn" id="sheetWatch" type="button">☆ Add to Watchlist</button>' + (held ? '<span class="price-meta">This stock is in your portfolio — your quantity, average price and P&amp;L are in the stats above.</span>' : '<span class="price-meta">Not in your portfolio or watchlist.</span>');
+  }
   const uw = $("sheetUnwatch");
   if (uw) uw.addEventListener("click", () => {
     state.watch = state.watch.filter(w => w.sym !== sym);
@@ -1042,29 +1180,34 @@ async function loadCompanySheet(sym) {
   rs.innerHTML = '<div class="skel" style="height:14px;width:60%"></div>';
   nw.innerHTML = '<div class="skel" style="height:14px;width:88%"></div><div class="skel" style="height:14px;width:70%;margin-top:8px"></div>';
   const cp = $("stockCorp"); if (cp) cp.innerHTML = '<div class="skel" style="height:14px;width:55%"></div>';
-  const both = await Promise.all([fetchCompanyInfo(sym), fetchNews(name, 6)]);
+  /* ONE master fetch (1y chart + events) powers About + Corporate Actions.
+     Hard timeout: a section can never sit on a skeleton forever. */
+  const master = await Promise.race([fetchMaster(sym), new Promise(r => setTimeout(() => r(null), 6000))]);
   if (tok !== sheetToken) return;
-  const info = both[0], items = both[1];
-  if (info && info.ok && (info.summary || info.industry)) {
-    ab.innerHTML =
-      (info.industry ? '<p class="comp-line"><b>Industry:</b> ' + esc(info.industry) + (info.website ? ' · <a href="' + esc(info.website) + '" target="_blank" rel="noopener">Company website ↗</a>' : '') + '</p>' : '') +
-      (info.summary ? '<p class="comp-about">' + esc(info.summary) + (info.summary.length >= 700 ? '…' : '') + '</p>' : '');
+  if (master && master.points && master.points.length) {
+    ab.innerHTML = masterAboutHtml(sym, name, master);
+    if (cp) cp.innerHTML = masterCorpHtml(master);
   } else {
-    const sec = (window.INDUSTRY_MAP && window.INDUSTRY_MAP[sym]) || (window.FALLBACK_SECTOR && window.FALLBACK_SECTOR[sym]) || "";
-    ab.innerHTML = '<p class="empty-note">' + (sec ? 'Sector: ' + esc(sec) + '. ' : '') + 'A detailed company profile is not available from the free source right now — use the Screener link below for the full profile.</p>';
+    const sec = sectorOf(sym);
+    ab.innerHTML = '<p class="comp-line"><b>' + esc(name) + '</b> · NSE' + (sec ? ' · ' + esc(sec) : '') + '</p>' +
+      '<p class="empty-note">Live company data could not be fetched right now — the free sources are unreachable from this network. Everything about this company is one tap away:</p>' + extButtonsHtml(sym);
+    if (cp) cp.innerHTML = '<p class="empty-note">No dividends or splits in the last 12 months — or the data could not be fetched right now.</p>';
   }
-  let rhtml = "";
-  if (info && info.ok && info.nextEarnings) {
-    const days = Math.round((info.nextEarnings - Date.now()) / 86400000);
-    rhtml += '<p class="comp-line"><b>Next quarterly result:</b> ' + fmtDate(info.nextEarnings) + (days >= 0 ? ' (in ' + days + ' days)' : '') + (typeof info.epsEst === "number" ? ' · Expected EPS ≈ ₹' + info.epsEst.toFixed(2) : '') + '</p>';
+  /* News + Results: 3.5s cap, then a clean fallback card with direct buttons */
+  const cleanName = name.replace(/\s+(Limited|Ltd\.?)$/i, "");
+  const items = await Promise.race([fetchNews(cleanName, 6), new Promise(r => setTimeout(() => r(null), 3500))]);
+  if (tok !== sheetToken) return;
+  if (items && items.length) {
+    nw.innerHTML = staleNote() + items.map(n => newsRowHtml(n, "")).join("");
+    const resItems = items.filter(n => RESULT_WORDS.test(n.title)).slice(0, 4);
+    rs.innerHTML = (resItems.length
+      ? '<p class="comp-line"><b>Latest result coverage in the news:</b></p>' + resItems.map(n => newsRowHtml(n, "")).join("")
+      : '<p class="empty-note">No result announcement found in recent news for this company. When results are declared, the coverage appears here automatically — and a reminder pops up in Folio.</p>') + extButtonsHtml(sym);
+  } else {
+    const fb = '<p class="empty-note">News is taking too long on this network right now. Read it directly from the source:</p>' + extButtonsHtml(sym);
+    nw.innerHTML = fb;
+    rs.innerHTML = fb;
   }
-  if (info && info.ok && info.results && info.results.length) {
-    rhtml += '<table class="res-table"><tr><th>Quarter ended</th><th>Revenue</th><th>Net Profit</th></tr>' +
-      info.results.map(q => '<tr><td>' + esc(q.period) + '</td><td>' + crores(q.revenue) + '</td><td>' + crores(q.profit) + '</td></tr>').join("") + '</table>';
-  }
-  rs.innerHTML = rhtml || '<p class="empty-note">Result dates and past results are not available from the free source for this stock right now.</p>';
-  nw.innerHTML = items.length ? items.map(n => newsRowHtml(n, "")).join("") : '<p class="empty-note">No recent news found for this company.</p>';
-  fillSheetCorp(sym, tok);
 }
 
 /* ---------- glossary: Know Your Numbers ---------- */
@@ -1079,7 +1222,7 @@ const GLOSSARY = [
   ["heatmap", "Heatmap", "Every stock you hold as one tile. Bigger tile = more of your money in it. The shade shows today's move — pale for a small move, deep for a big one; the red family marks falls. Tap any tile to open that stock's full page."],
   ["marketcap", "Large Cap, Mid Cap, Small Cap", "Company size classes from the NSE index lists. Large Cap = the NIFTY 100, India's biggest companies — usually steadier. Mid Cap = the next 150. Small Cap = the next 250 and beyond — often faster-moving, both up and down."],
   ["tax", "STCG, LTCG & Tax Harvesting", "Shares sold within 12 months of buying give Short-Term Capital Gains (STCG), taxed at 20%. Held longer, gains are Long-Term (LTCG), taxed at 12.5% — and the first ₹1,25,000 of LTCG in a financial year is tax-free. Folio tracks how much of that exemption you have used and how much is left. Harvesting means selling a loss-making stock before 31 March so the loss can reduce tax on your gains. Estimates only — not tax advice."],
-  ["results", "Results & Announcements", "Companies declare financial results every quarter. Folio watches the free earnings calendar and the news for your stocks: upcoming result dates appear on your Dashboard, and anything close pops up once a day when you open the app. If the free source carries no date for a stock, Folio says so instead of guessing."],
+  ["results", "Results & Announcements", "Companies declare financial results every quarter. Folio watches the news for your stocks: result announcements and coverage appear on the News tab and on each stock's page, and fresh result news pops up once a day when you open the app. Exact result dates are not published in any free open feed, so Folio shows you the announcement coverage instead of guessing a date."],
   ["watchlist", "Watchlist & Favourites", "Stocks you are tracking without owning. Tap any watchlist row to open its full company page — chart, about, results and news. Swipe a row left to delete it. The star pins a favourite to the top."]
 ];
 function openHelp(term) {
