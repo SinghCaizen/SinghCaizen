@@ -17,6 +17,9 @@ let fb = { auth: null, db: null, docRef: null, unsub: null };
 const FIREBASE_ON = !!window.FIREBASE_READY;
 
 function emptyState() { return { txns: [], watch: [], manualPrices: {}, profile: { name: "", phone: "", dp: "", totp: null, recovery: [] } }; }
+/* Exchange renames: the old symbol is dead (no data anywhere) and the new
+   one is its legal heir (same ISIN). Stored entries heal automatically. */
+const SYMBOL_RENAMES = { "TATAMOTORS": "TMPV" };
 function normalizeState(s) {
   const base = emptyState();
   if (!s || typeof s !== "object") return base;
@@ -31,6 +34,16 @@ function normalizeState(s) {
   try {
     const known = new Set((window.STOCK_LIST || []).map(x => x[0]));
     let fixed = false;
+    const renamePass = t => {
+      if (!t || !t.sym || !SYMBOL_RENAMES[t.sym]) return;
+      const target = SYMBOL_RENAMES[t.sym];
+      const entry = (window.STOCK_LIST || []).find(x => x[0] === target);
+      t.sym = target;
+      if (entry) { t.name = entry[1]; t.sector = entry[2] || t.sector; }
+      fixed = true;
+    };
+    out.txns.forEach(renamePass);
+    out.watch.forEach(renamePass);
     const repair = t => {
       if (!t || !t.sym || known.has(t.sym)) return;
       const st = resolveStock(t.name || t.sym);
@@ -187,6 +200,10 @@ function resolveStock(input) {
   const raw = String(input || "").trim();
   const up = raw.toUpperCase();
   const list = window.STOCK_LIST || [];
+  if (SYMBOL_RENAMES[up]) {
+    const heir = list.find(x => x[0] === SYMBOL_RENAMES[up]);
+    if (heir) return { sym: heir[0], name: heir[1], sector: heir[2] || "Other" };
+  }
   const hit = list.find(s => s[0] === up || s[1].toUpperCase() === up || raw.toLowerCase() === s[1].toLowerCase());
   if (hit) return { sym: hit[0], name: hit[1], sector: hit[2] || "Other" };
   const strip = s => s.toLowerCase().replace(/\s+(limited|ltd\.?)$/g, "").trim();
