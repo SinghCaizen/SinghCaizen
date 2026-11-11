@@ -10,13 +10,23 @@ function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.rem
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 /* ================= state ================= */
-let state = { txns: [], watch: [], manualPrices: {} };
+let state = emptyState();
 let prices = {};           // SYM -> {price, prevClose, ts}
 let currentUser = null;    // {email, name}
 let fb = { auth: null, db: null, docRef: null, unsub: null };
 const FIREBASE_ON = !!window.FIREBASE_READY;
 
-function emptyState() { return { txns: [], watch: [], manualPrices: {} }; }
+function emptyState() { return { txns: [], watch: [], manualPrices: {}, profile: { name: "", phone: "", dp: "", totp: null, recovery: [] } }; }
+function normalizeState(s) {
+  const base = emptyState();
+  if (!s || typeof s !== "object") return base;
+  return {
+    txns: Array.isArray(s.txns) ? s.txns : [],
+    watch: Array.isArray(s.watch) ? s.watch : [],
+    manualPrices: s.manualPrices || {},
+    profile: Object.assign(base.profile, s.profile || {})
+  };
+}
 
 /* ---------- local (demo) storage ---------- */
 const LS_USERS = "pf_users_v1", LS_SESSION = "pf_session_v1";
@@ -96,11 +106,13 @@ function friendlyFbError(e) {
   return "Something went wrong. Please check your internet and try again.";
 }
 async function doLogout() {
+  const em = currentUser ? currentUser.email : null;
+  if (em) sessionStorage.removeItem("pf_gate_" + em);
   if (FIREBASE_ON) { try { await fb.auth.signOut(); } catch (e) {} }
   localStorage.removeItem(LS_SESSION);
   currentUser = null; state = emptyState(); prices = {};
   if (fb.unsub) { fb.unsub(); fb.unsub = null; }
-  $("appView").classList.add("hidden"); $("authView").classList.remove("hidden");
+  $("appView").classList.add("hidden"); $("gateView").classList.add("hidden"); $("authView").classList.remove("hidden");
 }
 async function doForgot(ev) {
   ev.preventDefault();
@@ -114,13 +126,27 @@ async function doForgot(ev) {
 
 function enterApp(user, initialState) {
   currentUser = user;
-  state = initialState || emptyState();
-  if (!state.txns) state = emptyState();
-  $("authView").classList.add("hidden"); $("appView").classList.remove("hidden");
-  $("userEmail").textContent = user.email;
-  $("setEmail").textContent = user.email;
+  state = normalizeState(initialState);
+  buildDatalist();
+  if (needsGate()) { showGate(); return; }
+  showApp();
+}
+function needsGate() {
+  const t = state.profile && state.profile.totp;
+  return !!(t && t.enabled && currentUser && sessionStorage.getItem("pf_gate_" + currentUser.email) !== "1");
+}
+function showGate() {
+  $("authView").classList.add("hidden"); $("appView").classList.add("hidden");
+  $("gateView").classList.remove("hidden");
+  $("gateError").textContent = ""; $("gateCode").value = ""; $("gatePass").value = "";
+  $("gateAltForm").classList.add("hidden");
+}
+function showApp() {
+  $("authView").classList.add("hidden"); $("gateView").classList.add("hidden"); $("appView").classList.remove("hidden");
+  $("userEmail").textContent = currentUser.email;
+  $("setEmail").textContent = currentUser.email;
   $("setMode").textContent = FIREBASE_ON ? "Cloud (Firebase) — saved online" : "Demo — this browser only";
-  buildDatalist(); renderAll(); refreshPrices();
+  if (typeof renderProfile === "function") renderProfile(); renderAll(); refreshPrices();
 }
 
 /* ================= portfolio math ================= */
