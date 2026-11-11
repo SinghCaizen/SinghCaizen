@@ -16,6 +16,10 @@ async function fetchT(url, ms) {
   try { return await fetch(url, { cache: "no-store", signal: ctl.signal }); }
   finally { clearTimeout(to); }
 }
+/* Symbol → {name, sector} lookup built from the stock list (the company
+   sheet depends on this — it must exist before any modal opens). */
+const STOCK_MAP = {};
+(window.STOCK_LIST || []).forEach(s => { STOCK_MAP[s[0]] = { name: s[1], sector: s[2] || "" }; });
 
 /* ---------- historical data (free, delayed, cached) ---------- */
 const RANGE_CFG = {
@@ -1180,8 +1184,23 @@ async function loadCompanySheet(sym) {
   rs.innerHTML = '<div class="skel" style="height:14px;width:60%"></div>';
   nw.innerHTML = '<div class="skel" style="height:14px;width:88%"></div><div class="skel" style="height:14px;width:70%;margin-top:8px"></div>';
   const cp = $("stockCorp"); if (cp) cp.innerHTML = '<div class="skel" style="height:14px;width:55%"></div>';
+  /* Watchdog: whatever happens below (slow network, a rejected promise, an
+     unexpected error), no section may sit on a skeleton beyond ~9 seconds. */
+  const sheetFallback = () => {
+    const sec = sectorOf(sym);
+    ab.innerHTML = '<p class="comp-line"><b>' + esc(name) + '</b> · NSE' + (sec ? ' · ' + esc(sec) : '') + '</p>' +
+      '<p class="empty-note">Live company data could not be fetched right now — the free sources are unreachable from this network. Everything about this company is one tap away:</p>' + extButtonsHtml(sym);
+    if (cp) cp.innerHTML = '<p class="empty-note">No dividends or splits in the last 12 months — or the data could not be fetched right now.</p>';
+    const fb = '<p class="empty-note">News is taking too long on this network right now. Read it directly from the source:</p>' + extButtonsHtml(sym);
+    rs.innerHTML = fb;
+    nw.innerHTML = fb;
+  };
+  const watchdog = setTimeout(() => {
+    if (tok === sheetToken && ab.querySelector(".skel")) sheetFallback();
+  }, 9000);
   /* ONE master fetch (1y chart + events) powers About + Corporate Actions.
      Hard timeout: a section can never sit on a skeleton forever. */
+  try {
   const master = await Promise.race([fetchMaster(sym), new Promise(r => setTimeout(() => r(null), 6000))]);
   if (tok !== sheetToken) return;
   if (master && master.points && master.points.length) {
@@ -1207,6 +1226,11 @@ async function loadCompanySheet(sym) {
     const fb = '<p class="empty-note">News is taking too long on this network right now. Read it directly from the source:</p>' + extButtonsHtml(sym);
     nw.innerHTML = fb;
     rs.innerHTML = fb;
+  }
+  } catch (e) {
+    if (tok === sheetToken) sheetFallback();
+  } finally {
+    clearTimeout(watchdog);
   }
 }
 
