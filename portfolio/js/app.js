@@ -265,7 +265,7 @@ function computeHoldings() {
   for (const t of txns) {
     if (t.type === "DIV") { divTotal += Number(t.price) || 0; continue; }
     if (!lots[t.sym]) { lots[t.sym] = []; order.push(t.sym); realised[t.sym] = 0; }
-    if (t.type === "BUY") lots[t.sym].push({ qty: Number(t.qty), price: effPrice(t), date: t.date, name: t.name, sector: t.sector || "Other" });
+    if (t.type === "BUY") lots[t.sym].push({ qty: Number(t.qty), price: effPrice(t), date: t.date, name: t.name, sector: (t.sector && t.sector !== "Other") ? t.sector : ((window.INDUSTRY_MAP && window.INDUSTRY_MAP[t.sym]) || t.sector || "Other") });
     else if (t.type === "SELL") {
       let q = Number(t.qty);
       while (q > 0 && lots[t.sym].length) {

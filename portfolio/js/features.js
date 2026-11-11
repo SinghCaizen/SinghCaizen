@@ -101,7 +101,7 @@ async function loadTicker() {
 }
 
 /* ---------- dashboard extras: perf graph + heatmap + tax ---------- */
-function renderExtras(d) { renderHeat(d); renderTax(d); renderPerf(d); }
+function renderExtras(d) { renderHeat(d); renderTax(d); renderPerf(d); renderInsights(d); }
 
 let perfRange = "3mo", perfKey = "", perfToken = 0;
 function closeAt(points, t) { let c = null; for (const p of points) { if (p.t <= t) c = p.c; else break; } return c; }
@@ -303,4 +303,200 @@ document.addEventListener("DOMContentLoaded", () => {
     await doLogout();
     toast("On the login screen, tap \u201CForgot password?\u201D to reset it by email.");
   });
+});
+
+/* ---------- insights: Moneycontrol-style assets, portfolio score, signals, market cap ---------- */
+let insKey = "", insCapFilter = "All", insLastD = null;
+let insDiv = null, insMom = null, insRisk = null;
+function capOf(sym) { return (window.CAP_MAP && window.CAP_MAP[sym]) || "S"; }
+function capLabel(c) { return c === "L" ? "Large Cap" : c === "M" ? "Mid Cap" : "Small Cap"; }
+function trendBadge(ret) {
+  if (ret === null || ret === undefined) return '<span class="trend-badge tb-flat">No data</span>';
+  if (ret >= 15) return '<span class="trend-badge tb-up">▲▲ Very Bullish</span>';
+  if (ret >= 5) return '<span class="trend-badge tb-up">▲ Bullish</span>';
+  if (ret > -5) return '<span class="trend-badge tb-flat">→ Sideways</span>';
+  if (ret > -15) return '<span class="trend-badge tb-down">▼ Bearish</span>';
+  return '<span class="trend-badge tb-down">▼▼ Very Bearish</span>';
+}
+function updateGauge() {
+  const parts = [insDiv, insMom, insRisk].filter(v => typeof v === "number");
+  if (!parts.length) return;
+  const total = Math.round(parts.reduce((a, b) => a + b, 0) / parts.length);
+  $("insScoreNum").textContent = total;
+  const arc = $("insGaugeArc");
+  if (arc) {
+    arc.style.strokeDashoffset = String(326.7 * (1 - total / 100));
+    arc.style.stroke = total < 40 ? "#e03131" : "var(--text)";
+  }
+}
+function renderInsights(d) {
+  const A = $("insAssets");
+  if (!A) return;
+  insLastD = d;
+  if (!d.rows.length) {
+    A.innerHTML = '<p class="empty-note">Add stocks — your assets, score and signals will appear here.</p>';
+    $("insDivBox").innerHTML = ""; $("insRiskBox").innerHTML = "";
+    $("insMomBox").innerHTML = '<p class="empty-note">Nothing to score yet.</p>';
+    $("insSignals").innerHTML = ""; $("insCapGrid").innerHTML = "";
+    $("insScoreNum").textContent = "–";
+    ["insDivScore", "insMomScore", "insRiskScore"].forEach(id => { $(id).textContent = "–"; $(id).className = ""; });
+    const arc = $("insGaugeArc"); if (arc) arc.style.strokeDashoffset = "326.7";
+    insKey = ""; insDiv = insMom = insRisk = null;
+    return;
+  }
+  const unPct = d.invested ? d.totalPnl / d.invested * 100 : 0;
+  const prevValue = d.value - d.dayPnl;
+  const dayPct = prevValue ? d.dayPnl / prevValue * 100 : 0;
+  const gainCls = v => v >= 0 ? "gain" : "loss";
+  A.innerHTML =
+    '<div class="assets-grid">' +
+    '<div class="assets-col"><span>Latest Value</span><b class="assets-big">' + inr(d.value) + '</b>' +
+    '<span>Investment Cost</span><b class="assets-big">' + inr(d.invested) + '</b></div>' +
+    '<div class="assets-col"><h4>Unrealized Gain</h4><span>Overall Gain</span>' +
+    '<b class="' + gainCls(d.totalPnl) + '">' + (d.totalPnl >= 0 ? "▲ " : "▼ ") + inr(Math.abs(d.totalPnl)) + ' (' + pct(unPct) + ')</b>' +
+    '<span>Today\'s Gain</span><b class="' + gainCls(d.dayPnl) + '">' + (d.dayPnl >= 0 ? "▲ " : "▼ ") + inr(Math.abs(d.dayPnl)) + ' (' + pct(dayPct) + ')</b></div>' +
+    '<div class="assets-col"><h4>Realized Gain</h4><span>Capital Gain (booked)</span>' +
+    '<b class="' + gainCls(d.realisedTotal) + '">' + inr(d.realisedTotal) + '</b>' +
+    '<span>Other Gain (dividends)</span><b class="gain">' + inr(d.divTotal) + '</b></div>' +
+    '</div>';
+
+  /* diversification (sync) */
+  const rows = [...d.rows].sort((a, b) => b.cur - a.cur);
+  const wOf = r => d.value ? r.cur / d.value * 100 : 0;
+  const hhi = rows.reduce((s, r) => s + Math.pow(wOf(r) / 100, 2), 0);
+  const secMap = {};
+  rows.forEach(r => { const k = r.sector || "Other"; secMap[k] = (secMap[k] || 0) + wOf(r); });
+  const secs = Object.entries(secMap).sort((a, b) => b[1] - a[1]);
+  const secHhi = secs.reduce((s, e) => s + Math.pow(e[1] / 100, 2), 0);
+  const eff = hhi ? 1 / hhi : rows.length;
+  insDiv = Math.max(0, Math.min(100, Math.round(50 * Math.min(1, (eff - 1) / 7) + 50 * (1 - secHhi))));
+  $("insDivScore").textContent = insDiv;
+  $("insDivScore").className = insDiv < 40 ? "loss" : "";
+  const top3w = rows.slice(0, 3).reduce((s, r) => s + wOf(r), 0);
+  const top3s = secs.slice(0, 3).reduce((s, e) => s + e[1], 0);
+  let warn = "";
+  if (rows[0] && wOf(rows[0]) > 25) warn += '<div class="warn-box"><b>Heavily Weighted!</b> Most of your money sits in one or more stocks — ' + esc(rows[0].sym) + ' alone is ' + wOf(rows[0]).toFixed(2) + '% of your portfolio.</div>';
+  if (secs[0] && secs[0][1] > 40) warn += '<div class="warn-box"><b>Sector Struck!</b> One sector — ' + esc(secs[0][0]) + ' — carries ' + secs[0][1].toFixed(2) + '% of your money. A bad season for that sector hits the whole portfolio.</div>';
+  if (!warn) warn = '<div class="ok-box"><b>Well Spread.</b> No single stock or sector dominates your portfolio.</div>';
+  $("insDivBox").innerHTML =
+    '<div class="insight-block"><h3>Diversification Score</h3>' +
+    '<p class="insight-sub">A measure of concentration — how much of your money sits in a few stocks or in one sector. Higher means better spread.</p>' + warn +
+    '<div class="insight-cols">' +
+    '<div><h4>Top Stocks</h4>' + rows.slice(0, 3).map(r => '<div class="insight-row"><span>' + esc(r.name || r.sym) + '</span><b>' + wOf(r).toFixed(2) + '%</b></div>').join("") +
+    '<div class="insight-row insight-total"><span>Combined weight of top 3 holdings</span><b>' + top3w.toFixed(2) + '%</b></div></div>' +
+    '<div><h4>Top Sectors</h4>' + secs.slice(0, 3).map(e => '<div class="insight-row"><span>' + esc(e[0]) + '</span><b>' + e[1].toFixed(2) + '%</b></div>').join("") +
+    '<div class="insight-row insight-total"><span>Combined weight of top 3 sectors</span><b>' + top3s.toFixed(2) + '%</b></div></div>' +
+    '</div></div>';
+
+  renderSignalsSync(d);
+  renderCapGrid();
+  updateGauge();
+  const key = rows.map(r => r.sym).join(",");
+  if (key !== insKey) { insKey = key; loadInsScores(d); }
+}
+function renderSignalsSync(d) {
+  const el = $("insSignals");
+  if (!el) return;
+  const rows = d.rows;
+  const withDay = rows.filter(r => r.ltp !== null && r.prevClose).map(r => ({ r: r, p: (r.ltp - r.prevClose) / r.prevClose * 100 }));
+  const movers = withDay.filter(x => Math.abs(x.p) >= 3).sort((a, b) => Math.abs(b.p) - Math.abs(a.p));
+  let html = "";
+  if (movers.length) html += '<div class="sig-group"><h4>Big movers today (3%+)</h4>' + movers.map(x => '<div class="insight-row"><span><b>' + esc(x.r.sym) + '</b> · ' + esc(x.r.name || "") + '</span><b class="' + (x.p >= 0 ? "gain" : "loss") + '">' + pct(x.p) + ' today</b></div>').join("") + '</div>';
+  const drag = [...rows].sort((a, b) => a.pnl - b.pnl)[0];
+  if (drag && drag.pnl < 0) html += '<div class="sig-group"><h4>Biggest drag</h4><div class="insight-row"><span><b>' + esc(drag.sym) + '</b> is pulling your portfolio down the most</span><b class="loss">' + inr(drag.pnl) + ' (' + pct(drag.pnlPct) + ')</b></div></div>';
+  const star = [...rows].sort((a, b) => b.pnl - a.pnl)[0];
+  if (star && star.pnl > 0) html += '<div class="sig-group"><h4>Top contributor</h4><div class="insight-row"><span><b>' + esc(star.sym) + '</b> is contributing the most profit</span><b class="gain">+' + inr(star.pnl) + ' (' + pct(star.pnlPct) + ')</b></div></div>';
+  if (!html) html = '<p class="empty-note">No strong signal right now — movers and extremes will appear here as prices come in.</p>';
+  el.innerHTML = html + '<div id="insSignalsAsync"></div>';
+}
+function renderCapGrid() {
+  const d = insLastD, el = $("insCapGrid");
+  if (!d || !el) return;
+  const rows = [...d.rows].sort((a, b) => b.cur - a.cur).filter(r => insCapFilter === "All" || capOf(r.sym) === insCapFilter);
+  if (!rows.length) { el.innerHTML = '<p class="empty-note">No ' + (insCapFilter === "All" ? "" : capLabel(insCapFilter) + " ") + 'stocks in your portfolio.</p>'; return; }
+  el.innerHTML = rows.map(r => {
+    const w = d.value ? r.cur / d.value * 100 : 0;
+    const dayP = (r.ltp !== null && r.prevClose) ? (r.ltp - r.prevClose) / r.prevClose * 100 : null;
+    return '<div class="cap-card"><div class="cap-card-top"><div><b>' + esc(r.name || r.sym) + '</b><span class="cap-sector">' + esc(r.sector || "") + ' · ' + capLabel(capOf(r.sym)) + '</span></div>' +
+      '<div class="cap-price"><b>' + (r.ltp !== null ? inr2(r.ltp) : "—") + '</b>' + (dayP !== null ? '<span class="' + (dayP >= 0 ? "gain" : "loss") + '">' + pct(dayP) + '</span>' : '') + '</div></div>' +
+      '<div class="cap-nums"><div><span>Latest Value</span>' + inr(r.cur) + '</div><div><span>Invested Value</span>' + inr(r.invested) + '</div><div><span>Weight</span>' + w.toFixed(2) + '%</div></div></div>';
+  }).join("");
+}
+async function loadInsScores(d) {
+  const rows = d.rows;
+  const hists = await Promise.all(rows.map(r => fetchHistory(r.sym, "6mo")));
+  if (!currentUser || !insLastD) return;
+  const per = rows.map((r, i) => {
+    const h = hists[i];
+    let ret = null, vol = null, hi = null, lo = null;
+    if (h && h.points.length > 5) {
+      const cs = h.points.map(x => x.c);
+      ret = (cs[cs.length - 1] / cs[0] - 1) * 100;
+      const rets = [];
+      for (let k = 1; k < cs.length; k++) if (cs[k - 1] > 0) rets.push(Math.log(cs[k] / cs[k - 1]));
+      if (rets.length > 5) {
+        const m = rets.reduce((a, b) => a + b, 0) / rets.length;
+        vol = Math.sqrt(rets.reduce((a, b) => a + (b - m) * (b - m), 0) / rets.length) * Math.sqrt(252) * 100;
+      }
+      if (h.meta) { hi = h.meta.fiftyTwoWeekHigh; lo = h.meta.fiftyTwoWeekLow; }
+    }
+    return { r: r, ret: ret, vol: vol, hi: hi, lo: lo };
+  });
+  let momW = 0, momSum = 0, riskW = 0, riskSum = 0;
+  per.forEach(p => {
+    if (p.ret !== null) { momW += p.r.cur; momSum += Math.max(0, Math.min(100, 50 + p.ret * 2.5)) * p.r.cur; }
+    if (p.vol !== null) { riskW += p.r.cur; riskSum += Math.max(0, Math.min(100, 110 - p.vol * 1.6)) * p.r.cur; }
+  });
+  insMom = momW ? Math.round(momSum / momW) : null;
+  insRisk = riskW ? Math.round(riskSum / riskW) : null;
+  if (insMom !== null) { $("insMomScore").textContent = insMom; $("insMomScore").className = insMom < 40 ? "loss" : ""; }
+  if (insRisk !== null) { $("insRiskScore").textContent = insRisk; $("insRiskScore").className = insRisk < 40 ? "loss" : ""; }
+  updateGauge();
+  const wOf = r => d.value ? r.cur / d.value * 100 : 0;
+  const ups = per.filter(p => p.ret !== null && p.ret > 5).sort((a, b) => b.ret - a.ret);
+  const downs = per.filter(p => p.ret !== null && p.ret <= -5).sort((a, b) => a.ret - b.ret);
+  const verdict = insMom === null ? "" : insMom >= 60
+    ? '<div class="ok-box"><b>Alpha.</b> Stocks in your portfolio are in a strong uptrend over the last 6 months.</div>'
+    : insMom >= 45
+      ? '<div class="ok-box"><b>Mixed.</b> Some of your stocks are rising and some are falling — no single clear trend.</div>'
+      : '<div class="warn-box"><b>Weak Trend.</b> Most of your money sits in stocks that have fallen over the last 6 months.</div>';
+  $("insMomBox").innerHTML = '<div class="insight-block"><h3>Momentum Score</h3><p class="insight-sub">The price trend and technical strength of your portfolio, from each stock\'s last 6 months.</p>' + verdict +
+    '<div class="insight-cols"><div><h4>Up Trending Stocks</h4>' + (ups.length ? ups.map(p => '<div class="insight-row"><span>' + esc(p.r.name || p.r.sym) + '</span>' + trendBadge(p.ret) + '<b>' + wOf(p.r).toFixed(2) + '%</b></div>').join("") : '<p class="empty-note">None right now.</p>') + '</div>' +
+    '<div><h4>Down Trending Stocks</h4>' + (downs.length ? downs.map(p => '<div class="insight-row"><span>' + esc(p.r.name || p.r.sym) + '</span>' + trendBadge(p.ret) + '<b>' + wOf(p.r).toFixed(2) + '%</b></div>').join("") : '<p class="empty-note">None right now.</p>') + '</div></div></div>';
+  const byVol = per.filter(p => p.vol !== null).sort((a, b) => b.vol - a.vol);
+  if (byVol.length) {
+    $("insRiskBox").innerHTML = '<div class="insight-block"><h3>Risk Score</h3><p class="insight-sub">How violently your stocks swing day to day (annual volatility). Calm stocks score high; wild swingers score low.</p>' +
+      '<div class="insight-cols"><div><h4>Wildest Swingers</h4>' + byVol.slice(0, 3).map(p => '<div class="insight-row"><span>' + esc(p.r.name || p.r.sym) + '</span><b class="loss">' + p.vol.toFixed(0) + '% volatility</b></div>').join("") + '</div>' +
+      '<div><h4>Calmest Holdings</h4>' + byVol.slice(-3).reverse().map(p => '<div class="insight-row"><span>' + esc(p.r.name || p.r.sym) + '</span><b>' + p.vol.toFixed(0) + '% volatility</b></div>').join("") + '</div></div></div>';
+  }
+  const sa = $("insSignalsAsync");
+  if (sa) {
+    let html = "";
+    const nearHi = per.filter(p => p.hi && p.r.ltp && p.r.ltp >= p.hi * 0.95);
+    const nearLo = per.filter(p => p.lo && p.r.ltp && p.r.ltp <= p.lo * 1.05);
+    if (nearHi.length) html += '<div class="sig-group"><h4>Near 52-week high — strength zone</h4>' + nearHi.map(p => '<div class="insight-row"><span><b>' + esc(p.r.sym) + '</b> is trading close to its one-year high</span><b>' + inr2(p.r.ltp) + ' / high ' + inr2(p.hi) + '</b></div>').join("") + '</div>';
+    if (nearLo.length) html += '<div class="sig-group"><h4>Near 52-week low — caution zone</h4>' + nearLo.map(p => '<div class="insight-row"><span><b>' + esc(p.r.sym) + '</b> is trading close to its one-year low</span><b class="loss">' + inr2(p.r.ltp) + ' / low ' + inr2(p.lo) + '</b></div>').join("") + '</div>';
+    const favs = (state.watch || []).filter(w => w.fav).slice(0, 10);
+    if (favs.length) {
+      const fh = await Promise.all(favs.map(w => fetchHistory(w.sym, "1y")));
+      const dips = [];
+      favs.forEach((w, i) => {
+        const h = fh[i], p = priceOf(w.sym);
+        if (h && h.meta && h.meta.fiftyTwoWeekHigh && p) {
+          const off = (1 - p.price / h.meta.fiftyTwoWeekHigh) * 100;
+          if (off >= 10) dips.push({ w: w, off: off, price: p.price, hi: h.meta.fiftyTwoWeekHigh });
+        }
+      });
+      if (dips.length) html += '<div class="sig-group"><h4>Watchlist dips — your ★ favourites, below their highs</h4>' + dips.sort((a, b) => b.off - a.off).map(x => '<div class="insight-row"><span><b>' + esc(x.w.sym) + '</b> · ' + esc(x.w.name || "") + '</span><b>' + inr2(x.price) + ' · ' + x.off.toFixed(0) + '% below high</b></div>').join("") + '<p class="price-meta">This is data, not a buy signal — a fallen stock is not automatically a good stock. Understand the reason before any decision.</p></div>';
+    }
+    sa.innerHTML = html;
+  }
+}
+document.addEventListener("DOMContentLoaded", () => {
+  const chips = $("insCapChips");
+  if (chips) chips.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+    insCapFilter = c.dataset.cap;
+    chips.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x === c));
+    renderCapGrid();
+  }));
 });

@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23000000'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%23ffffff' font-family='Georgia'>F</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=10">
+<link rel="stylesheet" href="css/style.css?v=11">
 </head>
 <body>
 
@@ -119,6 +119,7 @@
   <nav class="tabs">
     <button class="tab active" data-view="dashboard" type="button">Dashboard</button>
     <button class="tab" data-view="holdings" type="button">Holdings</button>
+    <button class="tab" data-view="insights" type="button">Insights</button>
     <button class="tab" data-view="watchlist" type="button">Watchlist</button>
     <button class="tab" data-view="history" type="button">History</button>
     <button class="tab" data-view="profile" type="button">My Profile</button>
@@ -184,6 +185,56 @@
       <div class="panel chart-panel">
         <div class="panel-head"><h2>Tax — Harvesting &amp; Booked Profit</h2><span class="price-meta">Worked out from your entry dates</span></div>
         <div id="taxBox"></div>
+      </div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section id="view-insights" class="view hidden">
+      <div class="panel">
+        <div class="panel-head"><h2>MY ASSETS</h2><span class="price-meta">Your money, at a glance</span></div>
+        <div id="insAssets"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>PORTFOLIO SCORE</h2><span class="price-meta">Folio's own score, from free price data</span></div>
+        <div class="score-top">
+          <div class="gauge-wrap">
+            <svg class="gauge" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="10"/>
+              <circle id="insGaugeArc" cx="60" cy="60" r="52" fill="none" stroke="var(--text)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="gauge-num"><b id="insScoreNum">–</b><span>/100</span></div>
+          </div>
+          <div class="score-cards">
+            <div class="score-card"><b id="insMomScore">–</b><span class="sc-name">Momentum Score</span><small>6-month price trend of your stocks</small></div>
+            <div class="score-card"><b id="insDivScore">–</b><span class="sc-name">Diversification Score</span><small>Spread across stocks &amp; sectors</small></div>
+            <div class="score-card"><b id="insRiskScore">–</b><span class="sc-name">Risk Score</span><small>Higher = calmer stocks (volatility)</small></div>
+          </div>
+        </div>
+        <p class="price-meta">Moneycontrol / Tijori-style Quality scores judge company fundamentals (profits, debt, ROE) — that data is paid, so no free app can compute it honestly. Folio instead scores what free price data truly shows: trend, spread and risk. Treat scores as a mirror, not advice.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>SCORE INSIGHTS</h2><span class="price-meta">What the scores are seeing</span></div>
+        <div id="insDivBox"></div>
+        <div id="insMomBox"><p class="empty-note">Reading 6 months of prices for the trend scores…</p></div>
+        <div id="insRiskBox"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>SIGNALS</h2><span class="price-meta">What is happening in your portfolio right now</span></div>
+        <div id="insSignals"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>MARKET CAP CLASSIFICATION</h2><span class="price-meta">Large / Mid / Small — by NSE index lists</span></div>
+        <div class="cap-chips" id="insCapChips">
+          <button type="button" class="chip active" data-cap="All">All</button>
+          <button type="button" class="chip" data-cap="L">Large Cap</button>
+          <button type="button" class="chip" data-cap="M">Mid Cap</button>
+          <button type="button" class="chip" data-cap="S">Small Cap</button>
+        </div>
+        <div class="cap-grid" id="insCapGrid"></div>
       </div>
     </section>
 
@@ -302,6 +353,7 @@
         <h4>Tracker</h4>
         <a href="#" data-foot-view="dashboard">Dashboard</a>
         <a href="#" data-foot-view="holdings">Holdings</a>
+        <a href="#" data-foot-view="insights">Insights</a>
         <a href="#" data-foot-view="watchlist">Watchlist</a>
         <a href="#" data-foot-view="profile">My Profile</a>
       </div>
@@ -483,9 +535,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/firebase-config.js?v=6"></script>
-<script src="js/stocks.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
+<script src="js/stocks.js?v=11"></script>
+<script src="js/app.js?v=11"></script>
 <script src="js/profile.js?v=8"></script>
-<script src="js/features.js?v=10"></script>
+<script src="js/features.js?v=11"></script>
 </body>
 </html>

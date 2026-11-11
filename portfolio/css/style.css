@@ -447,3 +447,63 @@ form textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rg
 .suggest-item span{color:var(--muted);font-size:.83rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .suggest-item:hover,.suggest-item.active{background:var(--panel-2)}
 .seg-wrap{flex-wrap:wrap}
+
+/* ===== v11: Insights (assets, portfolio score, signals, market cap) ===== */
+.assets-grid{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:1rem}
+.assets-col{display:flex;flex-direction:column;gap:.3rem;border-left:1px solid var(--line);padding-left:1rem}
+.assets-col:first-child{border-left:none;padding-left:0}
+.assets-col h4{margin:.1rem 0 .3rem;font-size:1rem}
+.assets-col span{color:var(--muted);font-size:.85rem}
+.assets-col b{font-size:1.05rem}
+.assets-big{font-size:1.3rem !important}
+.score-top{display:flex;gap:1.4rem;align-items:center;flex-wrap:wrap}
+.gauge-wrap{position:relative;width:132px;height:132px;flex:0 0 auto}
+.gauge{width:132px;height:132px}
+.gauge-num{position:absolute;inset:0;display:flex;align-items:baseline;justify-content:center;padding-top:44px}
+.gauge-num b{font-size:2rem}
+.gauge-num span{color:var(--muted);font-size:.9rem}
+.score-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;flex:1;min-width:260px}
+.score-card{border:1px solid var(--line);border-radius:.8rem;padding:.9rem 1rem;display:flex;flex-direction:column;gap:.15rem;background:var(--panel-2)}
+.score-card b{font-size:1.7rem}
+.score-card .sc-name{font-weight:700}
+.score-card small{color:var(--muted)}
+.insight-block{border-top:1px solid var(--line);padding-top:1rem;margin-top:1rem}
+.insight-block:first-child{border-top:none;padding-top:0;margin-top:0}
+.insight-block h3{margin:.1rem 0 .3rem}
+.insight-sub{color:var(--muted);margin:.1rem 0 .7rem}
+.insight-cols{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.insight-cols h4{margin:.4rem 0}
+.insight-row{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.42rem 0;border-bottom:1px dashed var(--line)}
+.insight-row span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.insight-total{font-weight:600;border-bottom:none}
+.warn-box{border:1px solid #e03131;border-radius:.7rem;padding:.7rem .9rem;margin:.55rem 0;background:color-mix(in srgb, #e03131 6%, var(--panel))}
+.warn-box b{color:#e03131;display:block}
+.ok-box{border:1px solid var(--line);border-radius:.7rem;padding:.7rem .9rem;margin:.55rem 0;background:var(--panel-2)}
+.ok-box b{display:block}
+.trend-badge{font-size:.76rem;font-weight:700;padding:.18rem .5rem;border-radius:99px;white-space:nowrap}
+.tb-up{background:var(--text);color:var(--bg)}
+.tb-down{background:#e03131;color:#fff}
+.tb-flat{background:var(--panel-2);color:var(--muted);border:1px solid var(--line)}
+.sig-group{margin-bottom:1rem}
+.sig-group h4{margin:.3rem 0 .2rem}
+.cap-chips{display:flex;gap:.45rem;flex-wrap:wrap;margin-bottom:.9rem}
+.chip{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:99px;padding:.35rem .85rem;cursor:pointer;font:inherit;font-weight:600}
+.chip.active{background:var(--text);color:var(--bg)}
+.cap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:.8rem}
+.cap-card{border:1px solid var(--line);border-radius:.8rem;padding:.85rem .95rem;background:var(--panel-2)}
+.cap-card-top{display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start}
+.cap-sector{display:block;color:var(--muted);font-size:.82rem;margin-top:.1rem}
+.cap-price{text-align:right;display:flex;flex-direction:column}
+.cap-nums{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-top:.7rem;border-top:1px dashed var(--line);padding-top:.6rem;font-weight:600}
+.cap-nums span{display:block;color:var(--muted);font-size:.76rem;font-weight:400}
+@media (max-width:760px){
+  .assets-grid{grid-template-columns:1fr}
+  .assets-col{border-left:none;padding-left:0;border-top:1px solid var(--line);padding-top:.8rem}
+  .assets-col:first-child{border-top:none;padding-top:0}
+  .score-top{flex-direction:column;align-items:stretch}
+  .gauge-wrap{margin:0 auto}
+  .score-cards{grid-template-columns:1fr}
+  .insight-cols{grid-template-columns:1fr}
+  .cap-grid{grid-template-columns:1fr}
+  .insight-row{flex-wrap:wrap}
+}
