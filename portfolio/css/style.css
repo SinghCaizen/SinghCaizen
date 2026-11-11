@@ -676,3 +676,18 @@ body.privacy-on .stat-value,body.privacy-on .stat-sub,body.privacy-on #insAssets
 .qwrap{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
 .qchip{border:1px solid var(--line);border-radius:10px;padding:.42rem .62rem;font-size:.86rem;color:var(--muted);background:var(--panel-2)}
 .qchip b{color:var(--text)}
+
+/* v23 — watchlist rows rebuilt for phones: the front row always covers the
+   red Delete fully, names ellipsise on one line, the change sits under the
+   price (Google Finance style), and the sparkline steps aside on phones. */
+.watch-main{width:100%;box-sizing:border-box}
+.watch-id>*{min-width:0}
+.watch-id .w-sym{white-space:nowrap;flex:0 0 auto}
+.watch-id .small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.watch-price{flex:0 0 auto;text-align:right;line-height:1.3}
+.watch-price .small{display:block}
+@media (max-width:560px){
+  .watch-spark{display:none}
+  .watch-main{gap:.55rem;padding:.6rem .1rem}
+  .watch-price{font-size:.95rem}
+}
