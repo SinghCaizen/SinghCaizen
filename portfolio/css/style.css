@@ -691,3 +691,5 @@ body.privacy-on .stat-value,body.privacy-on .stat-sub,body.privacy-on #insAssets
   .watch-main{gap:.55rem;padding:.6rem .1rem}
   .watch-price{font-size:.95rem}
 }
+
+/* v24: redeploy trigger — same phone watchlist fixes as v23 */
