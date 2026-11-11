@@ -103,6 +103,9 @@ function friendlyFbError(e) {
   if (c.includes("email-already-in-use")) return "This email already has an account. Please login.";
   if (c.includes("weak-password")) return "Password is too weak — use 6+ characters.";
   if (c.includes("invalid-email")) return "That email does not look right.";
+  if (c.includes("popup-closed")) return "The Google window closed before finishing. Please try again.";
+  if (c.includes("unauthorized-domain")) return "This website's domain is not allowed in Firebase yet (Settings → Authorized domains).";
+  if (c.includes("operation-not-allowed")) return "This sign-in method is not enabled in Firebase yet.";
   return "Something went wrong. Please check your internet and try again.";
 }
 async function doLogout() {
@@ -122,6 +125,18 @@ async function doForgot(ev) {
     try { await fb.auth.sendPasswordResetEmail(email); toast("Password reset email sent. Check your inbox."); }
     catch (e) { authError(friendlyFbError(e)); }
   } else { toast("In demo mode the password is the one saved in this browser."); }
+}
+async function doGoogleSignIn() {
+  authError("");
+  if (!FIREBASE_ON) { authError("Google login starts once the Firebase config is added — it is on its way. Till then, please use email and password."); return; }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try { await fb.auth.signInWithPopup(provider); }
+  catch (e) {
+    if (e && e.code && e.code.includes("popup-blocked")) {
+      try { await fb.auth.signInWithRedirect(provider); return; } catch (e2) { authError(friendlyFbError(e2)); return; }
+    }
+    authError(friendlyFbError(e));
+  }
 }
 
 function enterApp(user, initialState) {
@@ -549,6 +564,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("tabSignup").addEventListener("click", () => setAuthMode("signup"));
   $("authForm").addEventListener("submit", doAuth);
   $("forgotLink").addEventListener("click", doForgot);
+  $("googleBtn").addEventListener("click", doGoogleSignIn);
   $("logoutBtn").addEventListener("click", doLogout);
   $("themeBtn").addEventListener("click", () => {
     const cur = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";

@@ -321,3 +321,11 @@ form textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rg
   .foot-cols{gap:1.4rem}
   .tick-item{font-size:.8rem;margin-right:2rem}
 }
+
+/* v5: Google sign-in */
+.auth-or{text-align:center;color:var(--muted);margin:.95rem 0;font-size:.85rem;letter-spacing:.1em}
+.btn-google{background:#ffffff;color:#1f1f1f;border:1px solid #dadce0;display:flex;align-items:center;justify-content:center;gap:.65rem;font-weight:600}
+.btn-google svg{width:19px;height:19px;flex:none}
+.btn-google:hover{border-color:#ffffff;box-shadow:0 6px 18px rgba(0,0,0,.35);transform:translateY(-1px)}
+[data-theme="light"] .btn-google{border-color:#c9c9c9}
+[data-theme="light"] .btn-google:hover{border-color:#000000}
