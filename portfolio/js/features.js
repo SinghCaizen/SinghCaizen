@@ -66,10 +66,10 @@ async function loadTicker() {
   const idx = [["^NSEI", "NIFTY 50"], ["^BSESN", "SENSEX"], ["^NSEBANK", "NIFTY BANK"], ["^INDIAVIX", "INDIA VIX"]];
   const items = [];
   for (const pair of idx) {
-    const h = await fetchHistory(pair[0], "5d");
+    const h = await fetchHistory(pair[0], "1d");
     if (!h || !h.meta || !h.meta.regularMarketPrice) continue;
     const price = h.meta.regularMarketPrice;
-    const prev = h.meta.chartPreviousClose || (h.points.length > 1 ? h.points[h.points.length - 2].c : price);
+    const prev = h.meta.chartPreviousClose || h.meta.previousClose || (h.points.length > 1 ? h.points[h.points.length - 2].c : price);
     const chg = prev ? (price - prev) / prev * 100 : 0;
     items.push('<span class="tick-item">' + pair[1] + ' <b>' + Number(price).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + '</b> <span class="' + (chg >= 0 ? "tick-up" : "tick-dn") + '">' + (chg >= 0 ? "▲" : "▼") + " " + Math.abs(chg).toFixed(2) + "%</span></span>");
   }

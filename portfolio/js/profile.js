@@ -157,14 +157,16 @@ function renderAvatars() {
   const p = state.profile || {};
   const dp = p.dp || "";
   const init = (displayName() || currentUser.email || "?").charAt(0).toUpperCase();
-  const pa = $("profAvatar"), pi = $("profAvatarInit"), ta = $("topAvatar");
+  const pa = $("profAvatar"), pi = $("profAvatarInit"), ta = $("topAvatar"), ti = $("topAvatarInit");
   if (!pa) return;
   if (dp) {
     pa.src = dp; pa.classList.remove("hidden"); pi.classList.add("hidden");
-    ta.src = dp; ta.classList.remove("hidden");
+    if (ta) { ta.src = dp; ta.classList.remove("hidden"); }
+    if (ti) ti.classList.add("hidden");
   } else {
     pa.classList.add("hidden"); pi.classList.remove("hidden"); pi.textContent = init;
-    ta.classList.add("hidden");
+    if (ta) ta.classList.add("hidden");
+    if (ti) { ti.classList.remove("hidden"); ti.textContent = init; }
   }
 }
 function renderProfile() {
@@ -174,18 +176,59 @@ function renderProfile() {
   if (document.activeElement !== $("profPhone")) $("profPhone").value = p.phone || "";
   $("profNameTitle").textContent = displayName() || "My Profile";
   $("profEmailLine").textContent = currentUser.email;
-  $("topName").textContent = displayName() ? "Hi, " + displayName().split(" ")[0] : "";
+  $("topName").textContent = displayName() ? displayName().split(" ")[0] : "Account";
   renderAvatars();
   renderTotpArea(false);
 }
 
-/* ================= 2FA SETUP / MANAGE ================= */
+/* ================= 2FA SETUP / MANAGE (all in popups) ================= */
+async function copyText(t) {
+  try { await navigator.clipboard.writeText(t); }
+  catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (x) {}
+    ta.remove();
+  }
+  toast("Copied");
+}
+function downloadText(name, text) {
+  const b = new Blob([text], { type: "text/plain" });
+  const u = URL.createObjectURL(b);
+  const a = document.createElement("a");
+  a.href = u; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 3000);
+  toast("Downloaded — keep it somewhere safe and private");
+}
+function openTotpModal(title) {
+  $("totpModalTitle").textContent = title || "Two-Factor Authentication";
+  $("totpModal").classList.remove("hidden");
+}
+function closeTotpModal() {
+  $("totpModal").classList.add("hidden");
+  $("totpModalBody").innerHTML = "";
+  wz = null;
+}
+function seedFileText() {
+  return "Singh Caizen Finance — 2FA SEED PHRASE\n" +
+    "Keep this PRIVATE. Anyone with these 12 words can enter your account if you lose your phone.\n\n" +
+    wz.phrase.split(" ").map((w, i) => (i + 1) + ". " + w).join("\n") +
+    "\n\nPhrase: " + wz.phrase + "\nAccount: " + currentUser.email + "\n";
+}
+function codesFileText(codes) {
+  return "Singh Caizen Finance — 2FA RECOVERY CODES\n" +
+    "Each code works ONLY ONCE. Keep them PRIVATE.\n\n" +
+    codes.join("\n") + "\n\nAccount: " + currentUser.email + "\n";
+}
+
 let wz = null;          // wizard state while setting up
 let totpSig = "";       // last rendered state signature
 function renderTotpArea(force) {
   const area = $("totpArea"); if (!area || !currentUser) return;
   const t = state.profile.totp;
-  const sig = t && t.enabled ? "on" : (wz ? "wz" : "off");
+  const sig = t && t.enabled ? "on" : "off";
   if (!force && sig === totpSig) return;
   totpSig = sig;
   if (t && t.enabled) {
@@ -196,60 +239,77 @@ function renderTotpArea(force) {
       '<button class="btn btn-small" id="tShowQr" type="button">Show QR / Key Again</button>' +
       '<button class="btn btn-small" id="tRegen" type="button">New Recovery Codes</button>' +
       '<button class="btn btn-small btn-danger" id="tDisable" type="button">Turn OFF 2FA</button>' +
-      '</div><div id="totpBox"></div>' +
+      '</div>' +
       '<p class="price-meta">Recovery codes left: ' + left + ' of 8. Each code works only once.</p>';
     $("tShowQr").addEventListener("click", totpShowQrAgain);
     $("tRegen").addEventListener("click", totpRegenCodes);
     $("tDisable").addEventListener("click", totpDisable);
     return;
   }
-  if (wz) {
-    area.innerHTML =
-      '<div class="totp-box">' +
-      '<p><b>Step 1 —</b> Scan this QR code in your authenticator app, or type the key below it.</p>' +
-      '<canvas id="wzQr" class="qr-canvas" width="216" height="216"></canvas>' +
-      '<p class="totp-key" id="wzKey"></p>' +
-      '<p><b>Step 2 —</b> Write this <b>12-word seed phrase</b> on paper and keep it safe. If you lose the app, these 12 words are the ONLY way back in.</p>' +
-      '<div class="seed-grid" id="wzSeed"></div>' +
-      '<p><b>Step 3 —</b> Save these one-time recovery codes too (each works once):</p>' +
-      '<div class="rec-grid" id="wzCodes"></div>' +
-      '<label class="check-line"><input type="checkbox" id="wzSaved"> I have saved my seed phrase and recovery codes safely.</label>' +
-      '<label>Step 4 — Enter the 6-digit code now showing in your app<input type="text" id="wzCode" inputmode="numeric" maxlength="6" placeholder="123456"></label>' +
-      '<button class="btn btn-gold" id="wzEnable" type="button">Turn ON 2FA</button> ' +
-      '<button class="mini-btn" id="wzCancel" type="button">Cancel</button>' +
-      '<p id="wzError2" class="form-error"></p></div>';
-    drawQr($("wzQr"), otpAuthUrl(wz.secret));
-    $("wzKey").textContent = base32encode(wz.secret).replace(/(.{4})/g, "$1 ").trim();
-    $("wzSeed").innerHTML = wz.phrase.split(" ").map((w, i) => '<span class="seed-word"><i>' + (i + 1) + '</i>' + esc(w) + '</span>').join("");
-    $("wzCodes").innerHTML = wz.codes.map(c => '<span class="rec-code">' + esc(c) + '</span>').join("");
-    $("wzEnable").addEventListener("click", totpEnable);
-    $("wzCancel").addEventListener("click", () => { wz = null; renderTotpArea(true); });
-    return;
-  }
   area.innerHTML =
     '<p class="totp-status off">2FA is currently <b>OFF</b>.</p>' +
-    '<label>Your account password (to lock your secret key)' +
-    '<input type="password" id="wzPass" autocomplete="current-password"></label>' +
-    '<button class="btn btn-gold" id="wzGen" type="button">Generate My Setup</button>' +
-    '<p id="wzError" class="form-error"></p>';
-  $("wzGen").addEventListener("click", totpStartSetup);
+    '<p class="auth-note">Setup opens in a popup: scan a QR code, save a 12-word seed phrase and 8 recovery codes (with Copy and Download buttons), then enter one code to switch it on.</p>' +
+    '<button class="btn btn-gold" id="tSetup" type="button">Set Up 2FA</button>';
+  $("tSetup").addEventListener("click", totpStartSetup);
 }
 
-async function totpStartSetup() {
-  const pass = $("wzPass").value;
-  $("wzError").textContent = "Checking password...";
-  if (!(await verifyOwnPassword(pass))) { $("wzError").textContent = "That password is not correct."; return; }
-  const seedBytes = crypto.getRandomValues(new Uint8Array(12));
-  const secret = await secretFromSeed(seedBytes);
-  const phrase = seedPhrase(seedBytes);
-  const codes = genRecoveryCodes();
-  wz = {
-    secret: secret, phrase: phrase, codes: codes,
-    encPw: await aesEnc(await deriveAesKey(pass, keySalt()), secret),
-    encSeed: await aesEnc(await deriveAesKey("seed:" + phrase, keySalt()), secret),
-    hashes: await hashCodes(codes)
-  };
-  renderTotpArea(true);
+function totpStartSetup() {
+  openTotpModal("Set Up Two-Factor Authentication");
+  $("totpModalBody").innerHTML =
+    '<p>First, confirm it is really you. Your account password locks your secret key — the key itself is never stored in plain form.</p>' +
+    '<label>Your account password<input type="password" id="mzPass" autocomplete="current-password"></label>' +
+    '<p id="mzError" class="form-error"></p>' +
+    '<button class="btn btn-gold btn-block" id="mzGen" type="button">Generate My Setup</button>';
+  $("mzGen").addEventListener("click", async () => {
+    const pass = $("mzPass").value;
+    const err = $("mzError");
+    err.textContent = "Checking password...";
+    if (!(await verifyOwnPassword(pass))) { err.textContent = "That password is not correct."; return; }
+    const seedBytes = crypto.getRandomValues(new Uint8Array(12));
+    const secret = await secretFromSeed(seedBytes);
+    const phrase = seedPhrase(seedBytes);
+    const codes = genRecoveryCodes();
+    wz = {
+      secret: secret, phrase: phrase, codes: codes,
+      encPw: await aesEnc(await deriveAesKey(pass, keySalt()), secret),
+      encSeed: await aesEnc(await deriveAesKey("seed:" + phrase, keySalt()), secret),
+      hashes: await hashCodes(codes)
+    };
+    renderWz();
+  });
+}
+function renderWz() {
+  const body = $("totpModalBody");
+  body.innerHTML =
+    '<p><b>Step 1 —</b> Scan this QR code in your authenticator app (Google Authenticator, Microsoft Authenticator, Authy — any), or type the key below it.</p>' +
+    '<canvas id="wzQr" class="qr-canvas" width="216" height="216"></canvas>' +
+    '<p class="totp-key" id="wzKey"></p>' +
+    '<div class="dl-row"><button class="btn btn-small" id="wzCopyKey" type="button">Copy Key</button></div>' +
+    '<p><b>Step 2 —</b> Save this <b>12-word seed phrase</b>. If you lose the app, these 12 words are the ONLY way back in. Best: write them on paper.</p>' +
+    '<div class="seed-grid" id="wzSeed"></div>' +
+    '<div class="dl-row"><button class="btn btn-small" id="wzCopySeed" type="button">Copy Seed Phrase</button>' +
+    '<button class="btn btn-small" id="wzDlSeed" type="button">Download Seed Phrase</button></div>' +
+    '<p><b>Step 3 —</b> Save these one-time recovery codes too (each works once):</p>' +
+    '<div class="rec-grid" id="wzCodes"></div>' +
+    '<div class="dl-row"><button class="btn btn-small" id="wzCopyCodes" type="button">Copy Recovery Codes</button>' +
+    '<button class="btn btn-small" id="wzDlCodes" type="button">Download Recovery Codes</button></div>' +
+    '<label class="check-line"><input type="checkbox" id="wzSaved"> I have saved my seed phrase and recovery codes safely.</label>' +
+    '<label>Step 4 — Enter the 6-digit code now showing in your app<input type="text" id="wzCode" inputmode="numeric" maxlength="6" placeholder="123456"></label>' +
+    '<p id="wzError2" class="form-error"></p>' +
+    '<button class="btn btn-gold btn-block" id="wzEnable" type="button">Turn ON 2FA</button>' +
+    '<button class="mini-btn" id="wzCancel" type="button">Cancel setup</button>';
+  drawQr($("wzQr"), otpAuthUrl(wz.secret));
+  const keyText = base32encode(wz.secret);
+  $("wzKey").textContent = keyText.replace(/(.{4})/g, "$1 ").trim();
+  $("wzSeed").innerHTML = wz.phrase.split(" ").map((w, i) => '<span class="seed-word"><i>' + (i + 1) + '</i>' + esc(w) + '</span>').join("");
+  $("wzCodes").innerHTML = wz.codes.map(c => '<span class="rec-code">' + esc(c) + '</span>').join("");
+  $("wzCopyKey").addEventListener("click", () => copyText(keyText));
+  $("wzCopySeed").addEventListener("click", () => copyText(wz.phrase));
+  $("wzDlSeed").addEventListener("click", () => downloadText("singh-caizen-finance-seed-phrase.txt", seedFileText()));
+  $("wzCopyCodes").addEventListener("click", () => copyText(wz.codes.join("\n")));
+  $("wzDlCodes").addEventListener("click", () => downloadText("singh-caizen-finance-recovery-codes.txt", codesFileText(wz.codes)));
+  $("wzEnable").addEventListener("click", totpEnable);
+  $("wzCancel").addEventListener("click", closeTotpModal);
 }
 async function totpEnable() {
   const err = $("wzError2");
@@ -257,42 +317,79 @@ async function totpEnable() {
   if (!(await totpVerify(wz.secret, $("wzCode").value))) { err.textContent = "Code match nahi hua. App me dikh raha fresh code dalo."; return; }
   state.profile.totp = { enabled: true, encPw: wz.encPw, encSeed: wz.encSeed, createdAt: new Date().toISOString() };
   state.profile.recovery = wz.hashes;
-  wz = null; persist(); renderTotpArea(true);
+  persist();
+  closeTotpModal();
+  renderTotpArea(true);
   toast("2FA ON — double lock lag gaya");
 }
-async function totpShowQrAgain() {
-  const box = $("totpBox");
-  const pass = prompt("Apna password dalo — QR/key dekhne ke liye:");
-  if (pass === null) return;
-  const secret = await unlockSecret(pass);
-  if (!secret) { alert("Password galat hai — key unlock nahi hui."); return; }
-  box.innerHTML = '<canvas id="tQr" class="qr-canvas" width="216" height="216"></canvas><p class="totp-key" id="tKey"></p>';
-  drawQr($("tQr"), otpAuthUrl(secret));
-  $("tKey").textContent = base32encode(secret).replace(/(.{4})/g, "$1 ").trim();
+function totpShowQrAgain() {
+  openTotpModal("Your Authenticator Key");
+  $("totpModalBody").innerHTML =
+    '<p>Enter your password to unlock and see your QR code and key again — for adding the app on a new phone.</p>' +
+    '<label>Your password<input type="password" id="mqPass" autocomplete="current-password"></label>' +
+    '<p id="mqError" class="form-error"></p>' +
+    '<button class="btn btn-gold btn-block" id="mqGo" type="button">Show My QR &amp; Key</button>';
+  $("mqGo").addEventListener("click", async () => {
+    const secret = await unlockSecret($("mqPass").value);
+    if (!secret) { $("mqError").textContent = "Password galat hai — key unlock nahi hui."; return; }
+    const keyText = base32encode(secret);
+    $("totpModalBody").innerHTML =
+      '<canvas id="mqQr" class="qr-canvas" width="216" height="216"></canvas>' +
+      '<p class="totp-key">' + esc(keyText.replace(/(.{4})/g, "$1 ").trim()) + '</p>' +
+      '<div class="dl-row"><button class="btn btn-small" id="mqCopy" type="button">Copy Key</button>' +
+      '<button class="btn btn-small" id="mqDone" type="button">Done</button></div>' +
+      '<p class="auth-note">Keep this key private — anyone with it can generate your codes.</p>';
+    drawQr($("mqQr"), otpAuthUrl(secret));
+    $("mqCopy").addEventListener("click", () => copyText(keyText));
+    $("mqDone").addEventListener("click", closeTotpModal);
+  });
 }
-async function totpRegenCodes() {
-  const pass = prompt("Password dalo:"); if (pass === null) return;
-  const secret = await unlockSecret(pass);
-  if (!secret) { alert("Password galat hai."); return; }
-  const code = prompt("App ka current 6-digit code dalo:"); if (code === null) return;
-  if (!(await totpVerify(secret, code))) { alert("Code match nahi hua."); return; }
-  const codes = genRecoveryCodes();
-  state.profile.recovery = await hashCodes(codes);
-  persist();
-  $("totpBox").innerHTML = '<p><b>New recovery codes</b> — purane wale ab kaam nahi karenge. Inhe save kar lo:</p><div class="rec-grid">' +
-    codes.map(c => '<span class="rec-code">' + esc(c) + '</span>').join("") + '</div>';
-  renderTotpArea(false);
-  toast("New recovery codes ready");
+function totpRegenCodes() {
+  openTotpModal("New Recovery Codes");
+  $("totpModalBody").innerHTML =
+    '<p>For safety, confirm with your password and a current app code. The moment new codes are made, the old ones stop working.</p>' +
+    '<label>Your password<input type="password" id="mrPass" autocomplete="current-password"></label>' +
+    '<label>6-digit code from your app<input type="text" id="mrCode" inputmode="numeric" maxlength="6" placeholder="123456"></label>' +
+    '<p id="mrError" class="form-error"></p>' +
+    '<button class="btn btn-gold btn-block" id="mrGo" type="button">Make New Codes</button>';
+  $("mrGo").addEventListener("click", async () => {
+    const secret = await unlockSecret($("mrPass").value);
+    if (!secret) { $("mrError").textContent = "Password galat hai."; return; }
+    if (!(await totpVerify(secret, $("mrCode").value))) { $("mrError").textContent = "Code match nahi hua."; return; }
+    const codes = genRecoveryCodes();
+    state.profile.recovery = await hashCodes(codes);
+    persist();
+    $("totpModalBody").innerHTML =
+      '<p><b>Your new recovery codes</b> — purane wale ab kaam nahi karenge. Inhe abhi save kar lo:</p>' +
+      '<div class="rec-grid">' + codes.map(c => '<span class="rec-code">' + esc(c) + '</span>').join("") + '</div>' +
+      '<div class="dl-row"><button class="btn btn-small" id="mrCopy" type="button">Copy Codes</button>' +
+      '<button class="btn btn-small" id="mrDl" type="button">Download Codes</button>' +
+      '<button class="btn btn-small" id="mrDone" type="button">Done</button></div>';
+    $("mrCopy").addEventListener("click", () => copyText(codes.join("\n")));
+    $("mrDl").addEventListener("click", () => downloadText("singh-caizen-finance-recovery-codes.txt", codesFileText(codes)));
+    $("mrDone").addEventListener("click", closeTotpModal);
+    renderTotpArea(true);
+    toast("New recovery codes ready");
+  });
 }
-async function totpDisable() {
-  const pass = prompt("2FA band karne ke liye password dalo:"); if (pass === null) return;
-  const secret = await unlockSecret(pass);
-  if (!secret) { alert("Password galat hai."); return; }
-  const code = prompt("App ka current 6-digit code dalo:"); if (code === null) return;
-  if (!(await totpVerify(secret, code))) { alert("Code match nahi hua."); return; }
-  state.profile.totp = null; state.profile.recovery = [];
-  persist(); renderTotpArea(true);
-  toast("2FA OFF ho gaya");
+function totpDisable() {
+  openTotpModal("Turn OFF 2FA");
+  $("totpModalBody").innerHTML =
+    '<p>2FA band karne se account ka double lock hat jayega. Confirm karne ke liye password aur app ka current code dalo.</p>' +
+    '<label>Your password<input type="password" id="mxPass" autocomplete="current-password"></label>' +
+    '<label>6-digit code from your app<input type="text" id="mxCode" inputmode="numeric" maxlength="6" placeholder="123456"></label>' +
+    '<p id="mxError" class="form-error"></p>' +
+    '<button class="btn btn-danger btn-block" id="mxGo" type="button">Turn OFF 2FA</button>';
+  $("mxGo").addEventListener("click", async () => {
+    const secret = await unlockSecret($("mxPass").value);
+    if (!secret) { $("mxError").textContent = "Password galat hai."; return; }
+    if (!(await totpVerify(secret, $("mxCode").value))) { $("mxError").textContent = "Code match nahi hua."; return; }
+    state.profile.totp = null; state.profile.recovery = [];
+    persist();
+    closeTotpModal();
+    renderTotpArea(true);
+    toast("2FA OFF ho gaya");
+  });
 }
 
 /* ================= GATE (after login) ================= */
@@ -363,6 +460,22 @@ function wireGate() {
 
 /* ================= PROFILE ACTIONS ================= */
 function wireProfile() {
+  /* ---- popup open/close wiring (email / password / 2FA) ---- */
+  $("openEmailModal").addEventListener("click", () => {
+    $("emailMsg").textContent = ""; $("emailError").textContent = "";
+    $("emailModal").classList.remove("hidden");
+  });
+  $("emailClose").addEventListener("click", () => $("emailModal").classList.add("hidden"));
+  $("emailModal").addEventListener("click", e => { if (e.target === $("emailModal")) $("emailModal").classList.add("hidden"); });
+  $("openPassModal").addEventListener("click", () => {
+    $("passMsg").textContent = ""; $("passError").textContent = "";
+    $("passModal").classList.remove("hidden");
+  });
+  $("passClose").addEventListener("click", () => $("passModal").classList.add("hidden"));
+  $("passModal").addEventListener("click", e => { if (e.target === $("passModal")) $("passModal").classList.add("hidden"); });
+  $("totpClose").addEventListener("click", closeTotpModal);
+  $("totpModal").addEventListener("click", e => { if (e.target === $("totpModal")) closeTotpModal(); });
+
   $("profileForm").addEventListener("submit", e => {
     e.preventDefault();
     state.profile.name = $("profName").value.trim();
@@ -441,12 +554,11 @@ function wireProfile() {
       state.profile.totp.encPw = await aesEnc(key, secret);
     }
     persist();
-    $("userEmail").textContent = newEmail;
     $("setEmail").textContent = newEmail;
     renderProfile();
-    okEl.textContent = "Email updated — ab naye email se login hoga.";
-    $("emailCurPass").value = "";
-    toast("Email changed");
+    $("emailCurPass").value = ""; $("newEmail").value = "";
+    $("emailModal").classList.add("hidden");
+    toast("Email changed — ab naye email se login hoga");
   });
 
   $("passForm").addEventListener("submit", async e => {
@@ -480,7 +592,7 @@ function wireProfile() {
       persist();
     }
     $("passCur").value = ""; $("passNew").value = "";
-    okEl.textContent = "Password changed.";
+    $("passModal").classList.add("hidden");
     toast("Password updated");
   });
 

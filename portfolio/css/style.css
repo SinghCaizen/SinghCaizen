@@ -333,3 +333,68 @@ form textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rg
 /* v6: delete-account modal */
 #delForm .btn-danger{background:var(--red);border-color:var(--red);color:#fff;font-weight:700}
 #delForm .btn-danger:hover{filter:brightness(1.1)}
+
+/* ===== v7: compact animated auth page · header chip · popups · mobile ===== */
+@keyframes cardIn{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.auth-wrap{background:radial-gradient(58rem 30rem at 50% -12%,rgba(224,49,49,.12),transparent 62%),radial-gradient(40rem 22rem at 85% 110%,rgba(224,49,49,.06),transparent 60%)}
+.auth-card{max-width:428px;padding:1.9rem 1.8rem 1.6rem;animation:cardIn .55s cubic-bezier(.2,.8,.25,1) both}
+.brand-logo{height:72px}
+.brand h1{font-size:1.32rem;letter-spacing:.16em;margin:.55rem 0 .3rem}
+.brand p{font-size:.9rem;margin:0}
+.auth-tabs{background:var(--panel-2);border:1px solid var(--line);border-radius:999px;padding:4px;gap:4px;margin:1.1rem 0 1rem}
+.auth-tab{border:none;border-radius:999px;padding:.55rem;background:transparent}
+.auth-tab.active{background:var(--text);color:var(--bg)}
+#authForm label{margin-top:.75rem}
+#authForm input,#gateForm input{transition:border-color .18s,box-shadow .18s}
+#authForm input:focus,#gateForm input:focus{border-color:var(--text);box-shadow:0 0 0 3px rgba(127,127,127,.25);outline:none}
+.pass-wrap{position:relative;display:block}
+.pass-wrap input{width:100%;padding-right:2.6rem}
+.eye-btn{position:absolute;right:.35rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1rem;line-height:1;padding:.35rem;opacity:.75}
+.eye-btn:hover{opacity:1}
+#authSubmit{transition:transform .15s,background .2s,color .2s}
+#authSubmit:hover{transform:translateY(-1px)}
+.btn-google{transition:transform .15s,box-shadow .2s}
+.auth-note{font-size:.82rem;line-height:1.5}
+/* header profile chip (name + photo only, no email) */
+.user-chip{display:flex;align-items:center;gap:.55rem;background:transparent;border:1px solid var(--line);border-radius:999px;padding:.28rem .85rem .28rem .3rem;cursor:pointer;color:var(--text);font:inherit;transition:border-color .18s,transform .15s}
+.user-chip:hover{border-color:var(--text);transform:translateY(-1px)}
+.user-chip .avatar-sm{width:32px;height:32px}
+.avatar-init-sm{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--text);color:var(--bg);font-weight:700;font-size:.95rem}
+.chip-name{font-weight:600;max-width:10rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.profile-logout{margin-left:auto;align-self:flex-start}
+/* popups */
+.modal{animation:fadeIn .18s both}
+.modal-card{animation:cardIn .32s cubic-bezier(.2,.8,.25,1) both;max-height:92vh;overflow-y:auto}
+.modal-card .qr-canvas{display:block;margin:.6rem auto}
+.dl-row{display:flex;gap:.5rem;flex-wrap:wrap;margin:.35rem 0 .9rem}
+.dl-row .btn{flex:1;min-width:8.5rem}
+.terms-body{max-height:48vh;overflow-y:auto;padding-right:.3rem}
+.terms-body h4{font-family:"Fraunces",serif;margin:.95rem 0 .25rem;font-size:1rem}
+.terms-body p{margin:.15rem 0;font-size:.92rem;line-height:1.55;color:var(--muted)}
+.terms-body p:first-child{color:var(--text)}
+/* mobile polish */
+@media (max-width:640px){
+  .topbar{padding:.55rem .75rem;gap:.5rem}
+  .topbar-logo{height:30px}
+  .topbar-title{font-size:.8rem;letter-spacing:.05em}
+  .topbar-right{gap:.45rem}
+  #issueBtn{padding:.35rem .6rem;font-size:.8rem}
+  .chip-name{max-width:5.2rem}
+  .tabs{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:.45rem .6rem;gap:.35rem}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;padding:.5rem .8rem}
+  main{padding:.9rem .7rem 2rem}
+  .panel{padding:1rem .9rem}
+  .auth-card{padding:1.5rem 1.05rem 1.3rem}
+  .brand-logo{height:60px}
+  .brand h1{font-size:1.12rem}
+  .modal-card{width:94vw;padding:1.1rem 1rem;max-height:92vh}
+  .form-2col{grid-template-columns:1fr}
+  .profile-head{flex-wrap:wrap}
+  .setting-row{flex-wrap:wrap;gap:.45rem}
+  .seed-grid{grid-template-columns:repeat(3,1fr)}
+  .rec-grid{grid-template-columns:repeat(2,1fr)}
+  .ticker-wrap{font-size:.78rem}
+  .site-foot{padding:1.4rem .9rem}
+}

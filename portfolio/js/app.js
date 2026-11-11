@@ -158,11 +158,11 @@ function showGate() {
 }
 function showApp() {
   $("authView").classList.add("hidden"); $("gateView").classList.add("hidden"); $("appView").classList.remove("hidden");
-  $("userEmail").textContent = currentUser.email;
   $("setEmail").textContent = currentUser.email;
   $("setMode").textContent = FIREBASE_ON ? "Cloud (Firebase) — saved online" : "Demo — this browser only";
   if (typeof renderProfile === "function") renderProfile(); renderAll(); refreshPrices();
   if (typeof loadTicker === "function") loadTicker();
+  if (state.profile && !state.profile.termsSeen) $("termsModal").classList.remove("hidden");
 }
 
 /* ================= portfolio math ================= */
@@ -565,7 +565,19 @@ document.addEventListener("DOMContentLoaded", () => {
   $("authForm").addEventListener("submit", doAuth);
   $("forgotLink").addEventListener("click", doForgot);
   $("googleBtn").addEventListener("click", doGoogleSignIn);
-  $("logoutBtn").addEventListener("click", doLogout);
+  $("passEye").addEventListener("click", () => {
+    const inp = $("authPass");
+    const show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    $("passEye").textContent = show ? "🙈" : "👁";
+  });
+  $("logoutBtn2").addEventListener("click", doLogout);
+  $("profileChip").addEventListener("click", () => { switchView("profile"); if (typeof renderProfile === "function") renderProfile(); });
+  $("termsAgree").addEventListener("click", () => {
+    if (state && state.profile) { state.profile.termsSeen = true; persist(); }
+    $("termsModal").classList.add("hidden");
+    toast("Welcome to Singh Caizen Finance");
+  });
   $("themeBtn").addEventListener("click", () => {
     const cur = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
     document.documentElement.setAttribute("data-theme", cur); localStorage.setItem("pf_theme", cur);
