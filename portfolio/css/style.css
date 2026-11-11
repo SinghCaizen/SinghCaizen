@@ -654,3 +654,15 @@ form select{width:100%;margin-top:.35rem;background:var(--input);border:1px soli
 body.privacy-on .stat-value,body.privacy-on .stat-sub,body.privacy-on #insAssets,body.privacy-on .hold-grid,body.privacy-on #donut,body.privacy-on .donut-legend,body.privacy-on .bar-val,body.privacy-on .heat-val,body.privacy-on .tax-grid,body.privacy-on .tax-row,body.privacy-on #perfMeta,body.privacy-on #insPerfMeta,body.privacy-on .cap-nums,body.privacy-on .watch-price,body.privacy-on .hist-row,body.privacy-on #stockStats,body.privacy-on .pnl-row,body.privacy-on .assets-big{filter:blur(7px);transition:filter .25s ease}
 @media (max-width:1100px){.score-cards{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:760px){.score-cards{grid-template-columns:1fr 1fr}.account-pop{top:58px}}
+
+/* ===== v17: quant tear-sheet ===== */
+.mr-wrap{overflow-x:auto}
+.ret-table{border-collapse:collapse;width:100%;font-size:.82rem;min-width:640px}
+.ret-table th,.ret-table td{padding:.42rem .3rem;text-align:center;border:1px solid var(--line);white-space:nowrap}
+.ret-table th{color:var(--muted);font-weight:600;background:var(--panel-2)}
+.ret-table td:first-child{text-align:left}
+.mr-ytd{background:var(--panel-2)}
+.div-badges{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem}
+.div-badge{border:1px solid var(--line);border-radius:999px;padding:.4rem .85rem;font-size:.88rem;color:var(--muted);background:var(--panel-2)}
+.div-badge b{color:var(--text)}
+.scatter text{pointer-events:none}

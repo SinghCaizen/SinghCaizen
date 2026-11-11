@@ -1,9 +1,9 @@
 "use strict";
 /* ================= helpers ================= */
 const $ = id => document.getElementById(id);
-const inr = n => "₹" + Math.round(n).toLocaleString("en-IN");
-const inr2 = n => "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
-const pct = n => (n >= 0 ? "+" : "") + n.toFixed(2) + "%";
+const inr = n => Number.isFinite(n) ? "₹" + Math.round(n).toLocaleString("en-IN") : "—";
+const inr2 = n => Number.isFinite(n) ? "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 }) : "—";
+const pct = n => Number.isFinite(n) ? (n >= 0 ? "+" : "") + n.toFixed(2) + "%" : "—";
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); setTimeout(() => t.classList.add("hidden"), 2600); }
@@ -352,7 +352,21 @@ async function fetchOne(sym) {
       return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
     })());
   }
-  try { return await Promise.any(attempts); } catch (e) { /* every route failed */ }
+  try { return await Promise.any(attempts); } catch (e) { /* every NSE route failed */ }
+  if (sym.indexOf(".") < 0 && sym.charAt(0) !== "^") {
+    const boAttempts = proxies.map(p => (async () => {
+      const res = await fetchTO(p(yahooUrl(sym).replace(".NS", ".BO")), 3500);
+      if (!res.ok) throw new Error("bad route");
+      const j = await res.json();
+      const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
+      if (!meta || !meta.regularMarketPrice) throw new Error("no data");
+      let spark = [];
+      try { const q = j.chart.result[0].indicators.quote[0].close || []; spark = q.filter(v => typeof v === "number"); } catch (e2) {}
+      const prev = spark.length > 1 ? spark[spark.length - 2] : (meta.chartPreviousClose || meta.regularMarketPrice);
+      return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
+    })());
+    try { return await Promise.any(boAttempts); } catch (e) { /* BSE failed too */ }
+  }
   if (manual) return { price: Number(manual), prevClose: Number(manual), ts: Date.now(), manual: true, spark: [] };
   return null;
 }

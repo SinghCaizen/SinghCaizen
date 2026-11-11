@@ -10,7 +10,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23000000'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%23ffffff' font-family='Georgia'>F</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=16">
+<link rel="stylesheet" href="css/style.css?v=17">
 </head>
 <body>
 
@@ -18,8 +18,8 @@
 <div id="authView" class="auth-wrap">
   <div class="auth-card">
     <div class="brand">
-      <img class="folio-logo logo-on-dark" src="assets/folio-white.svg" alt="Folio">
-      <img class="folio-logo logo-on-light" src="assets/folio-dark.svg" alt="Folio">
+      <img decoding="async" class="folio-logo logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+      <img decoding="async" class="folio-logo logo-on-light" src="assets/folio-dark.svg" alt="Folio">
       <p class="tagline">Your stocks. Your numbers. No broker in between.</p>
       <p class="product-line">A <span class="sc-brand">Singh Caizen</span> Product</p>
     </div>
@@ -66,8 +66,8 @@
 <div id="gateView" class="auth-wrap hidden">
   <div class="auth-card">
     <div class="brand">
-      <img class="folio-logo folio-logo-gate logo-on-dark" src="assets/folio-white.svg" alt="Folio">
-      <img class="folio-logo folio-logo-gate logo-on-light" src="assets/folio-dark.svg" alt="Folio">
+      <img decoding="async" class="folio-logo folio-logo-gate logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+      <img decoding="async" class="folio-logo folio-logo-gate logo-on-light" src="assets/folio-dark.svg" alt="Folio">
       <h1>TWO-FACTOR CHECK</h1>
       <p>One more step to keep your portfolio safe.</p>
       <p class="product-line">A <span class="sc-brand">Singh Caizen</span> Product</p>
@@ -102,8 +102,8 @@
 <div id="appView" class="hidden">
   <header class="topbar">
     <div class="topbar-left">
-      <img class="folio-logo-top logo-on-dark" src="assets/folio-white.svg" alt="Folio">
-      <img class="folio-logo-top logo-on-light" src="assets/folio-dark.svg" alt="Folio">
+      <img decoding="async" class="folio-logo-top logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+      <img decoding="async" class="folio-logo-top logo-on-light" src="assets/folio-dark.svg" alt="Folio">
     </div>
     <div class="topbar-right">
       <button id="privacyBtn" class="theme-btn" type="button" title="Hide or show amounts (privacy mode)"><span id="privacyIcon">👁</span></button>
@@ -205,6 +205,11 @@
       </div>
 
       <div class="panel chart-panel">
+        <div class="panel-head"><h2>Dividend Snowball</h2><span class="price-meta">Dividends received per quarter, and what they earn on your cost</span></div>
+        <div id="divBox"><div class="skel" style="height:80px"></div></div>
+      </div>
+
+      <div class="panel chart-panel">
         <div class="panel-head"><h2>Tax — Harvesting &amp; Booked Profit <button class="info-btn" type="button" data-help="tax" title="What is this?">i</button></h2><span class="price-meta">Worked out from your entry dates</span></div>
         <div id="taxBox"></div>
       </div>
@@ -264,6 +269,21 @@
       <div class="panel">
         <div class="panel-head"><h2>HEATMAP</h2><span class="price-meta">Today's move of every holding — tap a tile for its chart</span></div>
         <div id="insHeat" class="heat-grid"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>RISK vs RETURN — EVERY STOCK</h2><span class="price-meta">One bubble per stock · tap a bubble to open it</span></div>
+        <div id="scatterBox"><div class="skel" style="height:200px"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>UNDERWATER — DRAWDOWN</h2><span class="price-meta" id="ddHead">How deep the dips went, and how fast you recovered</span></div>
+        <div id="ddBox"><div class="skel" style="height:120px"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>MONTHLY RETURNS</h2><span class="price-meta">Your quant tear-sheet — month by month, year by year</span></div>
+        <div id="mrBox"><div class="skel" style="height:120px"></div></div>
       </div>
 
       <div class="panel">
@@ -421,6 +441,8 @@
         <div class="setting-row"><span>Restore from encrypted vault (.folio)</span><button id="vaultImportBtn" class="btn btn-small" type="button">Restore Vault</button><input type="file" id="vaultFile" accept=".folio,application/json" hidden></div>
         <div class="setting-row"><span>Download my data (CSV)</span><button id="exportBtn" class="btn btn-small" type="button">Export</button></div>
         <div class="setting-row"><span>Clear saved prices &amp; news cache on this device</span><button id="clearCacheBtn" class="btn btn-small" type="button">Clear Cache</button></div>
+        <div class="setting-row"><span>System health &amp; cache diagnostics</span><b class="row-val" id="healthInfo">—</b></div>
+        <div class="setting-row"><span>Repair &amp; refresh state (never touches your holdings)</span><button id="healthRepairBtn" class="btn btn-small" type="button">Repair &amp; Refresh</button></div>
         <div class="setting-row"><span>Restore from CSV</span><label class="btn btn-small file-label">Import<input type="file" id="importFile" accept=".csv" hidden></label></div>
         <div class="setting-row danger"><span>Delete all my entries</span><button id="wipeBtn" class="btn btn-small btn-danger" type="button">Delete everything</button></div>
         <p class="auth-note">The .folio vault is encrypted with a passphrase only you know (AES-256-GCM, PBKDF2 250,000 rounds) — without the passphrase, nobody can read it, including us. CSV format: Date, Type (BUY/SELL/DIV), Symbol, Name, Qty, Price.</p>
@@ -437,8 +459,8 @@
   <footer class="site-foot">
     <div class="foot-cols">
       <div class="foot-brand">
-        <img class="folio-logo-top logo-on-dark" src="assets/folio-white.svg" alt="Folio">
-        <img class="folio-logo-top logo-on-light" src="assets/folio-dark.svg" alt="Folio">
+        <img decoding="async" class="folio-logo-top logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+        <img decoding="async" class="folio-logo-top logo-on-light" src="assets/folio-dark.svg" alt="Folio">
         <p><b>Folio</b> is a private portfolio tracker for Indian stocks — manual entries, delayed free prices, charts, a heatmap and tax views. No broker connection, ever.</p>
         <p class="product-line">A <span class="sc-brand">Singh Caizen</span> Product</p>
       </div>
@@ -685,8 +707,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/firebase-config.js?v=6"></script>
 <script src="js/stocks.js?v=14"></script>
-<script src="js/app.js?v=16"></script>
+<script src="js/app.js?v=17"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/features.js?v=16"></script>
+<script src="js/features.js?v=17"></script>
 </body>
 </html>

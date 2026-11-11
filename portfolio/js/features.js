@@ -40,33 +40,45 @@ function histLsSet(ck, data) {
   try { localStorage.setItem("folio_hist_" + ck, JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
 }
 async function fetchHistoryNet(sym, rangeKey, ck) {
-  const s = (sym.indexOf(".") >= 0 || sym.charAt(0) === "^") ? sym : sym + ".NS";
   const cfg = RANGE_CFG[rangeKey] || RANGE_CFG["6mo"];
-  const attempts = [];
-  for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
-    const url = "https://" + host + "/v8/finance/chart/" + encodeURIComponent(s) + "?range=" + cfg.range + "&interval=" + cfg.interval;
-    for (const p of PROXIES) {
-      attempts.push((async () => {
-        const res = await fetchT(p(url), 3500);
-        if (!res.ok) throw new Error("bad route");
-        const j = await res.json();
-        const r0 = j && j.chart && j.chart.result && j.chart.result[0];
-        if (!r0) throw new Error("no data");
-        const tsArr = r0.timestamp || [];
-        const closes = (r0.indicators && r0.indicators.quote && r0.indicators.quote[0] && r0.indicators.quote[0].close) || [];
-        const points = [];
-        for (let i = 0; i < tsArr.length; i++) if (typeof closes[i] === "number") points.push({ t: tsArr[i] * 1000, c: closes[i] });
-        if (!points.length) throw new Error("empty");
-        return { points: points, meta: r0.meta || {} };
-      })());
+  const buildAttempts = s => {
+    const attempts = [];
+    for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
+      const url = "https://" + host + "/v8/finance/chart/" + encodeURIComponent(s) + "?range=" + cfg.range + "&interval=" + cfg.interval;
+      for (const p of PROXIES) {
+        attempts.push((async () => {
+          const res = await fetchT(p(url), 3500);
+          if (!res.ok) throw new Error("bad route");
+          const j = await res.json();
+          const r0 = j && j.chart && j.chart.result && j.chart.result[0];
+          if (!r0) throw new Error("no data");
+          const tsArr = r0.timestamp || [];
+          const closes = (r0.indicators && r0.indicators.quote && r0.indicators.quote[0] && r0.indicators.quote[0].close) || [];
+          const points = [];
+          for (let i = 0; i < tsArr.length; i++) if (typeof closes[i] === "number") points.push({ t: tsArr[i] * 1000, c: closes[i] });
+          if (!points.length) throw new Error("empty");
+          return { points: points, meta: r0.meta || {} };
+        })());
+      }
     }
-  }
+    return attempts;
+  };
+  const s = (sym.indexOf(".") >= 0 || sym.charAt(0) === "^") ? sym : sym + ".NS";
   try {
-    const out = await Promise.any(attempts);
+    const out = await Promise.any(buildAttempts(s));
     histCache[ck] = out;
     histLsSet(ck, out);
     return out;
   } catch (e) {
+    /* NSE silent? Try the BSE (.BO) listing once before giving up. */
+    if (sym.indexOf(".") < 0 && sym.charAt(0) !== "^") {
+      try {
+        const out = await Promise.any(buildAttempts(sym + ".BO"));
+        histCache[ck] = out;
+        histLsSet(ck, out);
+        return out;
+      } catch (e2) {}
+    }
     if (!(ck in histCache)) histCache[ck] = null;
     return null;
   }
@@ -132,7 +144,18 @@ async function loadTicker() {
 }
 
 /* ---------- dashboard extras: perf graph + heatmap + tax ---------- */
-function renderExtras(d) { renderHeat(d); renderTax(d); renderPerf(d); renderInsights(d); renderNews(d); renderEvents(d); renderCorp(d); }
+let folioView = "dashboard";
+function renderExtras(d) {
+  renderHeat(d); renderTax(d); renderPerf(d); renderCorp(d); renderDivChart(d);
+  /* Heavy analytics render only for the tab actually on screen (zero lag). */
+  if (folioView === "insights" || folioView === "news") { renderInsights(d); renderNews(d); renderEvents(d); }
+}
+const _origSwitchView = switchView;
+switchView = function (name) {
+  folioView = name;
+  _origSwitchView(name);
+  if ((name === "insights" || name === "news") && currentUser) renderAll();
+};
 
 let perfRange = "3mo", perfKey = "", perfToken = 0, perfBench = false;
 function closeAt(points, t) { let c = null; for (const p of points) { if (p.t <= t) c = p.c; else break; } return c; }
@@ -191,8 +214,40 @@ async function renderPerf(d) {
       }
     }
   }
-  el.innerHTML = lineChartSvg(vals, 190);
-  if (meta) meta.innerHTML = "Portfolio value: " + inr(first) + " → <b>" + inr(last) + "</b> · <span class=\"" + (chg >= 0 ? "gain" : "loss") + "\">" + pct(chg) + "</span> over this period (at today's quantities, approximate).";
+  /* Invested Capital step series (net cash in, from your own entries) vs
+     Portfolio Value area — the gap between the two lines is your profit. */
+  const txnsSorted = [...(state.txns || [])].sort((a, b) => a.date < b.date ? -1 : 1);
+  const invVals = ts.map(t => {
+    let net = 0;
+    for (const x of txnsSorted) {
+      const tt = new Date(x.date + "T00:00:00").getTime() + 86399999;
+      if (tt > t) break;
+      const amt = (x.qty || 0) * (x.price || 0), ch = x.charges || 0;
+      if (x.type === "BUY") net += amt + ch;
+      else if (x.type === "SELL") net -= (amt - ch);
+    }
+    return Math.max(0, net);
+  });
+  el.innerHTML = perfChartSvg(vals, invVals, 190);
+  if (meta) meta.innerHTML = "Portfolio value: " + inr(first) + " → <b>" + inr(last) + "</b> · <span class=\"" + (chg >= 0 ? "gain" : "loss") + "\">" + pct(chg) + "</span> over this period · Net invested capital so far: <b>" + inr(invVals[invVals.length - 1]) + "</b> (dashed line — the gap above it is your profit).";
+}
+function perfChartSvg(vals, invVals, height) {
+  const W = 680, H = height || 190, P = 8;
+  const all = vals.concat(invVals);
+  const min = Math.min(...all), max = Math.max(...all), rng = (max - min) || 1;
+  const X = i => P + i * (W - 2 * P) / (vals.length - 1);
+  const Y = v => H - 22 - (v - min) / rng * (H - 40);
+  const pts = vals.map((v, i) => X(i).toFixed(1) + "," + Y(v).toFixed(1));
+  const area = "M" + pts[0].split(",")[0] + "," + (H - 22) + " L" + pts.join(" L") + " L" + pts[pts.length - 1].split(",")[0] + "," + (H - 22) + " Z";
+  const inv = invVals.map((v, i) => X(i).toFixed(1) + "," + Y(v).toFixed(1)).join(" ");
+  return '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
+    '<defs><linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--text)" stop-opacity="0.20"/><stop offset="1" stop-color="var(--text)" stop-opacity="0.02"/></linearGradient></defs>' +
+    '<path d="' + area + '" fill="url(#perfGrad)"/>' +
+    '<polyline points="' + inv + '" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-dasharray="6 4"/>' +
+    '<polyline points="' + pts.join(" ") + '" fill="none" stroke="var(--text)" stroke-width="2"/>' +
+    '<text x="' + P + '" y="14" fill="var(--muted)" font-size="12">' + inr(max) + '</text>' +
+    '<text x="' + (W - P) + '" y="14" text-anchor="end" fill="var(--text)" font-size="12" font-weight="bold">— Portfolio Value</text>' +
+    '<text x="' + (W - P) + '" y="30" text-anchor="end" fill="var(--muted)" font-size="12">- - Invested Capital</text></svg>';
 }
 
 function renderHeat(d) {
@@ -405,7 +460,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /* ---------- insights: Moneycontrol-style assets, portfolio score, signals, market cap ---------- */
 let insKey = "", insCapFilter = "All", insLastD = null;
-let insDiv = null, insMom = null, insRisk = null, insQual = null;
+let insDiv = null, insMom = null, insRisk = null, insQual = null, insPer = null;
 function capOf(sym) { return (window.CAP_MAP && window.CAP_MAP[sym]) || "S"; }
 function capLabel(c) { return c === "L" ? "Large Cap" : c === "M" ? "Mid Cap" : "Small Cap"; }
 function trendBadge(ret) {
@@ -571,6 +626,8 @@ async function loadInsScores(d) {
   if (insMom !== null) { $("insMomScore").textContent = insMom; $("insMomScore").className = insMom < 40 ? "loss" : ""; }
   if (insRisk !== null) { $("insRiskScore").textContent = insRisk; $("insRiskScore").className = insRisk < 40 ? "loss" : ""; }
   if (insQual !== null && $("insQualScore")) { $("insQualScore").textContent = insQual; $("insQualScore").className = insQual < 40 ? "loss" : ""; }
+  insPer = per;
+  renderScatter(per, d);
   updateGauge();
   const wOf = r => d.value ? r.cur / d.value * 100 : 0;
   const ups = per.filter(p => p.ret !== null && p.ret > 5).sort((a, b) => b.ret - a.ret);
@@ -723,26 +780,47 @@ document.addEventListener("DOMContentLoaded", () => {
    - Yahoo search / Google News RSS: headlines
    Everything degrades honestly when a source is unavailable.
    ================================================================ */
+/* Self-healing JSON fetch: races all proxies (3.5s each), validates the body
+   is real JSON, and if every route is down, serves the last good response
+   saved on this device — flagged so the UI can show a "cached data" note. */
+let folioStaleAt = 0;
+function urlKey(u) { let h = 0; for (let i = 0; i < u.length; i++) h = (h * 31 + u.charCodeAt(i)) | 0; return "folio_raw_" + (h >>> 0).toString(36); }
 async function fetchViaProxies(url, asText) {
   const routes = [
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
     u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
     u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
   ];
-  for (const mk of routes) {
+  const attempts = routes.map(mk => (async () => {
+    const ctl = new AbortController();
+    const to = setTimeout(() => ctl.abort(), 3500);
     try {
-      const ctl = new AbortController();
-      const to = setTimeout(() => ctl.abort(), 9000);
       const r = await fetch(mk(url), { signal: ctl.signal });
-      clearTimeout(to);
-      if (!r.ok) continue;
+      if (!r.ok) throw new Error("bad route");
       const t = await r.text();
-      if (!t) continue;
+      if (!t) throw new Error("empty");
       if (asText) return t;
-      try { return JSON.parse(t); } catch (e) { continue; }
-    } catch (e) {}
+      const head = t.trim().charAt(0);
+      if (head !== "{" && head !== "[") throw new Error("not json");
+      return JSON.parse(t);
+    } finally { clearTimeout(to); }
+  })());
+  try {
+    const out = await Promise.any(attempts);
+    if (!asText) { try { localStorage.setItem(urlKey(url), JSON.stringify(out)); } catch (e) {} }
+    return out;
+  } catch (e) {
+    if (!asText) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(urlKey(url)) || "null");
+        if (saved) { folioStaleAt = Date.now(); return saved; }
+      } catch (e2) {}
+    }
+    return null;
   }
-  return null;
+}
+function staleNote() {
+  return Date.now() - folioStaleAt < 45000 ? '<p class="price-meta">📦 Offline / Cached Data — the free sources are unreachable right now, so the last saved copy is being shown.</p>' : "";
 }
 function lsCacheGet(key, ttlMs) {
   try {
@@ -867,7 +945,7 @@ async function renderNews(d) {
     newsKey = "";
     return;
   }
-  box.innerHTML = merged.map(n => newsRowHtml(n, n.sym)).join("");
+  box.innerHTML = staleNote() + merged.map(n => newsRowHtml(n, n.sym)).join("");
 }
 
 /* ---------- results & announcements (dashboard + popup) ---------- */
@@ -906,7 +984,7 @@ async function renderEvents(d) {
     html += '<div class="event-row"><span class="news-chip">' + esc(e.sym) + '</span><span class="event-text"><b>' + esc(e.name) + '</b> — quarterly results ' + when + ' · ' + fmtDate(e.date) + '</span></div>';
   });
   hits.forEach(n => { html += newsRowHtml(n, n.sym); });
-  box.innerHTML = html;
+  box.innerHTML = staleNote() + html;
   maybeEventPopup(dated, hits);
 }
 function maybeEventPopup(dated, hits) {
@@ -1353,3 +1431,244 @@ function wireAccountCenter() {
   }, 20000);
 }
 document.addEventListener("DOMContentLoaded", () => { wireAccountCenter(); wireVault(); });
+
+/* ================================================================
+   v17 — quant tear-sheet: risk/return scatter, drawdown, monthly
+   returns matrix, dividend snowball + system health
+   ================================================================ */
+async function buildValueSeries(d, rangeKey) {
+  const hists = {};
+  await Promise.all(d.rows.map(async r => { hists[r.sym] = await fetchHistory(r.sym, rangeKey); }));
+  const tset = new Set();
+  Object.values(hists).forEach(h => { if (h) h.points.forEach(p => tset.add(p.t)); });
+  const ts = [...tset].sort((a, b) => a - b);
+  return ts.map(t => ({
+    t: t,
+    v: d.rows.reduce((s, r) => {
+      const h = hists[r.sym];
+      const c = h ? closeAt(h.points, t) : null;
+      return s + r.qty * (c !== null ? c : r.avg);
+    }, 0)
+  })).filter(x => x.v > 0);
+}
+
+/* ---------- 2) Risk vs Return bubble scatter (Insights) ---------- */
+function renderScatter(per, d) {
+  const box = $("scatterBox");
+  if (!box || !per) return;
+  const pts = per.filter(p => p.vol !== null && p.r).map(p => ({
+    sym: p.r.sym, name: p.r.name, vol: p.vol,
+    ret: Number.isFinite(p.r.pnlPct) ? p.r.pnlPct : 0,
+    w: d.value ? p.r.cur / d.value * 100 : 0
+  }));
+  if (!pts.length) { box.innerHTML = '<p class="empty-note">The scatter needs price history — it appears once 6 months of prices load.</p>'; return; }
+  const W = 680, H = 300, PL = 46, PR = 14, PT = 16, PB = 34;
+  const maxVol = Math.max(30, ...pts.map(p => p.vol)) * 1.12;
+  const minRet = Math.min(-8, ...pts.map(p => p.ret)) * 1.15;
+  const maxRet = Math.max(12, ...pts.map(p => p.ret)) * 1.15;
+  const vols = pts.map(p => p.vol).sort((a, b) => a - b);
+  const medVol = vols[Math.floor(vols.length / 2)] || 25;
+  const X = v => PL + (v / maxVol) * (W - PL - PR);
+  const Y = v => PT + (1 - (v - minRet) / (maxRet - minRet)) * (H - PT - PB);
+  const q = (x, y, label, anchor) => '<text x="' + x + '" y="' + y + '" text-anchor="' + anchor + '" fill="var(--muted)" font-size="11.5" font-weight="bold" letter-spacing="0.08em">' + label + '</text>';
+  let svg = '<svg class="chart-svg scatter" viewBox="0 0 ' + W + ' ' + H + '">' +
+    '<rect x="' + PL + '" y="' + PT + '" width="' + (X(medVol) - PL) + '" height="' + (Y(0) - PT) + '" fill="var(--text)" opacity="0.05"/>' +
+    '<rect x="' + X(medVol) + '" y="' + Y(0) + '" width="' + (W - PR - X(medVol)) + '" height="' + (H - PB - Y(0)) + '" fill="#e03131" opacity="0.05"/>' +
+    '<line x1="' + X(medVol) + '" y1="' + PT + '" x2="' + X(medVol) + '" y2="' + (H - PB) + '" stroke="var(--line)"/>' +
+    '<line x1="' + PL + '" y1="' + Y(0) + '" x2="' + (W - PR) + '" y2="' + Y(0) + '" stroke="var(--line)"/>' +
+    q(PL + 6, PT + 14, "STAR COMPOUNDERS", "start") + q(W - PR - 6, PT + 14, "AGGRESSIVE GROWTH", "end") +
+    q(PL + 6, H - PB - 6, "DEFENSIVE ANCHORS", "start") + q(W - PR - 6, H - PB - 6, "LAGGARDS", "end") +
+    '<text x="' + (W / 2) + '" y="' + (H - 6) + '" text-anchor="middle" fill="var(--muted)" font-size="11">Annualised Volatility (Risk) →</text>' +
+    '<text x="12" y="' + (H / 2) + '" text-anchor="middle" fill="var(--muted)" font-size="11" transform="rotate(-90 12 ' + (H / 2) + ')">Your Return %</text>';
+  [0, Math.round(maxVol / 2), Math.round(maxVol)].forEach(v => {
+    svg += '<text x="' + X(v) + '" y="' + (H - PB + 16) + '" text-anchor="middle" fill="var(--muted)" font-size="10.5">' + v + '%</text>';
+  });
+  pts.forEach(p => {
+    const r = Math.min(24, 4.5 + p.w * 0.38);
+    svg += '<g class="scatter-dot" data-sym="' + esc(p.sym) + '" style="cursor:pointer"><circle cx="' + X(p.vol).toFixed(1) + '" cy="' + Y(p.ret).toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + (p.ret >= 0 ? "var(--text)" : "#e03131") + '" opacity="0.55" stroke="var(--bg)" stroke-width="1.2"><title>' + esc(p.sym) + ' — Return ' + pct(p.ret) + ' · Volatility ' + p.vol.toFixed(1) + '% a year · Weight ' + p.w.toFixed(1) + '% of portfolio</title></circle>' +
+      '<text x="' + X(p.vol).toFixed(1) + '" y="' + (Y(p.ret) - r - 3).toFixed(1) + '" text-anchor="middle" fill="var(--text)" font-size="10.5" font-weight="bold">' + esc(p.sym) + '</text></g>';
+  });
+  svg += '</svg><p class="price-meta">Each bubble is one stock: left = calmer, right = wilder; up = profit, down = loss. Bubble size = share of your money in it. Split lines: 0% return and the median volatility (' + medVol.toFixed(0) + '%). Tap a bubble for its full page.</p>';
+  box.innerHTML = svg;
+  box.querySelectorAll(".scatter-dot").forEach(g => g.addEventListener("click", () => openStock(g.dataset.sym)));
+}
+
+/* ---------- 3) Underwater drawdown graph (Insights) ---------- */
+let ddKey = "", ddBusy = false;
+async function renderDrawdown(d) {
+  const box = $("ddBox");
+  if (!box) return;
+  if (!d.rows.length) { box.innerHTML = '<p class="empty-note">Add stocks — your drawdown curve will appear here.</p>'; return; }
+  const key = d.rows.map(r => r.sym + ":" + r.qty).join(",");
+  if (key === ddKey || ddBusy) return;
+  ddKey = key; ddBusy = true;
+  const series = await buildValueSeries(d, "6mo");
+  const bench = await fetchHistory("^NSEI", "6mo");
+  ddBusy = false;
+  if (series.length < 5) { box.innerHTML = '<p class="empty-note">Not enough price history yet for a drawdown curve.</p>'; ddKey = ""; return; }
+  let peak = -Infinity, peakT = null;
+  const dd = series.map(x => {
+    if (x.v > peak) { peak = x.v; peakT = x.t; }
+    return { t: x.t, dd: (x.v / peak - 1) * 100, v: x.v, peak: peak, peakT: peakT };
+  });
+  let worst = dd[0];
+  dd.forEach(x => { if (x.dd < worst.dd) worst = x; });
+  let recoveryDays = null;
+  if (worst) {
+    const after = dd.filter(x => x.t > worst.t && x.v >= worst.peak);
+    if (after.length) recoveryDays = Math.round((after[0].t - worst.peakT) / 86400000);
+  }
+  let bdd = [];
+  if (bench && bench.points.length > 3) {
+    let bp = -Infinity;
+    bdd = bench.points.map(p => { if (p.c > bp) bp = p.c; return (p.c / bp - 1) * 100; });
+  }
+  const n = Math.min(dd.length, bdd.length || dd.length);
+  const a = dd.slice(dd.length - n).map(x => x.dd);
+  const b = bdd.length ? bdd.slice(bdd.length - n) : a.map(() => 0);
+  const head = $("ddHead");
+  if (head) head.innerHTML = "Max Drawdown <b class=\"loss\">" + worst.dd.toFixed(1) + "%</b> · Recovery " + (recoveryDays === null ? "<b>not yet — " + Math.round((Date.now() - (worst ? worst.peakT : Date.now())) / 86400000) + " days under water</b>" : "<b>" + recoveryDays + " days</b>");
+  box.innerHTML = dualLineSvg(a, b, 170) + '<p class="price-meta">How far below its own peak your portfolio value has been (last 6 months, at today\'s quantities). Dashed = NIFTY 50\'s drawdown over the same period.</p>';
+}
+
+/* ---------- 4) Monthly returns heatmap matrix (Insights) ---------- */
+let mrKey = "", mrBusy = false;
+async function renderMonthly(d) {
+  const box = $("mrBox");
+  if (!box) return;
+  if (!d.rows.length) { box.innerHTML = '<p class="empty-note">Add stocks — your monthly returns table will appear here.</p>'; return; }
+  const key = d.rows.map(r => r.sym + ":" + r.qty).join(",");
+  if (key === mrKey || mrBusy) return;
+  mrKey = key; mrBusy = true;
+  const series = await buildValueSeries(d, "5y");
+  mrBusy = false;
+  if (series.length < 10) { box.innerHTML = '<p class="empty-note">Not enough price history yet for monthly returns.</p>'; mrKey = ""; return; }
+  const monthEnd = {};
+  series.forEach(x => {
+    const dt = new Date(x.t);
+    monthEnd[dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0")] = x.v;
+  });
+  const keys = Object.keys(monthEnd).sort();
+  const rets = {};
+  for (let i = 1; i < keys.length; i++) {
+    const prev = monthEnd[keys[i - 1]], cur = monthEnd[keys[i]];
+    if (prev > 0) rets[keys[i]] = (cur / prev - 1) * 100;
+  }
+  const years = [...new Set(keys.map(k => k.slice(0, 4)))].sort().reverse().slice(0, 6);
+  const MN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  let html = '<div class="mr-wrap"><table class="ret-table"><tr><th>Year</th>' + MN.map(m => "<th>" + m + "</th>").join("") + "<th>YTD</th></tr>";
+  years.forEach(y => {
+    let ytd = 1, has = false;
+    html += "<tr><td><b>" + y + "</b></td>";
+    for (let m = 1; m <= 12; m++) {
+      const k = y + "-" + String(m).padStart(2, "0");
+      const v = rets[k];
+      if (typeof v === "number") {
+        ytd *= (1 + v / 100); has = true;
+        const inten = Math.min(62, 10 + Math.abs(v) * 6);
+        const bg = v >= 0 ? "color-mix(in srgb, #1e9e5a " + inten + "%, var(--panel-2))" : "color-mix(in srgb, #d92b2b " + inten + "%, var(--panel-2))";
+        html += '<td style="background:' + bg + '">' + (v >= 0 ? "+" : "") + v.toFixed(1) + "%</td>";
+      } else html += "<td>—</td>";
+    }
+    const yv = has ? (ytd - 1) * 100 : null;
+    html += '<td class="mr-ytd"><b>' + (yv === null ? "—" : (yv >= 0 ? "+" : "") + yv.toFixed(1) + "%") + "</b></td></tr>";
+  });
+  html += "</table></div><p class=\"price-meta\">Month-by-month return of your portfolio value at today's quantities (approximate — it shows how the current portfolio would have moved). Green = positive month, red = negative.</p>";
+  box.innerHTML = html;
+}
+
+/* ---------- 5) Dividend snowball (Dashboard) ---------- */
+let divKey = "", divBusy = false;
+async function renderDivChart(d) {
+  const box = $("divBox");
+  if (!box) return;
+  if (!d.rows.length) { box.innerHTML = '<p class="empty-note">Add stocks — your dividend snowball will build here.</p>'; return; }
+  const key = d.rows.map(r => r.sym + ":" + r.qty).join(",");
+  if (key === divKey || divBusy) return;
+  divKey = key; divBusy = true;
+  const manualSyms = new Set((state.txns || []).filter(t => t.type === "DIV").map(t => t.sym));
+  const perQ = {};
+  const addQ = (ts, amt) => {
+    if (!amt) return;
+    const dt = new Date(ts);
+    const k = dt.getFullYear() + "-Q" + (Math.floor(dt.getMonth() / 3) + 1);
+    perQ[k] = (perQ[k] || 0) + amt;
+  };
+  let ttm = 0;
+  (state.txns || []).filter(t => t.type === "DIV").forEach(t => {
+    const amt = (t.qty || 0) * (t.price || 0);
+    addQ(new Date(t.date + "T00:00:00").getTime(), amt);
+    if (Date.now() - new Date(t.date + "T00:00:00").getTime() < 365 * 86400000) ttm += amt;
+  });
+  const autoRows = d.rows.filter(r => !manualSyms.has(r.sym)).slice(0, 8);
+  const cas = await Promise.all(autoRows.map(r => fetchCorpActions(r.sym)));
+  divBusy = false;
+  autoRows.forEach((r, i) => {
+    cas[i].divs.forEach(x => {
+      let qty = 0;
+      (state.txns || []).filter(t => t.sym === r.sym).forEach(t => {
+        const tt = new Date(t.date + "T00:00:00").getTime();
+        if (tt <= x.ts) qty += t.type === "BUY" ? (t.qty || 0) : t.type === "SELL" ? -(t.qty || 0) : 0;
+      });
+      if (qty > 0) {
+        addQ(x.ts, x.amount * qty);
+        if (Date.now() - x.ts < 365 * 86400000) ttm += x.amount * qty;
+      }
+    });
+  });
+  const qkeys = Object.keys(perQ).sort().slice(-8);
+  const yld = d.value ? ttm / d.value * 100 : 0;
+  const yoc = d.invested ? ttm / d.invested * 100 : 0;
+  const badges = '<div class="div-badges"><span class="div-badge">Dividends, last 12 months <b>' + inr(ttm) + '</b></span>' +
+    '<span class="div-badge">Portfolio Dividend Yield <b>' + yld.toFixed(2) + '%</b></span>' +
+    '<span class="div-badge">Yield on Cost <b>' + yoc.toFixed(2) + '%</b></span></div>';
+  if (!qkeys.length) {
+    box.innerHTML = badges + '<p class="empty-note">No dividends detected yet — neither entered by you nor found in exchange data for your stocks. When a holding pays a dividend, the snowball starts here.</p>';
+    return;
+  }
+  const max = Math.max(...qkeys.map(k => perQ[k]));
+  const W = 680, H = 190, BW = 54, gap = (W - 40) / qkeys.length;
+  let bars = "";
+  qkeys.forEach((k, i) => {
+    const v = perQ[k];
+    const bh = Math.max(3, v / max * (H - 58));
+    const x = 24 + i * gap + (gap - BW) / 2;
+    bars += '<rect x="' + x.toFixed(1) + '" y="' + (H - 28 - bh).toFixed(1) + '" width="' + BW + '" height="' + bh.toFixed(1) + '" rx="5" fill="var(--text)" opacity="' + (0.45 + 0.55 * v / max).toFixed(2) + '"><title>' + k + ' · ' + inr(v) + '</title></rect>' +
+      '<text x="' + (x + BW / 2).toFixed(1) + '" y="' + (H - 32 - bh).toFixed(1) + '" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="bold">' + inr(v) + '</text>' +
+      '<text x="' + (x + BW / 2).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" fill="var(--muted)" font-size="10.5">' + k.replace("-Q", " · Q") + '</text>';
+  });
+  box.innerHTML = badges + '<svg class="chart-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' + bars + '</svg>' +
+    '<p class="price-meta">Dividends per quarter — your own DIV entries, plus exchange-detected dividends on the shares you held on each ex-date (stocks where you enter dividends yourself are never double-counted).</p>';
+}
+
+/* ---------- insights: run drawdown + monthly when the tab renders ---------- */
+const _origRenderInsights17 = renderInsights;
+renderInsights = function (d) {
+  _origRenderInsights17(d);
+  renderDrawdown(d);
+  renderMonthly(d);
+};
+
+/* ---------- system health & repair (Data & Vault card) ---------- */
+function wireHealth() {
+  const info = $("healthInfo"), btn = $("healthRepairBtn");
+  if (!info && !btn) return;
+  const fill = () => {
+    if (!info) return;
+    let bytes = 0, caches = 0;
+    Object.keys(localStorage).forEach(k => {
+      if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
+    });
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v17";
+  };
+  fill();
+  if (btn) btn.addEventListener("click", () => {
+    Object.keys(localStorage).filter(k => k.indexOf("folio_hist_") === 0 || k.indexOf("folio_news_") === 0 || k.indexOf("folio_ci_") === 0 || k.indexOf("folio_ca_") === 0 || k.indexOf("folio_raw_") === 0 || k === "folio_prices_v1").forEach(k => localStorage.removeItem(k));
+    Object.keys(histCache).forEach(k => delete histCache[k]);
+    newsKey = ""; evKey = ""; corpKey = ""; divKey = ""; ddKey = ""; mrKey = ""; perfKey = ""; insKey = "";
+    fill();
+    renderAll(); refreshPrices();
+    toast("State repaired — caches rebuilt, your holdings untouched");
+  });
+}
+document.addEventListener("DOMContentLoaded", wireHealth);
