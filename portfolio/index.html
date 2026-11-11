@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Portfolio — Stock Tracker</title>
+<meta name="description" content="A private portfolio tracker for Indian stocks. Add your stocks manually, see live profit and loss. No broker connection needed.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23141414'/><text x='50' y='68' font-size='58' text-anchor='middle' fill='%23c9a227' font-family='Georgia'>P</text></svg>">
+<link rel="stylesheet" href="css/style.css?v=1">
+</head>
+<body>
+
+<!-- ============ AUTH VIEW ============ -->
+<div id="authView" class="auth-wrap">
+  <div class="auth-card">
+    <div class="brand">
+      <div class="brand-mark">P</div>
+      <h1>MY PORTFOLIO</h1>
+      <p>Your stocks. Your numbers. No broker in between.</p>
+    </div>
+
+    <div id="demoBanner" class="demo-banner hidden">
+      Demo mode is ON — data is saved only in this browser.
+      Cloud saving starts when the Firebase keys are added.
+    </div>
+
+    <div class="auth-tabs">
+      <button id="tabLogin" class="auth-tab active" type="button">Login</button>
+      <button id="tabSignup" class="auth-tab" type="button">Sign Up</button>
+    </div>
+
+    <form id="authForm" autocomplete="off">
+      <label>Your name <span class="opt">(only for sign up)</span>
+        <input type="text" id="authName" placeholder="e.g. Lila">
+      </label>
+      <label>Email
+        <input type="email" id="authEmail" placeholder="you@example.com" required>
+      </label>
+      <label>Password
+        <input type="password" id="authPass" placeholder="Minimum 6 characters" required minlength="6">
+      </label>
+      <button type="submit" id="authSubmit" class="btn btn-gold btn-block">Login</button>
+      <p id="authError" class="form-error"></p>
+      <p class="auth-links">
+        <a href="#" id="forgotLink">Forgot password?</a>
+      </p>
+    </form>
+    <p class="auth-note">Your portfolio data is private to your account. Prices are free and delayed (~15 min) — good for tracking, not for live trading.</p>
+  </div>
+</div>
+
+<!-- ============ APP VIEW ============ -->
+<div id="appView" class="hidden">
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="brand-mark small">P</div>
+      <span class="topbar-title">MY PORTFOLIO</span>
+    </div>
+    <div class="topbar-right">
+      <span id="userEmail" class="user-email"></span>
+      <button id="themeBtn" class="icon-btn" type="button" title="Change theme">◐</button>
+      <button id="logoutBtn" class="btn btn-ghost" type="button">Logout</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-view="dashboard" type="button">Dashboard</button>
+    <button class="tab" data-view="holdings" type="button">Holdings</button>
+    <button class="tab" data-view="watchlist" type="button">Watchlist</button>
+    <button class="tab" data-view="history" type="button">History</button>
+    <button class="tab" data-view="settings" type="button">Settings</button>
+  </nav>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view">
+      <div class="stat-grid">
+        <div class="stat-card"><span class="stat-label">Invested</span><span class="stat-value" id="stInvested">—</span></div>
+        <div class="stat-card"><span class="stat-label">Current Value</span><span class="stat-value" id="stValue">—</span></div>
+        <div class="stat-card"><span class="stat-label">Total Profit / Loss</span><span class="stat-value" id="stPnl">—</span><span class="stat-sub" id="stPnlPct"></span></div>
+        <div class="stat-card"><span class="stat-label">XIRR (per year)</span><span class="stat-value" id="stXirr">—</span><span class="stat-sub" id="stRealised"></span></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Portfolio</h2>
+          <div>
+            <span id="priceMeta" class="price-meta"></span>
+            <button id="refreshBtn" class="btn btn-small" type="button">↻ Refresh Prices</button>
+          </div>
+        </div>
+        <div class="dash-flex">
+          <div class="donut-wrap"><svg id="donut" viewBox="0 0 200 200" width="220" height="220"></svg><div id="donutLegend" class="donut-legend"></div></div>
+          <div class="movers">
+            <h3>Top Gainers</h3><ul id="topGainers" class="mover-list"></ul>
+            <h3>Top Losers</h3><ul id="topLosers" class="mover-list"></ul>
+          </div>
+        </div>
+        <p id="dashEmpty" class="empty-note hidden">No stocks yet. Go to Holdings and tap “+ Add Stock” to add your first stock.</p>
+      </div>
+    </section>
+
+    <!-- HOLDINGS -->
+    <section id="view-holdings" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Holdings</h2>
+          <button id="addStockBtn" class="btn btn-gold" type="button">+ Add Stock</button>
+        </div>
+        <div id="holdingsList" class="holdings-list"></div>
+        <p id="holdEmpty" class="empty-note hidden">Nothing here yet. Add your first stock — name, quantity, buy price, date. That is all it takes.</p>
+      </div>
+    </section>
+
+    <!-- WATCHLIST -->
+    <section id="view-watchlist" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Watchlist</h2>
+          <span class="price-meta">Tap ★ to make a favourite — favourites stay on top.</span>
+        </div>
+        <form id="watchForm" class="inline-form">
+          <input type="text" id="watchInput" list="stockList" placeholder="Search stock name or symbol…" autocomplete="off">
+          <button class="btn btn-gold" type="submit">Add</button>
+        </form>
+        <div id="watchListEl" class="watch-list"></div>
+        <p id="watchEmpty" class="empty-note hidden">Watchlist is empty. Add stocks you are watching, even if you have not bought them.</p>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="view-history" class="view hidden">
+      <div class="panel">
+        <div class="panel-head"><h2>History</h2><span class="price-meta">Every buy, sell and dividend you entered.</span></div>
+        <div id="historyList" class="history-list"></div>
+        <p id="histEmpty" class="empty-note hidden">No entries yet.</p>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="view-settings" class="view hidden">
+      <div class="panel">
+        <h2>Settings</h2>
+        <div class="setting-row"><span>Account</span><b id="setEmail">—</b></div>
+        <div class="setting-row"><span>Saving mode</span><b id="setMode">—</b></div>
+        <div class="setting-row"><span>Change password</span><button id="resetPassBtn" class="btn btn-small" type="button">Send reset email</button></div>
+        <div class="setting-row"><span>Download my data (CSV)</span><button id="exportBtn" class="btn btn-small" type="button">Export</button></div>
+        <div class="setting-row"><span>Restore from CSV</span><label class="btn btn-small file-label">Import<input type="file" id="importFile" accept=".csv" hidden></label></div>
+        <div class="setting-row danger"><span>Delete all my entries</span><button id="wipeBtn" class="btn btn-small btn-danger" type="button">Delete everything</button></div>
+        <p class="auth-note">CSV format: Date, Type (BUY/SELL/DIV), Symbol, Name, Qty, Price. Keep a CSV copy once in a while — it is your own backup.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">Prices: free public data, delayed ~15 minutes. For tracking only — not investment advice.</footer>
+</div>
+
+<!-- ============ TXN MODAL ============ -->
+<div id="txnModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3 id="txnTitle">Add Stock</h3><button id="txnClose" class="icon-btn" type="button">✕</button></div>
+    <form id="txnForm" autocomplete="off">
+      <input type="hidden" id="txnType" value="BUY">
+      <div class="seg" id="txnSeg">
+        <button type="button" data-t="BUY" class="seg-btn active">Buy</button>
+        <button type="button" data-t="SELL" class="seg-btn">Sell</button>
+        <button type="button" data-t="DIV" class="seg-btn">Dividend</button>
+      </div>
+      <label>Stock (search name or type symbol)
+        <input type="text" id="txnStock" list="stockList" placeholder="e.g. Reliance or RELIANCE" required>
+      </label>
+      <div class="form-2col">
+        <label>Quantity
+          <input type="number" id="txnQty" min="0" step="any" placeholder="10" required>
+        </label>
+        <label id="txnPriceLabel">Buy price (per share ₹)
+          <input type="number" id="txnPrice" min="0" step="any" placeholder="2500" required>
+        </label>
+      </div>
+      <label>Date
+        <input type="date" id="txnDate" required>
+      </label>
+      <p id="txnError" class="form-error"></p>
+      <button type="submit" class="btn btn-gold btn-block">Save</button>
+    </form>
+  </div>
+</div>
+
+<datalist id="stockList"></datalist>
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js?v=1"></script>
+<script src="js/stocks.js?v=1"></script>
+<script src="js/app.js?v=1"></script>
+</body>
+</html>
