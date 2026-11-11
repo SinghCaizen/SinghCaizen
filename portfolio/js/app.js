@@ -147,6 +147,7 @@ function showApp() {
   $("setEmail").textContent = currentUser.email;
   $("setMode").textContent = FIREBASE_ON ? "Cloud (Firebase) — saved online" : "Demo — this browser only";
   if (typeof renderProfile === "function") renderProfile(); renderAll(); refreshPrices();
+  if (typeof loadTicker === "function") loadTicker();
 }
 
 /* ================= portfolio math ================= */
@@ -158,8 +159,11 @@ function resolveStock(input) {
   const sym = up.replace(/\s+/g, "").replace(/[^A-Z0-9&\-\.]/g, "");
   return { sym: sym, name: raw, sector: "Other" };
 }
+function fyStartOf(dateStr) { const d = new Date(dateStr + "T00:00:00"); return d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; }
 function computeHoldings() {
   const lots = {}; const order = []; const realised = {}; let divTotal = 0;
+  const split = { stcg: 0, ltcg: 0, stcgFY: 0, ltcgFY: 0 };
+  const curFY = fyStartOf(todayStr());
   const txns = [...state.txns].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
   for (const t of txns) {
     if (t.type === "DIV") { divTotal += Number(t.price) || 0; continue; }
@@ -169,7 +173,12 @@ function computeHoldings() {
       let q = Number(t.qty);
       while (q > 0 && lots[t.sym].length) {
         const lot = lots[t.sym][0]; const take = Math.min(q, lot.qty);
-        realised[t.sym] += take * (Number(t.price) - lot.price);
+        const gain = take * (Number(t.price) - lot.price);
+        realised[t.sym] += gain;
+        const days = (new Date(t.date + "T00:00:00") - new Date(lot.date + "T00:00:00")) / 86400000;
+        const isLong = days >= 365;
+        if (isLong) { split.ltcg += gain; if (fyStartOf(t.date) === curFY) split.ltcgFY += gain; }
+        else { split.stcg += gain; if (fyStartOf(t.date) === curFY) split.stcgFY += gain; }
         lot.qty -= take; q -= take; if (lot.qty <= 0) lots[t.sym].shift();
       }
     }
@@ -179,9 +188,9 @@ function computeHoldings() {
     const ls = lots[sym]; if (!ls || !ls.length) continue;
     const qty = ls.reduce((s, l) => s + l.qty, 0);
     const cost = ls.reduce((s, l) => s + l.qty * l.price, 0);
-    out.push({ sym: sym, name: ls[0].name || sym, sector: ls[0].sector || "Other", qty: qty, avg: cost / qty, invested: cost, realised: realised[sym] || 0 });
+    out.push({ sym: sym, name: ls[0].name || sym, sector: ls[0].sector || "Other", qty: qty, avg: cost / qty, invested: cost, realised: realised[sym] || 0, lots: ls.map(l => ({ qty: l.qty, price: l.price, date: l.date })), firstDate: ls[0].date });
   }
-  return { holdings: out, realisedTotal: Object.values(realised).reduce((a, b) => a + b, 0), divTotal: divTotal };
+  return { holdings: out, realisedTotal: Object.values(realised).reduce((a, b) => a + b, 0), divTotal: divTotal, split: split };
 }
 function xirr(cashflows) {
   if (!cashflows.length) return null;
@@ -264,10 +273,10 @@ async function refreshPrices() {
 function priceOf(sym) { return prices[sym] || null; }
 
 /* ================= rendering ================= */
-const PIE = ["#c9a227", "#8c6d1f", "#b3392f", "#6b6257", "#e3c565", "#4a4238", "#96552c", "#7a7f52", "#54423a", "#a89e88"];
+const PIE = ["#f2f2f2", "#bdbdbd", "#8a8a8a", "#5c5c5c", "#e03131", "#3d3d3d", "#d6d6d6", "#757575", "#a8a8a8", "#2b2b2b"];
 function renderAll() { renderDashboard(); renderHoldings(); renderWatch(); renderHistory(); }
 function enriched() {
-  const { holdings, realisedTotal, divTotal } = computeHoldings();
+  const { holdings, realisedTotal, divTotal, split } = computeHoldings();
   let invested = 0, value = 0, dayPnl = 0;
   const rows = holdings.map((h, i) => {
     const p = priceOf(h.sym);
@@ -277,7 +286,7 @@ function enriched() {
     invested += h.invested; value += cur; dayPnl += day;
     return { ...h, ltp: p ? p.price : null, prevClose: p ? p.prevClose : null, spark: p ? p.spark : null, cur: cur, pnl: pnl, pnlPct: h.invested ? pnl / h.invested * 100 : 0, day: day, color: PIE[i % PIE.length], manual: p ? p.manual : false };
   });
-  return { rows: rows, invested: invested, value: value, totalPnl: value - invested, dayPnl: dayPnl, realisedTotal: realisedTotal, divTotal: divTotal };
+  return { rows: rows, invested: invested, value: value, totalPnl: value - invested, dayPnl: dayPnl, realisedTotal: realisedTotal, divTotal: divTotal, split: split };
 }
 /* ---- v2 helpers: animated numbers + sparklines ---- */
 let dashAnimated = false;
@@ -358,6 +367,7 @@ function renderDashboard() {
   const losers = [...sorted].sort((a, b) => a.pnlPct - b.pnlPct).filter(r_ => r_.pnlPct < 0).slice(0, 3);
   $("topGainers").innerHTML = gainers.length ? gainers.map(r_ => `<li><span>${esc(r_.sym)}</span><b class="gain">${pct(r_.pnlPct)}</b></li>`).join("") : "<li><span>—</span></li>";
   $("topLosers").innerHTML = losers.length ? losers.map(r_ => `<li><span>${esc(r_.sym)}</span><b class="loss">${pct(r_.pnlPct)}</b></li>`).join("") : "<li><span>—</span></li>";
+  if (typeof renderExtras === "function") renderExtras(d);
 }
 function renderHoldings() {
   const d = enriched();
@@ -372,11 +382,14 @@ function renderHoldings() {
         <div><span>Qty</span>${h.qty}</div>
         <div><span>Avg Buy</span>${inr2(h.avg)}</div>
         <div><span>Price Now${h.manual ? " (manual)" : ""}</span>${h.ltp !== null ? inr2(h.ltp) : "—"}</div>
+        <div><span>Today</span>${h.ltp !== null && h.prevClose ? `<b class="${h.day >= 0 ? "gain" : "loss"}">${inr(h.day)} (${pct((h.ltp - h.prevClose) / h.prevClose * 100)})</b>` : "—"}</div>
         <div><span>Invested</span>${inr(h.invested)}</div>
         <div><span>Value Now</span>${inr(h.cur)}</div>
+        <div><span>First Bought</span>${esc(h.firstDate || "—")}</div>
         <div><span>Booked P&amp;L</span><b class="${h.realised >= 0 ? "gain" : "loss"}">${inr(h.realised)}</b></div>
       </div>
       <div class="hold-actions">
+        <button class="mini-btn" data-act="chart" data-sym="${esc(h.sym)}">📈 Chart</button>
         <button class="mini-btn" data-act="buy" data-sym="${esc(h.sym)}" data-name="${esc(h.name)}">+ Buy More</button>
         <button class="mini-btn" data-act="sell" data-sym="${esc(h.sym)}" data-name="${esc(h.name)}">Sell</button>
         <button class="mini-btn" data-act="div" data-sym="${esc(h.sym)}" data-name="${esc(h.name)}">Dividend</button>
@@ -387,6 +400,7 @@ function renderHoldings() {
   el.querySelectorAll("button[data-act]").forEach(b => b.addEventListener("click", () => holdingAction(b.dataset)));
 }
 function holdingAction(ds) {
+  if (ds.act === "chart") { if (typeof openStock === "function") openStock(ds.sym); return; }
   if (ds.act === "del") {
     if (!confirm("Remove ALL entries of " + ds.sym + " (buys, sells, dividends)? This cannot be undone.")) return;
     state.txns = state.txns.filter(t => t.sym !== ds.sym); persist(); renderAll(); toast(ds.sym + " removed");
