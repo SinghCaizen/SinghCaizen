@@ -1117,7 +1117,9 @@ function masterAboutHtml(sym, name, m) {
   const meta = m.meta || {};
   const q = quantStats(m.points);
   const price = meta.regularMarketPrice || q.last;
-  const prev = meta.chartPreviousClose || meta.previousClose;
+  /* Yesterday's close = the second-last daily point. (meta.chartPreviousClose
+     on a 1y chart means the price a year ago, NOT yesterday — do not use it.) */
+  const prev = m.points.length > 1 ? m.points[m.points.length - 2].c : null;
   const dayChg = price && prev ? (price - prev) / prev * 100 : null;
   const sec = sectorOf(sym);
   let html = '<p class="comp-line"><b>' + esc(meta.longName || meta.shortName || name) + '</b>' +
