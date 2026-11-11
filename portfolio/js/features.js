@@ -1047,6 +1047,70 @@ openStock = function (sym) {
   _origOpenStock(sym);
   loadCompanySheet(sym);
 };
+/* ---------- validated chart fetcher ----------
+   fetch() does NOT reject on HTTP errors, and some proxies return HTTP 200
+   with an error page or an empty body. So every attempt must PARSE the
+   payload and prove it holds a real Yahoo chart (meta + live price) before
+   it is allowed to win the race. */
+function normalizeTicker(raw) {
+  if (!raw) return "";
+  let t = String(raw).trim().toUpperCase().replace(/\s+/g, "");
+  const aliases = { "NIFTY": "^NSEI", "NIFTY50": "^NSEI", "SENSEX": "^BSESN", "BANKNIFTY": "^NSEBANK" };
+  if (aliases[t]) return aliases[t];
+  if (t.startsWith("^") || t.endsWith(".NS") || t.endsWith(".BO")) return t;
+  return t + ".NS";
+}
+function baseTicker(raw) {
+  return String(raw || "").trim().toUpperCase().replace(/\.(NS|BO)$/i, "");
+}
+async function fetchChartValidated(targetUrl, timeoutMs) {
+  const encoded = encodeURIComponent(targetUrl);
+  const attempts = [
+    async signal => {
+      const r = await fetch("https://api.allorigins.win/raw?url=" + encoded, { signal: signal });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return await r.json();
+    },
+    async signal => {
+      const r = await fetch("https://api.allorigins.win/get?url=" + encoded, { signal: signal });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const wrap = await r.json();
+      if (!wrap || !wrap.contents) throw new Error("Empty allorigins contents");
+      let text = wrap.contents;
+      if (text.indexOf("data:") === 0) {
+        const b64 = text.split(",")[1] || "";
+        text = decodeURIComponent(escape(atob(b64)));
+      }
+      return JSON.parse(text);
+    },
+    async signal => {
+      const r = await fetch("https://api.codetabs.com/v1/proxy?quest=" + encoded, { signal: signal });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return await r.json();
+    },
+    async signal => {
+      const r = await fetch("https://corsproxy.io/?url=" + encoded, { signal: signal });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return await r.json();
+    }
+  ];
+  const wrapped = attempts.map(async fn => {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), timeoutMs || 6000);
+    try {
+      const data = await fn(ctl.signal);
+      const result = data && data.chart && data.chart.result && data.chart.result[0];
+      if (!result || !result.meta || typeof result.meta.regularMarketPrice !== "number") {
+        throw new Error("Invalid Yahoo chart payload");
+      }
+      return result;
+    } finally {
+      clearTimeout(timer);
+    }
+  });
+  return await Promise.any(wrapped);
+}
+
 /* ---------- single-fetch master engine (v8 chart powers the whole modal) ---------- */
 const masterCache = {};
 async function fetchMaster(sym) {
@@ -1058,10 +1122,19 @@ async function fetchMaster(sym) {
     const h = await fetchHistory(sym, "1y");
     master = { ts: saved.ts || Date.now(), meta: saved.meta, points: h ? h.points : [], divs: saved.divs || [], splits: saved.splits || [] };
   } else {
-    const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym + ".NS") + "?range=1y&interval=1d&events=div,split&includePrePost=false";
-    const j = await fetchViaProxies(url, false);
+    const norm = normalizeTicker(sym);
+    const suffix = "?range=1y&interval=1d&events=div,split&includePrePost=false";
+    const candidates = [
+      "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(norm) + suffix,
+      "https://query2.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(norm) + suffix
+    ];
+    if (norm.endsWith(".NS")) candidates.push("https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(baseTicker(sym) + ".BO") + suffix);
+    let r0 = null;
+    for (const u of candidates) {
+      try { r0 = await fetchChartValidated(u, 6500); break; } catch (e) { /* next candidate */ }
+    }
     try {
-      const r0 = j.chart.result[0];
+      if (!r0) throw new Error("no validated chart");
       const tsArr = r0.timestamp || [];
       const closes = (r0.indicators.quote[0].close) || [];
       const points = [];
@@ -1326,11 +1399,16 @@ async function fetchCorpActions(sym) {
   const ck = "folio_ca_" + sym;
   const cached = lsCacheGet(ck, 24 * 3600 * 1000);
   if (cached) return cached;
-  const url = "https://query2.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym + ".NS") + "?range=5y&interval=1mo&events=div,split";
-  const j = await fetchViaProxies(url, false);
+  const url = "https://query2.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(normalizeTicker(sym)) + "?range=5y&interval=1mo&events=div,split";
   const out = { divs: [], splits: [] };
+  let ev = null;
+  try { const r0v = await fetchChartValidated(url, 6000); ev = r0v.events || {}; } catch (e) {}
+  if (!ev) {
+    const j = await fetchViaProxies(url, false);
+    try { ev = j.chart.result[0].events || {}; } catch (e) {}
+  }
   try {
-    const ev = j.chart.result[0].events || {};
+    if (!ev) throw new Error("no events");
     if (ev.dividends) Object.values(ev.dividends).forEach(x => out.divs.push({ ts: x.date * 1000, amount: x.amount }));
     if (ev.splits) Object.values(ev.splits).forEach(x => out.splits.push({ ts: x.date * 1000, text: x.splitRatio || (x.numerator + ":" + x.denominator) }));
     out.divs.sort((a, b) => b.ts - a.ts);
