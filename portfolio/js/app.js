@@ -710,6 +710,8 @@ function switchView(name) {
 document.addEventListener("DOMContentLoaded", () => {
   const savedTheme = localStorage.getItem("pf_theme");
   if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+  const syncThemeIcon = () => { const ti = $("themeIcon"); if (ti) ti.textContent = document.documentElement.getAttribute("data-theme") === "light" ? "☀" : "☾"; };
+  syncThemeIcon();
   $("demoBanner").classList.toggle("hidden", FIREBASE_ON);
   setAuthMode("login");
   $("tabLogin").addEventListener("click", () => setAuthMode("login"));
@@ -733,6 +735,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("themeBtn").addEventListener("click", () => {
     const cur = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
     document.documentElement.setAttribute("data-theme", cur); localStorage.setItem("pf_theme", cur);
+    syncThemeIcon();
   });
   document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => switchView(t.dataset.view)));
   $("refreshBtn").addEventListener("click", refreshPrices);

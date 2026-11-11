@@ -507,3 +507,33 @@ form textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rg
   .cap-grid{grid-template-columns:1fr}
   .insight-row{flex-wrap:wrap}
 }
+
+/* ===== v12: phone fixes — clean header, scrollable tabs, add-panel redesign ===== */
+#topName{display:none}
+.user-chip{padding:.22rem;border-radius:99px}
+.theme-btn{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:99px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);cursor:pointer;font-size:1.02rem;line-height:1;flex:0 0 auto}
+.theme-btn:hover{border-color:var(--text)}
+@media (max-width:760px){
+  #issueBtn{display:none}
+  .topbar{padding:.55rem .8rem}
+  .topbar-right{gap:.45rem}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:.5rem .6rem 0}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:0 0 auto;padding:.5rem .8rem}
+  .modal{padding:.5rem}
+  .modal-card{padding:1rem}
+  /* Add Transaction: stacked, labelled-by-layout phone grid */
+  .bt-head{display:none}
+  .bt-main{display:grid;grid-template-columns:1fr 1fr;grid-template-areas:"act exch" "stock stock" "date qty" "price amt" "btns btns";gap:.5rem;align-items:stretch}
+  .bt-action{grid-area:act}
+  .bt-main .sug-wrap{grid-area:stock}
+  .bt-exch{grid-area:exch}
+  .bt-date{grid-area:date}
+  .bt-qty{grid-area:qty}
+  .bt-price{grid-area:price}
+  .bt-amount{grid-area:amt}
+  .bt-btns{grid-area:btns;justify-content:flex-end}
+  .bt-optbox{grid-template-columns:1fr 1fr}
+  .bt-optbox label:last-child{grid-column:span 2}
+  .txn-foot .btn{flex:1}
+}
