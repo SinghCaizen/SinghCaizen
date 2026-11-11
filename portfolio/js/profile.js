@@ -484,10 +484,18 @@ function wireProfile() {
     toast("Password updated");
   });
 
-  $("deleteAccountBtn").addEventListener("click", async () => {
-    if (!confirm("Pakka? Account aur saara portfolio data hamesha ke liye delete ho jayega.")) return;
-    const pass = prompt("Confirm karne ke liye apna password dalo:");
-    if (pass === null) return;
+  $("deleteAccountBtn").addEventListener("click", () => {
+    $("delError").textContent = ""; $("delPass").value = "";
+    $("delModal").classList.remove("hidden");
+  });
+  $("delClose").addEventListener("click", () => $("delModal").classList.add("hidden"));
+  $("delModal").addEventListener("click", e => { if (e.target === $("delModal")) $("delModal").classList.add("hidden"); });
+  $("delForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const pass = $("delPass").value;
+    const err = $("delError");
+    if (!pass) { err.textContent = "Pehle apna password dalo."; return; }
+    err.textContent = "Deleting...";
     try {
       if (FIREBASE_ON) {
         const u = fb.auth.currentUser;
@@ -497,11 +505,12 @@ function wireProfile() {
         await u.delete();
       } else {
         const users = lsUsers();
-        if (!users[currentUser.email] || users[currentUser.email].pass !== pass) { alert("Password galat hai — delete nahi hua."); return; }
+        if (!users[currentUser.email] || users[currentUser.email].pass !== pass) { err.textContent = "Password galat hai — delete nahi hua."; return; }
         delete users[currentUser.email];
         lsSaveUsers(users);
       }
-    } catch (ex) { alert(friendlyFbError(ex)); return; }
+    } catch (ex) { err.textContent = friendlyFbError(ex); return; }
+    $("delModal").classList.add("hidden");
     toast("Account deleted");
     doLogout();
   });

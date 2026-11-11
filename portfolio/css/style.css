@@ -329,3 +329,7 @@ form textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rg
 .btn-google:hover{border-color:#ffffff;box-shadow:0 6px 18px rgba(0,0,0,.35);transform:translateY(-1px)}
 [data-theme="light"] .btn-google{border-color:#c9c9c9}
 [data-theme="light"] .btn-google:hover{border-color:#000000}
+
+/* v6: delete-account modal */
+#delForm .btn-danger{background:var(--red);border-color:var(--red);color:#fff;font-weight:700}
+#delForm .btn-danger:hover{filter:brightness(1.1)}
