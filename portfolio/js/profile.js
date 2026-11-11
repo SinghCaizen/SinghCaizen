@@ -1,6 +1,6 @@
 "use strict";
 /* ================================================================
-   Singh Caizen Finance — Profile + 2FA module (v3)
+   Folio — Profile + 2FA module
    2FA design (free, no paid Firebase MFA):
    - TOTP (authenticator app) computed locally with WebCrypto.
    - The TOTP secret is generated FROM a 12-word seed phrase
@@ -135,8 +135,8 @@ async function unlockSecret(pass) {
   catch (e) { return null; }
 }
 function otpAuthUrl(secretBytes) {
-  return "otpauth://totp/SinghCaizenFinance:" + encodeURIComponent(currentUser.email) +
-    "?secret=" + base32encode(secretBytes) + "&issuer=SinghCaizenFinance&digits=6&period=30";
+  return "otpauth://totp/Folio:" + encodeURIComponent(currentUser.email) +
+    "?secret=" + base32encode(secretBytes) + "&issuer=Folio&digits=6&period=30";
 }
 function drawQr(canvas, text) {
   try {
@@ -212,13 +212,13 @@ function closeTotpModal() {
   wz = null;
 }
 function seedFileText() {
-  return "Singh Caizen Finance — 2FA SEED PHRASE\n" +
+  return "Folio — 2FA SEED PHRASE\n" +
     "Keep this PRIVATE. Anyone with these 12 words can enter your account if you lose your phone.\n\n" +
     wz.phrase.split(" ").map((w, i) => (i + 1) + ". " + w).join("\n") +
     "\n\nPhrase: " + wz.phrase + "\nAccount: " + currentUser.email + "\n";
 }
 function codesFileText(codes) {
-  return "Singh Caizen Finance — 2FA RECOVERY CODES\n" +
+  return "Folio — 2FA RECOVERY CODES\n" +
     "Each code works ONLY ONCE. Keep them PRIVATE.\n\n" +
     codes.join("\n") + "\n\nAccount: " + currentUser.email + "\n";
 }
@@ -305,9 +305,9 @@ function renderWz() {
   $("wzCodes").innerHTML = wz.codes.map(c => '<span class="rec-code">' + esc(c) + '</span>').join("");
   $("wzCopyKey").addEventListener("click", () => copyText(keyText));
   $("wzCopySeed").addEventListener("click", () => copyText(wz.phrase));
-  $("wzDlSeed").addEventListener("click", () => downloadText("singh-caizen-finance-seed-phrase.txt", seedFileText()));
+  $("wzDlSeed").addEventListener("click", () => downloadText("folio-seed-phrase.txt", seedFileText()));
   $("wzCopyCodes").addEventListener("click", () => copyText(wz.codes.join("\n")));
-  $("wzDlCodes").addEventListener("click", () => downloadText("singh-caizen-finance-recovery-codes.txt", codesFileText(wz.codes)));
+  $("wzDlCodes").addEventListener("click", () => downloadText("folio-recovery-codes.txt", codesFileText(wz.codes)));
   $("wzEnable").addEventListener("click", totpEnable);
   $("wzCancel").addEventListener("click", closeTotpModal);
 }
@@ -366,7 +366,7 @@ function totpRegenCodes() {
       '<button class="btn btn-small" id="mrDl" type="button">Download Codes</button>' +
       '<button class="btn btn-small" id="mrDone" type="button">Done</button></div>';
     $("mrCopy").addEventListener("click", () => copyText(codes.join("\n")));
-    $("mrDl").addEventListener("click", () => downloadText("singh-caizen-finance-recovery-codes.txt", codesFileText(codes)));
+    $("mrDl").addEventListener("click", () => downloadText("folio-recovery-codes.txt", codesFileText(codes)));
     $("mrDone").addEventListener("click", closeTotpModal);
     renderTotpArea(true);
     toast("New recovery codes ready");

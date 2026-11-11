@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Singh Caizen Finance — Portfolio Tracker</title>
-<meta name="description" content="Singh Caizen Finance — a private portfolio tracker for Indian stocks. Add your stocks manually, see live profit and loss. No broker connection needed.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23000000'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%23ffffff' font-family='Georgia'>S</text></svg>">
+<title>FOLIO — Portfolio Tracker | A Singh Caizen Product</title>
+<meta name="description" content="Folio — a private portfolio tracker for Indian stocks, by Singh Caizen. Add your stocks manually, see live profit and loss. No broker connection needed.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23000000'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%23ffffff' font-family='Georgia'>F</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=7">
+<link rel="stylesheet" href="css/style.css?v=8">
 </head>
 <body>
 
@@ -16,10 +16,10 @@
 <div id="authView" class="auth-wrap">
   <div class="auth-card">
     <div class="brand">
-      <img class="brand-logo logo-on-dark" src="assets/logo-white.svg" alt="Singh Caizen">
-      <img class="brand-logo logo-on-light" src="assets/logo-dark.svg" alt="Singh Caizen">
-      <h1>SINGH CAIZEN FINANCE</h1>
-      <p>Your stocks. Your numbers. No broker in between.</p>
+      <img class="folio-logo logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+      <img class="folio-logo logo-on-light" src="assets/folio-dark.svg" alt="Folio">
+      <p class="tagline">Your stocks. Your numbers. No broker in between.</p>
+      <p class="product-line">A Singh Caizen Product</p>
     </div>
 
     <div id="demoBanner" class="demo-banner hidden">
@@ -64,10 +64,11 @@
 <div id="gateView" class="auth-wrap hidden">
   <div class="auth-card">
     <div class="brand">
-      <img class="brand-logo logo-on-dark" src="assets/logo-white.svg" alt="Singh Caizen">
-      <img class="brand-logo logo-on-light" src="assets/logo-dark.svg" alt="Singh Caizen">
+      <img class="folio-logo folio-logo-gate logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+      <img class="folio-logo folio-logo-gate logo-on-light" src="assets/folio-dark.svg" alt="Folio">
       <h1>TWO-FACTOR CHECK</h1>
       <p>One more step to keep your portfolio safe.</p>
+      <p class="product-line">A Singh Caizen Product</p>
     </div>
     <form id="gateForm" autocomplete="off">
       <label>Your password (only to unlock your secret key on this device)
@@ -99,9 +100,8 @@
 <div id="appView" class="hidden">
   <header class="topbar">
     <div class="topbar-left">
-      <img class="topbar-logo logo-on-dark" src="assets/logo-white.svg" alt="Singh Caizen">
-      <img class="topbar-logo logo-on-light" src="assets/logo-dark.svg" alt="Singh Caizen">
-      <span class="topbar-title">SINGH CAIZEN FINANCE</span>
+      <img class="folio-logo-top logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+      <img class="folio-logo-top logo-on-light" src="assets/folio-dark.svg" alt="Folio">
     </div>
     <div class="topbar-right">
       <button id="profileChip" class="user-chip" type="button" title="My Profile">
@@ -293,9 +293,10 @@
   <footer class="site-foot">
     <div class="foot-cols">
       <div class="foot-brand">
-        <img class="topbar-logo logo-on-dark" src="assets/logo-white.svg" alt="Singh Caizen">
-        <img class="topbar-logo logo-on-light" src="assets/logo-dark.svg" alt="Singh Caizen">
-        <p>Singh Caizen Finance is a private portfolio tracker for Indian stocks — manual entries, delayed free prices, charts, a heatmap and tax views. No broker connection, ever.</p>
+        <img class="folio-logo-top logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+        <img class="folio-logo-top logo-on-light" src="assets/folio-dark.svg" alt="Folio">
+        <p><b>Folio</b> is a private portfolio tracker for Indian stocks — manual entries, delayed free prices, charts, a heatmap and tax views. No broker connection, ever.</p>
+        <p class="product-line">A Singh Caizen Product</p>
       </div>
       <div class="foot-links">
         <h4>Tracker</h4>
@@ -311,7 +312,7 @@
         <a href="https://singhcaizen.github.io/SinghCaizen/" target="_blank" rel="noopener">Singh Caizen — Group Website</a>
       </div>
     </div>
-    <p class="foot-legal">Prices: free public data (Yahoo Finance), delayed by about 15 minutes and occasionally unavailable. For tracking only — not investment or tax advice. © Singh Caizen.</p>
+    <p class="foot-legal">Prices: free public data (Yahoo Finance), delayed by about 15 minutes and occasionally unavailable. For tracking only — not investment or tax advice. © Folio · A Singh Caizen Product.</p>
   </footer>
 </div>
 
@@ -446,7 +447,7 @@
 <!-- ============ WELCOME / TERMS MODAL (first entry) ============ -->
 <div id="termsModal" class="modal hidden">
   <div class="modal-card">
-    <div class="modal-head"><h3>Welcome to Singh Caizen Finance</h3></div>
+    <div class="modal-head"><h3>Welcome to Folio</h3></div>
     <div class="terms-body">
       <p>Before you begin, please take a moment to read how your information is handled here. Your trust matters to us.</p>
       <h4>Your data is safe with us</h4>
@@ -460,7 +461,7 @@
       <h4>Prices are delayed</h4>
       <p>Stock prices come from free public sources and are delayed by about 15 minutes. They are suitable for tracking your portfolio — not for live trading decisions.</p>
       <h4>Not investment advice</h4>
-      <p>Singh Caizen Finance is a personal record-keeping tool. Nothing on this website is investment, tax or financial advice. Please consult a SEBI-registered adviser for advice.</p>
+      <p>Folio is a personal record-keeping tool, made by Singh Caizen. Nothing on this website is investment, tax or financial advice. Please consult a SEBI-registered adviser for advice.</p>
       <h4>Your data, your control</h4>
       <p>You can download a CSV backup of your entries at any time from Settings, and you can permanently delete your account and all of your data from My Profile whenever you wish.</p>
     </div>
@@ -478,8 +479,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/firebase-config.js?v=6"></script>
 <script src="js/stocks.js?v=4"></script>
-<script src="js/app.js?v=7"></script>
-<script src="js/profile.js?v=7"></script>
-<script src="js/features.js?v=7"></script>
+<script src="js/app.js?v=8"></script>
+<script src="js/profile.js?v=8"></script>
+<script src="js/features.js?v=8"></script>
 </body>
 </html>

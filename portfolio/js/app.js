@@ -576,7 +576,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("termsAgree").addEventListener("click", () => {
     if (state && state.profile) { state.profile.termsSeen = true; persist(); }
     $("termsModal").classList.add("hidden");
-    toast("Welcome to Singh Caizen Finance");
+    toast("Welcome to Folio");
   });
   $("themeBtn").addEventListener("click", () => {
     const cur = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";

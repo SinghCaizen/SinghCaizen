@@ -1,6 +1,6 @@
 "use strict";
 /* ================================================================
-   Singh Caizen Finance — v4 features:
+   Folio — features:
    index ticker · stock charts · portfolio performance graph ·
    heatmap · tax harvesting · report issue · footer links
    ================================================================ */
@@ -230,8 +230,8 @@ async function submitIssue(e) {
       headers: { "Content-Type": "application/json", "Accept": "application/json" },
       body: JSON.stringify({
         access_key: WEB3_KEY,
-        from_name: "Singh Caizen Finance — Issue Report",
-        subject: "Portfolio App Issue Report",
+        from_name: "Folio — Issue Report",
+        subject: "Folio App Issue Report",
         name: $("issueName").value.trim(),
         email: $("issueEmail").value.trim(),
         message: $("issueMsg").value.trim(),

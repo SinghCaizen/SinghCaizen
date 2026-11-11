@@ -398,3 +398,14 @@ form textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rg
   .ticker-wrap{font-size:.78rem}
   .site-foot{padding:1.4rem .9rem}
 }
+
+/* ===== v8: FOLIO brand ===== */
+.folio-logo{width:228px;height:auto;max-width:80vw}
+.folio-logo-gate{width:150px}
+.brand .tagline{font-size:.92rem;color:var(--muted);margin-top:.7rem}
+.product-line{letter-spacing:.3em;font-size:.66rem;text-transform:uppercase;color:var(--muted);margin-top:.55rem;font-weight:600}
+.brand .product-line{margin-top:.5rem}
+.folio-logo-top{height:24px;width:auto}
+.foot-brand .folio-logo-top{height:27px}
+.foot-brand .product-line{margin-top:.2rem}
+@media (max-width:640px){ .folio-logo{width:182px} .folio-logo-gate{width:132px} .folio-logo-top{height:21px} }
