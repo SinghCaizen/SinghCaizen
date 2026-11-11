@@ -8,30 +8,50 @@
 const PROXIES = [
   u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
   u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-  u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
+  u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
+  u => "https://api.cors.lol/?url=" + encodeURIComponent(u)
 ];
+async function fetchT(url, ms) {
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), ms || 9000);
+  try { return await fetch(url, { cache: "no-store", signal: ctl.signal }); }
+  finally { clearTimeout(to); }
+}
 
 /* ---------- historical data (free, delayed, cached) ---------- */
 const histCache = {};
-async function fetchHistory(sym, range) {
-  const ck = sym + "|" + range;
+const RANGE_CFG = {
+  "1d":    { range: "1d",  interval: "1d" },
+  "1d5m":  { range: "1d",  interval: "5m" },
+  "5d15m": { range: "5d",  interval: "15m" },
+  "5d1h":  { range: "5d",  interval: "60m" },
+  "1mo":   { range: "1mo", interval: "1d" },
+  "3mo":   { range: "3mo", interval: "1d" },
+  "6mo":   { range: "6mo", interval: "1d" },
+  "1y":    { range: "1y",  interval: "1d" },
+  "5y":    { range: "5y",  interval: "1wk" }
+};
+async function fetchHistory(sym, rangeKey) {
+  const ck = sym + "|" + rangeKey;
   if (ck in histCache) return histCache[ck];
   const s = (sym.indexOf(".") >= 0 || sym.charAt(0) === "^") ? sym : sym + ".NS";
-  const interval = range === "5y" ? "1wk" : "1d";
-  const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(s) + "?range=" + range + "&interval=" + interval;
-  for (const p of PROXIES) {
-    try {
-      const res = await fetch(p(url), { cache: "no-store" });
-      if (!res.ok) continue;
-      const j = await res.json();
-      const r0 = j && j.chart && j.chart.result && j.chart.result[0];
-      if (!r0) continue;
-      const tsArr = r0.timestamp || [];
-      const closes = (r0.indicators && r0.indicators.quote && r0.indicators.quote[0] && r0.indicators.quote[0].close) || [];
-      const points = [];
-      for (let i = 0; i < tsArr.length; i++) if (typeof closes[i] === "number") points.push({ t: tsArr[i] * 1000, c: closes[i] });
-      if (points.length) { const out = { points: points, meta: r0.meta || {} }; histCache[ck] = out; return out; }
-    } catch (e) { /* next proxy */ }
+  const cfg = RANGE_CFG[rangeKey] || RANGE_CFG["6mo"];
+  for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
+    const url = "https://" + host + "/v8/finance/chart/" + encodeURIComponent(s) + "?range=" + cfg.range + "&interval=" + cfg.interval;
+    for (const p of PROXIES) {
+      try {
+        const res = await fetchT(p(url));
+        if (!res.ok) continue;
+        const j = await res.json();
+        const r0 = j && j.chart && j.chart.result && j.chart.result[0];
+        if (!r0) continue;
+        const tsArr = r0.timestamp || [];
+        const closes = (r0.indicators && r0.indicators.quote && r0.indicators.quote[0] && r0.indicators.quote[0].close) || [];
+        const points = [];
+        for (let i = 0; i < tsArr.length; i++) if (typeof closes[i] === "number") points.push({ t: tsArr[i] * 1000, c: closes[i] });
+        if (points.length) { const out = { points: points, meta: r0.meta || {} }; histCache[ck] = out; return out; }
+      } catch (e) { /* next proxy */ }
+    }
   }
   histCache[ck] = null;
   return null;
@@ -167,7 +187,7 @@ function renderTax(d) {
 
 /* ---------- stock chart modal ---------- */
 let stockSym = null, stockRange = "6mo";
-const RANGE_LABEL = { "1mo": "1 month", "3mo": "3 months", "6mo": "6 months", "1y": "1 year", "5y": "5 years" };
+const RANGE_LABEL = { "1d5m": "Today · 5-minute candles", "5d15m": "5 days · 15-minute candles", "5d1h": "5 days · 1-hour candles", "1mo": "1 month", "3mo": "3 months", "6mo": "6 months", "1y": "1 year", "5y": "5 years" };
 function openStock(sym) {
   stockSym = sym; stockRange = "6mo";
   const row = enriched().rows.find(r => r.sym === sym);
@@ -189,7 +209,10 @@ async function drawStock() {
   const row = enriched().rows.find(r => r.sym === sym);
   const p = priceOf(sym);
   if (!h || h.points.length < 2) {
-    box.innerHTML = '<p class="empty-note">Chart data could not load right now — the free data source is busy. Try again in a minute.</p>';
+    delete histCache[sym + "|" + stockRange];
+    box.innerHTML = '<p class="empty-note">Chart data could not load right now — the free data source is busy.</p><button type="button" class="btn btn-small" id="chartRetry">↻ Try Again</button>';
+    const rb = $("chartRetry");
+    if (rb) rb.addEventListener("click", drawStock);
   } else {
     box.innerHTML = lineChartSvg(h.points.map(x => x.c), 210);
     const first = h.points[0].c, last = h.points[h.points.length - 1].c;

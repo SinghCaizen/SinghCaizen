@@ -432,3 +432,18 @@ form textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rg
   .bt-main{grid-template-columns:1fr 1fr}
   .bt-optbox{grid-template-columns:1fr 1fr}
 }
+
+/* ===== v10: panel sizing fix + typing-only suggestion dropdown ===== */
+.modal-wide{max-width:980px}
+.bt-head,.bt-main{grid-template-columns:92px minmax(170px,1.6fr) 84px 134px 86px 106px 102px 58px;gap:.45rem}
+.bt-main>*{min-width:0}
+.bt-row input,.bt-row select{min-width:0}
+.sug-wrap{display:block;position:relative}
+.sug-wrap>input{width:100%}
+.suggest-box{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:80;background:var(--panel);border:1px solid var(--line);border-radius:.6rem;box-shadow:0 16px 38px rgba(0,0,0,.4);overflow:hidden;max-height:264px;overflow-y:auto}
+.suggest-item{display:flex;gap:.55rem;align-items:baseline;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:.5rem .7rem;cursor:pointer;color:var(--text);font:inherit}
+.suggest-item:last-child{border-bottom:none}
+.suggest-item b{font-size:.9rem;white-space:nowrap}
+.suggest-item span{color:var(--muted);font-size:.83rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.suggest-item:hover,.suggest-item.active{background:var(--panel-2)}
+.seg-wrap{flex-wrap:wrap}

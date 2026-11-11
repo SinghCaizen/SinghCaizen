@@ -20,12 +20,27 @@ function emptyState() { return { txns: [], watch: [], manualPrices: {}, profile:
 function normalizeState(s) {
   const base = emptyState();
   if (!s || typeof s !== "object") return base;
-  return {
+  const out = {
     txns: Array.isArray(s.txns) ? s.txns : [],
     watch: Array.isArray(s.watch) ? s.watch : [],
     manualPrices: s.manualPrices || {},
     profile: Object.assign(base.profile, s.profile || {})
   };
+  /* self-heal: a symbol typed free-hand that is not a real NSE symbol (e.g. TATACAPITAL)
+     is re-resolved from its stored name to the real symbol (TATACAP) so prices/charts work */
+  try {
+    const known = new Set((window.STOCK_LIST || []).map(x => x[0]));
+    let fixed = false;
+    const repair = t => {
+      if (!t || !t.sym || known.has(t.sym)) return;
+      const st = resolveStock(t.name || t.sym);
+      if (st && st.sym !== t.sym && known.has(st.sym)) { t.sym = st.sym; t.name = st.name; if (!t.sector || t.sector === "Other") t.sector = st.sector; fixed = true; }
+    };
+    out.txns.forEach(repair);
+    out.watch.forEach(repair);
+    if (fixed) window.__symRepaired = true;
+  } catch (e) { /* repair is best-effort */ }
+  return out;
 }
 
 /* ---------- local (demo) storage ---------- */
@@ -142,6 +157,7 @@ async function doGoogleSignIn() {
 function enterApp(user, initialState) {
   currentUser = user;
   state = normalizeState(initialState);
+  if (window.__symRepaired) { window.__symRepaired = false; try { persist(); } catch (e) {} }
   buildDatalist();
   if (needsGate()) { showGate(); return; }
   showApp();
@@ -169,10 +185,69 @@ function showApp() {
 function resolveStock(input) {
   const raw = String(input || "").trim();
   const up = raw.toUpperCase();
-  const hit = (window.STOCK_LIST || []).find(s => s[0] === up || s[1].toUpperCase() === up || raw.toLowerCase() === s[1].toLowerCase());
+  const list = window.STOCK_LIST || [];
+  const hit = list.find(s => s[0] === up || s[1].toUpperCase() === up || raw.toLowerCase() === s[1].toLowerCase());
   if (hit) return { sym: hit[0], name: hit[1], sector: hit[2] || "Other" };
+  const strip = s => s.toLowerCase().replace(/\s+(limited|ltd\.?)$/g, "").trim();
+  const clean = strip(raw);
+  if (clean.length >= 3) {
+    const byName = list.filter(s => strip(s[1]) === clean);
+    if (byName.length === 1) return { sym: byName[0][0], name: byName[0][1], sector: byName[0][2] || "Other" };
+    const byPrefix = list.filter(s => s[1].toLowerCase().indexOf(clean) === 0 || s[0].toLowerCase().indexOf(raw.toLowerCase()) === 0);
+    if (byPrefix.length === 1) return { sym: byPrefix[0][0], name: byPrefix[0][1], sector: byPrefix[0][2] || "Other" };
+  }
   const sym = up.replace(/\s+/g, "").replace(/[^A-Z0-9&\-\.]/g, "");
   return { sym: sym, name: raw, sector: "Other" };
+}
+
+/* Custom suggestion dropdown: appears only while typing (2+ letters), filtered, Indian stocks only */
+function attachSuggest(input) {
+  if (!input || input.dataset.sug) return;
+  input.dataset.sug = "1";
+  const wrap = document.createElement("span");
+  wrap.className = "sug-wrap";
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  const box = document.createElement("div");
+  box.className = "suggest-box hidden";
+  wrap.appendChild(box);
+  let items = [], active = -1;
+  function close() { box.classList.add("hidden"); active = -1; }
+  function pick(i) {
+    if (!items[i]) return;
+    input.value = items[i][1];
+    close();
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+  }
+  function render() {
+    const txt = input.value.trim().toLowerCase();
+    if (txt.length < 2) { close(); return; }
+    const list = window.STOCK_LIST || [];
+    const starts = [], contains = [];
+    for (const s of list) {
+      const nm = s[1].toLowerCase(), sy = s[0].toLowerCase();
+      if (sy.indexOf(txt) === 0 || nm.indexOf(txt) === 0) { starts.push(s); if (starts.length >= 8) break; }
+      else if (contains.length < 8 && (nm.indexOf(txt) >= 0 || sy.indexOf(txt) >= 0)) contains.push(s);
+    }
+    items = starts.concat(contains).slice(0, 8);
+    if (!items.length) { close(); return; }
+    box.innerHTML = items.map((s, i) => '<button type="button" class="suggest-item" data-i="' + i + '"><b>' + esc(s[0]) + '</b><span>' + esc(s[1]) + '</span></button>').join("");
+    box.classList.remove("hidden");
+    box.querySelectorAll(".suggest-item").forEach(b => b.addEventListener("mousedown", e => { e.preventDefault(); pick(Number(b.dataset.i)); }));
+  }
+  input.addEventListener("input", render);
+  input.addEventListener("focus", render);
+  input.addEventListener("blur", () => setTimeout(close, 150));
+  input.addEventListener("keydown", e => {
+    if (box.classList.contains("hidden")) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      active = e.key === "ArrowDown" ? Math.min(active + 1, items.length - 1) : Math.max(active - 1, 0);
+      box.querySelectorAll(".suggest-item").forEach((b, i) => b.classList.toggle("active", i === active));
+    } else if (e.key === "Enter" && active >= 0) { e.preventDefault(); pick(active); }
+    else if (e.key === "Escape") close();
+  });
 }
 function fyStartOf(dateStr) { const d = new Date(dateStr + "T00:00:00"); return d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; }
 function effPrice(t) {
@@ -246,27 +321,36 @@ function yahooUrl(sym) {
   const s = sym.indexOf(".") >= 0 ? sym : sym + ".NS";
   return "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(s) + "?range=1mo&interval=1d";
 }
+async function fetchTO(url, ms) {
+  const ctl = new AbortController();
+  const to = setTimeout(() => ctl.abort(), ms || 9000);
+  try { return await fetch(url, { cache: "no-store", signal: ctl.signal }); }
+  finally { clearTimeout(to); }
+}
 async function fetchOne(sym) {
   const manual = state.manualPrices && state.manualPrices[sym];
-  const url = yahooUrl(sym);
   const proxies = [
     u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
+    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
+    u => "https://api.cors.lol/?url=" + encodeURIComponent(u)
   ];
-  for (const p of proxies) {
-    try {
-      const res = await fetch(p(url), { cache: "no-store" });
-      if (!res.ok) continue;
-      const j = await res.json();
-      const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
-      if (meta && meta.regularMarketPrice) {
-        let spark = [];
-        try { const q = j.chart.result[0].indicators.quote[0].close || []; spark = q.filter(v => typeof v === "number"); } catch (e) {}
-        const prev = spark.length > 1 ? spark[spark.length - 2] : (meta.chartPreviousClose || meta.regularMarketPrice);
-        return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
-      }
-    } catch (e) { /* try next proxy */ }
+  const urls = [yahooUrl(sym), yahooUrl(sym).replace("query1.finance.yahoo.com", "query2.finance.yahoo.com")];
+  for (const url of urls) {
+    for (const p of proxies) {
+      try {
+        const res = await fetchTO(p(url));
+        if (!res.ok) continue;
+        const j = await res.json();
+        const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
+        if (meta && meta.regularMarketPrice) {
+          let spark = [];
+          try { const q = j.chart.result[0].indicators.quote[0].close || []; spark = q.filter(v => typeof v === "number"); } catch (e) {}
+          const prev = spark.length > 1 ? spark[spark.length - 2] : (meta.chartPreviousClose || meta.regularMarketPrice);
+          return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
+        }
+      } catch (e) { /* try next route */ }
+    }
   }
   if (manual) return { price: Number(manual), prevClose: Number(manual), ts: Date.now(), manual: true, spark: [] };
   return null;
@@ -478,7 +562,7 @@ function batchRow(prefill) {
   row.innerHTML =
     '<div class="bt-main">' +
     '<select class="bt-action"><option value="BUY">Buy</option><option value="SELL">Sell</option><option value="DIV">Dividend</option></select>' +
-    '<input class="bt-stock" list="stockList" placeholder="Stock name or symbol">' +
+    '<input class="bt-stock" placeholder="Stock name or symbol">' +
     '<select class="bt-exch"><option>NSE</option><option>BSE</option></select>' +
     '<input type="date" class="bt-date">' +
     '<input type="number" class="bt-qty" min="0" step="any" placeholder="Qty">' +
@@ -494,6 +578,7 @@ function batchRow(prefill) {
     '<label>Notes<input type="text" class="bt-note" placeholder="Note for future reference"></label>' +
     '</div>';
   const q = s => row.querySelector(s);
+  attachSuggest(q(".bt-stock"));
   const act = q(".bt-action"), qty = q(".bt-qty"), price = q(".bt-price"), charges = q(".bt-charges");
   function recalc() {
     const type = act.value;
@@ -661,6 +746,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("entryFile").addEventListener("click", () => setEntryTab(true));
   $("filePickBtn").addEventListener("click", () => $("importFile").click());
   $("watchForm").addEventListener("submit", addWatch);
+  attachSuggest($("watchInput"));
   $("exportBtn").addEventListener("click", exportCsv);
   $("importFile").addEventListener("change", e => { if (e.target.files[0]) importCsv(e.target.files[0]); e.target.value = ""; });
   $("wipeBtn").addEventListener("click", () => {

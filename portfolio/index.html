@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23000000'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%23ffffff' font-family='Georgia'>F</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
 
@@ -207,7 +207,7 @@
           <span class="price-meta">Tap ★ to make a favourite — favourites stay on top.</span>
         </div>
         <form id="watchForm" class="inline-form">
-          <input type="text" id="watchInput" list="stockList" placeholder="Search stock name or symbol…" autocomplete="off">
+          <input type="text" id="watchInput" placeholder="Search stock name or symbol…" autocomplete="off">
           <button class="btn btn-gold" type="submit">Add</button>
         </form>
         <div id="watchListEl" class="watch-list"></div>
@@ -354,7 +354,10 @@
 <div id="stockModal" class="modal hidden">
   <div class="modal-card modal-wide">
     <div class="modal-head"><div><h3 id="stockTitle">—</h3><span id="stockName" class="hold-name"></span></div><button id="stockClose" class="icon-btn" type="button">✕</button></div>
-    <div class="seg seg-small" id="stockSeg">
+    <div class="seg seg-small seg-wrap" id="stockSeg">
+      <button type="button" data-r="1d5m" class="seg-btn">5min</button>
+      <button type="button" data-r="5d15m" class="seg-btn">15min</button>
+      <button type="button" data-r="5d1h" class="seg-btn">1hr</button>
       <button type="button" data-r="1mo" class="seg-btn">1M</button>
       <button type="button" data-r="3mo" class="seg-btn">3M</button>
       <button type="button" data-r="6mo" class="seg-btn active">6M</button>
@@ -481,8 +484,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/firebase-config.js?v=6"></script>
 <script src="js/stocks.js?v=4"></script>
-<script src="js/app.js?v=9"></script>
+<script src="js/app.js?v=10"></script>
 <script src="js/profile.js?v=8"></script>
-<script src="js/features.js?v=8"></script>
+<script src="js/features.js?v=10"></script>
 </body>
 </html>
