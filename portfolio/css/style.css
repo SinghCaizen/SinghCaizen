@@ -605,3 +605,21 @@ form textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rg
   .news-title{flex-basis:100%;order:2}
   .news-meta{order:3}
 }
+
+/* ===== v15: breathing room everywhere — real padded cards, no edge-hugging text ===== */
+html,body{overflow-x:clip}
+.view > .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1.35rem 1.5rem}
+.view > .stat-grid{margin-bottom:1rem}
+.auth-note{line-height:1.6}
+.setting-row b,.setting-row .row-val{max-width:60%;overflow-wrap:break-word}
+.panel-head{margin-bottom:.4rem}
+.panel-head h2{line-height:1.25}
+.hold-card,.score-card,.stat-card{padding:1.05rem 1.15rem}
+.ins-sub{padding:1.05rem 1.15rem}
+.ma-cell{padding:.95rem 1.05rem}
+@media (max-width:760px){
+  .view > .panel{padding:1.1rem 1.05rem;border-radius:12px}
+  main{padding:.9rem .8rem 2.2rem}
+  .setting-row b,.setting-row .row-val{max-width:100%}
+  .hold-card,.score-card,.stat-card{padding:.95rem 1rem}
+}

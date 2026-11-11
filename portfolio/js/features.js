@@ -6,10 +6,9 @@
    ================================================================ */
 
 const PROXIES = [
-  u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
   u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-  u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
-  u => "https://api.cors.lol/?url=" + encodeURIComponent(u)
+  u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
+  u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
 ];
 async function fetchT(url, ms) {
   const ctl = new AbortController();
@@ -615,8 +614,8 @@ document.addEventListener("DOMContentLoaded", () => {
 async function fetchViaProxies(url, asText) {
   const routes = [
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-    u => "https://api.codetabs.com/v1/proxy?quest=" + u,
-    u => "https://api.cors.lol/?url=" + encodeURIComponent(u)
+    u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
+    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
   ];
   for (const mk of routes) {
     try {
@@ -852,8 +851,9 @@ async function loadCompanySheet(sym) {
   ab.innerHTML = '<p class="empty-note">Loading company details…</p>';
   rs.innerHTML = '<p class="empty-note">Loading…</p>';
   nw.innerHTML = '<p class="empty-note">Loading news…</p>';
-  const info = await fetchCompanyInfo(sym);
+  const both = await Promise.all([fetchCompanyInfo(sym), fetchNews(name, 6)]);
   if (tok !== sheetToken) return;
+  const info = both[0], items = both[1];
   if (info && info.ok && (info.summary || info.industry)) {
     ab.innerHTML =
       (info.industry ? '<p class="comp-line"><b>Industry:</b> ' + esc(info.industry) + (info.website ? ' · <a href="' + esc(info.website) + '" target="_blank" rel="noopener">Company website ↗</a>' : '') + '</p>' : '') +
@@ -872,8 +872,6 @@ async function loadCompanySheet(sym) {
       info.results.map(q => '<tr><td>' + esc(q.period) + '</td><td>' + crores(q.revenue) + '</td><td>' + crores(q.profit) + '</td></tr>').join("") + '</table>';
   }
   rs.innerHTML = rhtml || '<p class="empty-note">Result dates and past results are not available from the free source for this stock right now.</p>';
-  const items = await fetchNews(name, 6);
-  if (tok !== sheetToken) return;
   nw.innerHTML = items.length ? items.map(n => newsRowHtml(n, "")).join("") : '<p class="empty-note">No recent news found for this company.</p>';
 }
 

@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23000000'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%23ffffff' font-family='Georgia'>F</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=14">
+<link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body>
 
@@ -120,6 +120,7 @@
     <button class="tab active" data-view="dashboard" type="button">Dashboard</button>
     <button class="tab" data-view="holdings" type="button">Holdings</button>
     <button class="tab" data-view="insights" type="button">Insights</button>
+    <button class="tab" data-view="news" type="button">News</button>
     <button class="tab" data-view="watchlist" type="button">Watchlist</button>
     <button class="tab" data-view="history" type="button">History</button>
     <button class="tab" data-view="profile" type="button">My Profile</button>
@@ -180,16 +181,6 @@
       <div class="panel chart-panel">
         <div class="panel-head"><h2>Portfolio Heatmap</h2><span class="price-meta">Tile size = share of your value · shade = today's move · tap a tile to open its chart</span></div>
         <div id="heatMap" class="heat-grid"></div>
-      </div>
-
-      <div class="panel chart-panel">
-        <div class="panel-head"><h2>Results &amp; Announcements</h2><span class="price-meta">Result dates and announcements for your stocks, from free public data</span></div>
-        <div id="eventsBox"><p class="empty-note">Checking result dates for your stocks…</p></div>
-      </div>
-
-      <div class="panel chart-panel">
-        <div class="panel-head"><h2>Portfolio News</h2><span class="price-meta">Latest news about the companies you hold</span></div>
-        <div id="newsList"><p class="empty-note">Loading news for your stocks…</p></div>
       </div>
 
       <div class="panel chart-panel">
@@ -275,6 +266,20 @@
         </div>
         <div class="cap-grid" id="insCapGrid"></div>
       </div>
+    </section>
+
+    <!-- NEWS -->
+    <section id="view-news" class="view hidden">
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Results &amp; Announcements</h2><span class="price-meta">Result dates and announcements for your stocks, from free public data</span></div>
+        <div id="eventsBox"><p class="empty-note">Checking result dates for your stocks…</p></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Portfolio News</h2><span class="price-meta">Latest news about the companies you hold</span></div>
+        <div id="newsList"><p class="empty-note">Loading news for your stocks…</p></div>
+      </div>
+
     </section>
 
     <!-- HOLDINGS -->
@@ -392,6 +397,7 @@
         <a href="#" data-foot-view="dashboard">Dashboard</a>
         <a href="#" data-foot-view="holdings">Holdings</a>
         <a href="#" data-foot-view="insights">Insights</a>
+        <a href="#" data-foot-view="news">News</a>
         <a href="#" data-foot-view="watchlist">Watchlist</a>
         <a href="#" data-foot-view="profile">My Profile</a>
       </div>
@@ -607,8 +613,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/firebase-config.js?v=6"></script>
 <script src="js/stocks.js?v=14"></script>
-<script src="js/app.js?v=14"></script>
+<script src="js/app.js?v=15"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/features.js?v=14"></script>
+<script src="js/features.js?v=15"></script>
 </body>
 </html>

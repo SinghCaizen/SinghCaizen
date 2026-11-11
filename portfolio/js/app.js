@@ -330,10 +330,9 @@ async function fetchTO(url, ms) {
 async function fetchOne(sym) {
   const manual = state.manualPrices && state.manualPrices[sym];
   const proxies = [
-    u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
-    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
-    u => "https://api.cors.lol/?url=" + encodeURIComponent(u)
+    u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
+    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
   ];
   const urls = [yahooUrl(sym), yahooUrl(sym).replace("query1.finance.yahoo.com", "query2.finance.yahoo.com")];
   for (const url of urls) {
