@@ -176,6 +176,7 @@ function showApp() {
   $("authView").classList.add("hidden"); $("gateView").classList.add("hidden"); $("appView").classList.remove("hidden");
   $("setEmail").textContent = currentUser.email;
   $("setMode").textContent = FIREBASE_ON ? "Cloud (Firebase) — saved online" : "Demo — this browser only";
+  loadPricesLS();
   if (typeof renderProfile === "function") renderProfile(); renderAll(); refreshPrices();
   if (typeof loadTicker === "function") loadTicker();
   if (state.profile && !state.profile.termsSeen) $("termsModal").classList.remove("hidden");
@@ -335,22 +336,23 @@ async function fetchOne(sym) {
     u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
   ];
   const urls = [yahooUrl(sym), yahooUrl(sym).replace("query1.finance.yahoo.com", "query2.finance.yahoo.com")];
-  for (const url of urls) {
-    for (const p of proxies) {
-      try {
-        const res = await fetchTO(p(url));
-        if (!res.ok) continue;
-        const j = await res.json();
-        const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
-        if (meta && meta.regularMarketPrice) {
-          let spark = [];
-          try { const q = j.chart.result[0].indicators.quote[0].close || []; spark = q.filter(v => typeof v === "number"); } catch (e) {}
-          const prev = spark.length > 1 ? spark[spark.length - 2] : (meta.chartPreviousClose || meta.regularMarketPrice);
-          return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
-        }
-      } catch (e) { /* try next route */ }
-    }
+  /* Proxy racing: every route runs in parallel (3.5s cap each) — the first
+     valid answer wins, so one slow proxy can never hold up a price. */
+  const attempts = [];
+  for (const url of urls) for (const p of proxies) {
+    attempts.push((async () => {
+      const res = await fetchTO(p(url), 3500);
+      if (!res.ok) throw new Error("bad route");
+      const j = await res.json();
+      const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
+      if (!meta || !meta.regularMarketPrice) throw new Error("no data");
+      let spark = [];
+      try { const q = j.chart.result[0].indicators.quote[0].close || []; spark = q.filter(v => typeof v === "number"); } catch (e) {}
+      const prev = spark.length > 1 ? spark[spark.length - 2] : (meta.chartPreviousClose || meta.regularMarketPrice);
+      return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
+    })());
   }
+  try { return await Promise.any(attempts); } catch (e) { /* every route failed */ }
   if (manual) return { price: Number(manual), prevClose: Number(manual), ts: Date.now(), manual: true, spark: [] };
   return null;
 }
@@ -371,11 +373,37 @@ async function refreshPrices() {
     renderAll();
   }
   refreshing = false;
+  savePricesLS();
   const any = Object.keys(prices).length;
   $("priceMeta").textContent = any ? "Prices updated " + new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) + " · free data, ~15 min delay" : "Prices could not load right now — check internet, or set a price manually from a holding's ⋯ menu.";
   renderAll();
 }
 function priceOf(sym) { return prices[sym] || null; }
+/* Instant paint: last session's prices load from this device first (stale-
+   while-revalidate) — the dashboard renders in 0ms, then fresh prices land. */
+function savePricesLS() {
+  try { localStorage.setItem("folio_prices_v1", JSON.stringify({ ts: Date.now(), prices: prices })); } catch (e) {}
+}
+function loadPricesLS() {
+  try {
+    const o = JSON.parse(localStorage.getItem("folio_prices_v1") || "null");
+    if (o && o.prices && Date.now() - o.ts < 24 * 3600 * 1000) prices = o.prices;
+  } catch (e) {}
+}
+/* Money formatting: Indian system by default; compact (₹ L / ₹ Cr) when the
+   user turns it on in Personal Info. */
+function inrShort(v) {
+  const neg = v < 0, a = Math.abs(v);
+  let s;
+  if (a >= 1e7) s = "₹" + (a / 1e7).toFixed(2) + " Cr";
+  else if (a >= 1e5) s = "₹" + (a / 1e5).toFixed(2) + " L";
+  else if (a >= 1e3) s = "₹" + (a / 1e3).toFixed(1) + "k";
+  else s = inr(a);
+  return neg ? "-" + s : s;
+}
+function moneyFmt(v) {
+  return (state && state.profile && state.profile.compact) ? inrShort(v) : inr(v);
+}
 
 /* ================= rendering ================= */
 const PIE = ["#f2f2f2", "#bdbdbd", "#8a8a8a", "#5c5c5c", "#e03131", "#3d3d3d", "#d6d6d6", "#757575", "#a8a8a8", "#2b2b2b"];
@@ -416,11 +444,11 @@ function sparkSvg(closes) {
 function renderDashboard() {
   const d = enriched();
   if (d.rows.length) {
-    animNum($("stInvested"), d.invested, inr);
-    animNum($("stValue"), d.value, inr);
-    animNum($("stPnl"), d.totalPnl, inr);
+    animNum($("stInvested"), d.invested, moneyFmt);
+    animNum($("stValue"), d.value, moneyFmt);
+    animNum($("stPnl"), d.totalPnl, moneyFmt);
     $("stPnl").className = "stat-value " + (d.totalPnl >= 0 ? "gain" : "loss");
-    $("stPnlPct").textContent = pct(d.invested ? d.totalPnl / d.invested * 100 : 0) + " overall · today " + inr(d.dayPnl);
+    $("stPnlPct").textContent = pct(d.invested ? d.totalPnl / d.invested * 100 : 0) + " overall · today " + moneyFmt(d.dayPnl);
     $("stPnlPct").className = "stat-sub " + (d.dayPnl >= 0 ? "gain" : "loss");
   } else { $("stInvested").textContent = "—"; $("stValue").textContent = "—"; $("stPnl").textContent = "—"; $("stPnlPct").textContent = ""; }
   const x = d.rows.length ? portfolioXirr(d.value) : null;

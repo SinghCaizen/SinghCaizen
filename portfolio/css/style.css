@@ -623,3 +623,34 @@ html,body{overflow-x:clip}
   .setting-row b,.setting-row .row-val{max-width:100%}
   .hold-card,.score-card,.stat-card{padding:.95rem 1rem}
 }
+
+/* ===== v16: branding, account popover, privacy mode, skeletons, vault ===== */
+.sc-brand{font-family:"Public Sans",system-ui,sans-serif;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text)}
+.account-pop{position:fixed;top:64px;right:14px;width:300px;max-width:calc(100vw - 24px);background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:1rem;z-index:60}
+.ap-head{display:flex;gap:.7rem;align-items:center;margin-bottom:.6rem}
+.ap-head b{display:block}
+.avatar-md{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:0 0 auto}
+.avatar-md.avatar-init{font-size:1.1rem}
+.ap-badge{margin:.2rem 0 .7rem;font-size:.85rem;color:var(--muted)}
+.ap-row{display:block;width:100%;text-align:left;background:transparent;border:none;border-top:1px solid var(--line);padding:.65rem .2rem;color:var(--text);cursor:pointer;font-size:.95rem}
+.ap-row:hover{background:var(--panel-2)}
+.ap-row.danger{color:#e03131}
+.skel{position:relative;overflow:hidden;background:var(--panel-2);border-radius:8px;min-height:14px}
+.skel::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(140,140,140,.18),transparent);animation:skelMove 1.3s infinite;transform:translateX(-100%)}
+@keyframes skelMove{to{transform:translateX(100%)}}
+.bench-toggle{display:inline-flex;align-items:center;gap:.4rem;font-size:.88rem;color:var(--muted);cursor:pointer;margin-right:.6rem}
+.ma-toggle{display:flex;margin:.4rem 0 .2rem}
+.sec-pill{display:inline-block;margin-top:.55rem;padding:.32rem .8rem;border:1px solid var(--line);border-radius:999px;font-size:.82rem;color:var(--text);background:var(--panel-2)}
+.acct-avatar-wrap{position:relative;display:inline-block}
+.cam-btn{position:absolute;right:2px;bottom:6px;width:32px;height:32px;border-radius:50%;background:var(--panel);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.switch{width:20px;height:20px;accent-color:var(--text);cursor:pointer}
+form select{width:100%;margin-top:.35rem;background:var(--input);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:.65rem .8rem;font-size:1rem}
+.exempt-box{margin-top:1rem;border:1px solid var(--line);border-radius:12px;padding:.9rem 1rem;background:var(--panel-2)}
+.exempt-head{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.5rem}
+.exempt-track{height:10px;border-radius:99px;background:var(--line);overflow:hidden}
+.exempt-fill{height:100%;background:var(--text);border-radius:99px;transition:width .5s ease}
+.score-cards{grid-template-columns:repeat(4,1fr)}
+.view > .panel{content-visibility:auto;contain-intrinsic-size:auto 320px}
+body.privacy-on .stat-value,body.privacy-on .stat-sub,body.privacy-on #insAssets,body.privacy-on .hold-grid,body.privacy-on #donut,body.privacy-on .donut-legend,body.privacy-on .bar-val,body.privacy-on .heat-val,body.privacy-on .tax-grid,body.privacy-on .tax-row,body.privacy-on #perfMeta,body.privacy-on #insPerfMeta,body.privacy-on .cap-nums,body.privacy-on .watch-price,body.privacy-on .hist-row,body.privacy-on #stockStats,body.privacy-on .pnl-row,body.privacy-on .assets-big{filter:blur(7px);transition:filter .25s ease}
+@media (max-width:1100px){.score-cards{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:760px){.score-cards{grid-template-columns:1fr 1fr}.account-pop{top:58px}}
