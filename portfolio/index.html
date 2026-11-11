@@ -6,7 +6,9 @@
 <title>My Portfolio — Stock Tracker</title>
 <meta name="description" content="A private portfolio tracker for Indian stocks. Add your stocks manually, see live profit and loss. No broker connection needed.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23141414'/><text x='50' y='68' font-size='58' text-anchor='middle' fill='%23c9a227' font-family='Georgia'>P</text></svg>">
-<link rel="stylesheet" href="css/style.css?v=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css?v=2">
 </head>
 <body>
 
@@ -97,6 +99,16 @@
           </div>
         </div>
         <p id="dashEmpty" class="empty-note hidden">No stocks yet. Go to Holdings and tap “+ Add Stock” to add your first stock.</p>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Sector-wise Allocation</h2><span class="price-meta">Which sectors your money sits in</span></div>
+        <div id="sectorBars"></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Profit / Loss by Stock</h2><span class="price-meta">Green grows right, red grows left</span></div>
+        <div id="pnlBars"></div>
       </div>
     </section>
 
@@ -192,8 +204,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script src="js/firebase-config.js?v=1"></script>
-<script src="js/stocks.js?v=1"></script>
-<script src="js/app.js?v=1"></script>
+<script src="js/firebase-config.js?v=2"></script>
+<script src="js/stocks.js?v=2"></script>
+<script src="js/app.js?v=2"></script>
 </body>
 </html>

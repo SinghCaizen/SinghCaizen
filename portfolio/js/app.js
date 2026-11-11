@@ -128,9 +128,9 @@ function resolveStock(input) {
   const raw = String(input || "").trim();
   const up = raw.toUpperCase();
   const hit = (window.STOCK_LIST || []).find(s => s[0] === up || s[1].toUpperCase() === up || raw.toLowerCase() === s[1].toLowerCase());
-  if (hit) return { sym: hit[0], name: hit[1] };
+  if (hit) return { sym: hit[0], name: hit[1], sector: hit[2] || "Other" };
   const sym = up.replace(/\s+/g, "").replace(/[^A-Z0-9&\-\.]/g, "");
-  return { sym: sym, name: raw };
+  return { sym: sym, name: raw, sector: "Other" };
 }
 function computeHoldings() {
   const lots = {}; const order = []; const realised = {}; let divTotal = 0;
@@ -138,7 +138,7 @@ function computeHoldings() {
   for (const t of txns) {
     if (t.type === "DIV") { divTotal += Number(t.price) || 0; continue; }
     if (!lots[t.sym]) { lots[t.sym] = []; order.push(t.sym); realised[t.sym] = 0; }
-    if (t.type === "BUY") lots[t.sym].push({ qty: Number(t.qty), price: Number(t.price), date: t.date, name: t.name });
+    if (t.type === "BUY") lots[t.sym].push({ qty: Number(t.qty), price: Number(t.price), date: t.date, name: t.name, sector: t.sector || "Other" });
     else if (t.type === "SELL") {
       let q = Number(t.qty);
       while (q > 0 && lots[t.sym].length) {
@@ -153,7 +153,7 @@ function computeHoldings() {
     const ls = lots[sym]; if (!ls || !ls.length) continue;
     const qty = ls.reduce((s, l) => s + l.qty, 0);
     const cost = ls.reduce((s, l) => s + l.qty * l.price, 0);
-    out.push({ sym: sym, name: ls[0].name || sym, qty: qty, avg: cost / qty, invested: cost, realised: realised[sym] || 0 });
+    out.push({ sym: sym, name: ls[0].name || sym, sector: ls[0].sector || "Other", qty: qty, avg: cost / qty, invested: cost, realised: realised[sym] || 0 });
   }
   return { holdings: out, realisedTotal: Object.values(realised).reduce((a, b) => a + b, 0), divTotal: divTotal };
 }
@@ -187,7 +187,7 @@ function portfolioXirr(currentValue) {
 /* ================= prices (free, delayed) ================= */
 function yahooUrl(sym) {
   const s = sym.indexOf(".") >= 0 ? sym : sym + ".NS";
-  return "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(s) + "?range=5d&interval=1d";
+  return "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(s) + "?range=1mo&interval=1d";
 }
 async function fetchOne(sym) {
   const manual = state.manualPrices && state.manualPrices[sym];
@@ -204,11 +204,14 @@ async function fetchOne(sym) {
       const j = await res.json();
       const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
       if (meta && meta.regularMarketPrice) {
-        return { price: meta.regularMarketPrice, prevClose: meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice, ts: Date.now(), manual: false };
+        let spark = [];
+        try { const q = j.chart.result[0].indicators.quote[0].close || []; spark = q.filter(v => typeof v === "number"); } catch (e) {}
+        const prev = spark.length > 1 ? spark[spark.length - 2] : (meta.chartPreviousClose || meta.regularMarketPrice);
+        return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
       }
     } catch (e) { /* try next proxy */ }
   }
-  if (manual) return { price: Number(manual), prevClose: Number(manual), ts: Date.now(), manual: true };
+  if (manual) return { price: Number(manual), prevClose: Number(manual), ts: Date.now(), manual: true, spark: [] };
   return null;
 }
 let refreshing = false;
@@ -246,28 +249,48 @@ function enriched() {
     const pnl = cur - h.invested;
     const day = p ? h.qty * (p.price - p.prevClose) : 0;
     invested += h.invested; value += cur; dayPnl += day;
-    return { ...h, ltp: p ? p.price : null, prevClose: p ? p.prevClose : null, cur: cur, pnl: pnl, pnlPct: h.invested ? pnl / h.invested * 100 : 0, day: day, color: PIE[i % PIE.length], manual: p ? p.manual : false };
+    return { ...h, ltp: p ? p.price : null, prevClose: p ? p.prevClose : null, spark: p ? p.spark : null, cur: cur, pnl: pnl, pnlPct: h.invested ? pnl / h.invested * 100 : 0, day: day, color: PIE[i % PIE.length], manual: p ? p.manual : false };
   });
   return { rows: rows, invested: invested, value: value, totalPnl: value - invested, dayPnl: dayPnl, realisedTotal: realisedTotal, divTotal: divTotal };
 }
+/* ---- v2 helpers: animated numbers + sparklines ---- */
+let dashAnimated = false;
+function animNum(el, val, fmt) {
+  if (!el) return;
+  if (dashAnimated || !isFinite(val)) { el.textContent = fmt(val); return; }
+  const start = performance.now(), dur = 850;
+  const step = now => { const k = Math.min(1, (now - start) / dur); el.textContent = fmt(val * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function sparkSvg(closes) {
+  if (!closes || closes.length < 2) return "";
+  const min = Math.min(...closes), max = Math.max(...closes), rng = (max - min) || 1;
+  const W = 100, H = 30, P = 2;
+  const pts = closes.map((v, i) => (P + i * (W - 2 * P) / (closes.length - 1)).toFixed(1) + "," + (H - P - (v - min) / rng * (H - 2 * P)).toFixed(1)).join(" ");
+  const up = closes[closes.length - 1] >= closes[0];
+  const col = up ? "var(--gain)" : "var(--loss)";
+  const last = pts.split(" ").pop().split(",");
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.6"/><circle cx="${last[0]}" cy="${last[1]}" r="2.2" fill="${col}"/></svg>`;
+}
+
 function renderDashboard() {
   const d = enriched();
-  $("stInvested").textContent = d.rows.length ? inr(d.invested) : "—";
-  $("stValue").textContent = d.rows.length ? inr(d.value) : "—";
-  const pnlEl = $("stPnl");
   if (d.rows.length) {
-    pnlEl.textContent = inr(d.totalPnl);
-    pnlEl.className = "stat-value " + (d.totalPnl >= 0 ? "gain" : "loss");
+    animNum($("stInvested"), d.invested, inr);
+    animNum($("stValue"), d.value, inr);
+    animNum($("stPnl"), d.totalPnl, inr);
+    $("stPnl").className = "stat-value " + (d.totalPnl >= 0 ? "gain" : "loss");
     $("stPnlPct").textContent = pct(d.invested ? d.totalPnl / d.invested * 100 : 0) + " overall · today " + inr(d.dayPnl);
     $("stPnlPct").className = "stat-sub " + (d.dayPnl >= 0 ? "gain" : "loss");
-  } else { pnlEl.textContent = "—"; $("stPnlPct").textContent = ""; }
+  } else { $("stInvested").textContent = "—"; $("stValue").textContent = "—"; $("stPnl").textContent = "—"; $("stPnlPct").textContent = ""; }
   const x = d.rows.length ? portfolioXirr(d.value) : null;
   $("stXirr").textContent = x === null ? "—" : pct(x * 100).replace("+", x >= 0 ? "+" : "");
   $("stRealised").textContent = d.rows.length ? "Booked profit so far: " + inr(d.realisedTotal) + (d.divTotal ? " · Dividends: " + inr(d.divTotal) : "") : "";
   $("dashEmpty").classList.toggle("hidden", d.rows.length > 0);
-  // donut
+  if (d.rows.length) dashAnimated = true;
+  // donut (hover any slice or name to inspect)
   const svg = $("donut"); const legend = $("donutLegend");
-  if (!d.rows.length || d.value <= 0) { svg.innerHTML = ""; legend.innerHTML = ""; }
+  if (!d.rows.length || d.value <= 0) { svg.innerHTML = ""; legend.innerHTML = ""; $("sectorBars").innerHTML = ""; $("pnlBars").innerHTML = ""; }
   else {
     let a0 = -Math.PI / 2, parts = "";
     const cx = 100, cy = 100, r = 82, r2 = 48;
@@ -277,11 +300,32 @@ function renderDashboard() {
       const large = frac > 0.5 ? 1 : 0;
       const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0), x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
       const xi1 = cx + r2 * Math.cos(a1), yi1 = cy + r2 * Math.sin(a1), xi0 = cx + r2 * Math.cos(a0), yi0 = cy + r2 * Math.sin(a0);
-      parts += `<path d="M${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} L${xi1},${yi1} A${r2},${r2} 0 ${large} 0 ${xi0},${yi0} Z" fill="${r_.color}" stroke="var(--panel)" stroke-width="1.5"/>`;
+      parts += `<path class="seg" data-sym="${esc(r_.sym)}" d="M${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} L${xi1},${yi1} A${r2},${r2} 0 ${large} 0 ${xi0},${yi0} Z" fill="${r_.color}" stroke="var(--panel)" stroke-width="1.5"/>`;
       a0 = a1;
     }
-    svg.innerHTML = parts + `<text x="100" y="96" text-anchor="middle" fill="var(--muted)" font-size="11">VALUE</text><text x="100" y="114" text-anchor="middle" fill="var(--text)" font-size="13" font-weight="bold">${esc(inr(d.value))}</text>`;
-    legend.innerHTML = d.rows.map(r_ => `<div><span class="sw" style="background:${r_.color}"></span>${esc(r_.sym)} — ${(r_.cur / d.value * 100).toFixed(1)}%</div>`).join("");
+    svg.innerHTML = parts + `<text id="donutTop" x="100" y="95" text-anchor="middle" fill="var(--muted)" font-size="10.5" letter-spacing="1.5">TOTAL VALUE</text><text id="donutMain" x="100" y="115" text-anchor="middle" fill="var(--text)" font-size="14.5" font-weight="bold">${esc(inr(d.value))}</text>`;
+    legend.innerHTML = d.rows.map(r_ => `<div class="legend-item" data-sym="${esc(r_.sym)}"><span class="sw" style="background:${r_.color}"></span>${esc(r_.sym)} — ${(r_.cur / d.value * 100).toFixed(1)}%</div>`).join("");
+    const setCenter = sym => {
+      const top = $("donutTop"), main = $("donutMain"); if (!top || !main) return;
+      const row = sym ? d.rows.find(r_ => r_.sym === sym) : null;
+      top.textContent = row ? row.sym : "TOTAL VALUE";
+      main.textContent = row ? (row.cur / d.value * 100).toFixed(1) + "% · " + inr(row.cur) : inr(d.value);
+      svg.querySelectorAll(".seg").forEach(p => p.style.opacity = (!sym || p.dataset.sym === sym) ? "1" : "0.3");
+    };
+    svg.querySelectorAll(".seg").forEach(p => { p.addEventListener("mouseenter", () => setCenter(p.dataset.sym)); p.addEventListener("mouseleave", () => setCenter(null)); });
+    legend.querySelectorAll(".legend-item").forEach(el2 => { el2.addEventListener("mouseenter", () => setCenter(el2.dataset.sym)); el2.addEventListener("mouseleave", () => setCenter(null)); });
+    // sector bars
+    const secMap = {};
+    d.rows.forEach(r_ => { const s = r_.sector || "Other"; secMap[s] = (secMap[s] || 0) + r_.cur; });
+    const secs = Object.entries(secMap).sort((a, b) => b[1] - a[1]);
+    $("sectorBars").innerHTML = secs.map((sv, i) => `<div class="bar-row"><span class="bar-name">${esc(sv[0])}</span><div class="bar-track"><div class="bar-fill" style="width:${(sv[1] / d.value * 100).toFixed(1)}%;background:${PIE[i % PIE.length]}"></div></div><span class="bar-val">${inr(sv[1])} · ${(sv[1] / d.value * 100).toFixed(1)}%</span></div>`).join("");
+    // profit/loss bars (zero in the middle)
+    const maxAbs = Math.max(...d.rows.map(r_ => Math.abs(r_.pnl)), 1);
+    $("pnlBars").innerHTML = [...d.rows].sort((a, b) => b.pnl - a.pnl).map(r_ => {
+      const w = (Math.abs(r_.pnl) / maxAbs * 50).toFixed(1);
+      const fill = r_.pnl >= 0 ? `<div class="pnl-fill gain-fill" style="left:50%;width:${w}%"></div>` : `<div class="pnl-fill loss-fill" style="right:50%;width:${w}%"></div>`;
+      return `<div class="pnl-row"><span class="bar-name">${esc(r_.sym)}</span><div class="pnl-track">${fill}<span class="pnl-zero"></span></div><span class="bar-val ${r_.pnl >= 0 ? "gain" : "loss"}">${inr(r_.pnl)}</span></div>`;
+    }).join("");
   }
   const sorted = [...d.rows].filter(r_ => r_.ltp !== null);
   const gainers = [...sorted].sort((a, b) => b.pnlPct - a.pnlPct).filter(r_ => r_.pnlPct > 0).slice(0, 3);
@@ -293,10 +337,11 @@ function renderHoldings() {
   const d = enriched();
   const el = $("holdingsList");
   $("holdEmpty").classList.toggle("hidden", d.rows.length > 0);
-  el.innerHTML = d.rows.map(h => `
-    <div class="hold-card">
-      <div class="hold-top"><div><span class="hold-sym">${esc(h.sym)}</span><span class="hold-name">${esc(h.name)}</span></div>
+  el.innerHTML = d.rows.map((h, i) => `
+    <div class="hold-card" style="animation-delay:${i * 60}ms">
+      <div class="hold-top"><div><span class="hold-sym">${esc(h.sym)}</span><span class="hold-name">${esc(h.name)}</span><span class="sector-chip">${esc(h.sector || "Other")}</span></div>
       <div class="hold-pnl ${h.pnl >= 0 ? "gain" : "loss"}">${inr(h.pnl)} (${pct(h.pnlPct)})</div></div>
+      ${h.spark && h.spark.length > 1 ? `<div class="spark-wrap">${sparkSvg(h.spark)}<span class="spark-cap">last 1 month</span></div>` : ""}
       <div class="hold-grid">
         <div><span>Qty</span>${h.qty}</div>
         <div><span>Avg Buy</span>${inr2(h.avg)}</div>
@@ -395,7 +440,7 @@ function saveTxn(ev) {
     const h = computeHoldings().holdings.find(x => x.sym === st.sym);
     if (!h || qty > h.qty) { $("txnError").textContent = "You hold only " + (h ? h.qty : 0) + " shares of " + st.sym + "."; return; }
   }
-  state.txns.push({ id: uid(), type: type, sym: st.sym, name: st.name, qty: qty, price: price, date: date });
+  state.txns.push({ id: uid(), type: type, sym: st.sym, name: st.name, sector: st.sector, qty: qty, price: price, date: date });
   persist(); closeTxn(); renderAll(); refreshPrices();
   toast(type === "BUY" ? "Added " + st.sym : type === "SELL" ? "Sold " + st.sym : "Dividend saved");
 }
@@ -428,7 +473,8 @@ function importCsv(file) {
         const c = r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x => x.replace(/^"|"$/g, "").trim());
         if (c.length < 6) continue;
         const type = c[1].toUpperCase(); if (!["BUY", "SELL", "DIV"].includes(type)) continue;
-        state.txns.push({ id: uid(), date: c[0], type: type, sym: c[2].toUpperCase(), name: c[3], qty: Number(c[4]) || 0, price: Number(c[5]) || 0 });
+        const hit = (window.STOCK_LIST || []).find(s => s[0] === c[2].toUpperCase());
+        state.txns.push({ id: uid(), date: c[0], type: type, sym: c[2].toUpperCase(), name: c[3], sector: hit ? (hit[2] || "Other") : "Other", qty: Number(c[4]) || 0, price: Number(c[5]) || 0 });
         n++;
       }
       persist(); renderAll(); refreshPrices(); toast("Imported " + n + " entries.");
