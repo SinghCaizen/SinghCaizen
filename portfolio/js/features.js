@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v59";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v60";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -4933,3 +4933,188 @@ function holdApply() {
 }
 const _renderHoldingsT4 = renderHoldings;
 renderHoldings = function () { _renderHoldingsT4(); try { holdEnsure(); holdApply(); } catch (e) {} };
+
+/* ================= TASK 4 (v64): platform polish ================= */
+/* --- service worker + install --- */
+if ("serviceWorker" in navigator) { try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {} }
+let deferredInstall = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredInstall = e; platInstallBtn(); });
+function platInstallBtn() {
+  const bar = $("dashChips"); if (!bar || $("installBtn")) return;
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "insx-chip"; b.id = "installBtn"; b.textContent = "📲 Install Folio";
+  b.addEventListener("click", async () => {
+    if (deferredInstall) { deferredInstall.prompt(); try { await deferredInstall.userChoice; } catch (e) {} deferredInstall = null; b.remove(); }
+    else toast("To install: open your browser menu and choose “Add to Home screen” / “Install app”.");
+  });
+  bar.appendChild(b);
+}
+/* --- offline banner --- */
+function platOffline() {
+  let pill = $("offlinePill");
+  if (!navigator.onLine) {
+    if (!pill) { pill = document.createElement("div"); pill.id = "offlinePill"; pill.textContent = "You're offline — showing your last saved data. Nothing you see can refresh until you're back online."; document.body.appendChild(pill); }
+  } else if (pill) pill.remove();
+}
+window.addEventListener("online", platOffline);
+window.addEventListener("offline", platOffline);
+/* --- "updated … ago" --- */
+let lastPriceTs = 0;
+const _refreshPricesT4 = refreshPrices;
+refreshPrices = function () { const r = _refreshPricesT4.apply(this, arguments); lastPriceTs = Date.now(); return r; };
+function platAgo() {
+  const head = document.querySelector("#view-dashboard .panel .panel-head");
+  if (!head || !lastPriceTs) return;
+  let el = $("updAgo");
+  if (!el) { el = document.createElement("span"); el.id = "updAgo"; el.className = "price-meta"; const rb = $("refreshBtn"); if (rb) rb.after(el); else head.appendChild(el); }
+  const mins = Math.max(0, Math.round((Date.now() - lastPriceTs) / 60000));
+  el.textContent = mins <= 0 ? "· updated just now" : mins === 1 ? "· updated 1 min ago" : "· updated " + mins + " min ago";
+}
+setInterval(() => { try { platAgo(); } catch (e) {} }, 30000);
+/* --- reports: print sheet + share card --- */
+function platReport() {
+  const d = enriched();
+  const { holdings } = computeHoldings();
+  const sec = {};
+  holdings.forEach(h => { const p = priceOf(h.sym); const v = p ? h.qty * p.price : h.invested; sec[h.sector || "Other"] = (sec[h.sector || "Other"] || 0) + v; });
+  const rows = holdings.map(h => { const p = priceOf(h.sym); const v = p ? h.qty * p.price : h.invested; return "<tr><td>" + esc(h.sym) + "</td><td>" + h.qty + "</td><td>" + inr2(h.avg) + "</td><td>" + (p ? inr2(p.price) : "—") + "</td><td>" + inr(v) + "</td><td>" + inr(v - h.invested) + "</td></tr>"; }).join("");
+  let rep = $("printReport");
+  if (!rep) { rep = document.createElement("div"); rep.id = "printReport"; document.body.appendChild(rep); }
+  rep.innerHTML = "<h1>Folio — Portfolio Report</h1><p>A Singh Caizen Product · " + new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) + "</p>" +
+    "<p><b>Invested:</b> " + inr(d.invested) + " · <b>Current Value:</b> " + inr(d.value) + " · <b>Total P&amp;L:</b> " + inr(d.totalPnl) + " (" + (d.invested ? (d.totalPnl / d.invested * 100).toFixed(2) : "0") + "%) · <b>Realised:</b> " + inr(d.realisedTotal || 0) + " · <b>Dividends:</b> " + inr(d.divTotal || 0) + "</p>" +
+    "<table><thead><tr><th>Stock</th><th>Qty</th><th>Avg Buy</th><th>Price</th><th>Value</th><th>P&amp;L</th></tr></thead><tbody>" + rows + "</tbody></table>" +
+    "<p><b>By sector:</b> " + Object.entries(sec).sort((a, b) => b[1] - a[1]).map(([s, v]) => esc(s) + " " + (d.value ? (v / d.value * 100).toFixed(1) : "0") + "%").join(" · ") + "</p>" +
+    "<p class='fine'>Prices are free delayed data (~15 min). This report is information only, not investment advice.</p>";
+  document.body.classList.add("printing");
+  setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove("printing"), 600); }, 60);
+}
+function platShareCard() {
+  const d = enriched();
+  const { holdings } = computeHoldings();
+  const total = d.value || 1;
+  const top = holdings.map(h => { const p = priceOf(h.sym); const v = p ? h.qty * p.price : h.invested; return { sym: h.sym, w: v / total * 100, pnl: h.invested ? (v - h.invested) / h.invested * 100 : 0 }; }).sort((a, b) => b.w - a.w).slice(0, 5);
+  const cv = document.createElement("canvas"); cv.width = 1200; cv.height = 630;
+  const g = cv.getContext("2d");
+  g.fillStyle = "#0f2234"; g.fillRect(0, 0, 1200, 630);
+  g.fillStyle = "#c9a227"; g.fillRect(0, 596, 1200, 34);
+  g.fillStyle = "#ffffff"; g.font = "800 64px system-ui, sans-serif"; g.fillText("FOLIO", 60, 105);
+  g.font = "600 25px system-ui, sans-serif"; g.fillStyle = "#9fb4c8"; g.fillText("A SINGH CAIZEN PRODUCT · MY PORTFOLIO IN %", 60, 148);
+  const ret = d.invested ? d.totalPnl / d.invested * 100 : 0;
+  g.font = "800 92px system-ui, sans-serif"; g.fillStyle = ret >= 0 ? "#4caf6d" : "#e05b4b";
+  g.fillText((ret >= 0 ? "▲ +" : "▼ ") + ret.toFixed(1) + "%", 60, 268);
+  g.font = "600 27px system-ui, sans-serif"; g.fillStyle = "#ffffff"; g.fillText("overall return" + (d.xirr != null && isFinite(d.xirr) ? " · XIRR " + (d.xirr * 100).toFixed(1) + "% a year" : ""), 60, 312);
+  g.font = "600 30px system-ui, sans-serif";
+  top.forEach((t, i) => { const y = 392 + i * 42; g.fillStyle = "#ffffff"; g.fillText(t.sym, 60, y); g.fillStyle = t.pnl >= 0 ? "#4caf6d" : "#e05b4b"; g.fillText(t.w.toFixed(1) + "% of portfolio · " + (t.pnl >= 0 ? "+" : "") + t.pnl.toFixed(1) + "%", 420, y); });
+  g.font = "500 22px system-ui, sans-serif"; g.fillStyle = "#9fb4c8";
+  g.fillText("Percentages only — no amounts. Free delayed prices. Not investment advice.", 60, 578);
+  cv.toBlob(async blob => {
+    const file = new File([blob], "folio-share-card.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: "My Folio" }); return; } catch (e) {} }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "folio-share-card.png"; a.click(); URL.revokeObjectURL(a.href);
+    toast("Share card downloaded — percentages only, no amounts.");
+  });
+}
+/* --- chart PNG downloads --- */
+function svgToPng(svg, name) {
+  const clone = svg.cloneNode(true);
+  clone.querySelectorAll("text").forEach(t => { t.setAttribute("fill", "#8a93a3"); t.setAttribute("font-size", "12"); });
+  const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+  const dark = document.documentElement.dataset.theme !== "light";
+  bg.setAttribute("width", "100%"); bg.setAttribute("height", "100%"); bg.setAttribute("fill", dark ? "#101418" : "#ffffff");
+  clone.insertBefore(bg, clone.firstChild);
+  const xml = new XMLSerializer().serializeToString(clone);
+  const img = new Image();
+  img.onload = () => {
+    const cv = document.createElement("canvas"); cv.width = img.width * 2; cv.height = img.height * 2;
+    const g = cv.getContext("2d"); g.scale(2, 2); g.drawImage(img, 0, 0);
+    cv.toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = name; a.click(); URL.revokeObjectURL(a.href); });
+  };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+}
+function platPngButtons(root) {
+  (root || document).querySelectorAll(".insx-card, .sx-strip").forEach(card => {
+    if (card.querySelector("[data-png-dl]")) return;
+    const svg = card.querySelector("svg.insx-chart, svg.sx-ind");
+    if (!svg) return;
+    const head = card.querySelector(".panel-head, h4"); if (!head) return;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "insx-i"; b.dataset.pngDl = "1"; b.textContent = "⬇"; b.title = "Download this chart as PNG"; b.setAttribute("aria-label", "Download chart as PNG");
+    b.addEventListener("click", () => svgToPng(card.querySelector("svg.insx-chart, svg.sx-ind"), "folio-chart.png"));
+    head.appendChild(b);
+  });
+}
+/* --- Ctrl+K command palette --- */
+function platPalette() {
+  let pop = $("cmdkPop");
+  if (pop) { pop.classList.remove("hidden"); $("cmdkInput").value = ""; cmdkRender(""); $("cmdkInput").focus(); return; }
+  pop = document.createElement("div"); pop.id = "cmdkPop"; pop.className = "cmdk-pop";
+  pop.innerHTML = '<div class="cmdk-card"><input id="cmdkInput" type="text" placeholder="Search a stock, or jump to a tab or card…" aria-label="Command palette"><div id="cmdkList" class="cmdk-list"></div></div>';
+  document.body.appendChild(pop);
+  pop.addEventListener("click", e => { if (e.target === pop) pop.classList.add("hidden"); });
+  $("cmdkInput").addEventListener("input", e => cmdkRender(e.target.value.trim().toLowerCase()));
+  $("cmdkInput").addEventListener("keydown", e => {
+    if (e.key === "Escape") pop.classList.add("hidden");
+    if (e.key === "Enter") { const first = pop.querySelector("[data-cmdk]"); if (first) first.click(); }
+  });
+  cmdkRender("");
+  $("cmdkInput").focus();
+}
+function cmdkRender(q) {
+  const list = $("cmdkList"); if (!list) return;
+  const items = [];
+  const views = [["dashboard", "🏠 Dashboard"], ["holdings", "💼 Holdings"], ["watch", "★ Watchlist"], ["insights", "📊 Insights"], ["history", "🕘 History"], ["news", "📰 News"], ["profile", "👤 My Profile"], ["ipo", "🚀 IPO Master"]];
+  views.forEach(([v, label]) => { if (!q || label.toLowerCase().includes(q)) items.push({ label, run: () => switchView(v) }); });
+  if (q.length >= 2) (window.STOCK_LIST || []).filter(e => e[0].toLowerCase().includes(q) || e[1].toLowerCase().includes(q)).slice(0, 7).forEach(e => items.push({ label: "📈 " + e[0] + " — " + e[1], run: () => { if (typeof openStock === "function") openStock(e[0]); } }));
+  list.innerHTML = items.length ? items.map((it, i) => '<button type="button" class="cmdk-item" data-cmdk="' + i + '">' + esc(it.label) + "</button>").join("") : '<p class="empty-note">Nothing matches.</p>';
+  list.querySelectorAll("[data-cmdk]").forEach(b => b.addEventListener("click", () => { $("cmdkPop").classList.add("hidden"); items[Number(b.dataset.cmdk)].run(); }));
+}
+document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); platPalette(); } });
+/* --- swipe between tabs + pull to refresh --- */
+(function () {
+  const ORDER = ["dashboard", "holdings", "watch", "insights", "news", "profile"];
+  let tx = 0, ty = 0, pull = 0;
+  document.addEventListener("touchstart", e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; pull = 0; }, { passive: true });
+  document.addEventListener("touchmove", e => {
+    if (window.scrollY <= 0 && e.touches[0].clientY - ty > 10) pull = e.touches[0].clientY - ty;
+  }, { passive: true });
+  document.addEventListener("touchend", e => {
+    const t = e.changedTouches[0], dx = t.clientX - tx, dy = t.clientY - ty;
+    if (document.querySelector(".modal:not(.hidden)")) return;
+    if (pull > 110 && Math.abs(dx) < 60) { pull = 0; try { refreshPrices(); } catch (err) {} toast("Refreshing prices…"); return; }
+    if (Math.abs(dx) > 96 && Math.abs(dy) < 42) {
+      const src = e.target;
+      if (src.closest("canvas, table, .insx-table-wrap, .dash-chips, .sheet-tabs, .pulse-row, input, select, textarea")) return;
+      const cur = ORDER.findIndex(v => { const el = $("view-" + v); return el && !el.classList.contains("hidden"); });
+      if (cur < 0) return;
+      const next = cur + (dx < 0 ? 1 : -1);
+      if (next >= 0 && next < ORDER.length) switchView(ORDER[next]);
+    }
+  }, { passive: true });
+})();
+/* --- ensure pass --- */
+function platEnsure() {
+  platOffline();
+  const rb = $("refreshBtn");
+  if (rb && rb.parentElement && !rb.parentElement.querySelector("[data-plat]")) {
+    const wrap = document.createElement("span"); wrap.dataset.plat = "1"; wrap.className = "plat-btns";
+    wrap.innerHTML = '<button type="button" class="mini-btn" id="platReportBtn">📄 Report</button><button type="button" class="mini-btn" id="platShareBtn">🖼 Share Card</button>';
+    rb.after(wrap);
+    $("platReportBtn").addEventListener("click", platReport);
+    $("platShareBtn").addEventListener("click", platShareCard);
+  }
+  const tb = $("themeBtn"); if (tb && !tb.getAttribute("aria-label")) tb.setAttribute("aria-label", "Switch light or dark theme");
+  const pb = $("privacyBtn"); if (pb && !pb.getAttribute("aria-label")) pb.setAttribute("aria-label", "Privacy mode — hide amounts");
+  platInstallBtn();
+  platPngButtons(document);
+  const taBar = document.querySelector("#taWrap .ta-bar");
+  if (taBar && !$("taPngBtn")) {
+    const tb2 = document.createElement("button");
+    tb2.type = "button"; tb2.className = "mini-btn"; tb2.id = "taPngBtn"; tb2.textContent = "⬇ PNG"; tb2.title = "Download the TA chart as PNG";
+    tb2.addEventListener("click", () => { const cv = $("taCanvas"); if (cv) cv.toBlob(b => { if (!b) return; const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "folio-ta-chart.png"; a.click(); URL.revokeObjectURL(a.href); }); });
+    taBar.appendChild(tb2);
+  }
+}
+const _renderDashboardT4b = renderDashboard;
+renderDashboard = function () { _renderDashboardT4b(); try { platEnsure(); } catch (e) {} };
+const _switchViewT4 = switchView;
+switchView = function (name) { _switchViewT4(name); setTimeout(() => { try { platPngButtons(document); } catch (e) {} }, 400); };
