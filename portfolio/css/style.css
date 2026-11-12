@@ -1242,3 +1242,33 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
 .ipo-mgr-line{margin: 4px 0; font-size: 13.5px;}
 .ipo-dd-sub{margin: 14px 0 6px; font-size: 13px;}
 .ipo-top-btn{position: fixed; right: 16px; bottom: 96px; z-index: 1201; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--liquid-border); background: var(--liquid-bar-bg); backdrop-filter: blur(12px); color: var(--text); font-size: 18px; cursor: pointer; box-shadow: var(--liquid-shadow);}
+
+/* v44 — modal overflow lock, chart window controls, IPO mode, terms modal */
+/* Lock every modal to the viewport: zero horizontal scroll, ever */
+.modal{position: fixed !important; inset: 0 !important; width: 100vw !important; max-width: 100vw !important; overflow-x: hidden !important;}
+.modal-card{width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; overflow-x: hidden !important; margin: 0 auto !important;}
+#stockModal .modal-card{padding: 16px 14px 28px;}
+#stockModal .lw-bar.ta-bar{flex-wrap: wrap; min-width: 0;}
+#taTfSeg, #taModeSeg, #taIndSeg{max-width: 100%;}
+@media (max-width: 760px){
+  #stockModal .lw-bar.ta-bar{flex-direction: column; align-items: stretch;}
+  .modal-timeframe-bar{display: grid !important; grid-template-columns: repeat(5, minmax(0, 1fr)) !important; gap: 6px !important; width: 100% !important; box-sizing: border-box !important; margin-bottom: 4px !important;}
+  .modal-chart-type-bar{display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px !important; width: 100% !important; box-sizing: border-box !important;}
+  .modal-indicator-bar{display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 6px !important; width: 100% !important; box-sizing: border-box !important;}
+  .modal-timeframe-bar button, .modal-chart-type-bar button, .modal-indicator-bar button{width: 100% !important; min-width: 0 !important; padding: 8px 4px !important; font-size: 12px !important; font-weight: 700 !important; text-align: center !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; box-sizing: border-box !important;}
+  .modal-chart-type-bar button, .modal-indicator-bar button{display: inline-flex; align-items: center; justify-content: center; gap: 5px;}
+}
+#taHud{width: 100% !important; box-sizing: border-box !important; font-size: 12px !important; line-height: 1.45 !important; word-break: break-word !important; white-space: normal !important; padding: 6px 8px !important; border-radius: 8px !important; background: var(--liquid-inner-card-bg) !important; margin-bottom: 8px !important;}
+.ta-live-pill{position: absolute; top: 8px; right: 60px; z-index: 3; font-size: 10.5px; font-weight: 800; letter-spacing: .02em; padding: 4px 9px; border-radius: 999px; background: var(--liquid-bar-bg); border: 1px solid var(--liquid-border); color: var(--liquid-text-primary, var(--text)); pointer-events: none;}
+.ta-live-pill.preview{color: #f59e0b;}
+.ta-zoom{position: absolute; top: 8px; left: 8px; z-index: 3; display: flex; gap: 4px; background: var(--liquid-bar-bg); border: 1px solid var(--liquid-border); border-radius: 999px; padding: 3px;}
+.ta-zoom button{width: 26px; height: 26px; border-radius: 50%; border: none; background: transparent; color: var(--liquid-text-primary, var(--text)); font-size: 11px; cursor: pointer; line-height: 1;}
+.ta-zoom button:hover{background: var(--liquid-active-pill);}
+body.ipo-mode-active .top-liquid-nav-strip, body.ipo-mode-active #tickerWrap{display: none !important;}
+.terms-card{max-width: 760px !important;}
+.terms-body{max-height: 62vh; overflow-y: auto; padding-right: 4px;}
+.terms-body section{margin-bottom: 14px;}
+.terms-body h4{margin: 0 0 5px; font-size: 14px;}
+.terms-body p{font-size: 13px; line-height: 1.65; margin: 0;}
+.terms-foot{display: flex; justify-content: flex-end; margin-top: 12px;}
+.site-foot a[data-open-terms]{font-weight: 700;}

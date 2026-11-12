@@ -637,7 +637,7 @@ function renderHoldings() {
       <div class="hold-drawer" data-drawer="${esc(h.sym)}" data-avg="${h.avg}" data-ltp="${h.ltp === null ? "" : h.ltp}">
        <div class="drawer-inner">
         <div class="dr-block"><h4>Live Status</h4><div class="dr-status"><span class="muted small">Loading status…</span></div></div>
-        <div class="dr-block"><h4>Kab Kharida — Your Buy Lots</h4>${lotsHtml}<p class="dr-tax">${taxLine}</p></div>
+        <div class="dr-block"><h4>Purchase History — Your Buy Lots</h4>${lotsHtml}<p class="dr-tax">${taxLine}</p></div>
         <div class="dr-block"><h4>All Entries</h4>${txnHtml || '<p class="muted small">No entries.</p>'}</div>
         <div class="dr-block alerts"><h4>🔔 Price Alerts</h4>
           <div class="wi-row"><label>Target Price<input type="number" class="al-target" min="0" step="any" placeholder="₹ target" value="${alertCfg && alertCfg.target ? alertCfg.target : ""}"></label><label>Stop-Loss Price<input type="number" class="al-sl" min="0" step="any" placeholder="₹ stop-loss" value="${alertCfg && alertCfg.sl ? alertCfg.sl : ""}"></label></div>

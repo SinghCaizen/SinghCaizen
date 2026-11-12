@@ -24,7 +24,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Folio — A Singh Caizen Product","short_name":"Folio","display":"standalone","start_url":".","background_color":"%23000000","theme_color":"%23000000","icons":[]}'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=43">
+<link rel="stylesheet" href="css/style.css?v=44">
 </head>
 <body>
 
@@ -408,7 +408,7 @@
 
       <div id="ipoViewAll">
         <div class="panel">
-          <div class="seg ipo-cat-patti" id="ipoCatSeg"><button type="button" data-ipocat="mainline" class="seg-btn active">🏢 MainLine</button><button type="button" data-ipocat="sme" class="seg-btn">🏭 SME</button><button type="button" data-ipocat="allot" class="seg-btn">🎯 Allotment</button><button type="button" data-ipocat="watch" class="seg-btn">★ Watchlist</button><button type="button" data-ipocat="more" class="seg-btn">⋯ More</button></div>
+          <div class="seg ipo-cat-patti" id="ipoCatSeg"><button type="button" data-ipocat="mainline" class="seg-btn active">🏢 MainLine</button><button type="button" data-ipocat="sme" class="seg-btn">🏭 SME</button><button type="button" data-ipocat="allot" class="seg-btn">🎯 Allotment</button><button type="button" data-ipocat="watch" class="seg-btn">★ IPO Watchlist</button><button type="button" data-ipocat="more" class="seg-btn">⋯ Stats &amp; FAQs</button></div>
           <div class="seg seg-small ipo-sub-seg" id="ipoSubSeg"></div>
           <div class="ipo-filter-row">
             <div class="seg seg-small" id="ipoBoardSeg"><button type="button" data-ipoboard="ALL" class="seg-btn active">All</button><button type="button" data-ipoboard="MAINBOARD" class="seg-btn">Mainboard</button><button type="button" data-ipoboard="SME" class="seg-btn">SME</button></div>
@@ -611,14 +611,32 @@
       <div class="foot-links">
         <h4>Help</h4>
         <a href="#" id="footIssue">Report an Issue</a>
+        <a href="#" data-open-terms="1">🛡️ Terms, Conditions, Privacy &amp; Data Security</a>
         <a href="#" data-help="all">Know Your Numbers</a>
         <a href="#" data-foot-view="profile">Account &amp; Backup</a>
         <a href="https://singhcaizen.github.io/SinghCaizen/" target="_blank" rel="noopener"><span class="sc-brand">Singh Caizen</span> — Group Website</a>
       </div>
     </div>
-    <p class="foot-legal">Prices: free public data (Yahoo Finance), delayed by about 15 minutes and occasionally unavailable. For tracking only — not investment or tax advice. © Folio · A <span class="sc-brand">Singh Caizen</span> Product.</p>
+    <p class="foot-legal">Prices: free public data (Yahoo Finance), delayed by about 15 minutes and occasionally unavailable. For tracking only — not investment or tax advice. <a href="#" data-open-terms="1">🛡️ Terms, Conditions, Privacy &amp; Data Security</a> · © Folio · A <span class="sc-brand">Singh Caizen</span> Product.</p>
   </footer>
 </div>
+<!-- ============ TERMS, PRIVACY & SECURITY MODAL ============ -->
+<div id="termsModal" class="modal hidden">
+  <div class="modal-card modal-wide terms-card">
+    <div class="modal-head"><h3>🛡️ Terms, Conditions, Privacy &amp; Data Security</h3><button class="icon-btn modal-close-btn" data-close-terms="1" type="button" aria-label="Close">✕</button></div>
+    <div class="terms-body">
+      <section><h4>1. Encryption &amp; Your Encrypted Vault</h4><p>Your exported <b>.folio vault backup</b> is protected with the browser's native Web Crypto API: <b>AES-256-GCM</b> encryption with keys derived via <b>PBKDF2-SHA256 at 250,000 iterations</b> and a unique cryptographic salt. Without your passphrase or your 12-word recovery seed phrase, that file is unreadable to anyone — any third party, database administrator, or external observer. When you use cloud sync, your records travel over HTTPS and are stored in Google Firebase under security rules that restrict your data to <b>your own signed-in account only</b>. Folio's team cannot browse your portfolio.</p></section>
+      <section><h4>2. Multi-Layer Account Protection (2FA &amp; Seed Phrase)</h4><p>Optional Two-Factor Authentication (compatible with Google Authenticator, Microsoft Authenticator and Authy) locks your account behind a time-based 6-digit code. It is backed by a client-side encrypted <b>12-word seed phrase</b> and single-use recovery codes, plus an automatic <b>15-minute inactivity lock</b>. Enable it any time in My Profile → Security.</p></section>
+      <section><h4>3. No Broker, No Bank, No Middlemen — Guaranteed</h4><p>Folio (A Singh Caizen Product) is an independent, privacy-first record-keeping and analytics terminal. It <b>never connects to your demat account, stockbroker, or bank account</b>, and it will never ask for your broker login credentials, MPIN, TPIN, bank account numbers, or UPI PINs. Every entry in Folio is typed in by you, manually.</p></section>
+      <section><h4>4. Zero Data Selling, Zero Ad Tracking</h4><p>Your data is <b>never sold, rented, or shared with advertisers</b>, and Folio carries no external marketing trackers. Your personal portfolio stays 100% private to you.</p></section>
+      <section><h4>5. Your Data, Your Ownership — Export &amp; Erasure</h4><p>You retain 100% control of your records at all times. Export your complete transaction history as a standard <b>.csv</b> file, or as an encrypted <b>.folio</b> vault backup, with one tap. You can permanently delete your cloud account and all associated records instantly from <b>My Profile → Danger Zone</b>, and clear all on-device data from your browser at any time.</p></section>
+      <section><h4>6. Market Data &amp; IPO Information Disclaimer</h4><p>Equity quotes, index levels, historical charts, corporate actions, news feeds and IPO tracker metrics (Mainboard &amp; SME schedules, subscription figures and market indicators) are aggregated from <b>free public sources</b> and may be delayed by approximately <b>15 minutes</b> or occasionally unavailable. They are provided strictly for personal portfolio tracking and educational study — not for real-time execution. Always verify IPO details on NSE/BSE and the registrar before applying.</p></section>
+      <section><h4>7. Terms of Use — No Financial or Tax Advice</h4><p>Folio — A Singh Caizen Product is a self-directed financial analytics and record-keeping software tool. Nothing displayed — including Portfolio Scores, technical indicators (RSI, EMA, SMA, Support/Resistance), tax estimates (STCG/LTCG calculations) or IPO metrics — constitutes investment, legal or tax advice. Always consult a <b>SEBI-registered investment adviser</b> or a qualified chartered accountant before making investment or tax decisions.</p></section>
+    </div>
+    <div class="terms-foot"><button class="btn btn-gold" data-close-terms="1" type="button">Got It, Understood</button></div>
+  </div>
+</div>
+
 
 <!-- ============ ADD TRANSACTION PANEL (MoneyControl-style) ============ -->
 <div id="txnModal" class="modal hidden">
@@ -660,15 +678,14 @@
     <div class="modal-head"><div><h3 id="stockTitle">—</h3><span id="stockName" class="hold-name"></span></div><button id="stockClose" class="icon-btn modal-close-btn" data-close-modal="1" type="button" aria-label="Close">✕</button></div>
     <div id="taWrap" class="hidden">
       <div class="lw-bar ta-bar">
-        <div class="seg seg-small" id="taTfSeg"><button type="button" data-takind="intra" data-range="5d" data-interval="5m" class="seg-btn">5m</button><button type="button" data-takind="intra" data-range="1mo" data-interval="15m" class="seg-btn">15m</button><button type="button" data-takind="intra" data-range="3mo" data-interval="60m" class="seg-btn">1H</button><button type="button" data-tadays="7" class="seg-btn">1W</button><button type="button" data-tadays="30" class="seg-btn">1M</button><button type="button" data-tadays="91" class="seg-btn">3M</button><button type="button" data-tadays="182" class="seg-btn">6M</button><button type="button" data-tadays="365" class="seg-btn active">1Y</button><button type="button" data-takind="long" data-range="5y" data-interval="1wk" class="seg-btn">5Y</button><button type="button" data-takind="long" data-range="max" data-interval="1mo" class="seg-btn">MAX</button></div>
+        <div class="seg seg-small modal-timeframe-bar" id="taTfSeg"><button type="button" data-takind="intra" data-range="5d" data-interval="5m" class="seg-btn">5m</button><button type="button" data-takind="intra" data-range="1mo" data-interval="15m" class="seg-btn">15m</button><button type="button" data-takind="intra" data-range="3mo" data-interval="60m" class="seg-btn">1H</button><button type="button" data-tadays="7" class="seg-btn">1W</button><button type="button" data-tadays="30" class="seg-btn">1M</button><button type="button" data-tadays="91" class="seg-btn">3M</button><button type="button" data-tadays="182" class="seg-btn">6M</button><button type="button" data-tadays="365" class="seg-btn active">1Y</button><button type="button" data-takind="long" data-range="5y" data-interval="1wk" class="seg-btn">5Y</button><button type="button" data-takind="long" data-range="max" data-interval="1mo" class="seg-btn">MAX</button></div>
       </div>
       <div class="lw-bar ta-bar">
-        <div class="seg seg-small" id="taModeSeg"><button type="button" data-ta="candles" class="seg-btn active">🕯️ Candles</button><button type="button" data-ta="area" class="seg-btn">📈 Area</button><button type="button" data-ta="bars" class="seg-btn">📊 Bars</button></div>
-        <div class="seg seg-small" id="taIndSeg"><button type="button" data-taind="ema" class="seg-btn active">20 EMA</button><button type="button" data-taind="sma" class="seg-btn active">200 SMA</button><button type="button" data-taind="bb" class="seg-btn">Bollinger</button><button type="button" data-taind="sr" class="seg-btn active">S/R Levels</button><button type="button" data-taind="trades" class="seg-btn active">My Trades</button><button type="button" data-taind="measure" class="seg-btn">📏 Measure</button></div>
+        <div class="seg seg-small modal-chart-type-bar" id="taModeSeg"><button type="button" data-ta="candles" class="seg-btn active"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 4v3M7 15v3M17 2v4M17 14v4"/><rect x="4.5" y="7" width="5" height="8" rx="1"/><rect x="14.5" y="6" width="5" height="8" rx="1"/></svg> Candles</button><button type="button" data-ta="area" class="seg-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 19 L8 10 L13 13 L21 5"/><path d="M3 19 L8 10 L13 13 L21 5 V19 Z" fill="currentColor" opacity=".22" stroke="none"/></svg> Area</button><button type="button" data-ta="bars" class="seg-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3v18M6 8h4M6 15H2M13 5v14M13 10h4M13 17H9M20 2v16M20 7h-4"/></svg> Bars</button></div>
+        <div class="seg seg-small modal-indicator-bar" id="taIndSeg"><button type="button" data-taind="ema" class="seg-btn active">20 EMA</button><button type="button" data-taind="sma" class="seg-btn active">200 SMA</button><button type="button" data-taind="bb" class="seg-btn">Bollinger</button><button type="button" data-taind="sr" class="seg-btn active">S/R Levels</button><button type="button" data-taind="trades" class="seg-btn active">My Trades</button><button type="button" data-taind="measure" class="seg-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2.5" y="9" width="19" height="6" rx="1"/><path d="M6.5 9v3M10.5 9v3M14.5 9v3M18.5 9v3"/></svg> Measure</button></div>
       </div>
       <div id="taHud" class="ta-hud">Drag on the chart to inspect any day</div>
-      <div class="ta-stack"><canvas id="taCanvas"></canvas><canvas id="taOverlay"></canvas></div>
-      <div id="taNote" class="price-meta"></div>
+      <div class="ta-stack"><canvas id="taCanvas"></canvas><canvas id="taOverlay"></canvas><div id="taLivePill" class="ta-live-pill loading">◌ Loading chart…</div><div class="ta-zoom"><button type="button" data-tazoom="in" title="Zoom in">➕</button><button type="button" data-tazoom="out" title="Zoom out">➖</button><button type="button" data-tazoom="left" title="Pan left">◀</button><button type="button" data-tazoom="right" title="Pan right">▶</button><button type="button" data-tazoom="reset" title="Reset view">↺</button></div></div>
       <div id="taVerdict" class="stat-chips"></div>
     </div>
     <div id="lwBar" class="lw-bar hidden">
@@ -859,8 +876,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/firebase-config.js?v=6"></script>
 <script src="js/stocks.js?v=23"></script>
-<script src="js/app.js?v=38"></script>
+<script src="js/app.js?v=44"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/features.js?v=42"></script>
+<script src="js/features.js?v=44"></script>
 </body>
 </html>

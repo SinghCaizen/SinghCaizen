@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v42";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v44";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2462,7 +2462,7 @@ openStock = function (sym) {
     taState.bars = []; taState._calc = null; taState.sym = activeModalSymbol;
     taState.cross = -1; taState.mA = -1; taState.mB = -1; taState.preview = false;
     ["taCanvas", "taOverlay"].forEach(id => { const cv = $(id); if (cv) { const w = cv.width; cv.width = 0; cv.width = w; } });
-    const nt = $("taNote"); if (nt) nt.textContent = "Loading chart data…";
+    taState.view = null; taPill("loading");
     const vd = $("taVerdict"); if (vd) vd.innerHTML = "";
     const hd = $("taHud"); if (hd) hd.textContent = "Drag on the chart to inspect any day";
   } catch (e) {}
@@ -2729,7 +2729,7 @@ setInterval(() => { try { ensureWatchlists(); } catch (e) {} }, 1500);
    strict per-symbol isolation, indicators computed once per data load.
    ===================================================================== */
 let activeModalSymbol = null;
-const taState = { mode: "candles", tf: { kind: "days", days: 365, range: "", interval: "" }, ema: true, sma: true, bb: false, sr: true, trades: true, measure: false, bars: [], sym: "", preview: false, cross: -1, mA: -1, mB: -1, _calc: null, trySym: "", tries: 0 };
+const taState = { view: null, mode: "candles", tf: { kind: "days", days: 365, range: "", interval: "" }, ema: true, sma: true, bb: false, sr: true, trades: true, measure: false, bars: [], sym: "", preview: false, cross: -1, mA: -1, mB: -1, _calc: null, trySym: "", tries: 0 };
 let taToken = 0;
 function taSeedRand(seed) { let x = seed % 2147483647; if (x <= 0) x += 2147483646; return () => (x = x * 16807 % 2147483647) / 2147483647; }
 function taSynthetic(sym) {
@@ -2824,7 +2824,7 @@ async function renderTA() {
     if (c && c.bars && c.bars.length > 1) bars = c.bars;
   }
   if (bars && bars.length) { taState.bars = bars; taState.preview = preview; taDraw(); }
-  else { const nt = $("taNote"); if (nt && !preview) nt.textContent = "Loading chart data…"; }
+  else if (!preview) taPill("loading");
   try {
     let real = null;
     if (tf.kind === "days") { const m = await fetchMaster(sym); if (m && m.ohlc && m.ohlc.length > 5) real = m.ohlc; }
@@ -2834,7 +2834,7 @@ async function renderTA() {
     throw new Error("empty");
   } catch (e) {
     if (tok !== taToken || activeModalSymbol !== sym) return;
-    if (preview) { const nt = $("taNote"); if (nt) nt.textContent = "Estimated preview shown — the free history feed did not answer. The live price above is real."; }
+    if (preview) taPill("preview");
     else if (!taState.bars.length) {
       if (taState.trySym !== sym + tf.range) { taState.trySym = sym + tf.range; taState.tries = 0; }
       if (taState.tries < 3) { taState.tries++; setTimeout(() => { if (baseTicker(stockSym) === sym) { try { renderTA(); } catch (e2) {} } }, 3000); }
@@ -2855,6 +2855,22 @@ function taLevels() {
   lv.push({ v: hi, t: "52W H" }, { v: lo, t: "52W L" });
   return lv;
 }
+function taPill(mode) {
+  const p = $("taLivePill"); if (!p) return;
+  if (mode === "live") { p.textContent = "🟢 Live NSE Chart"; p.className = "ta-live-pill live"; }
+  else if (mode === "preview") { p.textContent = "🟡 Estimated Preview"; p.className = "ta-live-pill preview"; }
+  else { p.textContent = "◌ Loading chart…"; p.className = "ta-live-pill loading"; }
+}
+function taSetView(start, count) {
+  const c = taState._calc; if (!c) return;
+  count = Math.max(10, Math.min(c.fullN, Math.round(count)));
+  start = Math.max(0, Math.min(c.fullN - count, Math.round(start)));
+  taState.view = { start: start, count: count }; taState.cross = -1;
+  taDraw();
+}
+function taZoom(f) { const c = taState._calc; if (!c) return; const end = c.vfrom + c.vcount; const count = c.vcount * f; taSetView(end - count, count); }
+function taPan(d) { const c = taState._calc; if (!c) return; taSetView(c.vfrom + d * Math.max(1, Math.round(c.vcount * 0.25)), c.vcount); }
+function taResetView() { taState.view = null; taState.cross = -1; taDraw(); }
 function taPrepare() {
   const all = taState.bars;
   if (!all.length) { taState._calc = null; return null; }
@@ -2870,20 +2886,27 @@ function taPrepare() {
   let from = 0;
   const days = taState.tf.kind === "days" ? taState.tf.days : 0;
   if (days > 0) { const cutoff = all[all.length - 1].t - days * 86400000; from = all.findIndex(b => b.t >= cutoff); if (from < 0) from = 0; }
-  const bars = all.slice(from);
+  const full = all.slice(from);
+  const fullN = full.length;
+  if (fullN < 2) { taState._calc = null; return null; }
+  let vcount, vfrom;
+  if (taState.view) { vcount = Math.max(10, Math.min(fullN, taState.view.count)); vfrom = Math.max(0, Math.min(fullN - vcount, taState.view.start)); }
+  else { vcount = Math.min(fullN, window.innerWidth >= 1024 ? 110 : 65); vfrom = fullN - vcount; }
+  const bars = full.slice(vfrom, vfrom + vcount);
   const N = bars.length;
-  if (N < 2) { taState._calc = null; return null; }
+  const gfrom = from + vfrom;
   const wrap = $("taWrap");
   const W = Math.max(280, (wrap ? wrap.clientWidth : 320) - 4);
   const H = window.innerWidth <= 768 ? 360 : 410;
-  const priceH = Math.round(H * 0.58), volTop = priceH + 6, volH = Math.round(H * 0.11), rsiTop = volTop + volH + 10, rsiH = H - rsiTop - 16;
+  const PL = 6, PR = 52, PB = 22;
+  const priceH = Math.round((H - PB) * 0.58), volTop = priceH + 6, volH = Math.round((H - PB) * 0.11), rsiTop = volTop + volH + 10, rsiH = H - PB - rsiTop - 2;
   let mn = Infinity, mx = -Infinity, vmax = 0;
   bars.forEach(b => { mn = Math.min(mn, b.l); mx = Math.max(mx, b.h); vmax = Math.max(vmax, b.v || 0); });
-  if (taState.bb) for (let i = 0; i < N; i++) { const gi = from + i; if (sd20[gi] !== null) { mx = Math.max(mx, sma20[gi] + 2 * sd20[gi]); mn = Math.min(mn, sma20[gi] - 2 * sd20[gi]); } }
+  if (taState.bb) for (let i = 0; i < N; i++) { const gi = gfrom + i; if (sd20[gi] !== null) { mx = Math.max(mx, sma20[gi] + 2 * sd20[gi]); mn = Math.min(mn, sma20[gi] - 2 * sd20[gi]); } }
   const pad = (mx - mn) * 0.06 || 1; mx += pad; mn -= pad;
-  const calc = { all: all, bars: bars, from: from, N: N, W: W, H: H, priceH: priceH, volTop: volTop, volH: volH, rsiTop: rsiTop, rsiH: rsiH, mn: mn, mx: mx, vmax: vmax, step: (W - 8) / N, ema: ema, sma: sma, sma20: sma20, sd20: sd20, rsi: rsi };
+  const calc = { all: all, bars: bars, from: from, gfrom: gfrom, vfrom: vfrom, vcount: vcount, fullN: fullN, N: N, W: W, H: H, PL: PL, PR: PR, PB: PB, priceH: priceH, volTop: volTop, volH: volH, rsiTop: rsiTop, rsiH: rsiH, mn: mn, mx: mx, vmax: vmax, step: (W - PL - PR) / N, ema: ema, sma: sma, sma20: sma20, sd20: sd20, rsi: rsi };
   calc.Y = v => calc.priceH - (v - calc.mn) / (calc.mx - calc.mn) * calc.priceH;
-  calc.X = i => i * calc.step + calc.step / 2;
+  calc.X = i => PL + i * calc.step + calc.step / 2;
   taState._calc = calc;
   return calc;
 }
@@ -2892,9 +2915,7 @@ function taDraw() {
   if (!calc) return;
   taDrawBase(calc);
   taDrawOverlay();
-  const note = $("taNote");
-  if (note && !taState.preview) note.textContent = new Date(calc.bars[0].t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " → " + new Date(calc.bars[calc.N - 1].t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " · " + calc.N + (taState.tf.kind === "days" ? " days" : " bars") + " · free data";
-  if (note && taState.preview) note.textContent = "Estimated preview (anchored to the live price) — real history is loading in the background.";
+  taPill(taState.preview ? "preview" : "live");
   taVerdict(calc);
 }
 function taDrawBase(calc) {
@@ -2909,16 +2930,18 @@ function taDrawBase(calc) {
   const bars = calc.bars, N = calc.N, from = calc.from, Y = calc.Y, X = calc.X;
   ctx.clearRect(0, 0, calc.W, calc.H);
   ctx.strokeStyle = C.line; ctx.fillStyle = C.muted; ctx.font = "10px system-ui"; ctx.lineWidth = 1;
-  for (let g = 0; g <= 3; g++) { const v = calc.mn + (calc.mx - calc.mn) * g / 3, y = Y(v); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(calc.W, y); ctx.stroke(); ctx.fillText("₹" + Math.round(v).toLocaleString("en-IN"), 4, Math.max(10, y - 3)); }
+  ctx.textAlign = "left";
+  for (let g = 0; g <= 4; g++) { const v = calc.mn + (calc.mx - calc.mn) * g / 4, y = Y(v); ctx.beginPath(); ctx.moveTo(calc.PL, y); ctx.lineTo(calc.W - calc.PR, y); ctx.stroke(); ctx.fillText("₹" + (Math.round(v * 100) / 100).toLocaleString("en-IN"), calc.W - calc.PR + 6, Math.max(10, y + 3)); }
+  ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(calc.W - calc.PR, 0); ctx.lineTo(calc.W - calc.PR, calc.rsiTop + calc.rsiH); ctx.stroke();
   const line = (series, color, width) => {
     ctx.strokeStyle = color; ctx.lineWidth = width || 1.4; ctx.beginPath(); let started = false;
-    for (let i = 0; i < N; i++) { const v = series[from + i]; if (v === null || v === undefined) continue; const x = X(i), y = Y(v); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }
+    for (let i = 0; i < N; i++) { const v = series[calc.gfrom + i]; if (v === null || v === undefined) continue; const x = X(i), y = Y(v); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }
     ctx.stroke();
   };
   if (taState.bb) {
     ctx.fillStyle = "rgba(120,144,180,0.10)"; ctx.beginPath(); let started = false;
-    for (let i = 0; i < N; i++) { const gi = from + i; if (calc.sd20[gi] === null) continue; const x = X(i), y = Y(calc.sma20[gi] + 2 * calc.sd20[gi]); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }
-    for (let i = N - 1; i >= 0; i--) { const gi = from + i; if (calc.sd20[gi] === null) continue; ctx.lineTo(X(i), Y(calc.sma20[gi] - 2 * calc.sd20[gi])); }
+    for (let i = 0; i < N; i++) { const gi = calc.gfrom + i; if (calc.sd20[gi] === null) continue; const x = X(i), y = Y(calc.sma20[gi] + 2 * calc.sd20[gi]); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }
+    for (let i = N - 1; i >= 0; i--) { const gi = calc.gfrom + i; if (calc.sd20[gi] === null) continue; ctx.lineTo(X(i), Y(calc.sma20[gi] - 2 * calc.sd20[gi])); }
     ctx.closePath(); ctx.fill();
   }
   const bw = Math.max(1, Math.floor(calc.step * 0.68));
@@ -2957,7 +2980,7 @@ function taDrawBase(calc) {
       const y = Y(L.v);
       ctx.strokeStyle = "rgba(150,160,175,0.5)"; ctx.setLineDash([5, 4]);
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(calc.W, y); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = C.muted; ctx.fillText(L.t + " ₹" + Math.round(L.v).toLocaleString("en-IN"), calc.W - 118, y - 3);
+      ctx.fillStyle = C.muted; ctx.fillText(L.t + " ₹" + Math.round(L.v).toLocaleString("en-IN"), Math.max(calc.PL + 2, calc.W - calc.PR - 122), y - 3);
     });
   }
   bars.forEach((b, i) => {
@@ -2971,7 +2994,7 @@ function taDrawBase(calc) {
   const rsiY = v => calc.rsiTop + calc.rsiH - (v / 100) * calc.rsiH;
   [30, 70].forEach(v => { ctx.strokeStyle = "rgba(150,160,175,0.4)"; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(0, rsiY(v)); ctx.lineTo(calc.W, rsiY(v)); ctx.stroke(); ctx.setLineDash([]); });
   ctx.strokeStyle = "#a78bfa"; ctx.lineWidth = 1.3; ctx.beginPath(); let rs0 = false;
-  for (let i = 0; i < N; i++) { const v = calc.rsi[from + i]; if (v === null) continue; const x = X(i), y = rsiY(v); if (!rs0) { ctx.moveTo(x, y); rs0 = true; } else ctx.lineTo(x, y); }
+  for (let i = 0; i < N; i++) { const v = calc.rsi[calc.gfrom + i]; if (v === null) continue; const x = X(i), y = rsiY(v); if (!rs0) { ctx.moveTo(x, y); rs0 = true; } else ctx.lineTo(x, y); }
   ctx.stroke();
   if (taState.trades) {
     try {
@@ -2990,6 +3013,26 @@ function taDrawBase(calc) {
       });
     } catch (e) {}
   }
+  // bottom date axis — 5 clean ticks across the visible window
+  ctx.fillStyle = C.muted; ctx.font = "9.5px system-ui"; ctx.textAlign = "center";
+  const intra = taState.tf.kind === "intra";
+  for (let k = 0; k < 5; k++) {
+    const i = Math.round(k * (N - 1) / 4), b = bars[i]; if (!b) continue;
+    const d = new Date(b.t);
+    const lbl = intra ? d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false }) : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    ctx.fillText(lbl, Math.max(18, Math.min(calc.W - calc.PR - 14, X(i))), calc.H - 7);
+  }
+  ctx.textAlign = "left";
+  // live price tag pill on the right axis (TradingView-style)
+  const lastB = bars[N - 1], prevB = bars[N - 2];
+  if (lastB) {
+    const ty = Math.max(8, Math.min(calc.priceH - 8, Y(lastB.c)));
+    ctx.fillStyle = prevB && lastB.c < prevB.c ? C.loss : C.gain;
+    ctx.beginPath(); ctx.roundRect(calc.W - calc.PR + 1, ty - 8, calc.PR - 3, 16, 4); ctx.fill();
+    ctx.fillStyle = "#fff"; ctx.font = "bold 9.5px system-ui"; ctx.textAlign = "center";
+    ctx.fillText("₹" + (Math.round(lastB.c * 100) / 100).toLocaleString("en-IN"), calc.W - calc.PR + calc.PR / 2, ty + 3.5);
+    ctx.textAlign = "left";
+  }
 }
 function taDrawOverlay() {
   const overlay = $("taOverlay"), calc = taState._calc;
@@ -3001,7 +3044,7 @@ function taDrawOverlay() {
   const cs = getComputedStyle(document.documentElement);
   const text = cs.getPropertyValue("--text").trim() || "#eee";
   if (taState.mA >= 0 && taState.mB >= 0 && taState.mA !== taState.mB) {
-    const a = taState.mA - calc.from, b2 = taState.mB - calc.from;
+    const a = taState.mA - calc.gfrom, b2 = taState.mB - calc.gfrom;
     if (a >= 0 && b2 >= 0 && a < calc.N && b2 < calc.N) {
       ctx.strokeStyle = text; ctx.lineWidth = 1.4;
       ctx.beginPath(); ctx.moveTo(calc.X(a), calc.Y(calc.all[taState.mA].c)); ctx.lineTo(calc.X(b2), calc.Y(calc.all[taState.mB].c)); ctx.stroke();
@@ -3052,17 +3095,32 @@ function taVerdict(calc) {
     if (k === "measure") { taState.measure = !taState.measure; taState.mA = -1; taState.mB = -1; b.classList.toggle("active", taState.measure); const hud = $("taHud"); if (hud) hud.textContent = taState.measure ? "Measure: tap two points on the chart" : "Drag on the chart to inspect any day"; taDrawOverlay(); return; }
     taState[k] = !taState[k]; b.classList.toggle("active", taState[k]); taDraw();
   });
-  const pos = ev => { const r = overlay.getBoundingClientRect(); const c = taState._calc; if (!c) return -1; const x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left; const i = Math.floor(x / c.step); return Math.max(0, Math.min(c.N - 1, i)); };
+  const pos = ev => { const r = overlay.getBoundingClientRect(); const c = taState._calc; if (!c) return -1; const x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left; const i = Math.floor((x - c.PL) / c.step); return Math.max(0, Math.min(c.N - 1, i)); };
   const hud = idx => {
     const c = taState._calc, h = $("taHud");
     if (!c || !h || idx < 0) return;
-    const b = c.bars[idx], gi = c.from + idx;
+    const b = c.bars[idx], gi = c.gfrom + idx;
     h.textContent = new Date(b.t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " · O " + inr2(b.o) + " · H " + inr2(b.h) + " · L " + inr2(b.l) + " · C " + inr2(b.c) + " · RSI " + (c.rsi[gi] !== null && c.rsi[gi] !== undefined ? c.rsi[gi].toFixed(1) : "—") + " · EMA20 " + (c.ema[gi] ? inr2(c.ema[gi]) : "—");
   };
+  document.querySelectorAll("[data-tazoom]").forEach(b => b.addEventListener("click", () => {
+    const a = b.dataset.tazoom;
+    if (a === "in") taZoom(0.7); else if (a === "out") taZoom(1.45);
+    else if (a === "left") taPan(-1); else if (a === "right") taPan(1);
+    else if (a === "reset") taResetView();
+  }));
+  overlay.addEventListener("wheel", ev => { ev.preventDefault(); taZoom(ev.deltaY < 0 ? 0.85 : 1.18); }, { passive: false });
+  const pointers = new Map(); let pinch0 = null;
+  overlay.addEventListener("pointerdown", ev => { pointers.set(ev.pointerId, ev.clientX); if (pointers.size === 2) { const xs = [...pointers.values()]; const c = taState._calc; pinch0 = { d: Math.abs(xs[0] - xs[1]) || 1, start: c ? c.vfrom : 0, count: c ? c.vcount : 65 }; dragging = false; } });
+  overlay.addEventListener("pointermove", ev => {
+    if (!pointers.has(ev.pointerId)) return;
+    pointers.set(ev.pointerId, ev.clientX);
+    if (pointers.size === 2 && pinch0) { const xs = [...pointers.values()]; const d = Math.abs(xs[0] - xs[1]) || 1; taSetView(pinch0.start + pinch0.count - pinch0.count * pinch0.d / d, pinch0.count * pinch0.d / d); }
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(t => overlay.addEventListener(t, ev => { pointers.delete(ev.pointerId); if (pointers.size < 2) pinch0 = null; }));
   let dragging = false, rafPending = false;
   overlay.addEventListener("pointerdown", ev => {
     const idx = pos(ev); if (idx < 0) return;
-    const c = taState._calc, gi = c.from + idx;
+    const c = taState._calc, gi = c.gfrom + idx;
     if (taState.measure) {
       if (taState.mA < 0 || (taState.mA >= 0 && taState.mB >= 0)) { taState.mA = gi; taState.mB = -1; }
       else { taState.mB = gi; const A = taState.bars[taState.mA], B = taState.bars[taState.mB]; const h = $("taHud"); if (h && A && B) h.textContent = "Measured: " + inr2(A.c) + " → " + inr2(B.c) + " · " + (B.c - A.c >= 0 ? "+" : "") + inr(B.c - A.c) + " (" + pct((B.c - A.c) / A.c * 100) + ") · " + Math.abs(taState.mB - taState.mA) + " bars/days"; }
@@ -3570,8 +3628,8 @@ function wireIpo() {
   if (pan) { pan.value = vault.pan || ""; pan.addEventListener("input", () => { const v = ipoVault(); v.pan = pan.value.trim().toUpperCase(); localStorage.setItem("folio_ipo_vault", JSON.stringify(v)); }); }
   if (dp) { dp.value = vault.dp || ""; dp.addEventListener("input", () => { const v = ipoVault(); v.dp = dp.value.trim(); localStorage.setItem("folio_ipo_vault", JSON.stringify(v)); }); }
   if (upiSel) { if (vault.upi) upiSel.value = vault.upi; upiSel.addEventListener("change", () => { const v = ipoVault(); v.upi = upiSel.value; localStorage.setItem("folio_ipo_vault", JSON.stringify(v)); }); }
-  const cp = $("ipoCopyPan"); if (cp) cp.addEventListener("click", () => { const v = ipoVault(); if (!v.pan) { toast("Pehle PAN likh kar save karo (auto-save hota hai)"); return; } if (navigator.clipboard) navigator.clipboard.writeText(v.pan).then(() => toast("📋 PAN copied")); });
-  const cd = $("ipoCopyDp"); if (cd) cd.addEventListener("click", () => { const v = ipoVault(); if (!v.dp) { toast("Pehle DP / Client ID likho (auto-save hota hai)"); return; } if (navigator.clipboard) navigator.clipboard.writeText(v.dp).then(() => toast("📋 DP ID copied")); });
+  const cp = $("ipoCopyPan"); if (cp) cp.addEventListener("click", () => { const v = ipoVault(); if (!v.pan) { toast("Please enter your PAN first (it saves automatically as you type)"); return; } if (navigator.clipboard) navigator.clipboard.writeText(v.pan).then(() => toast("📋 PAN copied")); });
+  const cd = $("ipoCopyDp"); if (cd) cd.addEventListener("click", () => { const v = ipoVault(); if (!v.dp) { toast("Please enter your DP / Client ID first (it saves automatically as you type)"); return; } if (navigator.clipboard) navigator.clipboard.writeText(v.dp).then(() => toast("📋 DP ID copied")); });
 }
 async function loadIpoBuzz() {
   const w = $("ipoBuzz"); if (!w) return;
@@ -3589,4 +3647,12 @@ async function loadIpoBuzz() {
 }
 wireIpo();
 const _switchViewIpo2 = switchView;
-switchView = function (v) { _switchViewIpo2(v); if (v === "ipo") renderIpo(); };
+switchView = function (v) { _switchViewIpo2(v); document.body.classList.toggle("ipo-mode-active", v === "ipo"); if (v === "ipo") renderIpo(); };
+
+/* ---------- Terms, Privacy & Security modal ---------- */
+(function wireTerms() {
+  const m = $("termsModal"); if (!m) return;
+  document.querySelectorAll("[data-open-terms]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); m.classList.remove("hidden"); }));
+  m.querySelectorAll("[data-close-terms]").forEach(b => b.addEventListener("click", () => m.classList.add("hidden")));
+  m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); });
+})();
