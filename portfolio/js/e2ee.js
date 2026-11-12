@@ -54,8 +54,9 @@ async function e2eeBuildPayload(stateObj) {
 }
 function e2eeActivate() { window.__e2eeActive = !!E2.dek; }
 function e2eeLock() {
-  E2.dek = null; E2.wraps = null; E2.pendingDoc = null; E2.pendingUser = null; E2.lastDoc = null;
+  E2.dek = null; E2.wraps = null; E2.pendingDoc = null; E2.pendingUser = null; E2.lastDoc = null; E2.setupFor = "";
   window.__pendingPass = undefined; e2eeActivate();
+  try { sessionStorage.removeItem("folio_e2ee_later"); } catch (e) {}
 }
 window.e2eeLock = e2eeLock;
 window.e2eeNeedsUnlock = function () { return !!(E2.pendingDoc && !E2.dek); };
@@ -149,6 +150,7 @@ function e2eeShowUnlock() {
     if (!ok) { if (!err.textContent) err.textContent = "That did not unlock your data. Check it and try again — nothing is deleted by trying."; return; }
     m.classList.add("hidden");
     await e2eeFinish();
+    e2eeSecRefresh();
   });
 }
 window.e2eeShowUnlock = e2eeShowUnlock;
@@ -251,6 +253,60 @@ async function e2eeCommitSetup(user, gen) {
     return false;
   }
 }
+async function e2eeUnwrapRaw(wrap, secret) {
+  try { const kek = await e2eeKek(secret, wrap.salt); return await aesDec(kek, { iv: wrap.iv, data: wrap.data }); } catch (e) { return null; }
+}
+function e2eeShowRelink() {
+  let m = $("e2eeRelink");
+  if (m) { m.classList.remove("hidden"); return; }
+  m = document.createElement("div");
+  m.id = "e2eeRelink"; m.className = "modal";
+  m.innerHTML = '<div class="modal-card"><div class="modal-head"><h3>🔐 Re-link password unlock</h3><button class="icon-btn" id="e2eeRelinkX" type="button">✕</button></div>' +
+    '<p class="muted">Use this after a password reset: prove the vault seed phrase once, then set the password that will unlock Folio directly.</p>' +
+    '<label class="fld">12-word vault seed phrase<textarea id="e2eeRelinkSeed" rows="3"></textarea></label>' +
+    '<label class="fld">Password to link<input type="password" id="e2eeRelinkPw" placeholder="Your current Folio password"></label>' +
+    '<p class="form-error" id="e2eeRelinkErr"></p>' +
+    '<button type="button" class="btn btn-gold" id="e2eeRelinkGo" style="width:100%">Re-link password</button></div>';
+  document.body.appendChild(m);
+  $("e2eeRelinkX").addEventListener("click", () => m.classList.add("hidden"));
+  $("e2eeRelinkGo").addEventListener("click", async () => {
+    const err = $("e2eeRelinkErr"); err.textContent = "";
+    const bytes = phraseToBytes($("e2eeRelinkSeed").value);
+    const pw = $("e2eeRelinkPw").value;
+    if (!bytes) { err.textContent = "That is not a valid 12-word phrase."; return; }
+    if (!pw || pw.length < 6) { err.textContent = "Password must be 6+ characters."; return; }
+    if (!E2.wraps || !E2.wraps.seed) { err.textContent = "Encryption setup was not found for this account."; return; }
+    const raw = await e2eeUnwrapRaw(E2.wraps.seed, seedPhrase(bytes));
+    if (!raw) { err.textContent = "That seed phrase does not open this vault."; return; }
+    E2.dek = await crypto.subtle.importKey("raw", raw, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    E2.wraps.pw = await e2eeWrapDek(raw, pw);
+    e2eeActivate(); persist();
+    m.classList.add("hidden");
+    toast("Password unlock re-linked. Next sign-in will open directly with this password.");
+    e2eeSecRefresh();
+  });
+}
+window.e2eeShowRelink = e2eeShowRelink;
+function e2eeSecRefresh() {
+  const st = $("e2eeSecState"), btn = $("e2eeSecBtn");
+  if (!st || !btn) return;
+  if (window.__e2eeActive) { st.textContent = "Vault encryption: ON — cloud stores ciphertext only"; btn.textContent = "Re-link password"; btn.onclick = () => e2eeShowRelink(); }
+  else if (E2.wraps) { st.textContent = "Vault encryption: ON — locked on this device"; btn.textContent = "Unlock"; btn.onclick = () => e2eeShowUnlock(); }
+  else { st.textContent = "Vault encryption: OFF"; btn.textContent = "Set up encryption"; btn.onclick = () => { if (!currentUser) { toast("Sign in first."); return; } E2.mode = FIREBASE_ON ? "cloud" : "demo"; E2.setupFor = ""; e2eeShowSetup(currentUser); }; }
+}
+window.e2eeSecRefresh = e2eeSecRefresh;
+document.addEventListener("DOMContentLoaded", () => {
+  const anchor = $("autoLockToggle");
+  if (anchor && anchor.closest(".setting-row") && !$("e2eeSecRow")) {
+    const row = document.createElement("div");
+    row.className = "setting-row"; row.id = "e2eeSecRow";
+    row.innerHTML = '<span id="e2eeSecState">Vault encryption: …</span><button id="e2eeSecBtn" class="btn btn-small" type="button">…</button>';
+    anchor.closest(".setting-row").after(row);
+    e2eeSecRefresh();
+  }
+  const _svE2 = switchView;
+  switchView = function (n) { _svE2(n); if (n === "profile") e2eeSecRefresh(); };
+});
 window.e2eeVaultEnc = async function (obj) { if (!E2.dek) return null; return aesEnc(E2.dek, TE.encode(JSON.stringify(obj))); };
 window.e2eeVaultDec = async function (pack) { if (!E2.dek || !pack) return null; try { return JSON.parse(TD.decode(await aesDec(E2.dek, pack))); } catch (e) { return null; } };
 function e2eeFingerprint(text) { /* small non-crypto fingerprint for the round-trip compare */

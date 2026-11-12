@@ -957,6 +957,39 @@ function exportCsv() {
   a.download = "folio-portfolio.csv"; a.click(); URL.revokeObjectURL(a.href);
   toast("CSV downloaded — keep it safe, it is your backup.");
 }
+let xlsxLibPromise = null;
+function loadXlsxLib() {
+  if (window.XLSX) return Promise.resolve(true);
+  if (xlsxLibPromise) return xlsxLibPromise;
+  xlsxLibPromise = new Promise(res => {
+    const sc = document.createElement("script");
+    sc.src = "assets/xlsx.full.min.js?v=1";
+    sc.onload = () => res(!!window.XLSX);
+    sc.onerror = () => res(false);
+    document.head.appendChild(sc);
+  });
+  return xlsxLibPromise;
+}
+function importFile(file) {
+  const name = (file && file.name || "").toLowerCase();
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) { importExcel(file); return; }
+  importCsv(file);
+}
+function importExcel(file) {
+  loadXlsxLib().then(ok => {
+    if (!ok || !window.XLSX) { toast("The Excel reader could not load — please try a CSV export instead."); return; }
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const wb = XLSX.read(new Uint8Array(rd.result), { type: "array", cellDates: true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+        importRows(rows);
+      } catch (e) { toast("That Excel file could not be read."); }
+    };
+    rd.readAsArrayBuffer(file);
+  });
+}
 function importCsv(file) {
   const rd = new FileReader();
   rd.onload = () => {
@@ -964,7 +997,19 @@ function importCsv(file) {
       const lines = String(rd.result).split(/\r?\n/).filter(r => r.trim());
       if (lines.length < 2) { toast("That file looks empty."); return; }
       const splitRow = r => r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x => x.replace(/^"|"$/g, "").trim());
-      const header = splitRow(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, " "));
+      importRows(lines.map(splitRow));
+    } catch (e) { toast("That CSV could not be read."); }
+  };
+  rd.readAsText(file);
+}
+function importRows(allRows) {
+    try {
+      const rows = (allRows || []).filter(r => r && r.some(c => String(c).trim() !== ""));
+      if (rows.length < 2) { toast("That file looks empty."); return; }
+      const ALIAS_WORDS = ["symbol", "instrument", "trading symbol", "scrip", "date", "trade date", "quantity", "qty", "price", "trade type", "type"];
+      let hIdx = rows.findIndex(r => { const cells = r.map(c => String(c).toLowerCase().trim()); return cells.filter(c => ALIAS_WORDS.some(w => c === w || c.includes(w))).length >= 3; });
+      if (hIdx < 0) hIdx = 0;
+      const header = rows[hIdx].map(h => String(h).toLowerCase().replace(/\s+/g, " ").trim());
       const ALIASES = {
         sym: ["symbol", "instrument", "trading symbol", "tradingsymbol", "scrip", "scrip name", "stock", "symbol name", "company"],
         date: ["date", "trade date", "trade_date", "order execution time", "execution time", "transaction date", "order time"],
@@ -976,9 +1021,14 @@ function importCsv(file) {
       };
       const col = {};
       for (const k of Object.keys(ALIASES)) col[k] = header.findIndex(h => ALIASES[k].includes(h));
-      const mapped = col.sym >= 0 && col.date >= 0 && col.qty >= 0 && col.price >= 0;
+      col.segment = header.findIndex(h => h === "segment");
+      const hasDate = col.date >= 0;
+      const mapped = col.sym >= 0 && col.qty >= 0 && col.price >= 0;
+      const holdingsMode = mapped && !hasDate;
       let n = 0, skipped = 0;
       const normDate = v => {
+        if (v instanceof Date && !isNaN(v)) return v.getFullYear() + "-" + String(v.getMonth() + 1).padStart(2, "0") + "-" + String(v.getDate()).padStart(2, "0");
+        if (typeof v === "number" && v > 20000 && v < 90000) { const d = new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000); return d.getUTCFullYear() + "-" + String(d.getUTCMonth() + 1).padStart(2, "0") + "-" + String(d.getUTCDate()).padStart(2, "0"); }
         v = String(v || "").trim();
         let m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
         if (m) return m[1] + "-" + m[2] + "-" + m[3];
@@ -986,19 +1036,21 @@ function importCsv(file) {
         if (m) return m[3] + "-" + String(m[2]).padStart(2, "0") + "-" + String(m[1]).padStart(2, "0");
         return "";
       };
-      const num = v => Number(String(v || "").replace(/[^0-9.\-]/g, "")) || 0;
-      for (const r of lines.slice(1)) {
-        const c = splitRow(r);
+      const num = v => (typeof v === "number" ? v : Number(String(v || "").replace(/[^0-9.\-]/g, ""))) || 0;
+      for (const r of rows.slice(hIdx + 1)) {
+        const c = r.map(x => (x instanceof Date || typeof x === "number") ? x : String(x == null ? "" : x));
+        if (col.segment >= 0 && c[col.segment] && !/^(EQ|BE|NSE|BSE)/i.test(String(c[col.segment]))) { skipped++; continue; }
         let symCell, dateCell, typeCell, qtyCell, priceCell, charges = 0, broker = "", exch = "", note = "", tags = "", reason = "";
         if (mapped) {
-          symCell = c[col.sym]; dateCell = c[col.date]; typeCell = col.type >= 0 ? c[col.type] : "BUY";
+          symCell = c[col.sym]; dateCell = hasDate ? c[col.date] : ""; typeCell = col.type >= 0 ? c[col.type] : "BUY";
           qtyCell = c[col.qty]; priceCell = c[col.price]; if (col.tags >= 0) tags = c[col.tags] || ""; if (col.reason >= 0) reason = c[col.reason] || "";
         } else {
           if (c.length < 6) { skipped++; continue; }
           dateCell = c[0]; typeCell = c[1]; symCell = c[2]; qtyCell = c[4]; priceCell = c[5];
           charges = num(c[6]); broker = c[7] || ""; exch = c[8] || ""; note = c[9] || ""; tags = c[10] || ""; reason = c[11] || "";
         }
-        const date = normDate(dateCell);
+        let date = normDate(dateCell);
+        if (!date && holdingsMode) { date = (window.istTodayStr ? istTodayStr() : new Date().toISOString().slice(0, 10)); note = (note ? note + " · " : "") + "Holdings import — buy date is the import date"; }
         const tu = String(typeCell || "").toUpperCase();
         const type = tu.includes("SELL") || tu === "S" ? "SELL" : tu.includes("DIV") ? "DIV" : "BUY";
         const qty = num(qtyCell), price = num(priceCell);
@@ -1011,10 +1063,8 @@ function importCsv(file) {
         n++;
       }
       persist(); renderAll(); refreshPrices();
-      toast("Imported " + n + " entries" + (skipped ? " · " + skipped + " rows skipped" : "") + (mapped ? " · broker format detected" : "") + ".");
-    } catch (e) { toast("That CSV could not be read."); }
-  };
-  rd.readAsText(file);
+      toast("Imported " + n + " entries" + (skipped ? " · " + skipped + " rows skipped" : "") + (holdingsMode ? " · holdings format — buy dates set to today (the file has none)" : mapped ? " · broker format detected" : "") + ".");
+    } catch (e) { toast("That file could not be read."); }
 }
 
 function buildDatalist() {
@@ -1078,7 +1128,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("watchForm").addEventListener("submit", addWatch);
   attachSuggest($("watchInput"));
   $("exportBtn").addEventListener("click", exportCsv);
-  $("importFile").addEventListener("change", e => { if (e.target.files[0]) importCsv(e.target.files[0]); e.target.value = ""; });
+  $("importFile").addEventListener("change", e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = ""; });
   $("wipeBtn").addEventListener("click", () => {
     if (!confirm("Delete ALL your entries? Take a CSV export first if unsure.")) return;
     state = emptyState(); persist(); renderAll(); toast("All entries deleted");
