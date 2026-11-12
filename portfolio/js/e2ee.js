@@ -22,7 +22,7 @@ async function e2eeKek(secret, saltB64) {
   const base = await crypto.subtle.importKey("raw", TE.encode(secret), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey({ name: "PBKDF2", salt: b64decode(saltB64), iterations: E2_ITER, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
 }
-function e2eeAad() { return TE.encode(((currentUser && currentUser.email) || "") + "|folio-state-v2"); }
+function e2eeAad() { return TE.encode((E2.aadEmail || (currentUser && currentUser.email) || "") + "|folio-state-v2"); }
 async function e2eeEncryptState(stateObj) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv, additionalData: e2eeAad() }, E2.dek, TE.encode(JSON.stringify(stateObj)));
@@ -54,7 +54,7 @@ async function e2eeBuildPayload(stateObj) {
 }
 function e2eeActivate() { window.__e2eeActive = !!E2.dek; }
 function e2eeLock() {
-  E2.dek = null; E2.wraps = null; E2.pendingDoc = null; E2.pendingUser = null; E2.lastDoc = null; E2.setupFor = "";
+  E2.dek = null; E2.wraps = null; E2.pendingDoc = null; E2.pendingUser = null; E2.lastDoc = null; E2.setupFor = ""; E2.aadEmail = "";
   window.__pendingPass = undefined; e2eeActivate();
   try { sessionStorage.removeItem("folio_e2ee_later"); } catch (e) {}
 }
@@ -72,6 +72,7 @@ window.e2eeWipeForLock = function () {
 /* ---------- entry: a v2 cloud/demo document arrived ---------- */
 async function e2eeHandleDoc(doc, user, mode) {
   E2.mode = mode || "cloud";
+  E2.aadEmail = user && user.email ? user.email : "";
   E2.lastDoc = doc; E2.pendingDoc = doc; E2.pendingUser = user;
   E2.wraps = doc.wraps || null;
   if (E2.dek) { await e2eeFinish(); return; }
@@ -228,6 +229,7 @@ async function e2eeMakeKeyset(password) {
 async function e2eeCommitSetup(user, gen) {
   try {
     /* local backup of the current (plaintext) state until verified */
+    E2.aadEmail = user.email;
     try { localStorage.setItem("folio_pre_enc_backup", JSON.stringify({ email: user.email, state: state, ts: Date.now() })); } catch (e) {}
     E2.dek = await crypto.subtle.importKey("raw", gen.dekRaw, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
     E2.wraps = gen.wraps; e2eeActivate();
