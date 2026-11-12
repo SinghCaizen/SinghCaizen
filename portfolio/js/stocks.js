@@ -1,6 +1,6 @@
 /* Full NSE stock list (EQUITY_L) + popular ETFs: [symbol, name, sector]. Popular stocks first (with sectors); free-text symbols also work. */
 window.STOCK_LIST = [
-["RELIANCE", "Reliance Industries", "Energy"],["TCS", "Tata Consultancy Services", "IT"],["HDFCBANK", "HDFC Bank", "Banking"],["INFY", "Infosys", "IT"],
+["VNL", "Vishal Nirmiti Limited", "Infra"],["RELIANCE", "Reliance Industries", "Energy"],["TCS", "Tata Consultancy Services", "IT"],["HDFCBANK", "HDFC Bank", "Banking"],["INFY", "Infosys", "IT"],
 ["ICICIBANK", "ICICI Bank", "Banking"],["HINDUNILVR", "Hindustan Unilever", "FMCG"],["SBIN", "State Bank of India", "Banking"],["BHARTIARTL", "Bharti Airtel", "Telecom"],
 ["ITC", "ITC", "FMCG"],["KOTAKBANK", "Kotak Mahindra Bank", "Banking"],["LT", "Larsen & Toubro", "Infra"],["AXISBANK", "Axis Bank", "Banking"],
 ["BAJFINANCE", "Bajaj Finance", "Finance"],["ASIANPAINT", "Asian Paints", "Consumer"],["MARUTI", "Maruti Suzuki", "Auto"],["SUNPHARMA", "Sun Pharma", "Pharma"],

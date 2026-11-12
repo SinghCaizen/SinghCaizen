@@ -261,30 +261,61 @@ function perfChartSvg(vals, invVals, height) {
     '<text x="' + (W - P) + '" y="30" text-anchor="end" fill="var(--muted)" font-size="12">- - Invested Capital</text></svg>';
 }
 
+let heatMode = "today";
+function tmLayout(rows, W, H) {
+  const total = rows.reduce((a, r) => a + r.value, 0) || 1;
+  const items = rows.map(r => ({ sym: r.sym, ltp: r.ltp, dayPct: r.dayPct, pnlPct: r.pnlPct, cur: r.cur, area: r.value / total * W * H })).sort((a, b) => b.area - a.area);
+  const rects = [];
+  let x = 0, y = 0, w = W, h = H, row = [];
+  const worst = (rw, ww, hh) => {
+    const sm = rw.reduce((a, r) => a + r.area, 0);
+    if (!sm) return Infinity;
+    const mx = Math.max.apply(null, rw.map(r => r.area)), mn = Math.min.apply(null, rw.map(r => r.area));
+    const side = Math.min(ww, hh);
+    return Math.max(side * side * mx / (sm * sm), (sm * sm) / (side * side * mn));
+  };
+  const place = () => {
+    const sm = row.reduce((a, r) => a + r.area, 0);
+    if (w >= h) {
+      const rw = sm / h; let cy = y;
+      row.forEach(r => { const rh = r.area / rw; rects.push(Object.assign({}, r, { x: x, y: cy, w: rw, h: rh })); cy += rh; });
+      x += rw; w -= rw;
+    } else {
+      const rh = sm / w; let cx = x;
+      row.forEach(r => { const rw2 = r.area / rh; rects.push(Object.assign({}, r, { x: cx, y: y, w: rw2, h: rh })); cx += rw2; });
+      y += rh; h -= rh;
+    }
+  };
+  for (const it of items) {
+    if (!row.length || worst(row.concat([it]), w, h) <= worst(row, w, h)) row.push(it);
+    else { place(); row = [it]; }
+  }
+  if (row.length) place();
+  return rects;
+}
 function renderHeat(d) {
   const el = $("heatMap");
   if (!el) return;
-  if (!d.rows.length) { el.innerHTML = '<p class="empty-note">Add stocks — the heatmap then shows today\'s move of every holding at one glance.</p>'; return; }
-  const rows = [...d.rows].sort((a, b) => b.cur - a.cur);
-  el.innerHTML = rows.map(r => {
-    const dayPct = (r.ltp !== null && r.prevClose) ? (r.ltp - r.prevClose) / r.prevClose * 100 : null;
-    let bg, fg;
-    if (dayPct === null) { bg = "var(--panel-2)"; fg = "var(--text)"; }
-    else if (dayPct >= 0) {
-      const k = Math.min(68, 14 + Math.abs(dayPct) * 18);
-      bg = "color-mix(in srgb, var(--text) " + k + "%, var(--panel-2))";
-      fg = k > 46 ? "var(--bg)" : "var(--text)";
-    } else {
-      const k = Math.min(72, 16 + Math.abs(dayPct) * 18);
-      bg = "color-mix(in srgb, #e03131 " + k + "%, var(--panel-2))";
-      fg = "#ffffff";
-    }
-    const flex = Math.max(1, (d.value ? r.cur / d.value : 0) * 10).toFixed(2);
-    return '<button type="button" class="heat-tile" data-heat="' + esc(r.sym) + '" style="flex:' + flex + ' 1 100px;background:' + bg + ';color:' + fg + '">' +
-      '<span class="heat-sym">' + esc(r.sym) + '</span>' +
-      '<span class="heat-pct">' + (dayPct === null ? "—" : pct(dayPct) + " today") + '</span>' +
-      '<span class="heat-val">' + inr(r.cur) + '</span></button>';
-  }).join("");
+  if (!d.rows.length) { el.innerHTML = '<p class="empty-note">Add stocks — the heatmap then shows every holding at one glance.</p>'; return; }
+  const rows = d.rows.filter(r => r.cur > 0).map(r => ({
+    sym: r.sym, value: r.cur, cur: r.cur, ltp: r.ltp, pnlPct: r.pnlPct,
+    dayPct: (r.ltp !== null && r.prevClose) ? (r.ltp - r.prevClose) / r.prevClose * 100 : null
+  }));
+  const W = 1000, H = 300;
+  const rects = tmLayout(rows, W, H);
+  el.innerHTML = '<div class="tm-wrap">' + rects.map(rc => {
+    const v = heatMode === "pnl" ? rc.pnlPct : rc.dayPct;
+    let bg, fg = "var(--text)";
+    if (v === null || v === undefined) bg = "var(--panel-2)";
+    else if (v >= 0) { const k = Math.min(72, 16 + Math.abs(v) * 7); bg = "color-mix(in srgb, var(--gain) " + k + "%, var(--panel-2))"; if (k > 52) fg = "#ffffff"; }
+    else { const k = Math.min(72, 16 + Math.abs(v) * 7); bg = "color-mix(in srgb, var(--loss) " + k + "%, var(--panel-2))"; if (k > 40) fg = "#ffffff"; }
+    const big = rc.w >= 120 && rc.h >= 56, mid = rc.w >= 78 && rc.h >= 40;
+    const pctTxt = v === null || v === undefined ? "—" : pct(v) + (heatMode === "pnl" ? " overall" : " today");
+    return '<button type="button" class="tm-tile" data-heat="' + esc(rc.sym) + '" style="left:' + (rc.x / W * 100) + "%;top:" + (rc.y / H * 100) + "%;width:" + (rc.w / W * 100) + "%;height:" + (rc.h / H * 100) + "%;background:" + bg + ";color:" + fg + '">' +
+      '<span class="tm-sym" style="font-size:' + (big ? 14 : mid ? 12 : 10.5) + 'px">' + esc(rc.sym) + "</span>" +
+      (mid ? '<span class="tm-ltp">' + (rc.ltp !== null ? inr2(rc.ltp) : "—") + "</span>" : "") +
+      (big ? '<span class="tm-pct">' + pctTxt + "</span>" : "") + "</button>";
+  }).join("") + "</div>";
   el.querySelectorAll("[data-heat]").forEach(b => b.addEventListener("click", () => openStock(b.dataset.heat)));
 }
 
@@ -473,9 +504,9 @@ async function doTick() {
   Object.keys(prices || {}).forEach(sym => {
     const old = before[sym], now = prices[sym] && prices[sym].price;
     if (old === undefined || now === undefined || now === old) return;
-    const cls = now > old ? "flash-up" : "flash-down";
+    const cls = now > old ? "price-flash-up" : "price-flash-down";
     document.querySelectorAll('[data-pflash="' + sym + '"]').forEach(el => {
-      el.classList.remove("flash-up", "flash-down");
+      el.classList.remove("price-flash-up", "price-flash-down", "flash-up", "flash-down");
       void el.offsetWidth;
       el.classList.add(cls);
       setTimeout(() => el.classList.remove(cls), 1200);
@@ -612,6 +643,8 @@ async function renderLW() {
   wrap.classList.remove("hidden"); bar.classList.remove("hidden");
   if (legend) legend.classList.remove("hidden");
   if (svgBox) svgBox.classList.add("hidden");
+  if (wrap.clientWidth < 40) await new Promise(r => requestAnimationFrame(r));
+  try {
   lwDispose();
   const dark = document.documentElement.dataset.theme !== "light";
   lwChart = LightweightCharts.createChart(wrap, {
@@ -654,6 +687,7 @@ async function renderLW() {
     const b = barByDay[param.time];
     lg.textContent = param.time + " · O " + inr2(b.o) + " · H " + inr2(b.h) + " · L " + inr2(b.l) + " · C " + inr2(b.c) + (b.v ? " · Vol " + b.v.toLocaleString("en-IN") : "");
   });
+  } catch (e) { return off(); }
   if (legend) legend.textContent = "TradingView chart · drag to pan · scroll / pinch to zoom";
 }
 const _drawStockBase = drawStock;
@@ -1063,8 +1097,11 @@ async function fetchViaProxies(url, asText) {
       const r = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(u), { signal: AbortSignal.timeout(4000) });
       if (!r.ok) throw new Error("bad route");
       const env = await r.json();
-      const t = env && env.contents;
+      let t = env && env.contents;
       if (!t) throw new Error("empty");
+      if (typeof t === "string" && t.indexOf("data:") === 0 && t.indexOf(";base64,") > 0) {
+        try { t = decodeURIComponent(escape(atob(t.split(",")[1] || ""))); } catch (e) {}
+      }
       if (asText) return t;
       const head = String(t).trim().charAt(0);
       if (head !== "{" && head !== "[") throw new Error("not json");
@@ -1560,7 +1597,7 @@ async function fillHoldDrawer(sym, drawer) {
   let html = "";
   if (ltp !== null && avg > 0) {
     const vs = (ltp - avg) / avg * 100;
-    html += `<div class="dr-vs ${vs >= 0 ? "gain-bg" : "loss-bg"}">Trading <b>${pct(Math.abs(vs))} ${vs >= 0 ? "above" : "below"}</b> your Avg Buy Price (${inr2(avg)})</div>`;
+    html += `<div class="dr-vs ${vs >= 0 ? "gain-bg" : "loss-bg"}">Trading <b>${Math.abs(vs).toFixed(2)}% ${vs >= 0 ? "above" : "below"}</b> your Avg Buy Price (${inr2(avg)})</div>`;
   }
   try {
     const m = await fetchMaster(sym);
@@ -2260,7 +2297,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v17";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v28";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2273,3 +2310,57 @@ function wireHealth() {
   });
 }
 document.addEventListener("DOMContentLoaded", wireHealth);
+
+/* ---------- NSE master index sync (Layer 2 search: every mainboard + SME stock) ---------- */
+let nseSyncDone = false;
+async function syncNseIndex() {
+  if (nseSyncDone) return;
+  nseSyncDone = true;
+  try {
+    const raw = localStorage.getItem("folio_nse_index_v1");
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved && saved.rows && Date.now() - saved.ts < 7 * 86400000) { window.__nseExtra = saved.rows; return; }
+      if (saved && saved.rows) window.__nseExtra = saved.rows;
+    }
+  } catch (e) {}
+  const parseCsv = text => {
+    const out = [];
+    String(text || "").split(/\r?\n/).slice(1).forEach(line => {
+      const c = line.split(",");
+      if (c.length >= 2 && c[0] && c[1]) {
+        const sym = c[0].trim().toUpperCase(), nm = c[1].trim();
+        if (/^[A-Z0-9&.-]+$/.test(sym) && nm) out.push([sym, nm, "Other"]);
+      }
+    });
+    return out;
+  };
+  try {
+    const [a, b] = await Promise.all([
+      fetchViaProxies("https://nsearchives.nseindia.com/content/equities/EQUITY_L.csv", true).catch(() => ""),
+      fetchViaProxies("https://nsearchives.nseindia.com/content/equities/SME_EQUITY_L.csv", true).catch(() => "")
+    ]);
+    const rows = parseCsv(a).concat(parseCsv(b));
+    if (rows.length > 500) {
+      window.__nseExtra = rows;
+      try { localStorage.setItem("folio_nse_index_v1", JSON.stringify({ ts: Date.now(), rows: rows })); } catch (e) {}
+    }
+  } catch (e) { /* search keeps working from the built-in list + Yahoo layer */ }
+}
+const nseWatch = setInterval(() => { if (currentUser) { clearInterval(nseWatch); syncNseIndex(); } }, 4000);
+
+/* ---------- dashboard seg bindings (donut modes + heatmap modes) ---------- */
+(function wireSegs() {
+  const ds = $("donutSeg");
+  if (ds) ds.querySelectorAll("[data-dmode]").forEach(b => b.addEventListener("click", () => {
+    window.__donutMode = b.dataset.dmode;
+    ds.querySelectorAll("[data-dmode]").forEach(x => x.classList.toggle("active", x === b));
+    renderAll();
+  }));
+  const hs = $("heatSeg");
+  if (hs) hs.querySelectorAll("[data-hmode]").forEach(b => b.addEventListener("click", () => {
+    heatMode = b.dataset.hmode;
+    hs.querySelectorAll("[data-hmode]").forEach(x => x.classList.toggle("active", x === b));
+    try { renderHeat(enriched()); } catch (e) {}
+  }));
+})();

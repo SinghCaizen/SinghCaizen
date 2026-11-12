@@ -206,6 +206,8 @@ function resolveStock(input) {
   }
   const hit = list.find(s => s[0] === up || s[1].toUpperCase() === up || raw.toLowerCase() === s[1].toLowerCase());
   if (hit) return { sym: hit[0], name: hit[1], sector: hit[2] || "Other" };
+  const xhit = (window.__nseExtra || []).find(s => s[0] === up || s[1].toUpperCase() === up);
+  if (xhit) return { sym: xhit[0], name: xhit[1], sector: xhit[2] || "Other" };
   const strip = s => s.toLowerCase().replace(/\s+(limited|ltd\.?)$/g, "").trim();
   const clean = strip(raw);
   if (clean.length >= 3) {
@@ -241,7 +243,7 @@ function attachSuggest(input) {
   function render() {
     const txt = input.value.trim().toLowerCase();
     if (txt.length < 2) { close(); return; }
-    const list = window.STOCK_LIST || [];
+    const list = (window.STOCK_LIST || []).concat(window.__nseExtra || []);
     const starts = [], contains = [];
     for (const s of list) {
       const nm = s[1].toLowerCase(), sy = s[0].toLowerCase();
@@ -249,18 +251,23 @@ function attachSuggest(input) {
       else if (contains.length < 8 && (nm.indexOf(txt) >= 0 || sy.indexOf(txt) >= 0)) contains.push(s);
     }
     const local = starts.concat(contains);
-    if (local.length < 4 && window.__yahooSuggest && remoteFor !== txt) {
+    if (window.__yahooSuggest && remoteFor !== txt) {
       remoteFor = txt;
       clearTimeout(sugTimer);
       sugTimer = setTimeout(async () => {
         const res = await window.__yahooSuggest(txt);
         if (input.value.trim().toLowerCase() === txt) { remoteItems = res || []; render(); }
-      }, 350);
+      }, 220);
     }
     if (remoteFor !== txt) remoteItems = [];
     items = local.concat(remoteItems.filter(r => !local.some(l => l[0] === r[0]))).slice(0, 8);
-    if (!items.length) { close(); return; }
-    box.innerHTML = items.map((s, i) => '<button type="button" class="suggest-item" data-i="' + i + '"><b>' + esc(s[0]) + '</b><span>' + esc(s[1]) + '</span>' + (s[3] ? '<span class="sug-exch">' + esc(s[3]) + '</span>' : '') + '</button>').join("");
+    const typed = input.value.trim();
+    box.innerHTML = items.map((s, i) => '<button type="button" class="suggest-item" data-i="' + i + '"><b>' + esc(s[0]) + '</b><span>' + esc(s[1]) + '</span>' + (s[3] ? '<span class="sug-exch">' + esc(s[3]) + '</span>' : '') + '</button>').join("") +
+      '<button type="button" class="suggest-item sug-custom" data-custom="1">➕ Use "' + esc(typed.toUpperCase()) + '" — Add Custom / Newly Listed Stock (NSE / BSE / SME)</button>';
+    box.classList.remove("hidden");
+    const cb = box.querySelector("[data-custom]");
+    if (cb) cb.addEventListener("mousedown", e => { e.preventDefault(); input.value = typed.toUpperCase(); close(); input.dispatchEvent(new Event("input", { bubbles: true })); input.focus(); });
+    if (!items.length) return;
     box.classList.remove("hidden");
     box.querySelectorAll(".suggest-item").forEach(b => b.addEventListener("mousedown", e => { e.preventDefault(); pick(Number(b.dataset.i)); }));
   }
@@ -347,6 +354,7 @@ function portfolioXirr(currentValue) {
   }
   if (!cfs.length || currentValue <= 0) return null;
   cfs.sort((a, b) => a.date - b.date);
+  if (Date.now() - cfs[0].date.getTime() < 7 * 86400000) return null;
   cfs.push({ date: new Date(), amount: currentValue });
   return xirr(cfs);
 }
@@ -508,28 +516,42 @@ function renderDashboard() {
   const svg = $("donut"); const legend = $("donutLegend");
   if (!d.rows.length || d.value <= 0) { svg.innerHTML = ""; legend.innerHTML = ""; $("sectorBars").innerHTML = ""; $("pnlBars").innerHTML = ""; }
   else {
+    const dmode = window.__donutMode || "stock";
+    let slices;
+    if (dmode === "sector") {
+      const m = {};
+      d.rows.forEach(r_ => { const k = r_.sector || "Other"; if (!m[k]) m[k] = { key: k, label: k, value: 0, inv: 0 }; m[k].value += r_.cur; m[k].inv += r_.invested; });
+      slices = Object.values(m).sort((a, b) => b.value - a.value).map((x, i) => ({ ...x, color: PIE[i % PIE.length], ret: x.inv ? (x.value - x.inv) / x.inv * 100 : 0 }));
+    } else if (dmode === "cap") {
+      const m = {};
+      d.rows.forEach(r_ => { const cc = typeof CAP_CLASS === "function" ? CAP_CLASS(r_.sym) : "S"; const k = cc === "L" ? "Large Cap" : cc === "M" ? "Mid Cap" : "Small Cap"; if (!m[k]) m[k] = { key: k, label: k, value: 0, inv: 0 }; m[k].value += r_.cur; m[k].inv += r_.invested; });
+      slices = Object.values(m).sort((a, b) => b.value - a.value).map((x, i) => ({ ...x, color: PIE[i % PIE.length], ret: x.inv ? (x.value - x.inv) / x.inv * 100 : 0 }));
+    } else {
+      slices = d.rows.map(r_ => ({ key: r_.sym, label: r_.sym, value: r_.cur, color: r_.color, ret: r_.pnlPct }));
+    }
     let a0 = -Math.PI / 2, parts = "";
     const cx = 100, cy = 100, r = 82, r2 = 48;
-    for (const r_ of d.rows) {
-      const frac = r_.cur / d.value; if (frac <= 0) continue;
+    for (const sl of slices) {
+      const frac = sl.value / d.value; if (frac <= 0) continue;
       const a1 = a0 + frac * Math.PI * 2;
       const large = frac > 0.5 ? 1 : 0;
       const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0), x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
       const xi1 = cx + r2 * Math.cos(a1), yi1 = cy + r2 * Math.sin(a1), xi0 = cx + r2 * Math.cos(a0), yi0 = cy + r2 * Math.sin(a0);
-      parts += `<path class="seg" data-sym="${esc(r_.sym)}" d="M${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} L${xi1},${yi1} A${r2},${r2} 0 ${large} 0 ${xi0},${yi0} Z" fill="${r_.color}" stroke="var(--panel)" stroke-width="1.5"/>`;
+      parts += `<path class="seg" data-sym="${esc(sl.key)}" d="M${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} L${xi1},${yi1} A${r2},${r2} 0 ${large} 0 ${xi0},${yi0} Z" fill="${sl.color}" stroke="var(--panel)" stroke-width="1.5"/>`;
       a0 = a1;
     }
-    svg.innerHTML = parts + `<text id="donutTop" x="100" y="95" text-anchor="middle" fill="var(--muted)" font-size="10.5" letter-spacing="1.5">TOTAL VALUE</text><text id="donutMain" x="100" y="115" text-anchor="middle" fill="var(--text)" font-size="14.5" font-weight="bold">${esc(inr(d.value))}</text>`;
-    legend.innerHTML = d.rows.map(r_ => `<div class="legend-item" data-sym="${esc(r_.sym)}"><span class="sw" style="background:${r_.color}"></span>${esc(r_.sym)} — ${(r_.cur / d.value * 100).toFixed(1)}%</div>`).join("");
-    const setCenter = sym => {
-      const top = $("donutTop"), main = $("donutMain"); if (!top || !main) return;
-      const row = sym ? d.rows.find(r_ => r_.sym === sym) : null;
-      top.textContent = row ? row.sym : "TOTAL VALUE";
-      main.textContent = row ? (row.cur / d.value * 100).toFixed(1) + "% · " + inr(row.cur) : inr(d.value);
-      svg.querySelectorAll(".seg").forEach(p => p.style.opacity = (!sym || p.dataset.sym === sym) ? "1" : "0.3");
+    svg.innerHTML = parts + `<text id="donutTop" x="100" y="92" text-anchor="middle" fill="var(--muted)" font-size="10.5" letter-spacing="1.5">TOTAL VALUE</text><text id="donutMain" x="100" y="112" text-anchor="middle" fill="var(--text)" font-size="14.5" font-weight="bold">${esc(inr(d.value))}</text><text id="donutSub" x="100" y="128" text-anchor="middle" fill="var(--muted)" font-size="10"></text>`;
+    legend.innerHTML = slices.map(sl => `<div class="legend-item" data-sym="${esc(sl.key)}"><span class="sw" style="background:${sl.color}"></span><span class="lg-name">${esc(sl.label)}</span><span class="lg-bar"><i style="width:${(sl.value / d.value * 100).toFixed(1)}%;background:${sl.color}"></i></span><span class="lg-pct">${(sl.value / d.value * 100).toFixed(1)}%</span></div>`).join("");
+    const setCenter = key => {
+      const top = $("donutTop"), main = $("donutMain"), sub = $("donutSub"); if (!top || !main) return;
+      const sl = key ? slices.find(x => x.key === key) : null;
+      top.textContent = sl ? sl.label.toUpperCase() : "TOTAL VALUE";
+      main.textContent = sl ? (sl.value / d.value * 100).toFixed(1) + "% · " + inr(sl.value) : inr(d.value);
+      if (sub) sub.textContent = sl ? "Return " + pct(sl.ret) : "";
+      svg.querySelectorAll(".seg").forEach(p => p.style.opacity = (!key || p.dataset.sym === key) ? "1" : "0.3");
     };
-    svg.querySelectorAll(".seg").forEach(p => { p.addEventListener("mouseenter", () => setCenter(p.dataset.sym)); p.addEventListener("mouseleave", () => setCenter(null)); });
-    legend.querySelectorAll(".legend-item").forEach(el2 => { el2.addEventListener("mouseenter", () => setCenter(el2.dataset.sym)); el2.addEventListener("mouseleave", () => setCenter(null)); });
+    svg.querySelectorAll(".seg").forEach(p => { p.addEventListener("mouseenter", () => setCenter(p.dataset.sym)); p.addEventListener("click", () => setCenter(p.dataset.sym)); p.addEventListener("mouseleave", () => setCenter(null)); });
+    legend.querySelectorAll(".legend-item").forEach(el2 => { el2.addEventListener("mouseenter", () => setCenter(el2.dataset.sym)); el2.addEventListener("click", () => setCenter(el2.dataset.sym)); el2.addEventListener("mouseleave", () => setCenter(null)); });
     // sector bars
     const secMap = {};
     d.rows.forEach(r_ => { const s = r_.sector || "Other"; secMap[s] = (secMap[s] || 0) + r_.cur; });
@@ -557,13 +579,23 @@ function renderHoldings() {
   const today = new Date(todayStr() + "T00:00:00");
   el.innerHTML = d.rows.map((h, i) => {
     const dayPct = h.ltp !== null && h.prevClose ? (h.ltp - h.prevClose) / h.prevClose * 100 : null;
+    const alertCfg = (state.profile.alerts || {})[h.sym] || null;
+    let alertChip = "";
+    if (alertCfg && h.ltp !== null) {
+      if (alertCfg.target && h.ltp >= alertCfg.target) alertChip = '<span class="alert-chip hit">🔔 Target hit — ' + inr2(alertCfg.target) + "</span>";
+      else if (alertCfg.sl && h.ltp <= alertCfg.sl) alertChip = '<span class="alert-chip hit">🔔 Stop-loss hit — ' + inr2(alertCfg.sl) + "</span>";
+      else alertChip = '<span class="alert-chip">🔔 ' + (alertCfg.target ? "T " + inr2(alertCfg.target) : "") + (alertCfg.target && alertCfg.sl ? " · " : "") + (alertCfg.sl ? "SL " + inr2(alertCfg.sl) : "") + "</span>";
+    }
     const weight = d.value ? h.cur / d.value * 100 : 0;
+    const claimedLots = new Set();
     const lotsHtml = (h.lots || []).map(l => {
       const days = Math.max(0, Math.round((today - new Date(l.date + "T00:00:00")) / 86400000));
       const long = days >= 365;
       const lp = h.ltp !== null ? l.qty * (h.ltp - l.price) : null;
       const lpPct = h.ltp !== null && l.price ? (h.ltp - l.price) / l.price * 100 : null;
-      return `<div class="lot-row"><span class="lot-date">${esc(fmtDate(l.date))}</span><span>${l.qty} shares × ${inr2(l.price)}</span><span class="lot-age">${days} days held</span><span class="tax-chip ${long ? "ltcg" : "stcg"}">${long ? "LTCG" : "STCG"}</span>${lp !== null ? `<span class="lot-pnl ${lp >= 0 ? "gain" : "loss"}">${inr(lp)} (${pct(lpPct)})</span>` : ""}</div>`;
+      const origin = state.txns.find(t => t.type === "BUY" && t.sym === h.sym && t.date === l.date && Math.abs(effPrice(t) - l.price) < 0.011 && Number(t.qty) >= l.qty && !claimedLots.has(t.id));
+      if (origin) claimedLots.add(origin.id);
+      return `<div class="lot-row"><span class="lot-date">${esc(fmtDate(l.date))}</span><span>${l.qty} shares × ${inr2(l.price)}</span><span class="lot-age">${days} days held</span><span class="tax-chip ${long ? "ltcg" : "stcg"}">${long ? "LTCG" : "STCG"}</span>${lp !== null ? `<span class="lot-pnl ${lp >= 0 ? "gain" : "loss"}">${inr(lp)} (${pct(lpPct)})</span>` : ""}${origin ? `<button class="mini-btn" data-edittxn="${origin.id}" type="button">✏️ Edit</button><button class="mini-btn danger" data-deltxn="${origin.id}" type="button">🗑️</button>` : ""}</div>`;
     }).join("");
     const ltcgQty = (h.lots || []).filter(l => (today - new Date(l.date + "T00:00:00")) / 86400000 >= 365).reduce((a, l) => a + l.qty, 0);
     const taxLine = ltcgQty > 0
@@ -583,13 +615,17 @@ function renderHoldings() {
         <div><span>Overall P&amp;L</span><b class="${h.pnl >= 0 ? "gain" : "loss"}">${inr(h.pnl)} (${pct(h.pnlPct)})</b></div>
         <div><span>Day's P&amp;L</span><b class="${h.day >= 0 ? "gain" : "loss"}">${inr(h.day)}</b></div>
       </div>
-      <div class="hold-meta">Qty: ${h.qty} shares · Avg Buy: ${inr2(h.avg)} · Weight: ${weight.toFixed(1)}% of portfolio · Booked P&amp;L: <b class="${h.realised >= 0 ? "gain" : "loss"}">${inr(h.realised)}</b></div>
+      <div class="hold-meta">Qty: ${h.qty} shares · Avg Buy: ${inr2(h.avg)} · Weight: ${weight.toFixed(1)}% of portfolio${h.ltp === null ? ' · <span class="alert-chip">Custom Quote — valued at your buy price (no live feed)</span>' : ""} · Booked P&amp;L: <b class="${h.realised >= 0 ? "gain" : "loss"}">${inr(h.realised)}</b>${alertChip ? " · " + alertChip : ""}</div>
       <button class="hold-chev" data-hold-toggle="${esc(h.sym)}" type="button">▼ Buy dates, live status &amp; edit</button>
       <div class="hold-drawer" data-drawer="${esc(h.sym)}" data-avg="${h.avg}" data-ltp="${h.ltp === null ? "" : h.ltp}">
        <div class="drawer-inner">
         <div class="dr-block"><h4>Live Status</h4><div class="dr-status"><span class="muted small">Loading status…</span></div></div>
         <div class="dr-block"><h4>Kab Kharida — Your Buy Lots</h4>${lotsHtml}<p class="dr-tax">${taxLine}</p></div>
         <div class="dr-block"><h4>All Entries</h4>${txnHtml || '<p class="muted small">No entries.</p>'}</div>
+        <div class="dr-block alerts"><h4>🔔 Price Alerts</h4>
+          <div class="wi-row"><label>Target Price<input type="number" class="al-target" min="0" step="any" placeholder="₹ target" value="${alertCfg && alertCfg.target ? alertCfg.target : ""}"></label><label>Stop-Loss Price<input type="number" class="al-sl" min="0" step="any" placeholder="₹ stop-loss" value="${alertCfg && alertCfg.sl ? alertCfg.sl : ""}"></label></div>
+          <div class="al-btns"><button class="mini-btn" data-alertsave="${esc(h.sym)}" type="button">Save Alert</button><button class="mini-btn danger" data-alertclear="${esc(h.sym)}" type="button">Clear</button><span class="price-meta">Alerts show on this card when the live price crosses them (checked on every refresh — not a broker order).</span></div>
+        </div>
         <div class="dr-block whatif" data-qty="${h.qty}" data-avg="${h.avg}" data-inv="${h.invested}"><h4>What-If Average Calculator</h4>
           <div class="wi-row"><label>New Qty<input type="number" class="wi-qty" min="0" step="any" placeholder="0"></label><label>Buy Price<input type="number" class="wi-price" min="0" step="any" value="${h.ltp === null ? "" : h.ltp}"></label></div>
           <p class="wi-out price-meta">Add a quantity to see your new average price.</p>
@@ -624,6 +660,19 @@ function renderHoldings() {
       drawer.dataset.filled = "1";
       if (typeof fillHoldDrawer === "function") fillHoldDrawer(drawer.dataset.drawer, drawer);
     }
+  }));
+  el.querySelectorAll("[data-alertsave]").forEach(b => b.addEventListener("click", () => {
+    const card = b.closest(".hold-card");
+    const t = Number(card.querySelector(".al-target").value) || null;
+    const sl = Number(card.querySelector(".al-sl").value) || null;
+    if (!state.profile.alerts) state.profile.alerts = {};
+    if (!t && !sl) delete state.profile.alerts[b.dataset.alertsave];
+    else state.profile.alerts[b.dataset.alertsave] = { target: t, sl: sl };
+    persist(); renderAll(); toast("Price alert saved for " + b.dataset.alertsave);
+  }));
+  el.querySelectorAll("[data-alertclear]").forEach(b => b.addEventListener("click", () => {
+    if (state.profile.alerts) delete state.profile.alerts[b.dataset.alertclear];
+    persist(); renderAll(); toast("Price alert cleared");
   }));
   el.querySelectorAll(".whatif").forEach(w => {
     const qtyEl = w.querySelector(".wi-qty"), priceEl = w.querySelector(".wi-price"), out = w.querySelector(".wi-out");
