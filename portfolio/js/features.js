@@ -583,6 +583,12 @@ document.addEventListener("keydown", e => {
 setInterval(() => {
   document.querySelectorAll("[data-bnav]").forEach(b => b.classList.toggle("active", b.dataset.bnav === folioView));
 }, 1000);
+/* Bottom dock + top strip navigation: ONE delegated listener on the document,
+   so the buttons work no matter where the dock HTML sits in the page. */
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-bnav]");
+  if (b) switchView(b.dataset.bnav);
+});
 
 /* ---------- LW chart state (declared before the controls IIFE below) ---------- */
 let lwState = { type: "candles", ema: true, sma: false, vol: true };
@@ -610,7 +616,7 @@ function lwSave() { try { localStorage.setItem("folio_lw", JSON.stringify(lwStat
   if (rst) rst.addEventListener("click", () => { if (lwChart) lwChart.timeScale().fitContent(); });
   const rb = $("liveRefreshBtn");
   if (rb) rb.addEventListener("click", doTick);
-  document.querySelectorAll("[data-bnav]").forEach(b => b.addEventListener("click", () => switchView(b.dataset.bnav)));
+
 })();
 
 let lwLibPromise = null;
@@ -2384,7 +2390,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v80";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v81";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
