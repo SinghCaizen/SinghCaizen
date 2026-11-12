@@ -1111,8 +1111,9 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
 @media (min-width: 1024px){
   .ipo-layout{display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start;}
   .ipo-aside{position: sticky; top: 12px;}
-  .ipo-cards-wrap{display: none;}
 }
+/* v43 — the IPO Master app cards ARE the list on every screen; the list-view table retires (tables remain in GMP/Subscription views and inside the deep-dive) */
+.ipo-main-col .ipo-table-wrap{display: none !important;}
 @media (max-width: 1023px){ .ipo-table-wrap{display: none;} .ipo-table-wrap.gmp, .ipo-table-wrap.subs{display: block; overflow-x: auto;} }
 .ipo-aside{display: flex; flex-direction: column; gap: 10px; margin-top: 12px;}
 @media (min-width: 1024px){ .ipo-aside{margin-top: 0;} }
