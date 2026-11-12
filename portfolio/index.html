@@ -24,7 +24,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Folio — A Singh Caizen Product","short_name":"Folio","display":"standalone","start_url":".","background_color":"%23000000","theme_color":"%23000000","icons":[]}'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=41">
+<link rel="stylesheet" href="css/style.css?v=42">
 </head>
 <body>
 
@@ -408,6 +408,7 @@
 
       <div id="ipoViewAll">
         <div class="panel">
+          <div class="seg ipo-cat-patti" id="ipoCatSeg"><button type="button" data-ipocat="mainline" class="seg-btn active">🏢 MainLine</button><button type="button" data-ipocat="sme" class="seg-btn">🏭 SME</button><button type="button" data-ipocat="allot" class="seg-btn">🎯 Allotment</button><button type="button" data-ipocat="watch" class="seg-btn">★ Watchlist</button><button type="button" data-ipocat="more" class="seg-btn">⋯ More</button></div>
           <div class="seg seg-small ipo-sub-seg" id="ipoSubSeg"></div>
           <div class="ipo-filter-row">
             <div class="seg seg-small" id="ipoBoardSeg"><button type="button" data-ipoboard="ALL" class="seg-btn active">All</button><button type="button" data-ipoboard="MAINBOARD" class="seg-btn">Mainboard</button><button type="button" data-ipoboard="SME" class="seg-btn">SME</button></div>
@@ -470,6 +471,16 @@
         <div class="panel"><div class="panel-head"><h2>MY IPO APPLICATIONS &amp; UPI MANDATES</h2><span class="price-meta">Log an application from any IPO card (All IPOs → tap a card → Log My Application)</span></div><div id="ipoAppsWrap"></div></div>
       </div>
 
+      <div id="ipoDeep" class="ipo-deep hidden">
+        <div class="ipo-deep-head">
+          <button type="button" class="btn btn-small" id="ipoDeepBack">← Back to IPOs</button>
+          <b id="ipoDeepTitle">IPO</b>
+          <button type="button" class="ipo-star-btn" id="ipoDeepStar" title="Save to IPO Watchlist">☆</button>
+        </div>
+        <div class="seg seg-small ipo-jump-patti" id="ipoJumpSeg"></div>
+        <div id="ipoDeepBody"></div>
+        <button type="button" class="ipo-top-btn hidden" id="ipoDeepTop" title="Back to top">↑</button>
+      </div>
       <div id="ipoViewFaqs" class="hidden">
         <div class="panel"><div class="panel-head"><h2>IPO FAQs</h2><span class="price-meta">The questions every first-time applicant asks</span></div><div id="ipoFaqList"></div></div>
         <div class="panel"><div class="panel-head"><h2>LEAD MANAGERS — LEADERBOARD</h2><span class="price-meta">Ranked from Folio's catalog (issues handled &amp; their average listing gain)</span></div><div id="ipoManagers"></div></div>
@@ -850,6 +861,6 @@
 <script src="js/stocks.js?v=23"></script>
 <script src="js/app.js?v=38"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/features.js?v=41"></script>
+<script src="js/features.js?v=42"></script>
 </body>
 </html>
