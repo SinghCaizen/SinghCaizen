@@ -1,0 +1,19 @@
+{
+  "_about": "Well-known investors and the listed companies they are publicly known to hold, from public shareholding disclosures and widely reported filings. This is a SEED file for Folio's Smart Money section: verify every line against the latest shareholding pattern before relying on it, and edit freely. preparedBy = where the name was reported; asOf = when this seed was written.",
+  "preparedBy": "Folio seed — verify against the latest BSE/NSE shareholding pattern",
+  "asOf": "2026-11-12",
+  "investors": [
+    { "name": "Estate of Rakesh Jhunjhunwala (Rare Enterprises)", "holdings": [
+      { "sym": "TITAN", "note": "Long-held, publicly disclosed stake" },
+      { "sym": "TMPV", "note": "Held via Tata Motors before the 2025 demerger — verify current entity" },
+      { "sym": "CRISIL", "note": "Long-held, publicly disclosed stake" }
+    ]},
+    { "name": "Radhakishan Damani (Bright Star / Avenue Supermarts promoter)", "holdings": [
+      { "sym": "DMART", "note": "Promoter holding" },
+      { "sym": "TRENT", "note": "Reported public holding — verify" }
+    ]},
+    { "name": "Example — add your own", "holdings": [
+      { "sym": "RELIANCE", "note": "Replace this block with investors you track" }
+    ]}
+  ]
+}

@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v69";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v70";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -5363,3 +5363,80 @@ function legalLinkEnsure() {
   pv.appendChild(row);
 }
 document.body.dataset.view = "dashboard";
+
+/* ================================================================
+   PHASE 7 (v74) — data pipeline consumption
+   Optional hourly JSON published by GitHub Actions to the repo's
+   `data` branch (candles + fundamentals + ipo.json) and the
+   hand-editable investors.json on main. Everything here is
+   best-effort: if a file is missing or stale, the sections simply
+   do not appear — no invented data, ever.
+   ================================================================ */
+const P7_RAW = "https://raw.githubusercontent.com/SinghCaizen/SinghCaizen/";
+let p7Inv = null, p7Fund = null, p7LoadTried = false;
+async function p7Load() {
+  if (p7LoadTried) return; p7LoadTried = true;
+  try { const r = await fetch(P7_RAW + "main/portfolio/data/investors.json", { cache: "no-store" }); if (r.ok) p7Inv = await r.json(); } catch (e) {}
+  try { const r = await fetch(P7_RAW + "data/portfolio/data/fundamentals.json", { cache: "no-store" }); if (r.ok) { const j = await r.json(); p7Fund = j && j.data ? j.data : null; } } catch (e) {}
+}
+function p7QualityScore(f) {
+  /* Transparent, shown-with-formula score from real fields only. */
+  if (!f) return null;
+  let pts = 0, parts = [];
+  if (typeof f.roe === "number") { const p = f.roe >= 0.15 ? 2 : f.roe >= 0.08 ? 1 : 0; pts += p; parts.push("ROE " + (f.roe * 100).toFixed(1) + "% (+" + p + ")"); }
+  if (typeof f.profitMargin === "number") { const p = f.profitMargin >= 0.12 ? 2 : f.profitMargin >= 0.05 ? 1 : 0; pts += p; parts.push("Margin " + (f.profitMargin * 100).toFixed(1) + "% (+" + p + ")"); }
+  if (typeof f.debtToEquity === "number") { const p = f.debtToEquity <= 50 ? 2 : f.debtToEquity <= 150 ? 1 : 0; pts += p; parts.push("Debt/Eq " + f.debtToEquity.toFixed(0) + " (+" + p + ")"); }
+  if (typeof f.revenueGrowth === "number") { const p = f.revenueGrowth >= 0.12 ? 2 : f.revenueGrowth >= 0.03 ? 1 : 0; pts += p; parts.push("Growth " + (f.revenueGrowth * 100).toFixed(1) + "% (+" + p + ")"); }
+  if (!parts.length) return null;
+  return { pts: pts, max: parts.length * 2, parts: parts };
+}
+async function p7EnhanceOverview() {
+  const box = $("sxTabBody"); if (!box || !sxSym) return;
+  await p7Load();
+  let html = "";
+  const f = p7Fund && p7Fund[sxSym];
+  if (f) {
+    const rows = [];
+    if (typeof f.pe === "number") rows.push(["P/E", f.pe.toFixed(1)]);
+    if (typeof f.marketCap === "number") rows.push(["Market cap", inrShort(f.marketCap)]);
+    if (typeof f.roe === "number") rows.push(["ROE", (f.roe * 100).toFixed(1) + "%"]);
+    if (typeof f.debtToEquity === "number") rows.push(["Debt/Eq", f.debtToEquity.toFixed(0)]);
+    if (rows.length) html += '<div class="sx-blk"><div class="sx-blk-t">Fundamentals <span class="sx-src">via the free data pipeline</span></div><div class="ks-strip">' + rows.map(r => '<div class="ks-cell"><span>' + r[0] + '</span><b>' + r[1] + "</b></div>").join("") + "</div>";
+    const q = p7QualityScore(f);
+    if (q) html += '<p class="sx-note">Quality score ' + q.pts + "/" + q.max + " — computed on this device from: " + q.parts.join(" · ") + ". Information only, not a recommendation.</p>";
+    html += "</div>";
+  }
+  if (p7Inv && Array.isArray(p7Inv.investors)) {
+    const holders = p7Inv.investors.filter(inv => (inv.holdings || []).some(h => h.sym === sxSym));
+    if (holders.length) {
+      html += '<div class="sx-blk"><div class="sx-blk-t">Smart Money — who else holds this</div>' + holders.map(inv => { const h = inv.holdings.find(x => x.sym === sxSym); return '<div class="sm-row"><b>' + esc(inv.name) + '</b><span class="sx-note">' + esc(h.note || "") + "</span></div>"; }).join("") + '<p class="sx-note">From the hand-checked investors file (' + esc(p7Inv.asOf || "") + ') — ' + esc(p7Inv.preparedBy || "verify before relying on it") + ".</p></div>";
+    }
+  }
+  try {
+    const news = await fetchNews(sxSym + " share", 6);
+    const hot = (news || []).filter(n => /result|earnings|profit|order|contract|dividend|bonus|split|buyback|stake|approval/i.test(n.title || "")).slice(0, 2);
+    if (hot.length) html += '<div class="sx-blk"><div class="sx-blk-t">🚩 Major news flags</div>' + hot.map(n => '<div class="sm-row"><span>' + esc(n.title) + "</span></div>").join("") + "</div>";
+  } catch (e) {}
+  if (html && $("sxTabBody")) box.insertAdjacentHTML("beforeend", html);
+}
+const _sxRenderTabP7 = sxRenderTab;
+sxRenderTab = async function (tab) { await _sxRenderTabP7(tab); if (tab === "overview") { try { await p7EnhanceOverview(); } catch (e) {} } };
+
+/* IPO list from the pipeline (NSE via Actions) merges under the built-in catalog */
+let p7IpoRows = null, p7IpoTried = false;
+async function p7IpoLoad() {
+  if (p7IpoTried) return; p7IpoTried = true;
+  try {
+    const r = await fetch(P7_RAW + "data/portfolio/data/ipo.json", { cache: "no-store" });
+    if (r.ok) { const j = await r.json(); p7IpoRows = (j && j.data) || []; if (typeof renderIpo === "function" && currentUser) renderIpo(); }
+  } catch (e) {}
+}
+const _ipoAllP7 = ipoAll;
+ipoAll = function () {
+  const base = _ipoAllP7();
+  if (!p7IpoRows || !p7IpoRows.length) return base;
+  const have = new Set(base.map(x => (x.name || "").toLowerCase()));
+  const extra = p7IpoRows.filter(r => r && r.name && !have.has(r.name.toLowerCase())).map(r => ({ key: "pipe:" + (r.symbol || r.name), name: r.name, board: "MAINBOARD", year: r.open ? parseInt(String(r.open).slice(0, 4), 10) || 2026 : 2026, status: "upcoming", open: r.open, close: r.close, listing: r.listing, allot: null, low: null, high: null, lot: null, sizeCr: null, freshCr: null, registrar: "", managers: [], sym: r.symbol || "", sector: "", tentative: true }));
+  return base.concat(extra);
+};
+if (typeof renderIpo === "function") { const _renderIpoP7 = renderIpo; renderIpo = function () { _renderIpoP7(); p7IpoLoad(); }; }
