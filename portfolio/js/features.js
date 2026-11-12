@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v44";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v46";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3146,7 +3146,7 @@ function taVerdict(calc) {
    ===================================================================== */
 const IPO_MARKET = { total: 835, open: 0, upcoming: 1, closed: 834, y2026: 304, yMain: 111, ySme: 193, funds: "₹1,70,178 Cr", profitPct: "60%", profitOf: "180 of 299 listings", avgGain: "+12.8%", median: "+3.0%", avgSubs: "64.73x", bestName: "Tempsens Instruments (India) IPO", bestGain: "+111.3%", busiest: "September 2026 · 86 issues", yearActivity: "351 IPOs opened in the last 12 months" };
 const IPO_CATALOG = [
-  { name: "Crystal Crop Protection IPO", sym: "", board: "MAINBOARD", status: "upcoming", low: null, high: null, lot: null, size: null, fresh: 600, fv: 10, open: "2026-11-18", close: "2026-11-20", allot: "2026-11-23", listing: "2026-11-26", listed: null, reg: "Link Intime", year: 2026, subsT: 0, managers: "IIFL Capital Services · Motilal Oswal Investment Advisors · DAM Capital Advisors", gainPct: null, tentative: true, saleType: "Fresh Capital & Offer For Sale", sectorLine: "Chemicals", industry: "Pesticides & Agrochemicals", about: "Crystal Crop Protection Limited is an agrochemical and seed company engaged in providing comprehensive crop solutions to Indian farmers. Its core business comprises crop protection products and seeds. The crop protection portfolio includes herbicides, insecticides, fungicides, plant growth regulators, and bio-stimulants.",
+  { name: "Crystal Crop Protection IPO", sym: "", board: "MAINBOARD", status: "upcoming", low: null, high: null, lot: null, size: null, fresh: 355, fv: 10, open: "2026-11-18", close: "2026-11-20", allot: "2026-11-23", listing: "2026-11-26", listed: null, reg: "MUFG Intime", year: 2026, subsT: 0, managers: "IIFL Capital Services · Motilal Oswal Investment Advisors · DAM Capital Advisors", gainPct: null, tentative: true, saleType: "Fresh Capital & Offer For Sale", sectorLine: "Chemicals", industry: "Pesticides & Agrochemicals", about: "Crystal Crop Protection Limited is an agrochemical and seed company engaged in providing comprehensive crop solutions to Indian farmers. Its core business comprises crop protection products and seeds. The crop protection portfolio includes herbicides, insecticides, fungicides, plant growth regulators, and bio-stimulants.",
     objective: ["Repayment/pre-payment, in full or part of certain borrowings availed by our Company.", "Investment in our Material Subsidiary namely Saffire Crop Science Private Limited for repayment/pre-payment, in full or in part, of all or a portion of certain of its outstanding borrowings.", "Funding inorganic growth through unidentified acquisitions and strategic initiatives and general corporate purposes."],
     fin: { periods: ["31 Mar 2023", "31 Mar 2024", "31 Mar 2025", "30 Sep 2025"], revenue: [2540.10, 2385.40, 2731.90, 1995.86], pat: [134.80, 92.40, 118.30, 153.51], patMargin: "7.69%", cols: ["30 Sep 2025", "31 Mar 2025", "31 Mar 2024", "31 Mar 2023"], rows: [["Assets", [3859.23, 3372.40, 3110.15, 2890.50]], ["Revenue", [1995.86, 2731.90, 2385.40, 2540.10]], ["Profit After Tax", [153.51, 118.30, 92.40, 134.80]], ["Net Worth", [1748.90, 1600.20, 1482.10, 1390.00]], ["Reserve & Surplus", [0.0, 0.0, 0.0, 0.0]], ["Total Borrowings", [1205.24, 947.00, 885.60, 812.30]]] },
     peers: [["Crystal Crop Protection Ltd", "0.00", "9.30", "8.76%"], ["Kaveri Seeds Company Ltd", "17.75", "55.10", "21.40%"], ["Sumitomo Chemical India Ltd", "45.88", "10.10", "18.90%"], ["Bayer CropScience Ltd", "35.58", "126.30", "24.10%"], ["Rallis India Limited", "39.78", "6.40", "8.20%"]],
@@ -3154,7 +3154,7 @@ const IPO_CATALOG = [
     kpiB: [["EPS (₹)", "0.00", "0.00"], ["P/E (x)", "0.00", "0.00"]],
     contact: { name: "Crystal Crop Protection Ltd.", addr: "206, 2nd Floor, Span Trade Centre Opp. Kochrab, Gandhi Ashram, Near Paldi Char Rasta, Ashram Road Ellisbridge, Ahmedabad, Gujarat, 380006", phone: "+91 11 49007100", email: "investor@crystalcrop.com", web: "https://www.crystalcropprotection.com/" },
     regDetail: { name: "MUFG Intime India Pvt Ltd", formerly: "formerly Link Intime India Private Limited", phone: "+91 8108114949", email: "ipo.helpdesk@linkintime.co.in" } },
-  { name: "Tempsens Instruments (India) IPO", sym: "", board: "SME", status: "listed", low: null, high: null, lot: null, size: null, open: "", close: "", allot: "", listing: "", listed: null, reg: "", year: 2026, subsT: 142.5, managers: "", gainPct: 111.3, about: "Temperature sensing instruments maker. Best listing of 2026 in the IPO Master snapshot (+111.3%)." },
+  { name: "Tempsens Instruments (India) IPO", sym: "", board: "MAINBOARD", status: "listed", low: 285, high: 300, lot: 50, size: 650, open: "", close: "", allot: "", listing: "2026-08-28", listed: 634, reg: "KFintech", year: 2026, subsT: 184.07, subs: { q: 302.88, n: 314.44, r: 60.69, t: 184.07 }, managers: "ICICI Securities · JM Financial", gainPct: null, about: "Temperature sensing instruments maker. Listed 28 Aug 2026 at ₹634 against the ₹300 issue price (+111.3%) — the best listing of 2026 in the IPO Master snapshot. Subscribed 184.07x overall (QIB 302.88x · NII 314.44x · Retail 60.69x)." },
   { name: "Bharat Coking Coal IPO", sym: "", board: "MAINBOARD", status: "listed", low: null, high: null, lot: null, size: null, open: "", close: "", allot: "", listing: "", listed: null, reg: "", year: 2026, subsT: 98.4, managers: "", gainPct: 96.0, about: "Coal India subsidiary and India's largest coking coal producer. Listed at +96.0% in the IPO Master snapshot." },
   { name: "Bajaj Housing Finance", sym: "BAJAJHFL", board: "MAINBOARD", status: "listed", low: 66, high: 70, lot: 214, size: 6560, open: "2024-09-09", close: "2024-09-11", allot: "2024-09-12", listing: "2024-09-16", listed: 165, reg: "KFintech", year: 2024, subsT: 63.6, managers: "SBI Capital · BOB Capital · HSBC · Nomura · IIFL", about: "Housing finance arm of the Bajaj group — home loans, LAP and developer finance. One of 2024's most subscribed large IPOs." },
   { name: "Hyundai Motor India", sym: "HYUNDAI", board: "MAINBOARD", status: "listed", low: 1865, high: 1960, lot: 7, size: 27870, open: "2024-10-15", close: "2024-10-17", allot: "2024-10-18", listing: "2024-10-22", listed: 1934, reg: "KFintech", year: 2024, subsT: 2.4, managers: "Kotak Mahindra Capital · Citigroup · HSBC · JP Morgan · Morgan Stanley", about: "India's second-largest car maker (Creta, i20, Verna). India's largest IPO by size at the time — a pure offer-for-sale by the Korean parent." },
@@ -3187,9 +3187,9 @@ const IPO_FAQS = [
   ["When and how do I check allotment?", "Allotment finalises a day or two after the issue closes. Check on the registrar's website (Link Intime / KFintech / Bigshare) with PAN, or on BSE's application check. This hub's Allotment tab keeps the official links one tap away."],
   ["What happens on listing day?", "Shares credit to your demat a day before listing. On listing day you can sell immediately or hold — there is no lock-in for IPO allottees (except anchor investors). SME listings have a lot-size exit: you can only sell multiples of the lot initially."]
 ];
-let ipoMainView = "all", ipoQuick = "all", ipoBoard = "ALL", ipoYear = "all", ipoSort = "new", ipoQuery = "", ipoOpenKey = "";
+let ipoMainView = "all", ipoQuick = "live", ipoBoard = "ALL", ipoYear = "all", ipoSort = "new", ipoQuery = "", ipoOpenKey = "";
 let ipoSyncing = false;
-function ipoSynced() { try { return JSON.parse(localStorage.getItem("folio_ipo_synced") || "[]"); } catch (e) { return []; } }
+function ipoSynced() { try { return JSON.parse(localStorage.getItem("folio_ipo_synced") || "[]").filter(s => !(/crystal/i.test(s.name || "") && (s.low == null || s.low < 272.07))); } catch (e) { return []; } }
 function ipoWatch() { try { return JSON.parse(localStorage.getItem("folio_ipo_watch") || "[]"); } catch (e) { return []; } }
 function ipoToggleWatch(key) {
   let w = ipoWatch();
@@ -3308,8 +3308,8 @@ function renderIpoQuick() {
   const seg = $("ipoSubSeg"); if (!seg) return;
   const all = ipoCat === "watch" ? ipoAll().filter(x => ipoWatch().includes(ipoKey(x))) : ipoAll();
   const n = s => all.filter(x => x.status === s).length;
-  const items = [["all", "All (" + all.length + ")"], ["live", "Ongoing (" + n("open") + ")"], ["upcoming", "Upcoming (" + n("upcoming") + ")"], ["listed", "Closed (" + n("listed") + ")"]];
-  seg.innerHTML = items.map(i => '<button type="button" data-ipoquick="' + i[0] + '" class="seg-btn' + (ipoQuick === i[0] ? " active" : "") + '">' + i[1] + "</button>").join("");
+  const items = [["live", "Ongoing (" + n("open") + ")"], ["upcoming", "Upcoming (" + n("upcoming") + ")"], ["listed", "Closed (" + n("listed") + ")"]];
+  seg.innerHTML = items.map(i => '<button type="button" data-ipoquick="' + i[0] + '" class="seg-btn ipo-status-pill' + (ipoQuick === i[0] ? " active" : "") + '">' + i[1] + "</button>").join("");
   seg.querySelectorAll("[data-ipoquick]").forEach(b => b.addEventListener("click", () => { ipoQuick = b.dataset.ipoquick; ipoOpenKey = ""; renderIpo(); }));
 }
 function renderIpoAside() {
@@ -3420,6 +3420,7 @@ function renderIpoFaqs() {
 }
 function setIpoMain(v) {
   ipoMainView = v;
+  const vw = $("view-ipo"); if (vw) vw.classList.toggle("ipo-show-more", v === "faqs");
   document.querySelectorAll("#ipoMainSeg .seg-btn").forEach(b => b.classList.toggle("active", b.dataset.ipomain === v));
   [["all", "ipoViewAll"], ["gmp", "ipoViewGmp"], ["subs", "ipoViewSubs"], ["allot", "ipoViewAllot"], ["faqs", "ipoViewFaqs"]].forEach(p => { const el = $(p[1]); if (el) el.classList.toggle("hidden", p[0] !== v); });
   renderIpo();
@@ -3543,18 +3544,38 @@ function ipoShare(key) {
   else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => toast("📋 IPO summary copied — paste it anywhere"));
 }
 
+function ipoGotoCat(c) {
+  document.querySelectorAll("#ipoCatSeg .seg-btn").forEach(y => y.classList.toggle("active", y.dataset.ipocat === c));
+  document.querySelectorAll("#ipo-bottom-dock .ipo-nav-item").forEach(y => y.classList.toggle("active", y.dataset.ipoNav === c || y.dataset.ipoNav === (c === "watch" ? "watchlist" : c) || (c === "allot" && y.dataset.ipoNav === "allotment")));
+  if (c === "allot") { setIpoMain("allot"); return; }
+  if (c === "more") { setIpoMain("faqs"); return; }
+  ipoCat = c;
+  ipoBoard = c === "sme" ? "SME" : (c === "mainline" ? "MAINBOARD" : "ALL");
+  const bseg = $("ipoBoardSeg"); if (bseg) bseg.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x.dataset.ipoboard === ipoBoard));
+  setIpoMain("all");
+}
+window.setAppWorld = function (w) { switchView(w === "ipo" ? "ipo" : "dashboard"); };
 function wireIpo() {
   document.querySelectorAll("#ipoMainSeg .seg-btn").forEach(b => b.addEventListener("click", () => setIpoMain(b.dataset.ipomain)));
   const catSeg = $("ipoCatSeg");
-  if (catSeg) catSeg.querySelectorAll("[data-ipocat]").forEach(b => b.addEventListener("click", () => {
-    catSeg.querySelectorAll(".seg-btn").forEach(y => y.classList.toggle("active", y === b));
-    const c = b.dataset.ipocat;
-    if (c === "allot") { setIpoMain("allot"); return; }
-    if (c === "more") { setIpoMain("faqs"); return; }
-    ipoCat = c;
-    ipoBoard = c === "sme" ? "SME" : (c === "mainline" ? "MAINBOARD" : "ALL");
-    const bseg = $("ipoBoardSeg"); if (bseg) bseg.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x.dataset.ipoboard === ipoBoard || (ipoBoard === "ALL" && x.dataset.ipoboard === "ALL")));
-    setIpoMain("all");
+  if (catSeg) catSeg.querySelectorAll("[data-ipocat]").forEach(b => b.addEventListener("click", () => ipoGotoCat(b.dataset.ipocat === "allot" ? "allot" : b.dataset.ipocat)));
+  document.querySelectorAll("#ipo-bottom-dock .ipo-nav-item").forEach(b => b.addEventListener("click", () => {
+    const map = { mainline: "mainline", sme: "sme", allotment: "allot", watchlist: "watch", more: "more" };
+    ipoGotoCat(map[b.dataset.ipoNav] || "mainline");
+  }));
+  const exitBtn = $("ipoExitBtn"); if (exitBtn) exitBtn.addEventListener("click", () => window.setAppWorld("portfolio"));
+  document.querySelectorAll("[data-appbar]").forEach(b => b.addEventListener("click", () => {
+    const a = b.dataset.appbar;
+    if (a === "more") ipoGotoCat("more");
+    else if (a === "theme") { const t = $("themeBtn"); if (t) t.click(); }
+    else if (a === "calendar") { ipoCat = "mainline"; ipoQuick = "upcoming"; setIpoMain("all"); renderIpo(); toast("IPO calendar — upcoming issues"); }
+    else if (a === "search") { const v = $("view-ipo"); if (v) v.classList.toggle("ipo-filters-open"); const s = $("ipoSearch"); if (s) setTimeout(() => s.focus(), 30); }
+    else if (a === "filter") {
+      ipoBoard = ipoBoard === "ALL" ? "MAINBOARD" : (ipoBoard === "MAINBOARD" ? "SME" : "ALL");
+      const bseg = $("ipoBoardSeg"); if (bseg) bseg.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x.dataset.ipoboard === ipoBoard));
+      if (ipoMainView === "all") renderIpoAll();
+      toast("Board filter: " + (ipoBoard === "ALL" ? "All boards" : ipoBoard));
+    }
   }));
   const dBack = $("ipoDeepBack"); if (dBack) dBack.addEventListener("click", closeIpoDeep);
   const dStar = $("ipoDeepStar"); if (dStar) dStar.addEventListener("click", () => { if (!ipoDeepKey) return; const on = ipoToggleWatch(ipoDeepKey); dStar.textContent = on ? "★" : "☆"; dStar.classList.toggle("on", on); if (ipoMainView === "all") renderIpoAll(); });
@@ -3647,7 +3668,7 @@ async function loadIpoBuzz() {
 }
 wireIpo();
 const _switchViewIpo2 = switchView;
-switchView = function (v) { _switchViewIpo2(v); document.body.classList.toggle("ipo-mode-active", v === "ipo"); if (v === "ipo") renderIpo(); };
+switchView = function (v) { _switchViewIpo2(v); document.body.classList.toggle("ipo-world-active", v === "ipo"); if (v === "ipo") renderIpo(); };
 
 /* ---------- Terms, Privacy & Security modal ---------- */
 (function wireTerms() {

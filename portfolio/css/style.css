@@ -1264,7 +1264,7 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
 .ta-zoom{position: absolute; top: 8px; left: 8px; z-index: 3; display: flex; gap: 4px; background: var(--liquid-bar-bg); border: 1px solid var(--liquid-border); border-radius: 999px; padding: 3px;}
 .ta-zoom button{width: 26px; height: 26px; border-radius: 50%; border: none; background: transparent; color: var(--liquid-text-primary, var(--text)); font-size: 11px; cursor: pointer; line-height: 1;}
 .ta-zoom button:hover{background: var(--liquid-active-pill);}
-body.ipo-mode-active .top-liquid-nav-strip, body.ipo-mode-active #tickerWrap{display: none !important;}
+/* superseded by ipo-world rules in v46 */
 .terms-card{max-width: 760px !important;}
 .terms-body{max-height: 62vh; overflow-y: auto; padding-right: 4px;}
 .terms-body section{margin-bottom: 14px;}
@@ -1272,3 +1272,41 @@ body.ipo-mode-active .top-liquid-nav-strip, body.ipo-mode-active #tickerWrap{dis
 .terms-body p{font-size: 13px; line-height: 1.65; margin: 0;}
 .terms-foot{display: flex; justify-content: flex-end; margin-top: 12px;}
 .site-foot a[data-open-terms]{font-weight: 700;}
+
+/* v46 — Dual-World: Portfolio World ⇄ IPO World */
+body.ipo-world-active header.topbar,
+body.ipo-world-active .top-liquid-nav-strip,
+body.ipo-world-active #tickerWrap,
+body.ipo-world-active main > section:not(#view-ipo),
+body.ipo-world-active #bnav,
+body.ipo-world-active .samsung-bottom-dock-wrap:not(#ipo-bottom-dock){display: none !important;}
+#ipo-bottom-dock{display: none;}
+body.ipo-world-active #ipo-bottom-dock{display: flex !important; position: fixed; bottom: 14px; left: 12px; right: 12px; align-items: center; gap: 10px; z-index: 900; pointer-events: none;}
+body.ipo-world-active main{padding-bottom: 96px;}
+#ipo-bottom-dock .samsung-bottom-capsule{pointer-events: auto;}
+.ipo-nav-item{flex: 1; height: 52px; border-radius: 999px; border: none; background: transparent; color: var(--liquid-text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; font: inherit;}
+.ipo-nav-item svg{width: 21px; height: 21px;}
+.ipo-nav-item span{font-size: 9.5px; font-weight: 700; letter-spacing: .01em;}
+.ipo-nav-item.active{background: var(--liquid-active-pill); color: var(--liquid-text-primary, var(--text)); box-shadow: var(--liquid-edge-glow);}
+.return-to-portfolio-btn{pointer-events: auto; flex-shrink: 0; width: 62px; height: 62px; border-radius: 50%; background: var(--liquid-bar-bg); backdrop-filter: blur(26px) saturate(195%); -webkit-backdrop-filter: blur(26px) saturate(195%); border: 1px solid var(--liquid-border); box-shadow: var(--liquid-shadow), var(--liquid-edge-glow); color: var(--liquid-text-primary, var(--text)); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font: inherit; line-height: 1;}
+.ipo-appbar{display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 12px; background: var(--liquid-bar-bg); border: 1px solid var(--liquid-border); border-radius: 18px; box-shadow: var(--liquid-shadow), var(--liquid-edge-glow);}
+.ipo-appbar-title{flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0;}
+.ipo-appbar-title b{font-size: 19px; letter-spacing: .01em;}
+.ipo-amber{color: #f59e0b;}
+.ipo-byfolio{font-size: 10px; font-weight: 700; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); padding: 2.5px 7px; border-radius: 999px;}
+.ipo-appbar-actions{display: flex; gap: 2px;}
+.ipo-appbar-ic{width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent; color: var(--liquid-text-primary, var(--text)); display: flex; align-items: center; justify-content: center; cursor: pointer;}
+.ipo-appbar-ic:hover{background: var(--liquid-active-pill);}
+/* status patti: 3 equal liquid pills, royal-blue active */
+#ipoSubSeg{display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 5px !important; padding: 5px !important;}
+#ipoSubSeg .ipo-status-pill{width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+#ipoSubSeg .ipo-status-pill.active{background: #2563eb !important; color: #fff !important; border-color: transparent;}
+/* IPO world trims the hub to the clean app layout */
+body.ipo-world-active .ipo-hero{display: none;}
+body.ipo-world-active #view-ipo.ipo-show-more .ipo-hero{display: block;}
+body.ipo-world-active #ipoCatSeg{display: none;}
+@media (max-width: 1023px){
+  body.ipo-world-active #ipoMainSeg{display: none;}
+  body.ipo-world-active .ipo-filter-row{display: none;}
+  body.ipo-world-active #view-ipo.ipo-filters-open .ipo-filter-row{display: flex;}
+}
