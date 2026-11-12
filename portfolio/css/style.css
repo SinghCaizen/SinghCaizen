@@ -1367,3 +1367,7 @@ body.ipo-world-active #ipoAside{display: none !important;}
 body.ipo-world-active .ipo-layout{grid-template-columns: minmax(0, 1fr) !important;}
 body.ipo-world-active .ipo-filter-row{display: none !important;}
 body.ipo-world-active #view-ipo.ipo-filters-open .ipo-filter-row{display: flex !important;}
+
+/* v55 — IPO World main list: widgets and buzz stay out (aside is a class, not an id) */
+body.ipo-world-active .ipo-aside{display: none !important;}
+body.ipo-world-active .ipo-buzz-panel{display: none !important;}
