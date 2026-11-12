@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v62";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v63";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -5304,3 +5304,29 @@ fetchMaster = async function (sym) {
   } catch (e) {}
   return _fetchMaster0(sym);
 };
+
+/* ================= TASK 6 (v67): footer scope, transitions, scroll memory ================= */
+const viewScrollMem = {};
+let currentViewName = "dashboard";
+const _switchViewT6 = switchView;
+switchView = function (name) {
+  viewScrollMem[currentViewName] = window.scrollY || 0;
+  _switchViewT6(name);
+  currentViewName = name;
+  document.body.dataset.view = name;
+  const sec = $("view-" + name);
+  if (sec) { sec.classList.remove("view-enter"); void sec.offsetWidth; sec.classList.add("view-enter"); }
+  const y = viewScrollMem[name] || 0;
+  requestAnimationFrame(() => setTimeout(() => window.scrollTo(0, y), 30));
+  if (name === "profile") setTimeout(legalLinkEnsure, 60);
+};
+function legalLinkEnsure() {
+  const pv = $("view-profile");
+  if (!pv || pv.querySelector(".profile-legal")) return;
+  const row = document.createElement("div");
+  row.className = "profile-legal";
+  row.innerHTML = '<a href="#" data-open-terms="1" class="mini-btn" style="display:inline-flex;align-items:center;text-decoration:none">🛡️ Terms, Privacy &amp; Security</a>';
+  row.querySelector("[data-open-terms]").addEventListener("click", e => { e.preventDefault(); const m = $("termsModal"); if (m) m.classList.remove("hidden"); });
+  pv.appendChild(row);
+}
+document.body.dataset.view = "dashboard";
