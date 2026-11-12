@@ -1228,6 +1228,35 @@ function masterCorpHtml(m) {
   return html || '<p class="empty-note">No dividends or splits in the last 12 months.</p>';
 }
 
+/* ---------- holdings drawer: live status (52w range, day range, volume) ---------- */
+async function fillHoldDrawer(sym, drawer) {
+  const box = drawer.querySelector(".dr-status");
+  if (!box) return;
+  const avg = Number(drawer.dataset.avg) || 0;
+  const ltp = drawer.dataset.ltp === "" ? null : Number(drawer.dataset.ltp);
+  let html = "";
+  if (ltp !== null && avg > 0) {
+    const vs = (ltp - avg) / avg * 100;
+    html += `<div class="dr-vs ${vs >= 0 ? "gain-bg" : "loss-bg"}">Trading <b>${pct(Math.abs(vs))} ${vs >= 0 ? "above" : "below"}</b> your Avg Buy Price (${inr2(avg)})</div>`;
+  }
+  try {
+    const m = await fetchMaster(sym);
+    if (!m || !m.meta) throw new Error("no master");
+    const meta = m.meta;
+    const hi = meta.fiftyTwoWeekHigh, lo = meta.fiftyTwoWeekLow;
+    if (typeof hi === "number" && typeof lo === "number" && hi > lo && ltp !== null) {
+      const pos = Math.min(100, Math.max(0, (ltp - lo) / (hi - lo) * 100));
+      html += `<div class="rng-wrap"><div class="rng-lab"><span>52W Low ${inr2(lo)}</span><span>52W High ${inr2(hi)}</span></div><div class="rng-track"><div class="rng-fill" style="width:${pos}%"></div><div class="rng-dot" style="left:${pos}%"></div></div></div>`;
+    }
+    const dl = meta.regularMarketDayLow, dh = meta.regularMarketDayHigh, vol = meta.regularMarketVolume;
+    const bits = [];
+    if (typeof dl === "number" && typeof dh === "number") bits.push("Day range: " + inr2(dl) + " – " + inr2(dh));
+    if (typeof vol === "number") bits.push("Volume: " + vol.toLocaleString("en-IN"));
+    if (bits.length) html += `<p class="dr-line">${bits.join(" · ")}</p>`;
+  } catch (e) { /* status extras are best-effort */ }
+  box.innerHTML = html || '<span class="muted small">Live status could not load right now — your lots and entries below are complete.</span>';
+}
+
 async function loadCompanySheet(sym) {
   const tok = ++sheetToken;
   const name = (STOCK_MAP[sym] && STOCK_MAP[sym].name) || sym;

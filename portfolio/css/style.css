@@ -695,3 +695,51 @@ body.privacy-on .stat-value,body.privacy-on .stat-sub,body.privacy-on #insAssets
 /* v24: redeploy trigger — same phone watchlist fixes as v23 */
 
 /* v25: morning redeploy nudge */
+
+/* v26 — watchlist grid rows (no swipe, no overlap) + Moneycontrol-style holding cards */
+#watchForm{display:flex;gap:8px;width:100%}
+#watchForm input{flex:1;min-width:0}
+.watchlist-row{display:grid;grid-template-columns:28px minmax(0,1.4fr) 64px auto 28px;align-items:center;gap:10px;padding:12px 10px;border-bottom:1px solid var(--line);overflow:hidden;position:relative;cursor:pointer}
+.watchlist-row .star-btn{justify-self:center}
+.w-id{display:flex;flex-direction:column;min-width:0;gap:1px}
+.w-id .w-sym{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.w-id .w-name{font-size:11.5px;opacity:.68;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.watchlist-row .watch-spark{position:static}
+.watchlist-row .watch-spark svg{width:64px;height:26px;display:block}
+.w-price{display:flex;flex-direction:column;align-items:flex-end;gap:3px;text-align:right;white-space:nowrap}
+.wp-price{font-size:14.5px;font-weight:700}
+.wp-pill{font-size:11.5px;font-weight:600;padding:2px 6px;border-radius:6px}
+.wp-pill.gain{background:color-mix(in srgb,var(--gain) 16%,transparent);color:var(--gain)}
+.wp-pill.loss{background:color-mix(in srgb,var(--loss) 14%,transparent);color:var(--loss)}
+.wp-pill.flat{background:var(--panel-2);color:var(--muted)}
+.watch-x{width:28px;height:28px;border:none;background:transparent;color:var(--muted);font-size:15px;cursor:pointer;border-radius:8px;justify-self:center}
+.watch-x:hover{background:color-mix(in srgb,var(--loss) 14%,transparent);color:var(--loss)}
+.hold-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;width:100%;background:none;border:none;padding:0;cursor:pointer;text-align:left;color:inherit;font:inherit}
+.hh-left{display:flex;flex-direction:column;gap:2px;min-width:0}
+.hh-symrow{display:flex;align-items:center;gap:8px}
+.hh-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;white-space:nowrap}
+.hh-ltp{font-size:15px;font-weight:700}
+.hold-strip{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:12px}
+.hold-strip>div{background:var(--panel-2);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.hold-strip span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.hold-strip b{font-size:14.5px}
+.hold-meta{margin-top:10px;font-size:12.5px;color:var(--muted)}
+.hold-chev{width:100%;margin-top:10px;background:none;border:none;border-top:1px dashed var(--line);padding:9px 0 2px;color:var(--muted);font-size:12.5px;cursor:pointer}
+.hold-drawer{border-top:1px solid var(--line);margin-top:10px;padding-top:6px}
+.dr-block{padding:8px 0 4px}
+.dr-block h4{margin:0 0 8px;font-size:13px;letter-spacing:.02em}
+.dr-vs{border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:10px}
+.dr-vs.gain-bg{background:color-mix(in srgb,var(--gain) 13%,transparent)}
+.dr-vs.loss-bg{background:color-mix(in srgb,var(--loss) 12%,transparent)}
+.rng-lab{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:4px}
+.dr-line{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.lot-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px;flex-wrap:wrap}
+.lot-date{font-weight:600}
+.lot-age{color:var(--muted);font-size:12px}
+.tax-chip{font-size:10.5px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.03em}
+.tax-chip.ltcg{background:color-mix(in srgb,var(--gain) 16%,transparent);color:var(--gain)}
+.tax-chip.stcg{background:color-mix(in srgb,var(--gold) 22%,transparent);color:inherit}
+.dr-tax{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.dr-txn{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px;flex-wrap:wrap}
+.dr-txn-main{flex:1;min-width:0}
+@media (max-width:380px){.watchlist-row{grid-template-columns:28px minmax(0,1fr) auto 28px}.watchlist-row .watch-spark{display:none}}
