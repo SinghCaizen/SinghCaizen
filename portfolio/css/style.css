@@ -1604,3 +1604,48 @@ body:not([data-view="dashboard"]) .site-foot{display:none}
 /* ===== Phase 7: smart money rows ===== */
 .sm-row{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px;flex-wrap:wrap}
 .sx-src{font-weight:400;color:var(--muted);font-size:11px}
+
+/* ================================================================
+   PHASE 3 (v75) — clean flat design (Tijori-style)
+   One accent, hairline borders, flat surfaces: no glass, no blur,
+   no shadows, no gradients on chrome. System font stack. The token
+   values below redefine the palette for both themes; every older
+   rule that reads var(--panel)/var(--line)/var(--gold) follows.
+   ================================================================ */
+:root{
+  --gold:#2fbd6b; --gold-soft:#57cf8a; --green:#2fbd6b;
+  --bg:#0e0f11; --panel:#16181b; --panel-2:#1d1f23; --line:#26282d;
+  --text:#f2f3f4; --muted:#9aa0a6; --input:#101214;
+  --gain:#2fbd6b; --loss:#e5484d;
+  --surface:var(--panel); --ink:var(--text); --accent:var(--gold); --down:var(--loss); --warn:#e8a13a;
+  --r-sm:10px; --r-md:14px;
+}
+[data-theme="light"]{
+  --gold:#0a7d4f; --gold-soft:#0f9a64; --green:#0a7d4f;
+  --bg:#f7f7f5; --panel:#ffffff; --panel-2:#f0f0ee; --line:#e3e3e0;
+  --text:#17181a; --muted:#6b7075; --input:#ffffff;
+  --gain:#0a7d4f; --loss:#d92d20;
+}
+body{font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans","Helvetica Neue",Arial,sans-serif}
+h1,h2,h3,h4,.panel-head h2,.logo-text,.sc-brand,.auth-title{font-family:inherit}
+.panel,.glass,.card,.auth-card,.hold-card,.ipo-card,.modal-card,.sheet-card,.kv-card,.watch-card,.news-card,.insx-card,.plan-card{
+  background:var(--panel);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border:1px solid var(--line);border-radius:var(--r-md);
+}
+.topbar{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--panel);box-shadow:none;border-bottom:1px solid var(--line)}
+.samsung-bottom-dock-wrap{padding:0}
+.samsung-bottom-capsule{background:var(--panel);backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;border:none;border-top:1px solid var(--line);border-radius:0;width:100%;max-width:none}
+.mobile-nav-item.active,.ipo-nav-item.active{background:color-mix(in srgb,var(--gold) 15%,transparent);color:var(--gold);border-radius:999px}
+.btn{border-radius:var(--r-sm)}
+.btn-gold{background:var(--gold);border-color:var(--gold);color:#fff}
+.btn-gold:hover{background:var(--gold-soft);border-color:var(--gold-soft)}
+.chip,.seg-btn,.dash-chip{border-radius:999px}
+.ipo-logo{background:var(--panel-2);border:1px solid var(--line);color:var(--text);box-shadow:none}
+.ipo-badge{box-shadow:none;border:1px solid var(--line);background:var(--panel-2);color:var(--text)}
+.ipo-badge.open{background:color-mix(in srgb,var(--gain) 14%,transparent);color:var(--gain);border-color:transparent}
+.ipo-badge.upcoming{background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn);border-color:transparent}
+.tbl tbody tr:nth-child(even){background:color-mix(in srgb,var(--text) 3%,transparent)}
+.hero,.dash-hero{background:var(--panel);box-shadow:none}
+input,select,textarea{border-radius:var(--r-sm)}
+.skl{position:relative;overflow:hidden;background:var(--panel-2);border-radius:8px;min-height:14px}
+.skl::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--text) 7%,transparent),transparent);animation:sklmove 1.3s infinite}
+@keyframes sklmove{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
