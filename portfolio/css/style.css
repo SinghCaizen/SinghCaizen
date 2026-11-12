@@ -951,3 +951,62 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
   .samsung-profile-circle-btn img{width: 38px; height: 38px; border-radius: 50%; object-fit: cover;}
   .bnav{display: none !important;}
 }
+
+/* v33 — SOLID-Liquid Glass: 96-98% opaque surfaces, blur only on fixed bars + modal backdrop */
+:root{
+  --bg-liquid-canvas: linear-gradient(160deg, #06121e 0%, #091929 50%, #071522 100%);
+  --liquid-card-bg: linear-gradient(145deg, rgba(16,33,50,.97), rgba(11,24,38,.98));
+  --liquid-inner-card-bg: rgba(22,43,64,.95);
+  --liquid-modal-bg: linear-gradient(165deg, #0f2234 0%, #0a1826 100%);
+  --liquid-bar-bg: rgba(13,28,43,.95);
+  --liquid-active-pill: rgba(255,255,255,.18);
+  --liquid-border: rgba(148,197,255,.18);
+  --liquid-edge-glow: inset 0 1px 1.5px rgba(255,255,255,.22), inset 0 -1px 1px rgba(0,0,0,.45);
+  --liquid-shadow: 0 14px 32px -6px rgba(0,0,0,.65);
+  --liquid-text-primary: #f8fafc;
+  --liquid-text-muted: #94a3b8;
+  --panel: rgba(14,29,44,.97);
+  --panel-2: rgba(22,43,64,.95);
+  --line: rgba(148,197,255,.18);
+}
+[data-theme="light"]{
+  --bg-liquid-canvas: linear-gradient(160deg, #e8f0fe 0%, #f1f5f9 50%, #e6f4ea 100%);
+  --liquid-card-bg: linear-gradient(145deg, rgba(255,255,255,.97), rgba(244,248,254,.96));
+  --liquid-inner-card-bg: rgba(241,245,249,.95);
+  --liquid-modal-bg: linear-gradient(165deg, #ffffff 0%, #f4f8fd 100%);
+  --liquid-bar-bg: rgba(242,247,255,.94);
+  --liquid-active-pill: #ffffff;
+  --liquid-border: rgba(148,163,184,.32);
+  --liquid-edge-glow: inset 0 1px 1.5px rgba(255,255,255,1), inset 0 -1px 1px rgba(15,23,42,.05);
+  --liquid-shadow: 0 10px 26px -6px rgba(15,23,42,.10);
+  --liquid-text-primary: #0f172a;
+  --liquid-text-muted: #475569;
+  --panel: rgba(252,253,255,.97);
+  --panel-2: rgba(241,245,249,.95);
+  --line: rgba(148,163,184,.32);
+}
+/* scrolling surfaces: solid now, NO backdrop blur (kills scroll lag + bleed-through) */
+.panel,.stat-card,.hold-card,.auth-card,.account-pop,.suggest-box,.watchlist-row,.modal-card{
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+.modal-card{background: var(--liquid-modal-bg) !important; box-shadow: 0 24px 60px rgba(0,0,0,.75), var(--liquid-edge-glow) !important;}
+.modal{background: rgba(3,9,18,.86); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);}
+.ticker-wrap{backdrop-filter: none; -webkit-backdrop-filter: none; background: var(--liquid-bar-bg);}
+/* profile accordion cards */
+.acc-card{padding: 0 !important; overflow: hidden;}
+.acc-head{width: 100%; display: flex; align-items: center; gap: 10px; padding: 16px 18px; background: none; border: none; color: inherit; cursor: pointer; text-align: left; font: inherit;}
+.acc-titles{flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;}
+.acc-titles b{font-size: 15px;}
+.acc-titles small{color: var(--muted); font-size: 12px;}
+.acc-chev{transition: transform .3s cubic-bezier(.22,1,.36,1); color: var(--muted);}
+.acc-card.open .acc-chev{transform: rotate(180deg);}
+.acc-body{display: grid; grid-template-rows: 0fr; transition: grid-template-rows .32s cubic-bezier(.22,1,.36,1);}
+.acc-card.open .acc-body{grid-template-rows: 1fr;}
+.acc-inner{overflow: hidden; min-height: 0; padding: 0 18px;}
+.acc-card.open .acc-inner{padding-bottom: 16px;}
+.acc-danger{border-color: color-mix(in srgb, var(--loss) 45%, transparent) !important;}
+/* insights timeframe seg + dropdown live prices */
+.ins-tf-panel{position: relative;}
+#insTfSeg{flex-wrap: wrap;}
+.sug-price{margin-left: auto; font-weight: 700; font-size: 12.5px; color: var(--text); white-space: nowrap;}
+.sug-exch{margin-left: 8px;}

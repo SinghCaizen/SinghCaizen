@@ -619,6 +619,28 @@ function ensureLWLib() {
 let lwChart = null, lwSeries = null;
 function lwDispose() { if (lwChart) { try { lwChart.remove(); } catch (e) {} lwChart = null; lwSeries = null; } }
 function dayStr(t) { return new Date(t).toISOString().slice(0, 10); }
+/* Sanitise Yahoo OHLCV: Lightweight Charts dies silently on null/NaN values,
+   duplicate timestamps or unsorted data — clean everything before it is used. */
+function cleanOHLC(tsArr, q0) {
+  const seen = new Set();
+  const out = [];
+  const opens = (q0 && q0.open) || [], highs = (q0 && q0.high) || [], lows = (q0 && q0.low) || [], closes = (q0 && q0.close) || [], vols = (q0 && q0.volume) || [];
+  for (let i = 0; i < (tsArr || []).length; i++) {
+    const t = Number(tsArr[i]);
+    const c = Number(closes[i]);
+    if (!Number.isFinite(t) || !Number.isFinite(c) || c <= 0) continue;
+    const dayKey = new Date(t * 1000).toISOString().slice(0, 10);
+    if (seen.has(dayKey)) continue;
+    seen.add(dayKey);
+    const o = Number.isFinite(Number(opens[i])) && Number(opens[i]) > 0 ? Number(opens[i]) : c;
+    const h = Number.isFinite(Number(highs[i])) && Number(highs[i]) > 0 ? Math.max(Number(highs[i]), o, c) : Math.max(o, c);
+    const l = Number.isFinite(Number(lows[i])) && Number(lows[i]) > 0 ? Math.min(Number(lows[i]), o, c) : Math.min(o, c);
+    const v = Number.isFinite(Number(vols[i])) && Number(vols[i]) >= 0 ? Number(vols[i]) : 0;
+    out.push({ t: t * 1000, o: o, h: h, l: l, c: c, v: v });
+  }
+  out.sort((a, b) => a.t - b.t);
+  return out;
+}
 async function fetchOHLC(sym, range, interval) {
   const key = "folio_ohlc_" + sym + "|" + range;
   const cached = lsCacheGet(key, 12 * 3600 * 1000);
@@ -626,13 +648,7 @@ async function fetchOHLC(sym, range, interval) {
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(normalizeTicker(sym)) + "?range=" + range + "&interval=" + interval + "&events=div,split";
   const r0 = await fetchChartValidated(url, 7000);
   const q0 = (r0.indicators.quote && r0.indicators.quote[0]) || {};
-  const ts = r0.timestamp || [];
-  const bars = [];
-  for (let i = 0; i < ts.length; i++) {
-    const c = q0.close && q0.close[i];
-    if (typeof c !== "number") continue;
-    bars.push({ t: ts[i] * 1000, o: typeof q0.open?.[i] === "number" ? q0.open[i] : c, h: typeof q0.high?.[i] === "number" ? q0.high[i] : c, l: typeof q0.low?.[i] === "number" ? q0.low[i] : c, c: c, v: typeof q0.volume?.[i] === "number" ? q0.volume[i] : 0 });
-  }
+  const bars = cleanOHLC(r0.timestamp || [], q0);
   lsCacheSet(key, { ts: Date.now(), bars: bars });
   return bars;
 }
@@ -1511,16 +1527,9 @@ async function fetchMaster(sym) {
     }
     try {
       if (!r0) throw new Error("no validated chart");
-      const tsArr = r0.timestamp || [];
       const q0 = (r0.indicators.quote && r0.indicators.quote[0]) || {};
-      const closes = q0.close || [];
-      const points = [];
-      const ohlc = [];
-      for (let i = 0; i < tsArr.length; i++) {
-        if (typeof closes[i] !== "number") continue;
-        points.push({ t: tsArr[i] * 1000, c: closes[i] });
-        ohlc.push({ t: tsArr[i] * 1000, o: typeof q0.open?.[i] === "number" ? q0.open[i] : closes[i], h: typeof q0.high?.[i] === "number" ? q0.high[i] : closes[i], l: typeof q0.low?.[i] === "number" ? q0.low[i] : closes[i], c: closes[i], v: typeof q0.volume?.[i] === "number" ? q0.volume[i] : 0 });
-      }
+      const ohlc = cleanOHLC(r0.timestamp || [], q0);
+      const points = ohlc.map(b => ({ t: b.t, c: b.c }));
       const ev = r0.events || {};
       const divs = ev.dividends ? Object.values(ev.dividends).map(x => ({ ts: x.date * 1000, amount: x.amount })).sort((a, b) => b.ts - a.ts) : [];
       const splits = ev.splits ? Object.values(ev.splits).map(x => ({ ts: x.date * 1000, text: x.splitRatio || (x.numerator + ":" + x.denominator) })).sort((a, b) => b.ts - a.ts) : [];
@@ -2333,7 +2342,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v32";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v33";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2439,3 +2448,150 @@ document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () =>
   const a = document.querySelector(".tab.active");
   if (a && a.scrollIntoView) a.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
 }, 60)));
+
+/* ---------- Insights timeframe engine (1D/1W/1M/3M/6M/1Y/ALL) ---------- */
+let insTf = "ALL", insTfToken = 0;
+const INS_DAYS = { "1W": 7, "1M": 30, "3M": 91, "6M": 182, "1Y": 365 };
+async function renderInsPeriod() {
+  const box = $("insPeriodBox"), mov = $("insMoversBox"), hea = $("insHealthBox"), sec = $("insSectorBox");
+  if (!box) return;
+  const d = enriched();
+  if (!d.rows.length) {
+    box.innerHTML = '<p class="empty-note">Add stocks — period performance will appear here.</p>';
+    if (mov) mov.innerHTML = ""; if (hea) hea.innerHTML = ""; if (sec) sec.innerHTML = "";
+    return;
+  }
+  const tf = insTf, tok = ++insTfToken;
+  let changes = [], niftyRet = null, maxFall = null;
+  const niftyFor = async daysBack => {
+    try {
+      const h = await fetchHistory("^NSEI", "1y");
+      if (!h || !h.points.length) return null;
+      const pts = h.points;
+      if (daysBack === 1) { const a = pts[pts.length - 2], b = pts[pts.length - 1]; return a && b ? (b.c - a.c) / a.c * 100 : null; }
+      const since = Date.now() - daysBack * 86400000;
+      let sp = null;
+      for (const p of pts) { if (p.t <= since) sp = p.c; else break; }
+      if (sp === null) sp = pts[0].c;
+      return sp ? (pts[pts.length - 1].c - sp) / sp * 100 : null;
+    } catch (e) { return null; }
+  };
+  if (tf === "1D") {
+    changes = d.rows.map(r => ({ row: r, change: r.day || 0, startVal: Math.max(1, r.cur - (r.day || 0)), pct: (r.prevClose && r.ltp !== null) ? (r.ltp - r.prevClose) / r.prevClose * 100 : 0 }));
+    niftyRet = await niftyFor(1);
+  } else if (tf === "ALL") {
+    changes = d.rows.map(r => ({ row: r, change: r.pnl, startVal: r.invested, pct: r.pnlPct }));
+    niftyRet = await niftyFor(365);
+  } else {
+    box.innerHTML = '<p class="empty-note">Reading the ' + tf + ' period from free price history…</p>';
+    const days = INS_DAYS[tf], since = Date.now() - days * 86400000;
+    const hists = await Promise.all(d.rows.map(r => fetchHistory(r.sym, "1y").catch(() => null)));
+    niftyRet = await niftyFor(days);
+    if (tok !== insTfToken) return;
+    let fallSum = 0, highSum = 0;
+    changes = d.rows.map((r, i) => {
+      const h = hists[i];
+      if (!h || !h.points.length || r.ltp === null) return { row: r, change: 0, startVal: Math.max(1, r.cur), pct: 0, noData: true };
+      let sp = null;
+      for (const p of h.points) { if (p.t <= since) sp = p.c; else break; }
+      if (sp === null) sp = h.points[0].c;
+      const win = h.points.filter(p => p.t >= since);
+      const high = win.length ? Math.max.apply(null, win.map(p => p.c)) : r.ltp;
+      fallSum += r.qty * (r.ltp - high); highSum += r.qty * high;
+      return { row: r, change: r.qty * (r.ltp - sp), startVal: Math.max(1, r.qty * sp), pct: sp ? (r.ltp - sp) / sp * 100 : 0 };
+    });
+    maxFall = { rs: fallSum, pct: highSum ? fallSum / highSum * 100 : 0 };
+  }
+  if (tok !== insTfToken) return;
+  const totChange = changes.reduce((a, c) => a + c.change, 0);
+  const totStart = changes.reduce((a, c) => a + c.startVal, 0);
+  const totPct = totStart ? totChange / totStart * 100 : 0;
+  const tfName = { "1D": "Today (1D)", "1W": "1 Week", "1M": "1 Month", "3M": "3 Months", "6M": "6 Months", "1Y": "1 Year", "ALL": "All Time" }[tf];
+  const alpha = niftyRet !== null ? totPct - niftyRet : null;
+  box.innerHTML = '<div class="stat-chips">' +
+    '<span class="chip">' + tfName + ' Change <b class="' + (totChange >= 0 ? "gain" : "loss") + '">' + inr(totChange) + " (" + pct(totPct) + ')</b></span>' +
+    (maxFall ? '<span class="chip">Max Fall in Period <b class="loss">' + inr(maxFall.rs) + " (" + pct(maxFall.pct) + ')</b> from the period high</span>' : "") +
+    (alpha !== null ? '<span class="chip">Alpha vs NIFTY 50 <b class="' + (alpha >= 0 ? "gain" : "loss") + '">' + pct(alpha) + '</b> (NIFTY ' + pct(niftyRet) + ' in the same window)</span>' : '<span class="chip">NIFTY comparison unavailable right now</span>') +
+    '<span class="chip">Basis: your current quantities × free daily prices</span></div>';
+  if (mov) {
+    const ok = changes.filter(c => !c.noData);
+    const best = ok.length ? ok.reduce((a, b) => b.change > a.change ? b : a) : null;
+    const worst = ok.length ? ok.reduce((a, b) => b.change < a.change ? b : a) : null;
+    mov.innerHTML = '<div class="stat-chips">' +
+      (best ? '<span class="chip">Top Contributor <b>' + esc(best.row.sym) + '</b> <span class="' + (best.change >= 0 ? "gain" : "loss") + '">' + inr(best.change) + " (" + pct(best.pct) + ")</span></span>" : "") +
+      (worst && worst !== best ? '<span class="chip">Biggest Drag <b>' + esc(worst.row.sym) + '</b> <span class="' + (worst.change >= 0 ? "gain" : "loss") + '">' + inr(worst.change) + " (" + pct(worst.pct) + ")</span></span>" : "") +
+      '</div><p class="price-meta">In the selected ' + tfName + ' window.</p>';
+  }
+  if (hea) {
+    const wins = d.rows.filter(r => r.pnl > 0), losses = d.rows.filter(r => r.pnl < 0);
+    const g = wins.reduce((a, r) => a + r.pnl, 0), l = Math.abs(losses.reduce((a, r) => a + r.pnl, 0));
+    const bestR = d.rows.reduce((a, b) => b.pnlPct > a.pnlPct ? b : a);
+    const worstR = d.rows.reduce((a, b) => b.pnlPct < a.pnlPct ? b : a);
+    hea.innerHTML = '<div class="stat-chips">' +
+      '<span class="chip">Win Rate <b>' + (d.rows.length ? Math.round(wins.length / d.rows.length * 100) : 0) + "%</b> (" + wins.length + " of " + d.rows.length + " stocks in profit)</span>" +
+      '<span class="chip">Profit Factor <b>' + (l > 0 ? (g / l).toFixed(2) : "∞") + "</b> (gains ÷ losses)</span>" +
+      '<span class="chip">Best Holding <b>' + esc(bestR.sym) + '</b> <span class="gain">' + pct(bestR.pnlPct) + '</span></span>' +
+      '<span class="chip">Worst Holding <b>' + esc(worstR.sym) + '</b> <span class="loss">' + pct(worstR.pnlPct) + "</span></span></div>";
+  }
+  if (sec) {
+    const sm = {};
+    changes.forEach(c => { const k = c.row.sector || "Other"; if (!sm[k]) sm[k] = { ch: 0, sv: 0 }; sm[k].ch += c.change; sm[k].sv += c.startVal; });
+    sec.innerHTML = Object.entries(sm).sort((a, b) => b[1].ch - a[1].ch).map(([k, v]) =>
+      '<div class="bar-row"><span class="bar-name">' + esc(k) + '</span><span class="bar-val ' + (v.ch >= 0 ? "gain" : "loss") + '">' + inr(v.ch) + " (" + pct(v.sv ? v.ch / v.sv * 100 : 0) + ")</span></div>").join("") +
+      '<p class="price-meta">Sector change in the selected ' + tfName + " window.</p>";
+  }
+}
+const _renderInsightsBase2 = renderInsights;
+renderInsights = function (d) { _renderInsightsBase2(d); try { renderInsPeriod(); } catch (e) {} };
+
+/* ---------- instant watchlist priming: price first, full data in the background ---------- */
+async function primeStock(sym) {
+  try { if (typeof fetchOne === "function") { await fetchOne(sym); if (typeof renderWatch === "function") renderWatch(); } } catch (e) {}
+  try { fetchMaster(sym); } catch (e) {}
+}
+
+/* ---------- My Profile: collapsible accordion cards ---------- */
+function enhanceProfileAccordions() {
+  const view = $("view-profile");
+  if (!view || view.dataset.acc) return;
+  const panels = Array.prototype.slice.call(view.querySelectorAll(":scope > .panel"));
+  if (panels.length < 3) return;
+  view.dataset.acc = "1";
+  const SUBS = [
+    ["Account & Profile", "Photo, display name, signed-in email & sign out"],
+    ["Personal Info & Preferences", "Name, mobile, investor category, tax slab & compact ₹ display"],
+    ["Security, Password & 2FA", "Login email, password reset, 2FA authenticator lock & 15-min auto-lock"],
+    ["Data, Vault & CSV Backup", "Encrypted .folio vault, CSV import/export & cache health"],
+    ["Danger Zone", "Wipe all portfolio entries or permanently delete your account"]
+  ];
+  panels.forEach((p, i) => {
+    const info = SUBS[i] || ["Section", ""];
+    const body = document.createElement("div"); body.className = "acc-body";
+    const inner = document.createElement("div"); inner.className = "acc-inner";
+    while (p.firstChild) inner.appendChild(p.firstChild);
+    body.appendChild(inner);
+    const head = document.createElement("button");
+    head.type = "button"; head.className = "acc-head";
+    let badge = "";
+    if (i === 0) badge = '<span class="alert-chip">' + (typeof FIREBASE_ON !== "undefined" && FIREBASE_ON ? "☁ Cloud Saving ON" : "On this device") + "</span>";
+    if (i === 2) badge = '<span class="alert-chip">' + ((typeof state !== "undefined" && state && state.profile && state.profile.totp) ? "2FA ON" : "2FA OFF") + "</span>";
+    head.innerHTML = '<span class="acc-titles"><b>' + info[0] + "</b><small>" + info[1] + "</small></span>" + badge + '<span class="acc-chev">▼</span>';
+    p.appendChild(head); p.appendChild(body);
+    p.classList.add("acc-card");
+    if (i === 0) p.classList.add("open");
+    if (i === panels.length - 1) p.classList.add("acc-danger");
+    head.addEventListener("click", () => p.classList.toggle("open"));
+  });
+}
+setInterval(() => { try { enhanceProfileAccordions(); } catch (e) {} }, 1500);
+
+/* ---------- insights timeframe seg wiring ---------- */
+(function wireInsTf() {
+  const seg = $("insTfSeg");
+  if (!seg) return;
+  seg.querySelectorAll("[data-instf]").forEach(b => b.addEventListener("click", () => {
+    insTf = b.dataset.instf;
+    seg.querySelectorAll("[data-instf]").forEach(x => x.classList.toggle("active", x === b));
+    renderInsPeriod();
+  }));
+})();

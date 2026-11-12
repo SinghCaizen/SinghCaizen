@@ -262,9 +262,18 @@ function attachSuggest(input) {
     if (remoteFor !== txt) remoteItems = [];
     items = local.concat(remoteItems.filter(r => !local.some(l => l[0] === r[0]))).slice(0, 8);
     const typed = input.value.trim();
-    box.innerHTML = items.map((s, i) => '<button type="button" class="suggest-item" data-i="' + i + '"><b>' + esc(s[0]) + '</b><span>' + esc(s[1]) + '</span>' + (s[3] ? '<span class="sug-exch">' + esc(s[3]) + '</span>' : '') + '</button>').join("") +
+    box.innerHTML = items.map((s, i) => '<button type="button" class="suggest-item" data-i="' + i + '"><b>' + esc(s[0]) + '</b><span>' + esc(s[1]) + '</span><span class="sug-price" data-sugp="' + esc(s[0]) + '">' + (prices[s[0]] ? inr2(prices[s[0]].price) : '') + '</span>' + (s[3] ? '<span class="sug-exch">' + esc(s[3]) + '</span>' : '') + '</button>').join("") +
       '<button type="button" class="suggest-item sug-custom" data-custom="1">➕ Use "' + esc(typed.toUpperCase()) + '" — Add Custom / Newly Listed Stock (NSE / BSE / SME)</button>';
     box.classList.remove("hidden");
+    items.slice(0, 5).forEach(it => {
+      const sym = it[0];
+      if (prices[sym]) return;
+      fetchOne(sym).then(() => {
+        if (input.value.trim().toLowerCase() !== txt) return;
+        const elp = box.querySelector('[data-sugp="' + sym + '"]');
+        if (elp && prices[sym]) elp.textContent = inr2(prices[sym].price);
+      }).catch(() => {});
+    });
     const cb = box.querySelector("[data-custom]");
     if (cb) cb.addEventListener("mousedown", e => { e.preventDefault(); input.value = typed.toUpperCase(); close(); input.dispatchEvent(new Event("input", { bubbles: true })); input.focus(); });
     if (!items.length) return;
@@ -880,6 +889,7 @@ function addWatch(ev) {
   if (state.watch.some(w => w.sym === st.sym)) { toast(st.sym + " is already in your watchlist"); return; }
   state.watch.push({ sym: st.sym, name: st.name, fav: false });
   $("watchInput").value = ""; persist(); renderWatch(); refreshPrices();
+  if (typeof primeStock === "function") primeStock(st.sym);
 }
 function exportCsv() {
   const lines = ["Date,Type,Symbol,Name,Qty,Price,Charges,Broker,Exchange,Note"];
