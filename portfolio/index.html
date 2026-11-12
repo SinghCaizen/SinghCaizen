@@ -34,7 +34,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Folio — A Singh Caizen Product","short_name":"Folio","display":"standalone","start_url":".","background_color":"%23000000","theme_color":"%23000000","icons":[]}'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=47">
+<link rel="stylesheet" href="css/style.css?v=49">
 </head>
 <body>
 
@@ -163,7 +163,6 @@
     <button class="tab" data-view="insights" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v15.5h16"/><path d="M7.5 15l3.8-4.6 3 2.7L18.5 8"/></svg><span>Insights</span></button>
     <button class="tab" data-view="news" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="15" height="14" rx="2"/><path d="M18 9h1.5A1.5 1.5 0 0 1 21 10.5V17a2 2 0 0 1-2 2"/><path d="M6.5 9h7M6.5 12.5h7M6.5 16h5"/></svg><span>News</span></button>
     <button class="tab" data-view="watchlist" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.3 6.9 19l1.1-5.6L3.8 9.5l5.7-.7z"/></svg><span>Watchlist</span></button>
-    <button class="tab" data-view="ipo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15c5-3.5 7-8.5 7-12-3.5 0-8.5 2-12 7l-2 5 5-2z"/><path d="M5 15l-1.5 6L9 19.5M14 5.5c1 2 1 4.5-.5 7"/></svg><span>IPO</span></button>
     <button class="tab" data-view="history" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>History</span></button>
     <button class="tab" data-view="profile" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg><span>My Profile</span></button>
   </nav>
@@ -409,13 +408,10 @@
     <!-- HISTORY -->
     <section id="view-ipo" class="view hidden">
       <div class="ipo-appbar">
-        <button type="button" class="ipo-appbar-ic" data-appbar="more" aria-label="Stats and FAQs" title="Stats & FAQs"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-        <span class="ipo-appbar-title"><b><span class="ipo-amber">I</span>PO <span class="ipo-amber">M</span>aster</b><span class="ipo-byfolio">by Folio</span></span>
+        <span class="ipo-appbar-title"><b>IPO</b><span class="ipo-byfolio">by Folio</span></span>
         <span class="ipo-appbar-actions">
-          <button type="button" class="ipo-appbar-ic" data-appbar="filter" aria-label="Board filter" title="Filter: All / Mainboard / SME"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg></button>
           <button type="button" class="ipo-appbar-ic" data-appbar="search" aria-label="Search IPOs" title="Search IPOs"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg></button>
-          <button type="button" class="ipo-appbar-ic" data-appbar="calendar" aria-label="IPO calendar" title="IPO calendar — upcoming"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></button>
-          <button type="button" class="ipo-appbar-ic" data-appbar="theme" aria-label="Switch theme" title="Switch light / dark theme"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-10 10 7.5 7.5 0 0 0 10-10z" transform="translate(1.5 1) scale(0.92)"/></svg></button>
+          <button type="button" class="ipo-appbar-ic" data-appbar="theme" aria-label="Switch light / dark theme" title="Switch light / dark theme"><svg class="ic-sun" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5 5l1.7 1.7M17.3 17.3L19 19M19 5l-1.7 1.7M6.7 17.3L5 19"/></svg><svg class="ic-moon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13.2A8.2 8.2 0 1 1 10.8 4 6.6 6.6 0 0 0 20 13.2z"/></svg></button>
         </span>
       </div>
       <div class="panel ipo-hero">
@@ -492,12 +488,14 @@
       </div>
 
       <div id="ipoDeep" class="ipo-deep hidden">
+        <div class="ipo-detail-sticky-top">
         <div class="ipo-deep-head">
           <button type="button" class="btn btn-small" id="ipoDeepBack">← Back to IPOs</button>
           <b id="ipoDeepTitle">IPO</b>
           <button type="button" class="ipo-star-btn" id="ipoDeepStar" title="Save to IPO Watchlist">☆</button>
         </div>
         <div class="seg seg-small ipo-jump-patti" id="ipoJumpSeg"></div>
+        </div>
         <div id="ipoDeepBody"></div>
         <button type="button" class="ipo-top-btn hidden" id="ipoDeepTop" title="Back to top">↑</button>
       </div>
@@ -898,6 +896,6 @@
 <script src="js/stocks.js?v=23"></script>
 <script src="js/app.js?v=44"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/features.js?v=48"></script>
+<script src="js/features.js?v=49"></script>
 </body>
 </html>

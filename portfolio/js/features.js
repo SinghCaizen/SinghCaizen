@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v48";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v49";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3154,8 +3154,8 @@ const IPO_CATALOG = [
     kpiB: [["EPS (₹)", "0.00", "0.00"], ["P/E (x)", "0.00", "0.00"]],
     contact: { name: "Crystal Crop Protection Ltd.", addr: "206, 2nd Floor, Span Trade Centre Opp. Kochrab, Gandhi Ashram, Near Paldi Char Rasta, Ashram Road Ellisbridge, Ahmedabad, Gujarat, 380006", phone: "+91 11 49007100", email: "investor@crystalcrop.com", web: "https://www.crystalcropprotection.com/" },
     regDetail: { name: "MUFG Intime India Pvt Ltd", formerly: "formerly Link Intime India Private Limited", phone: "+91 8108114949", email: "ipo.helpdesk@linkintime.co.in" } },
-  { name: "Tempsens Instruments (India) IPO", sym: "", board: "MAINBOARD", status: "listed", low: 285, high: 300, lot: 50, size: 650, open: "", close: "", allot: "", listing: "2026-08-28", listed: 634, reg: "KFintech", year: 2026, subsT: 184.07, subs: { q: 302.88, n: 314.44, r: 60.69, t: 184.07 }, managers: "ICICI Securities · JM Financial", gainPct: null, about: "Temperature sensing instruments maker. Listed 28 Aug 2026 at ₹634 against the ₹300 issue price (+111.3%) — the best listing of 2026 in the IPO Master snapshot. Subscribed 184.07x overall (QIB 302.88x · NII 314.44x · Retail 60.69x)." },
-  { name: "Bharat Coking Coal IPO", sym: "", board: "MAINBOARD", status: "listed", low: null, high: null, lot: null, size: null, open: "", close: "", allot: "", listing: "", listed: null, reg: "", year: 2026, subsT: 98.4, managers: "", gainPct: 96.0, about: "Coal India subsidiary and India's largest coking coal producer. Listed at +96.0% in the IPO Master snapshot." },
+  { name: "Tempsens Instruments (India) IPO", sym: "", board: "MAINBOARD", status: "listed", low: 285, high: 300, lot: 50, size: 650, open: "2026-08-21", close: "2026-08-25", allot: "2026-08-26", listing: "2026-08-28", listed: 634, reg: "KFintech", fv: 10, year: 2026, subsT: 184.07, subs: { q: 302.88, n: 314.44, r: 60.69, t: 184.07 }, managers: "ICICI Securities · JM Financial", gainPct: null, about: "Temperature sensing instruments maker. Listed 28 Aug 2026 at ₹634 against the ₹300 issue price (+111.3%) — the best listing of 2026 in the IPO Master snapshot. Subscribed 184.07x overall (QIB 302.88x · NII 314.44x · Retail 60.69x)." },
+  { name: "Bharat Coking Coal IPO", sym: "", board: "MAINBOARD", status: "listed", low: null, high: null, lot: null, size: null, open: "2026-06-08", close: "2026-06-10", allot: "2026-06-11", listing: "2026-06-15", listed: null, reg: "", fv: 10, year: 2026, subsT: 98.4, managers: "", gainPct: 96.0, about: "Coal India subsidiary and India's largest coking coal producer. Listed at +96.0% in the IPO Master snapshot." },
   { name: "Bajaj Housing Finance", sym: "BAJAJHFL", board: "MAINBOARD", status: "listed", low: 66, high: 70, lot: 214, size: 6560, open: "2024-09-09", close: "2024-09-11", allot: "2024-09-12", listing: "2024-09-16", listed: 165, reg: "KFintech", year: 2024, subsT: 63.6, managers: "SBI Capital · BOB Capital · HSBC · Nomura · IIFL", about: "Housing finance arm of the Bajaj group — home loans, LAP and developer finance. One of 2024's most subscribed large IPOs." },
   { name: "Hyundai Motor India", sym: "HYUNDAI", board: "MAINBOARD", status: "listed", low: 1865, high: 1960, lot: 7, size: 27870, open: "2024-10-15", close: "2024-10-17", allot: "2024-10-18", listing: "2024-10-22", listed: 1934, reg: "KFintech", year: 2024, subsT: 2.4, managers: "Kotak Mahindra Capital · Citigroup · HSBC · JP Morgan · Morgan Stanley", about: "India's second-largest car maker (Creta, i20, Verna). India's largest IPO by size at the time — a pure offer-for-sale by the Korean parent." },
   { name: "Waaree Energies", sym: "WAAREEENER", board: "MAINBOARD", status: "listed", low: 1427, high: 1503, lot: 9, size: 4321, open: "2024-10-21", close: "2024-10-23", allot: "2024-10-24", listing: "2024-10-28", listed: 2550, reg: "Link Intime", year: 2024, subsT: 79.4, managers: "Axis Capital · IIFL · SBI Capital · Jefferies", about: "India's largest solar PV module manufacturer, exporting heavily to the US. Listed at a blockbuster premium." },
@@ -3204,6 +3204,14 @@ function ipoMono(x) {
 function ipoHue(x) { let h = 0; const s = x.name || ""; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return h; }
 function ipoShortD(d) { if (!d) return "—"; const p = d.split("-"); const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return p.length === 3 ? p[2].replace(/^0/, "") + " " + M[parseInt(p[1], 10) - 1] : d; }
 let ipoCat = "mainline";
+function istTodayStr() { try { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } }
+function ipoEffStatus(x) {
+  if (!x || !x.open || !x.close) return x ? x.status : "listed";
+  const t = istTodayStr();
+  if (t < x.open) return "upcoming";
+  if (t > x.close) return "listed";
+  return "open";
+}
 function ipoAll() {
   const custom = ((state.profile && state.profile.customIpos) || []).map(x => Object.assign({}, x, { custom: true }));
   const synced = ipoSynced().filter(s => !custom.some(c => c.name.toLowerCase() === s.name.toLowerCase()) && !IPO_CATALOG.some(c => c.name.toLowerCase() === s.name.toLowerCase()));
@@ -3220,9 +3228,9 @@ function ipoSubsParts(x) { return x.subs || null; }
 function ipoFiltered() {
   let list = ipoAll();
   if (ipoCat === "watch") { const w = ipoWatch(); list = list.filter(x => w.includes(ipoKey(x))); }
-  if (ipoQuick === "live") list = list.filter(x => x.status === "open");
-  else if (ipoQuick === "upcoming") list = list.filter(x => x.status === "upcoming");
-  else if (ipoQuick === "listed") list = list.filter(x => x.status === "listed");
+  if (ipoQuick === "live") list = list.filter(x => ipoEffStatus(x) === "open");
+  else if (ipoQuick === "upcoming") list = list.filter(x => ipoEffStatus(x) === "upcoming");
+  else if (ipoQuick === "listed") list = list.filter(x => ipoEffStatus(x) === "listed");
   else if (ipoQuick === "sme") list = list.filter(x => /SME/.test(x.board || ""));
   else if (ipoQuick === "y2026") list = list.filter(x => x.year === 2026);
   else if (ipoQuick === "gainers") list = list.filter(x => ipoGain(x) != null).sort((a, b) => ipoGain(b) - ipoGain(a)).slice(0, 10);
@@ -3235,11 +3243,12 @@ function ipoFiltered() {
   else if (ipoSort === "subs") list.sort((a, b) => (b.subsT || -1) - (a.subsT || -1));
   else if (ipoSort === "size") list.sort((a, b) => (b.size || -1) - (a.size || -1));
   else list.sort((a, b) => dkey(b).localeCompare(dkey(a)));
+  if (ipoQuick === "listed") list.sort((a, b) => String(b.close || b.listing || "").localeCompare(String(a.close || a.listing || "")));
   return list;
 }
 function ipoBadge(x) {
-  if (x.status === "open") return '<span class="ipo-badge open">● LIVE · Closes ' + ipoFmtD(x.close) + "</span>";
-  if (x.status === "upcoming") return '<span class="ipo-badge upcoming">Opens ' + ipoFmtD(x.open) + "</span>";
+  if (ipoEffStatus(x) === "open") return '<span class="ipo-badge open">● LIVE · Closes ' + ipoFmtD(x.close) + "</span>";
+  if (ipoEffStatus(x) === "upcoming") return '<span class="ipo-badge upcoming">Opens ' + ipoFmtD(x.open) + "</span>";
   const g = ipoGain(x);
   return '<span class="ipo-badge listed">Listed ' + ipoFmtD(x.listing) + (g != null ? ' · <b class="' + (g >= 0 ? "pos" : "neg") + '">' + (g >= 0 ? "+" : "") + g.toFixed(1) + "%</b>" : "") + "</span>";
 }
@@ -3272,7 +3281,8 @@ function ipoCardHtml(x) {
   const isCrystal = /crystal/i.test(x.name);
   const logo = isCrystal ? '<span class="ipo-logo-emoji">🌿</span><span class="ipo-logo-word">CRYSTAL</span>' : '<span class="ipo-logo-mono">' + ipoMono(x) + "</span>";
   const title = esc(x.name) + (x.tentative ? ' <span class="ipo-tent">(Tentative date)</span>' : "");
-  const statusPill = x.status === "open" ? '<span class="ipo-badge open">● Live / Open</span>' : x.status === "upcoming" ? '<span class="ipo-badge upcoming-blue">UpComing</span>' : '<span class="ipo-badge listed">Listed' + (g != null ? " " + (g >= 0 ? "+" : "") + g.toFixed(1) + "%" : "") + "</span>";
+  const effSt = ipoEffStatus(x);
+  const statusPill = effSt === "open" ? '<span class="ipo-badge open">● Live / Open</span>' : effSt === "upcoming" ? '<span class="ipo-badge upcoming-blue">UpComing</span>' : '<span class="ipo-badge listed">Listed' + (g != null ? " " + (g >= 0 ? "+" : "") + g.toFixed(1) + "%" : "") + "</span>";
   const sizeTxt = x.size ? "₹" + Number(x.size).toLocaleString("en-IN") + " Cr." : (x.fresh ? "₹" + Number(x.fresh).toFixed(2) + " Cr. (Fresh)" : "TBA");
   const steps = [[x.open, "Open"], [x.close, "Close"], [x.allot, "Allotment"], [x.listing, "Listing"]];
   return '<article class="ipo-card">' +
@@ -3307,7 +3317,7 @@ function renderIpoHero() {
 function renderIpoQuick() {
   const seg = $("ipoSubSeg"); if (!seg) return;
   const all = ipoCat === "watch" ? ipoAll().filter(x => ipoWatch().includes(ipoKey(x))) : ipoAll();
-  const n = s => all.filter(x => x.status === s).length;
+  const n = s => all.filter(x => ipoEffStatus(x) === s).length;
   const items = [["live", "Ongoing (" + n("open") + ")"], ["upcoming", "Upcoming (" + n("upcoming") + ")"], ["listed", "Closed (" + n("listed") + ")"]];
   seg.innerHTML = items.map(i => '<button type="button" data-ipoquick="' + i[0] + '" class="seg-btn ipo-status-pill' + (ipoQuick === i[0] ? " active" : "") + '">' + i[1] + "</button>").join("");
   seg.querySelectorAll("[data-ipoquick]").forEach(b => b.addEventListener("click", () => { ipoQuick = b.dataset.ipoquick; ipoOpenKey = ""; renderIpo(); }));
@@ -3316,7 +3326,7 @@ function renderIpoAside() {
   const all = ipoAll();
   const openBox = $("ipoAsideOpen"), weekBox = $("ipoAsideWeek"), bestBox = $("ipoAsideBest"), actBox = $("ipoAsideActivity");
   if (openBox) {
-    const opens = all.filter(x => x.status === "open");
+    const opens = all.filter(x => ipoEffStatus(x) === "open");
     openBox.innerHTML = "<h4>Open now (" + opens.length + ")</h4>" + (opens.length ? opens.map(x => '<button type="button" class="ipo-side-row" data-sideipo="' + ipoKey(x) + '"><b>' + esc(x.name) + "</b><span>Closes " + ipoFmtD(x.close) + "</span></button>").join("") : '<p>No IPO is open today.</p><button type="button" class="btn btn-small" data-gotosubs="1">Live subscription →</button>');
   }
   if (weekBox) {
@@ -3474,7 +3484,7 @@ function ipoVault() { try { return JSON.parse(localStorage.getItem("folio_ipo_va
 
 /* ---------- IPO deep-dive (full-screen, 11 sections, jump patti) ---------- */
 let ipoDeepKey = "";
-const IPO_JUMPS = [["dd-details", "📋 IPO Details"], ["dd-timeline", "📅 Timeline"], ["dd-objective", "🎯 Objective"], ["dd-docs", "📄 IPO Documents"], ["dd-fin", "📊 Financial Performance"], ["dd-peers", "⚖️ Peer Comparison"], ["dd-kpi", "📈 KPI"], ["dd-about", "🏢 About Company"], ["dd-contact", "✉️ Contact Details"], ["dd-managers", "🏦 Lead Managers & Registrar"]];
+const IPO_JUMPS = [["dd-details", '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg> IPO Details'], ["dd-timeline", '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg> Timeline'], ["dd-objective", '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg> Objective'], ["dd-docs", '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/></svg> IPO Documents'], ["dd-fin", '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v15.5h16"/><path d="M8 16v-5M12 16V8M16 16v-8"/></svg> Financial Performance'], ["dd-peers", '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16M6 20h12"/><path d="M7.5 7L5 12.5h5zM16.5 7L14 12.5h5z"/></svg> Peer Comparison'], ["dd-kpi", '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19a8 8 0 1 1 14 0"/><path d="M12 15l3.5-5.5"/></svg> KPI'], ["dd-about", '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></svg> About Company'], ["dd-contact", '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a12 12 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg> Contact Details'], ["dd-managers", '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M6 21V9l6-5 6 5v12"/><path d="M10 21v-5h4v5"/></svg> Lead Managers & Registrar']];
 function ipoDayPlus(d, n) { if (!d) return ""; const dt = new Date(d + "T00:00:00"); dt.setDate(dt.getDate() + n); return dt.toISOString().slice(0, 10); }
 function ipoKvRows(rows) { return rows.map(r => '<div class="ipo-kv"><span>' + r[0] + "</span><b>" + r[1] + "</b></div>").join(""); }
 function openIpoDeep(key) {
@@ -3484,7 +3494,7 @@ function openIpoDeep(key) {
   if (!deep || !body) return;
   if (title) title.textContent = x.name;
   if (star) { const on = ipoWatch().includes(key); star.textContent = on ? "★" : "☆"; star.classList.toggle("on", on); }
-  if (jump) jump.innerHTML = IPO_JUMPS.map(j => '<button type="button" class="seg-btn" data-jump="' + j[0] + '">' + j[1] + "</button>").join("") + '<button type="button" class="seg-btn" data-jump="dd-apply">📝 My Application</button>';
+  if (jump) jump.innerHTML = IPO_JUMPS.map(j => '<button type="button" class="seg-btn" data-jump="' + j[0] + '">' + j[1] + "</button>").join("") + '<button type="button" class="seg-btn" data-jump="dd-apply"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/></svg> My Application</button>';
   const g = ipoGain(x);
   const band = x.low != null ? "₹" + x.low.toLocaleString("en-IN") + " – ₹" + x.high.toLocaleString("en-IN") : "TBA (-)";
   const details = ipoKvRows([

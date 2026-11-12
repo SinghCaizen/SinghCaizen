@@ -1314,3 +1314,33 @@ body.ipo-world-active #ipoCatSeg{display: none;}
 /* v47 — IPO dock is a bottom capsule at every width; board shows on every card */
 body.ipo-world-active #ipo-bottom-dock{left: 50%; right: auto; transform: translateX(-50%); width: min(680px, calc(100vw - 20px));}
 #ipo-bottom-dock .samsung-bottom-capsule{flex: 1; height: 62px; padding: 5px; border-radius: 999px; background: var(--liquid-bar-bg); backdrop-filter: blur(26px) saturate(195%); -webkit-backdrop-filter: blur(26px) saturate(195%); border: 1px solid var(--liquid-border); box-shadow: var(--liquid-shadow), var(--liquid-edge-glow); display: flex; flex-direction: row; align-items: center; justify-content: space-between;}
+
+/* v49 — desktop docks, IPO header cleanup, solid sticky deep-dive header, card/patti fixes */
+@media (min-width: 769px){
+  .samsung-bottom-dock-wrap{position: fixed; bottom: 16px; left: 50%; right: auto; transform: translateX(-50%); width: min(540px, calc(100vw - 20px)); display: flex; align-items: center; gap: 10px; z-index: 900; pointer-events: none;}
+  .samsung-bottom-capsule{flex: 1; height: 62px; padding: 5px; border-radius: 999px; background: var(--liquid-bar-bg); backdrop-filter: blur(26px) saturate(195%); -webkit-backdrop-filter: blur(26px) saturate(195%); border: 1px solid var(--liquid-border); box-shadow: var(--liquid-shadow), var(--liquid-edge-glow); display: flex; align-items: center; justify-content: space-between; pointer-events: auto;}
+  .samsung-bottom-capsule .mobile-nav-item{flex: 1; height: 52px; border-radius: 999px; border: none; background: transparent; color: var(--liquid-text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10.5px; font-weight: 600; cursor: pointer; font: inherit;}
+  .samsung-bottom-capsule .mobile-nav-item svg{width: 21px; height: 21px;}
+  .samsung-bottom-capsule .mobile-nav-item.active{background: var(--liquid-active-pill); color: var(--liquid-text-primary); font-weight: 700;}
+  .samsung-profile-circle-btn{width: 62px; height: 62px; flex-shrink: 0; border-radius: 50%; background: var(--liquid-bar-bg); backdrop-filter: blur(26px) saturate(195%); -webkit-backdrop-filter: blur(26px) saturate(195%); border: 1px solid var(--liquid-border); box-shadow: var(--liquid-shadow), var(--liquid-edge-glow); color: var(--liquid-text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto;}
+  .samsung-profile-circle-btn svg{width: 26px; height: 26px;}
+  main{padding-bottom: 96px;}
+}
+body.ipo-world-active #ipo-bottom-dock{bottom: 16px; width: min(540px, calc(100vw - 20px));}
+body.ipo-world-active #mktBar{display: none !important;}
+#ipoSyncNote{display: none !important;}
+.ipo-appbar-ic .ic-sun{display: none;}
+[data-theme="light"] .ipo-appbar-ic .ic-sun{display: block;}
+[data-theme="light"] .ipo-appbar-ic .ic-moon{display: none;}
+.ipo-detail-sticky-top{position: sticky; top: 0; z-index: 100; background: var(--liquid-modal-bg, #0d1b2a); padding: 12px 12px 10px; margin: -12px -12px 14px; border-bottom: 1px solid var(--liquid-border); box-shadow: 0 8px 20px rgba(0,0,0,.18); border-radius: 0 0 16px 16px;}
+[data-theme="light"] .ipo-detail-sticky-top{background: #f4f8fd;}
+.ipo-detail-sticky-top .ipo-deep-head{position: static !important; background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; margin: 0 0 10px !important; padding: 0 !important; border: none !important; box-shadow: none !important;}
+.ipo-detail-sticky-top #ipoJumpSeg{position: static !important; margin: 0 !important;}
+#ipoJumpSeg{display: flex !important; flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none;}
+#ipoJumpSeg::-webkit-scrollbar{display: none;}
+#ipoJumpSeg .seg-btn{white-space: nowrap; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px;}
+#ipoJumpSeg .seg-btn svg{flex-shrink: 0;}
+#ipoSubSeg .ipo-status-pill{padding: 9px 6px !important; font-size: 12.5px !important; white-space: nowrap !important; overflow: visible !important; text-overflow: clip !important;}
+.ipo-card-top{display: grid !important; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: start;}
+.ipo-title{white-space: normal !important; overflow: visible !important; text-overflow: clip !important;}
+.ipo-top-r{position: static !important; align-self: start;}
