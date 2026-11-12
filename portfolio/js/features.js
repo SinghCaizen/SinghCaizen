@@ -37,11 +37,12 @@ const RANGE_CFG = {
 };
 const histCache = {};
 const histReval = {};
+function histCk(ck) { const i = String(ck).indexOf("|"); return i > 0 ? symHash(String(ck).slice(0, i)) + String(ck).slice(i) : String(ck); }
 function histLsGet(ck) {
-  try { const o = JSON.parse(localStorage.getItem("folio_hist_" + ck) || "null"); return o && o.data ? o : null; } catch (e) { return null; }
+  try { const o = JSON.parse(localStorage.getItem("folio_hist_" + histCk(ck)) || "null"); return o && o.data ? o : null; } catch (e) { return null; }
 }
 function histLsSet(ck, data) {
-  try { localStorage.setItem("folio_hist_" + ck, JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
+  try { localStorage.setItem("folio_hist_" + histCk(ck), JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
 }
 async function fetchHistoryNet(sym, rangeKey, ck) {
   const cfg = RANGE_CFG[rangeKey] || RANGE_CFG["6mo"];
@@ -1186,15 +1187,22 @@ async function fetchViaProxies(url, asText) {
 function staleNote() {
   return Date.now() - folioStaleAt < 45000 ? '<p class="price-meta">📦 Offline / Cached Data — the free sources are unreachable right now, so the last saved copy is being shown.</p>' : "";
 }
+function lsCk(key) {
+  key = String(key);
+  if (key.indexOf("folio_master_") === 0) return "folio_master_" + symHash(key.slice(13));
+  if (key.indexOf("folio_ta_") === 0) { const rest = key.slice(9); const i = rest.indexOf("|"); return "folio_ta_" + (i > 0 ? symHash(rest.slice(0, i)) + rest.slice(i) : symHash(rest)); }
+  if (key.indexOf("folio_news_") === 0) return "folio_news_" + symHash(key.slice(11));
+  return key;
+}
 function lsCacheGet(key, ttlMs) {
   try {
-    const o = JSON.parse(localStorage.getItem(key) || "null");
+    const o = JSON.parse(localStorage.getItem(lsCk(key)) || "null");
     if (o && Date.now() - o.ts < ttlMs) return o.data;
   } catch (e) {}
   return null;
 }
 function lsCacheSet(key, data) {
-  try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
+  try { localStorage.setItem(lsCk(key), JSON.stringify({ ts: Date.now(), data: data })); } catch (e) {}
 }
 function relTime(tsMs) {
   const s = Math.max(1, Math.round((Date.now() - tsMs) / 1000));
@@ -2360,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v67";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v68";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3531,7 +3539,25 @@ async function ipoSyncMaster(silent) {
     if (added) renderIpo();
   } finally { ipoSyncing = false; }
 }
-function ipoVault() { try { return JSON.parse(localStorage.getItem("folio_ipo_vault") || "{}"); } catch (e) { return {}; } }
+let ipoVaultMem = null;
+function ipoVault() {
+  if (window.__e2eeActive) return ipoVaultMem || {};
+  try { return JSON.parse(localStorage.getItem("folio_ipo_vault") || "{}"); } catch (e) { return {}; }
+}
+function ipoVaultSave(v) {
+  if (window.__e2eeActive && window.e2eeVaultEnc) {
+    ipoVaultMem = v;
+    window.e2eeVaultEnc(v).then(pack => { if (pack) try { localStorage.setItem("folio_ipo_vault", JSON.stringify({ v: 2, pack: pack })); } catch (e) {} });
+    return;
+  }
+  try { localStorage.setItem("folio_ipo_vault", JSON.stringify(v)); } catch (e) {}
+}
+window.ipoVaultOnUnlock = async function () {
+  let raw = null; try { raw = JSON.parse(localStorage.getItem("folio_ipo_vault") || "null"); } catch (e) {}
+  if (!raw) { ipoVaultMem = {}; return; }
+  if (raw.v === 2 && raw.pack) { ipoVaultMem = (await window.e2eeVaultDec(raw.pack)) || {}; return; }
+  ipoVaultMem = raw; ipoVaultSave(raw);
+};
 
 /* ---------- IPO deep-dive (full-screen, 11 sections, jump patti) ---------- */
 let ipoDeepKey = "";
@@ -3707,9 +3733,9 @@ function wireIpo() {
   });
   const pan = $("ipoVaultPan"), dp = $("ipoVaultDp"), upiSel = $("ipoVaultUpi");
   const vault = ipoVault();
-  if (pan) { pan.value = vault.pan || ""; pan.addEventListener("input", () => { const v = ipoVault(); v.pan = pan.value.trim().toUpperCase(); localStorage.setItem("folio_ipo_vault", JSON.stringify(v)); }); }
-  if (dp) { dp.value = vault.dp || ""; dp.addEventListener("input", () => { const v = ipoVault(); v.dp = dp.value.trim(); localStorage.setItem("folio_ipo_vault", JSON.stringify(v)); }); }
-  if (upiSel) { if (vault.upi) upiSel.value = vault.upi; upiSel.addEventListener("change", () => { const v = ipoVault(); v.upi = upiSel.value; localStorage.setItem("folio_ipo_vault", JSON.stringify(v)); }); }
+  if (pan) { pan.value = vault.pan || ""; pan.addEventListener("input", () => { const v = Object.assign({}, ipoVault()); v.pan = pan.value.trim().toUpperCase(); ipoVaultSave(v); }); }
+  if (dp) { dp.value = vault.dp || ""; dp.addEventListener("input", () => { const v = Object.assign({}, ipoVault()); v.dp = dp.value.trim(); ipoVaultSave(v); }); }
+  if (upiSel) { if (vault.upi) upiSel.value = vault.upi; upiSel.addEventListener("change", () => { const v = Object.assign({}, ipoVault()); v.upi = upiSel.value; ipoVaultSave(v); }); }
   const cp = $("ipoCopyPan"); if (cp) cp.addEventListener("click", () => { const v = ipoVault(); if (!v.pan) { toast("Please enter your PAN first (it saves automatically as you type)"); return; } if (navigator.clipboard) navigator.clipboard.writeText(v.pan).then(() => toast("📋 PAN copied")); });
   const cd = $("ipoCopyDp"); if (cd) cd.addEventListener("click", () => { const v = ipoVault(); if (!v.dp) { toast("Please enter your DP / Client ID first (it saves automatically as you type)"); return; } if (navigator.clipboard) navigator.clipboard.writeText(v.dp).then(() => toast("📋 DP ID copied")); });
 }
@@ -4266,7 +4292,7 @@ function tgtPanelRender() {
 function tgtNotifyCheck() {
   if (!state.profile || !state.profile.notify) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;
-  let seen = {}; try { seen = JSON.parse(localStorage.getItem("folio_alert_state") || "{}"); } catch (e) {}
+  let seen = {}; try { const rawSeen = JSON.parse(localStorage.getItem("folio_alert_state") || "{}"); const um = symUnhashMap(); Object.keys(rawSeen).forEach(k => { seen[um.get(k) || k] = rawSeen[k]; }); } catch (e) {}
   const alerts = state.profile.alerts || {}; let changed = false;
   for (const sym of Object.keys(alerts)) {
     const cfg = alerts[sym]; const p = priceOf(sym); if (!p) continue;
@@ -4276,7 +4302,7 @@ function tgtNotifyCheck() {
     }
     if (seen[sym] !== st) { seen[sym] = st; changed = true; }
   }
-  if (changed) { try { localStorage.setItem("folio_alert_state", JSON.stringify(seen)); } catch (e) {} }
+  if (changed) { try { const hs = {}; Object.keys(seen).forEach(k => { hs[symHash(k)] = seen[k]; }); localStorage.setItem("folio_alert_state", JSON.stringify(hs)); } catch (e) {} }
 }
 const _renderHoldingsT2 = renderHoldings;
 renderHoldings = function () { _renderHoldingsT2(); try { tgtDecorate(); } catch (e) {} };

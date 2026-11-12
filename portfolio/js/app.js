@@ -58,6 +58,20 @@ function normalizeState(s) {
   return out;
 }
 
+/* ---------- symbol hashing for on-device caches ----------
+   Price/history caches are public market data, but their storage keys
+   would reveal which stocks this user tracks. Keys are therefore stored
+   under a deterministic hash of the symbol. (The symbol universe is
+   small and public, so treat this as privacy-by-obscurity for storage
+   at rest — the account data itself is protected by E2EE.) */
+function symHash(sym) { let h = 0x811c9dc5; const s = String(sym || ""); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return "s" + (h >>> 0).toString(16).padStart(8, "0"); }
+function symUnhashMap() {
+  const m = new Map();
+  (window.STOCK_LIST || []).forEach(e => m.set(symHash(e[0]), e[0]));
+  try { (state.txns || []).forEach(t => m.set(symHash(t.sym), t.sym)); (state.watch || []).forEach(w => m.set(symHash(w.sym), w.sym)); } catch (e) {}
+  return m;
+}
+
 /* ---------- local (demo) storage ---------- */
 const LS_USERS = "pf_users_v1", LS_SESSION = "pf_session_v1";
 function lsUsers() { try { return JSON.parse(localStorage.getItem(LS_USERS)) || {}; } catch (e) { return {}; } }
@@ -140,6 +154,7 @@ async function doAuth(ev) {
       if (users[email].pass !== pass) { authError("Wrong password."); return; }
     }
     localStorage.setItem(LS_SESSION, email);
+    window.__e2eeDemoUser = email;
     if (users[email].encDoc && window.e2eeHandleDoc) { window.e2eeHandleDoc(users[email].encDoc, { email: email, name: users[email].name || "" }, "demo"); return; }
     enterApp({ email: email, name: users[email].name || "" }, users[email].state);
   }
@@ -471,12 +486,12 @@ function priceOf(sym) { return prices[sym] || null; }
 /* Instant paint: last session's prices load from this device first (stale-
    while-revalidate) — the dashboard renders in 0ms, then fresh prices land. */
 function savePricesLS() {
-  try { localStorage.setItem("folio_prices_v1", JSON.stringify({ ts: Date.now(), prices: prices })); } catch (e) {}
+  try { const hp = {}; Object.keys(prices || {}).forEach(k => { hp[symHash(k)] = prices[k]; }); localStorage.setItem("folio_prices_v1", JSON.stringify({ ts: Date.now(), prices: hp })); } catch (e) {}
 }
 function loadPricesLS() {
   try {
     const o = JSON.parse(localStorage.getItem("folio_prices_v1") || "null");
-    if (o && o.prices && Date.now() - o.ts < 24 * 3600 * 1000) prices = o.prices;
+    if (o && o.prices && Date.now() - o.ts < 24 * 3600 * 1000) { const um = symUnhashMap(); const up = {}; Object.keys(o.prices).forEach(k => { up[um.get(k) || k] = o.prices[k]; }); prices = up; }
   } catch (e) {}
 }
 /* Money formatting: Indian system by default; compact (₹ L / ₹ Cr) when the
@@ -1098,6 +1113,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   } else {
     const sess = localStorage.getItem(LS_SESSION);
-    if (sess && lsUsers()[sess]) enterApp({ email: sess, name: lsUsers()[sess].name || "" }, lsUsers()[sess].state);
+    if (sess && lsUsers()[sess]) {
+      window.__e2eeDemoUser = sess;
+      const rec = lsUsers()[sess];
+      if (rec.encDoc && window.e2eeHandleDoc) window.e2eeHandleDoc(rec.encDoc, { email: sess, name: rec.name || "" }, "demo");
+      else enterApp({ email: sess, name: rec.name || "" }, rec.state);
+    }
   }
 });

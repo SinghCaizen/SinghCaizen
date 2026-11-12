@@ -36,7 +36,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=68">
+<link rel="stylesheet" href="css/style.css?v=69">
 <style>
 #splash{position:fixed;inset:0;z-index:2000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease}
 html[data-theme="light"] #splash{background:#f6f1e7}
@@ -671,7 +671,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
   <div class="modal-card modal-wide terms-card">
     <div class="modal-head"><h3>🛡️ Terms, Conditions, Privacy &amp; Data Security</h3><button class="icon-btn modal-close-btn" data-close-terms="1" type="button" aria-label="Close">✕</button></div>
     <div class="terms-body">
-      <section><h4>1. Encryption &amp; Your Encrypted Vault</h4><p>Your exported <b>.folio vault backup</b> is protected with the browser's native Web Crypto API: <b>AES-256-GCM</b> encryption with keys derived via <b>PBKDF2-SHA256 at 250,000 iterations</b> and a unique cryptographic salt. Without your passphrase or your 12-word recovery seed phrase, that file is unreadable to anyone — any third party, database administrator, or external observer. When you use cloud sync, your records travel over HTTPS and are stored in Google Firebase under security rules that restrict your data to <b>your own signed-in account only</b>. Folio's team cannot browse your portfolio.</p></section>
+      <section><h4>1. Encryption — exactly what is and is not encrypted</h4><p><b>Your cloud records are end-to-end encrypted</b> once you complete the one-time encryption setup: a random 256-bit key (AES-256-GCM, a fresh IV on every save) encrypts your transactions, watchlists, profile fields, IPO applications, PAN/DP details, notes, alerts and settings <b>on your device, before anything is uploaded</b>. That key is itself locked by your password, your 12-word vault seed phrase and your recovery codes (PBKDF2-SHA256, 600,000 iterations). Google Firebase then stores <b>only ciphertext</b> — not even Google, a database administrator, or Folio can read your portfolio. If you skip or postpone the setup, your records are instead protected by sign-in plus Firestore rules that restrict them to your own account only, and Folio will keep offering the setup. Your exported <b>.folio vault backup</b> is separately encrypted with AES-256-GCM and keys derived via PBKDF2-SHA256 at 250,000 iterations.</p><p><b>What is not encrypted, honestly:</b> looking up a price necessarily reveals that <b>ticker symbol</b> to the data source (Yahoo Finance, reached directly or through free public proxies). Your quantities, buy prices, P&amp;L and amounts <b>never leave your device</b>. On-device caches hold only public price history, stored under hashed labels so your holdings and watchlist symbols are not readable in storage. The price feed is delayed ~15 minutes and is public market data.</p><p><b>The trade-off, in plain words:</b> if you lose both your password and your seed phrase (and all recovery codes), your encrypted data <b>cannot be recovered by anyone</b> — that is what end-to-end encryption means.</p></section>
       <section><h4>2. Multi-Layer Account Protection (2FA &amp; Seed Phrase)</h4><p>Optional Two-Factor Authentication (compatible with Google Authenticator, Microsoft Authenticator and Authy) locks your account behind a time-based 6-digit code. It is backed by a client-side encrypted <b>12-word seed phrase</b> and single-use recovery codes, plus an automatic <b>15-minute inactivity lock</b>. Enable it any time in My Profile → Security.</p></section>
       <section><h4>3. No Broker, No Bank, No Middlemen — Guaranteed</h4><p>Folio (A Singh Caizen Product) is an independent, privacy-first record-keeping and analytics terminal. It <b>never connects to your demat account, stockbroker, or bank account</b>, and it will never ask for your broker login credentials, MPIN, TPIN, bank account numbers, or UPI PINs. Every entry in Folio is typed in by you, manually.</p></section>
       <section><h4>4. Zero Data Selling, Zero Ad Tracking</h4><p>Your data is <b>never sold, rented, or shared with advertisers</b>, and Folio carries no external marketing trackers. Your personal portfolio stays 100% private to you.</p></section>
@@ -853,7 +853,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
     <div class="terms-body">
       <p>Before you begin, please take a moment to read how your information is handled here. Your trust matters to us.</p>
       <h4>Your data is safe with us</h4>
-      <p>All your portfolio data is stored securely in the cloud on Google Firebase servers. Your entries are saved under your own account only, and our security rules make sure that no other user can see or access your data — not even by changing a link or a setting.</p>
+      <p>All your portfolio data is stored in the cloud on Google Firebase servers, under your own account only. Folio also offers one-time <b>end-to-end encryption</b>: after a short setup (you save a 12-word seed phrase), your records are encrypted on this device before upload, so only ciphertext is ever stored — not even Google can read them. Price lookups reveal only ticker symbols to the data source; your quantities and amounts never leave your device.</p>
       <h4>Only you hold the keys</h4>
       <p>Your account is protected by your password. If you turn on Two-Factor Authentication from My Profile, your secret key stays encrypted with your own password. Without your password or your seed phrase, it cannot be read — by anyone.</p>
       <h4>No broker, no middlemen</h4>
@@ -922,9 +922,9 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <script src="assets/qrcode.min.js?v=1"></script>
 <script src="js/firebase-config.js?v=6"></script>
 <script src="js/stocks.js?v=23"></script>
-<script src="js/app.js?v=48"></script>
+<script src="js/app.js?v=49"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/e2ee.js?v=1"></script>
-<script src="js/features.js?v=67"></script>
+<script src="js/e2ee.js?v=2"></script>
+<script src="js/features.js?v=68"></script>
 </body>
 </html>

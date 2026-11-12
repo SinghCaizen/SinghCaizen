@@ -88,8 +88,8 @@ async function e2eeFinish() {
     const user = E2.pendingUser, mode = E2.mode;
     E2.pendingDoc = null;
     e2eeActivate();
-    if (mode === "demo") { /* demo: nothing else to wire */ }
     enterApp(user, plain);
+    if (window.ipoVaultOnUnlock) { try { window.ipoVaultOnUnlock(); } catch (e) {} }
   } catch (e) {
     E2.dek = null; e2eeActivate();
     toast("This data could not be decrypted — it may be damaged, or it belongs to a different account.");
@@ -155,7 +155,8 @@ window.e2eeShowUnlock = e2eeShowUnlock;
 
 /* ---------- setup wizard (new accounts + migration) ---------- */
 window.e2eeMaybeSetup = function (user) {
-  if (!user || E2.dek || !FIREBASE_ON) return;
+  if (!user || E2.dek) return;
+  if (!FIREBASE_ON) { if (window.__e2eeDemoUser === user.email) E2.mode = "demo"; else return; }
   if (E2.setupFor === user.email) return;
   try { if (sessionStorage.getItem("folio_e2ee_later") === user.email) return; } catch (e) {}
   E2.setupFor = user.email;
@@ -243,12 +244,15 @@ async function e2eeCommitSetup(user, gen) {
     }
     try { localStorage.removeItem("folio_pre_enc_backup"); } catch (e) {}
     window.__pendingPass = undefined;
+    if (window.ipoVaultOnUnlock) { try { window.ipoVaultOnUnlock(); } catch (e) {} }
     return true;
   } catch (e) {
     E2.dek = null; E2.wraps = null; e2eeActivate();
     return false;
   }
 }
+window.e2eeVaultEnc = async function (obj) { if (!E2.dek) return null; return aesEnc(E2.dek, TE.encode(JSON.stringify(obj))); };
+window.e2eeVaultDec = async function (pack) { if (!E2.dek || !pack) return null; try { return JSON.parse(TD.decode(await aesDec(E2.dek, pack))); } catch (e) { return null; } };
 function e2eeFingerprint(text) { /* small non-crypto fingerprint for the round-trip compare */
   let h = 5381; for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0; return String(h) + ":" + text.length;
 }
