@@ -1241,7 +1241,7 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
 .ipo-about-p{font-size: 13.5px; line-height: 1.65;}
 .ipo-mgr-line{margin: 4px 0; font-size: 13.5px;}
 .ipo-dd-sub{margin: 14px 0 6px; font-size: 13px;}
-.ipo-top-btn{position: fixed; right: 16px; bottom: 96px; z-index: 1201; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--liquid-border); background: var(--liquid-bar-bg); backdrop-filter: blur(12px); color: var(--text); font-size: 18px; cursor: pointer; box-shadow: var(--liquid-shadow);}
+.ipo-top-btn{position: fixed; right: 16px; bottom: 96px; z-index: 850; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--liquid-border); background: var(--liquid-bar-bg); backdrop-filter: blur(12px); color: var(--text); font-size: 18px; cursor: pointer; box-shadow: var(--liquid-shadow);}
 
 /* v44 — modal overflow lock, chart window controls, IPO mode, terms modal */
 /* Lock every modal to the viewport: zero horizontal scroll, ever */
@@ -1592,7 +1592,7 @@ body:not([data-view="dashboard"]) .site-foot{display:none}
 .fld input,.fld textarea{padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--input);color:var(--text);font:inherit;font-weight:400;min-height:44px}
 .fld textarea{resize:vertical}
 .e2ee-pane{margin-top:6px}
-#e2eeUnlock,#e2eeSetup{z-index:600}
+#e2eeUnlock,#e2eeSetup{z-index:1350}
 
 /* ===== Phase 8: rendering performance ===== */
 .panel{content-visibility:auto;contain-intrinsic-size:auto 320px}
@@ -1676,3 +1676,19 @@ input,select,textarea{border-radius:var(--r-sm)}
 .dash-chips{scroll-snap-type:x proximity}
 .dash-chips .insx-chip{scroll-snap-align:start}
 @media (min-width:1024px){ .dash-chips{flex-wrap:wrap;overflow-x:visible} }
+
+/* ===== v82: Samsung-style floating pill dock + one sane layer order =====
+   Layer order: content < sticky bars (60) < docks (900) < modals (1300)
+   < cmdk / info pops (1400) < offline pill (1500) < toast (1600) < splash (2000).
+   Popups must ALWAYS sit in front of the bottom dock — never behind it. */
+.modal{z-index:1300}
+.cmdk-pop{z-index:1400}
+.insx-info-pop{z-index:1400}
+#offlinePill{z-index:1500}
+.toast{z-index:1600}
+/* the dock: a floating pill, detached from the edges — not a slab */
+.samsung-bottom-dock-wrap{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 16px);bottom:calc(14px + env(safe-area-inset-bottom, 0px))}
+.samsung-bottom-capsule{flex:none;border-radius:999px;padding:6px;gap:2px;background:color-mix(in srgb, var(--panel) 88%, transparent);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border:1px solid var(--line);box-shadow:0 12px 32px rgba(0,0,0,.38)}
+.samsung-bottom-capsule .mobile-nav-item{flex:1 1 0;min-width:60px;padding:0 6px}
+body.ipo-world-active #ipo-bottom-dock{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 16px);bottom:calc(14px + env(safe-area-inset-bottom, 0px))}
+@media (max-width:380px){ .samsung-bottom-capsule .mobile-nav-item{min-width:52px} .samsung-bottom-capsule .mobile-nav-item span{font-size:9.5px} }
