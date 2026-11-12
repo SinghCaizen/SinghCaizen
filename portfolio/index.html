@@ -5,7 +5,7 @@
     <button type="button" class="mobile-nav-item" data-bnav="watchlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.3 6.9 19l1.1-5.6L3.8 9.5l5.7-.7z"/></svg><span>Watchlist</span></button>
     <button type="button" class="mobile-nav-item" data-bnav="insights"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v15.5h16"/><path d="M7.5 15l3.8-4.6 3 2.7L18.5 8"/></svg><span>Insights</span></button>
   </nav>
-  <button type="button" class="samsung-profile-circle-btn" id="bnavProfileBtn" data-bnav="profile" aria-label="My Profile" title="My Profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg></button>
+  <button type="button" class="samsung-profile-circle-btn ipo-circle-btn" id="bnavIpoBtn" data-bnav="ipo" aria-label="IPO Master" title="IPO Master"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15c5-3.5 7-8.5 7-12-3.5 0-8.5 2-12 7l-2 5 5-2z"/><path d="M5 15l-1.5 6L9 19.5M14 5.5c1 2 1 4.5-.5 7"/></svg><span class="ipo-circle-label">IPO</span></button>
 </div><!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
@@ -24,7 +24,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Folio — A Singh Caizen Product","short_name":"Folio","display":"standalone","start_url":".","background_color":"%23000000","theme_color":"%23000000","icons":[]}'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=36">
+<link rel="stylesheet" href="css/style.css?v=38">
 </head>
 <body>
 
@@ -153,6 +153,7 @@
     <button class="tab" data-view="insights" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v15.5h16"/><path d="M7.5 15l3.8-4.6 3 2.7L18.5 8"/></svg><span>Insights</span></button>
     <button class="tab" data-view="news" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="15" height="14" rx="2"/><path d="M18 9h1.5A1.5 1.5 0 0 1 21 10.5V17a2 2 0 0 1-2 2"/><path d="M6.5 9h7M6.5 12.5h7M6.5 16h5"/></svg><span>News</span></button>
     <button class="tab" data-view="watchlist" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.3 6.9 19l1.1-5.6L3.8 9.5l5.7-.7z"/></svg><span>Watchlist</span></button>
+    <button class="tab" data-view="ipo" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15c5-3.5 7-8.5 7-12-3.5 0-8.5 2-12 7l-2 5 5-2z"/><path d="M5 15l-1.5 6L9 19.5M14 5.5c1 2 1 4.5-.5 7"/></svg><span>IPO</span></button>
     <button class="tab" data-view="history" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>History</span></button>
     <button class="tab" data-view="profile" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg><span>My Profile</span></button>
   </nav>
@@ -396,6 +397,41 @@
     </section>
 
     <!-- HISTORY -->
+    <section id="view-ipo" class="view hidden">
+      <div class="panel">
+        <div class="panel-head"><h2>IPO MASTER</h2><span class="price-meta">Live, upcoming &amp; listed Indian IPOs — curated snapshot, verify on NSE/BSE before applying</span></div>
+        <div class="seg seg-small ipo-sub-seg" id="ipoSubSeg"><button type="button" data-iposub="live" class="seg-btn active">🔥 Live / Open</button><button type="button" data-iposub="upcoming" class="seg-btn">📅 Upcoming</button><button type="button" data-iposub="listed" class="seg-btn">📈 Listed / Past</button><button type="button" data-iposub="sme" class="seg-btn">🏢 SME IPOs</button><button type="button" data-iposub="apps" class="seg-btn">🏦 My Applications</button></div>
+        <div class="ipo-filter-row">
+          <div class="seg seg-small" id="ipoBoardSeg"><button type="button" data-ipoboard="ALL" class="seg-btn active">All Boards</button><button type="button" data-ipoboard="MAINBOARD" class="seg-btn">Mainboard</button><button type="button" data-ipoboard="NSE SME" class="seg-btn">NSE SME</button><button type="button" data-ipoboard="BSE SME" class="seg-btn">BSE SME</button></div>
+          <input type="text" id="ipoSearch" placeholder="Search IPO company name…" autocomplete="off">
+          <button class="btn btn-small" id="ipoRefreshBtn" type="button">🔄 Refresh Live IPO Buzz</button>
+          <button class="btn btn-small" id="ipoAddBtn" type="button">➕ Add Custom IPO</button>
+        </div>
+        <form id="ipoCustomForm" class="ipo-custom hidden" autocomplete="off">
+          <input type="text" id="icName" placeholder="Company name *" required>
+          <input type="text" id="icSymbol" placeholder="Listing symbol (e.g. VNL)">
+          <select id="icBoard"><option>MAINBOARD</option><option>NSE SME</option><option>BSE SME</option></select>
+          <select id="icStatus"><option value="upcoming">Upcoming</option><option value="open">Live / Open</option><option value="listed">Listed</option></select>
+          <input type="number" id="icLow" placeholder="Price band low ₹" step="any">
+          <input type="number" id="icHigh" placeholder="Price band high ₹" step="any">
+          <input type="number" id="icLot" placeholder="Lot size (shares)">
+          <input type="number" id="icIssue" placeholder="Issue size ₹ Cr" step="any">
+          <label>Open <input type="date" id="icOpen"></label>
+          <label>Close <input type="date" id="icClose"></label>
+          <label>Listing <input type="date" id="icListing"></label>
+          <select id="icRegistrar"><option>Link Intime</option><option>KFintech</option><option>Bigshare</option></select>
+          <button class="btn btn-gold btn-small" type="submit">Save IPO</button>
+          <button class="btn btn-small" id="icCancel" type="button">Cancel</button>
+        </form>
+        <div id="ipoList"></div>
+        <div id="ipoAppsWrap" class="hidden"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>LIVE IPO BUZZ</h2><span class="price-meta">Latest IPO headlines from Google News</span></div>
+        <div id="ipoBuzz"><p class="empty-note">Tap “🔄 Refresh Live IPO Buzz” to load the latest headlines.</p></div>
+      </div>
+    </section>
+
     <section id="view-history" class="view hidden">
       <div class="panel">
         <div class="panel-head"><h2>History</h2><span class="price-meta">Every buy, sell and dividend you entered.</span></div>
@@ -567,27 +603,16 @@
 <div id="stockModal" class="modal hidden">
   <div class="modal-card modal-wide">
     <div class="modal-head"><div><h3 id="stockTitle">—</h3><span id="stockName" class="hold-name"></span></div><button id="stockClose" class="icon-btn modal-close-btn" data-close-modal="1" type="button" aria-label="Close">✕</button></div>
-    <div class="seg seg-small seg-wrap" id="stockSeg">
-      <button type="button" data-r="1d5m" class="seg-btn">5min</button>
-      <button type="button" data-r="5d15m" class="seg-btn">15min</button>
-      <button type="button" data-r="5d1h" class="seg-btn">1hr</button>
-      <button type="button" data-r="7d15m" class="seg-btn">1W</button>
-      <button type="button" data-r="1mo" class="seg-btn">1M</button>
-      <button type="button" data-r="3mo" class="seg-btn">3M</button>
-      <button type="button" data-r="6mo" class="seg-btn active">6M</button>
-      <button type="button" data-r="1y" class="seg-btn">1Y</button>
-      <button type="button" data-r="5y" class="seg-btn">5Y</button>
-      <button type="button" data-r="max" class="seg-btn">MAX</button>
-    </div>
-    <label class="bench-toggle ma-toggle"><input type="checkbox" id="stockMa"> Moving Averages (20 EMA · 200 SMA) + my Buy/Sell markers</label>
     <div id="taWrap" class="hidden">
       <div class="lw-bar ta-bar">
+        <div class="seg seg-small" id="taTfSeg"><button type="button" data-takind="intra" data-range="5d" data-interval="5m" class="seg-btn">5m</button><button type="button" data-takind="intra" data-range="1mo" data-interval="15m" class="seg-btn">15m</button><button type="button" data-takind="intra" data-range="3mo" data-interval="60m" class="seg-btn">1H</button><button type="button" data-tadays="7" class="seg-btn">1W</button><button type="button" data-tadays="30" class="seg-btn">1M</button><button type="button" data-tadays="91" class="seg-btn">3M</button><button type="button" data-tadays="182" class="seg-btn">6M</button><button type="button" data-tadays="365" class="seg-btn active">1Y</button><button type="button" data-takind="long" data-range="5y" data-interval="1wk" class="seg-btn">5Y</button><button type="button" data-takind="long" data-range="max" data-interval="1mo" class="seg-btn">MAX</button></div>
+      </div>
+      <div class="lw-bar ta-bar">
         <div class="seg seg-small" id="taModeSeg"><button type="button" data-ta="candles" class="seg-btn active">🕯️ Candles</button><button type="button" data-ta="area" class="seg-btn">📈 Area</button><button type="button" data-ta="bars" class="seg-btn">📊 Bars</button></div>
-        <div class="seg seg-small" id="taTfSeg"><button type="button" data-tatf="7" class="seg-btn">1W</button><button type="button" data-tatf="30" class="seg-btn">1M</button><button type="button" data-tatf="91" class="seg-btn">3M</button><button type="button" data-tatf="182" class="seg-btn">6M</button><button type="button" data-tatf="365" class="seg-btn active">1Y</button><button type="button" data-tatf="0" class="seg-btn">ALL</button></div>
-        <div class="seg seg-small" id="taIndSeg"><button type="button" data-taind="ema" class="seg-btn active">20 EMA</button><button type="button" data-taind="sma" class="seg-btn active">200 SMA</button><button type="button" data-taind="bb" class="seg-btn">Bollinger</button><button type="button" data-taind="sr" class="seg-btn active">S/R Levels</button><button type="button" data-taind="measure" class="seg-btn">📏 Measure</button></div>
+        <div class="seg seg-small" id="taIndSeg"><button type="button" data-taind="ema" class="seg-btn active">20 EMA</button><button type="button" data-taind="sma" class="seg-btn active">200 SMA</button><button type="button" data-taind="bb" class="seg-btn">Bollinger</button><button type="button" data-taind="sr" class="seg-btn active">S/R Levels</button><button type="button" data-taind="trades" class="seg-btn active">My Trades</button><button type="button" data-taind="measure" class="seg-btn">📏 Measure</button></div>
       </div>
       <div id="taHud" class="ta-hud">Drag on the chart to inspect any day</div>
-      <canvas id="taCanvas"></canvas>
+      <div class="ta-stack"><canvas id="taCanvas"></canvas><canvas id="taOverlay"></canvas></div>
       <div id="taNote" class="price-meta"></div>
       <div id="taVerdict" class="stat-chips"></div>
     </div>
@@ -779,8 +804,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/firebase-config.js?v=6"></script>
 <script src="js/stocks.js?v=23"></script>
-<script src="js/app.js?v=36"></script>
+<script src="js/app.js?v=38"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/features.js?v=37"></script>
+<script src="js/features.js?v=38"></script>
 </body>
 </html>

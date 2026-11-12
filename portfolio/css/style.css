@@ -1042,3 +1042,56 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
 .wl-edit{display: flex; align-items: center; gap: 6px; width: 100%;}
 .wl-edit input{flex: 1; min-width: 0; padding: 9px 12px; border-radius: 999px; border: 1px solid var(--liquid-border); background: var(--liquid-inner-card-bg); color: var(--liquid-text-primary, var(--text)); font-size: 13px;}
 .wl-act.danger{color: var(--loss);}
+
+/* v38 — instant accordions (no layout-thrash transitions), 2-layer TA stack, IPO Master */
+.acc-body{display: none; grid-template-rows: none; transition: none;}
+.acc-card.open .acc-body{display: block; animation: gpuFastFade .14s cubic-bezier(.22,1,.36,1) forwards; will-change: transform, opacity;}
+.hold-drawer{display: none;}
+.hold-card.open .hold-drawer{display: block; animation: gpuFastFade .14s cubic-bezier(.22,1,.36,1) forwards; will-change: transform, opacity;}
+@keyframes gpuFastFade{from{opacity: 0; transform: translate3d(0,-4px,0);} to{opacity: 1; transform: translate3d(0,0,0);}}
+.ta-stack{position: relative; border-radius: 14px; overflow: hidden;}
+.ta-stack #taCanvas{display: block; border-radius: 14px;}
+#taOverlay{position: absolute; left: 0; top: 0; border-radius: 14px; touch-action: pan-y; cursor: crosshair; background: transparent; border: none;}
+.ipo-circle-btn{flex-direction: column; gap: 0; line-height: 1;}
+.ipo-circle-btn svg{width: 24px; height: 24px;}
+.ipo-circle-label{font-size: 10.5px; font-weight: 800; letter-spacing: .06em; margin-top: 1px;}
+.ipo-sub-seg{flex-wrap: wrap; margin-bottom: 10px;}
+.ipo-filter-row{display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;}
+.ipo-filter-row input[type="text"]{flex: 1; min-width: 150px; padding: 9px 12px; border-radius: 999px; border: 1px solid var(--liquid-border); background: var(--liquid-inner-card-bg); color: var(--liquid-text-primary, var(--text)); font-size: 13px;}
+.ipo-custom{display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; padding: 12px; border: 1px dashed var(--liquid-border); border-radius: 14px;}
+.ipo-custom input, .ipo-custom select{padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-size: 13px; width: 100%; box-sizing: border-box;}
+.ipo-custom label{font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px;}
+.ipo-card{background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 18px; padding: 12px 14px; margin-bottom: 10px;}
+.ipo-card-head{width: 100%; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; background: none; border: none; color: inherit; cursor: pointer; text-align: left; font: inherit; padding: 0;}
+.ipo-head-l{display: flex; flex-direction: column; gap: 2px; min-width: 0;}
+.ipo-head-l b{font-size: 15px;}
+.ipo-head-l small{color: var(--muted); font-size: 12px;}
+.ipo-head-r{display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0;}
+.ipo-board{font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px; background: rgba(37,99,235,.18); color: #7aa5ff;}
+.ipo-board.sme{background: rgba(147,51,234,.18); color: #c084fc;}
+.ipo-badge{font-size: 10.5px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line);}
+.ipo-badge.open{background: rgba(16,185,129,.16); color: #34d399;}
+.ipo-badge.upcoming{background: rgba(245,158,11,.16); color: #fbbf24;}
+.ipo-metrics{display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0;}
+@media (max-width: 560px){ .ipo-metrics{grid-template-columns: repeat(2, minmax(0, 1fr));} }
+.ipo-metrics > div{background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px;}
+.ipo-metrics span{font-size: 10.5px; color: var(--muted); font-weight: 600; letter-spacing: .02em;}
+.ipo-metrics b{font-size: 13.5px;}
+.ipo-metrics small{color: var(--muted); font-size: 11px;}
+.ipo-subbar{display: block; height: 5px; border-radius: 99px; background: var(--line); overflow: hidden; margin: 3px 0;}
+.ipo-subbar i{display: block; height: 100%; background: var(--gain, #10b981);}
+.ipo-timeline{display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--muted);}
+.ipo-timeline span{display: flex; flex-direction: column;}
+.ipo-timeline b{color: var(--text); font-size: 12px;}
+.ipo-timeline i{font-style: normal; opacity: .6;}
+.ipo-drawer{margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px;}
+.ipo-drawer h4{margin: 10px 0 6px; font-size: 13px;}
+.ipo-drawer p{font-size: 13px; line-height: 1.55;}
+.ipo-reg-row{display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;}
+.ipo-logform{display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px;}
+.ipo-logform input, .ipo-logform select{padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-size: 13px; width: 100%; box-sizing: border-box;}
+.ipo-app-row{display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px;}
+.ipo-app-main{display: flex; flex-direction: column; flex: 1; min-width: 160px;}
+.ipo-app-row select{padding: 7px 9px; border-radius: 9px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-size: 12.5px;}
+.ipo-news-item{display: flex; flex-direction: column; gap: 2px; padding: 9px 4px; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none;}
+.ipo-news-item span{color: var(--muted); font-size: 11.5px;}

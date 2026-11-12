@@ -161,6 +161,7 @@ switchView = function (name) {
   folioView = name;
   _origSwitchView(name);
   if ((name === "insights" || name === "news") && currentUser) renderAll();
+  if (name === "ipo" && currentUser) { try { renderIpo(); } catch (e) {} }
   if (name === "watchlist" && currentUser) {
     setTimeout(() => {
       (async () => { for (const w of (state.watch || []).slice(0, 12)) await fetchMaster(w.sym); })();
@@ -500,7 +501,9 @@ let lastScrollAt = 0;
 window.addEventListener("scroll", () => { lastScrollAt = Date.now(); }, { passive: true });
 async function doTick() {
   if (!currentUser || typeof refreshPrices !== "function") return;
-  const modalOpen = ["stockModal", "txnModal", "totpModal", "helpModal"].some(id => { const m = $(id); return m && !m.classList.contains("hidden"); });
+  const stockOpen = (() => { const m = $("stockModal"); return m && !m.classList.contains("hidden"); })();
+  if (stockOpen) return; /* modal open: pause all background polling, the opened stock owns the network */
+  const modalOpen = ["txnModal", "totpModal", "helpModal"].some(id => { const m = $(id); return m && !m.classList.contains("hidden"); });
   if (modalOpen) { try { await refreshPrices(); } catch (e) {} return; }
   if (Date.now() - lastScrollAt < 500) { setTimeout(() => { try { doTick(); } catch (e) {} }, 650); return; }
   const before = {};
@@ -626,7 +629,7 @@ function lwDispose() { if (lwChart) { try { lwChart.remove(); } catch (e) {} lwC
 function dayStr(t) { return new Date(t).toISOString().slice(0, 10); }
 /* Sanitise Yahoo OHLCV: Lightweight Charts dies silently on null/NaN values,
    duplicate timestamps or unsorted data — clean everything before it is used. */
-function cleanOHLC(tsArr, q0) {
+function cleanOHLC(tsArr, q0, byDay) {
   const seen = new Set();
   const out = [];
   const opens = (q0 && q0.open) || [], highs = (q0 && q0.high) || [], lows = (q0 && q0.low) || [], closes = (q0 && q0.close) || [], vols = (q0 && q0.volume) || [];
@@ -634,7 +637,7 @@ function cleanOHLC(tsArr, q0) {
     const t = Number(tsArr[i]);
     const c = Number(closes[i]);
     if (!Number.isFinite(t) || !Number.isFinite(c) || c <= 0) continue;
-    const dayKey = new Date(t * 1000).toISOString().slice(0, 10);
+    const dayKey = byDay === false ? String(t) : new Date(t * 1000).toISOString().slice(0, 10);
     if (seen.has(dayKey)) continue;
     seen.add(dayKey);
     const o = Number.isFinite(Number(opens[i])) && Number(opens[i]) > 0 ? Number(opens[i]) : c;
@@ -1621,6 +1624,8 @@ function masterCorpHtml(m) {
 async function fillHoldDrawer(sym, drawer) {
   const box = drawer.querySelector(".dr-status");
   if (!box) return;
+  if (box.dataset.ts && Date.now() - +box.dataset.ts < 60000 && box.innerHTML) return;
+  box.dataset.ts = String(Date.now());
   const avg = Number(drawer.dataset.avg) || 0;
   const ltp = drawer.dataset.ltp === "" ? null : Number(drawer.dataset.ltp);
   let html = "";
@@ -2363,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v37";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v38";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2449,6 +2454,17 @@ window.addEventListener("popstate", () => {
 });
 const _openStockPrev = openStock;
 openStock = function (sym) {
+  /* Strict per-symbol isolation: purge the previous stock's chart buffer the
+     instant a new stock opens, so its prices/markers can never leak across. */
+  try {
+    activeModalSymbol = baseTicker(sym);
+    taToken++;
+    taState.bars = []; taState._calc = null; taState.sym = activeModalSymbol;
+    taState.cross = -1; taState.mA = -1; taState.mB = -1; taState.preview = false;
+    const nt = $("taNote"); if (nt) nt.textContent = "Loading chart data…";
+    const vd = $("taVerdict"); if (vd) vd.innerHTML = "";
+    const hd = $("taHud"); if (hd) hd.textContent = "Drag on the chart to inspect any day";
+  } catch (e) {}
   const r = _openStockPrev(sym);
   try { history.pushState({ folioStock: 1 }, ""); } catch (e) {}
   return r;
@@ -2701,14 +2717,12 @@ persist = function () { try { const a = activeWl(); if (a && state.watch !== a.i
 const _renderWatchWlBase = renderWatch;
 renderWatch = function () { _renderWatchWlBase(); try { renderWlBar(); } catch (e) {} };
 setInterval(() => { try { ensureWatchlists(); } catch (e) {} }, 1500);
-
 /* =====================================================================
-   Self-contained Canvas TA Terminal — zero external dependencies.
-   Stage 1 renders instantly from cache (or a clearly-labelled estimated
-   preview anchored to the live price); Stage 2 swaps in real Yahoo
-   history in the background. The chart box can never stay blank.
+   Canvas TA Terminal v2 — 2-layer (static base + crosshair overlay),
+   strict per-symbol isolation, indicators computed once per data load.
    ===================================================================== */
-const taState = { mode: "candles", days: 365, ema: true, sma: true, bb: false, sr: true, measure: false, bars: [], sym: "", preview: false, cross: -1, mA: -1, mB: -1 };
+let activeModalSymbol = null;
+const taState = { mode: "candles", tf: { kind: "days", days: 365, range: "", interval: "" }, ema: true, sma: true, bb: false, sr: true, trades: true, measure: false, bars: [], sym: "", preview: false, cross: -1, mA: -1, mB: -1, _calc: null, trySym: "", tries: 0 };
 let taToken = 0;
 function taSeedRand(seed) { let x = seed % 2147483647; if (x <= 0) x += 2147483646; return () => (x = x * 16807 % 2147483647) / 2147483647; }
 function taSynthetic(sym) {
@@ -2757,35 +2771,68 @@ function rsiSeries(closes, period) {
   for (let i = period + 1; i < closes.length; i++) { const d = closes[i] - closes[i - 1]; g = (g * (period - 1) + Math.max(d, 0)) / period; l = (l * (period - 1) + Math.max(-d, 0)) / period; out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l); }
   return out;
 }
-async function renderTA() {
-  const wrap = $("taWrap"), svgBox = $("stockChart");
-  if (!wrap || !stockSym) return;
-  if (["1d5m", "5d15m", "5d1h"].includes(stockRange)) { wrap.classList.add("hidden"); return; }
-  wrap.classList.remove("hidden");
-  if (svgBox) svgBox.classList.add("hidden");
-  ["lwWrap", "lwBar", "lwLegend"].forEach(id => { const e = $(id); if (e) e.classList.add("hidden"); });
-  const sym = stockSym, tok = ++taToken;
-  taState.sym = sym; taState.mA = -1; taState.mB = -1; taState.cross = -1;
-  let bars = null, preview = false;
+async function taFetchRange(sym, range, interval, byDay) {
+  const key = "folio_ta_" + sym + "|" + range + "|" + interval;
+  const cached = lsCacheGet(key, byDay ? 12 * 3600 * 1000 : 5 * 60 * 1000);
+  if (cached && cached.bars && cached.bars.length) return cached.bars;
+  const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(normalizeTicker(sym)) + "?range=" + range + "&interval=" + interval + "&events=div,split";
+  const r0 = await fetchChartValidated(url, 7000);
+  const q0 = (r0.indicators.quote && r0.indicators.quote[0]) || {};
+  const bars = cleanOHLC(r0.timestamp || [], q0, byDay);
+  lsCacheSet(key, { ts: Date.now(), bars: bars });
+  return bars;
+}
+function taKnownPrice(sym) {
+  const q = (typeof prices !== "undefined" && prices[sym]) || null;
+  if (q && q.price) return q.price;
+  try { const h = enriched().rows.find(r => r.sym === sym); if (h && h.ltp) return h.ltp; if (h && h.avg) return h.avg; } catch (e) {}
+  return null;
+}
+function taCacheBars(sym) {
+  let bars = null;
   const mc = masterCache[sym];
   if (mc && mc.ohlc && mc.ohlc.length > 5) bars = mc.ohlc;
   if (!bars) { const h = histLsGet(sym + "|1y"); if (h && h.points && h.points.length > 5) bars = h.points.map(p => ({ t: p.t, o: p.c, h: p.c, l: p.c, c: p.c, v: 0 })); }
-  if (!bars && ["5y", "max"].includes(stockRange)) { const c = lsCacheGet("folio_ohlc_" + sym + "|" + stockRange, 12 * 3600 * 1000); if (c && c.bars && c.bars.length > 5) bars = c.bars; }
-  if (!bars) { bars = taSynthetic(sym); preview = bars.length > 0; }
-  if (bars && bars.length) { taState.bars = bars; taState.preview = preview; taDraw(); }
-  else {
-    const nt0 = $("taNote"); if (nt0) nt0.textContent = "Loading chart data…";
-    if (taState.trySym !== sym) { taState.trySym = sym; taState.tries = 0; }
-    if (taState.tries < 3) { taState.tries++; setTimeout(() => { if (stockSym === sym) { try { renderTA(); } catch (e) {} } }, 3000); }
+  if (bars && bars.length) {
+    const known = taKnownPrice(sym);
+    if (known && Math.abs(bars[bars.length - 1].c - known) / known > 0.4) return null;
   }
+  return bars;
+}
+async function renderTA() {
+  const wrap = $("taWrap"), svgBox = $("stockChart");
+  if (!wrap || !stockSym) return;
+  wrap.classList.remove("hidden");
+  if (svgBox) svgBox.classList.add("hidden");
+  ["lwWrap", "lwBar", "lwLegend"].forEach(id => { const e = $(id); if (e) e.classList.add("hidden"); });
+  const sym = baseTicker(stockSym), tok = ++taToken;
+  taState.sym = sym;
+  const tf = taState.tf;
+  let bars = null, preview = false;
+  if (tf.kind === "days") {
+    bars = taCacheBars(sym);
+    if (!bars) { bars = taSynthetic(sym); preview = bars.length > 0; }
+  } else {
+    const c = lsCacheGet("folio_ta_" + sym + "|" + tf.range + "|" + tf.interval, tf.kind === "long" ? 12 * 3600 * 1000 : 5 * 60 * 1000);
+    if (c && c.bars && c.bars.length > 1) bars = c.bars;
+  }
+  if (bars && bars.length) { taState.bars = bars; taState.preview = preview; taDraw(); }
+  else { const nt = $("taNote"); if (nt && !preview) nt.textContent = "Loading chart data…"; }
   try {
     let real = null;
-    if (["5y", "max"].includes(stockRange)) real = await fetchOHLC(sym, stockRange === "5y" ? "5y" : "max", stockRange === "5y" ? "1wk" : "1mo");
-    else { const m = await fetchMaster(sym); if (m && m.ohlc && m.ohlc.length > 5) real = m.ohlc; }
-    if (tok !== taToken || stockSym !== sym) return;
-    if (real && real.length) { taState.bars = real; taState.preview = false; taDraw(); }
-    else if (preview) { const nt = $("taNote"); if (nt) nt.textContent = "Estimated preview shown — the free history feed did not answer. The live price above is real."; }
-  } catch (e) {}
+    if (tf.kind === "days") { const m = await fetchMaster(sym); if (m && m.ohlc && m.ohlc.length > 5) real = m.ohlc; }
+    else real = await taFetchRange(sym, tf.range, tf.interval, tf.kind === "long");
+    if (tok !== taToken || activeModalSymbol !== sym || baseTicker(stockSym) !== sym) return;
+    if (real && real.length) { taState.bars = real; taState.preview = false; taDraw(); return; }
+    throw new Error("empty");
+  } catch (e) {
+    if (tok !== taToken || activeModalSymbol !== sym) return;
+    if (preview) { const nt = $("taNote"); if (nt) nt.textContent = "Estimated preview shown — the free history feed did not answer. The live price above is real."; }
+    else if (!taState.bars.length) {
+      if (taState.trySym !== sym + tf.range) { taState.trySym = sym + tf.range; taState.tries = 0; }
+      if (taState.tries < 3) { taState.tries++; setTimeout(() => { if (baseTicker(stockSym) === sym) { try { renderTA(); } catch (e2) {} } }, 3000); }
+    }
+  }
 }
 function taLevels() {
   const bars = taState.bars;
@@ -2801,43 +2848,61 @@ function taLevels() {
   lv.push({ v: hi, t: "52W H" }, { v: lo, t: "52W L" });
   return lv;
 }
-function taDraw() {
-  const canvas = $("taCanvas"), wrap = $("taWrap");
-  if (!canvas || !wrap || !taState.bars.length) return;
+function taPrepare() {
   const all = taState.bars;
+  if (!all.length) { taState._calc = null; return null; }
   const closes = all.map(b => b.c);
   const ema = emaSeries(closes, 20), sma = smaSeries(closes, 200);
-  const sma20 = smaSeries(closes, 20), sd20 = closes.map((c, i) => {
+  const sma20 = smaSeries(closes, 20);
+  const sd20 = closes.map((c, i) => {
     if (i < 19) return null;
     const m = sma20[i]; let s = 0; for (let j = i - 19; j <= i; j++) s += (closes[j] - m) * (closes[j] - m);
     return Math.sqrt(s / 20);
   });
   const rsi = rsiSeries(closes, 14);
   let from = 0;
-  if (taState.days > 0) { const cutoff = all[all.length - 1].t - taState.days * 86400000; from = all.findIndex(b => b.t >= cutoff); if (from < 0) from = 0; }
+  const days = taState.tf.kind === "days" ? taState.tf.days : 0;
+  if (days > 0) { const cutoff = all[all.length - 1].t - days * 86400000; from = all.findIndex(b => b.t >= cutoff); if (from < 0) from = 0; }
   const bars = all.slice(from);
   const N = bars.length;
-  if (N < 2) return;
-  const W = Math.max(280, wrap.clientWidth - 4);
+  if (N < 2) { taState._calc = null; return null; }
+  const wrap = $("taWrap");
+  const W = Math.max(280, (wrap ? wrap.clientWidth : 320) - 4);
   const H = window.innerWidth <= 768 ? 360 : 410;
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = W * dpr; canvas.height = H * dpr;
-  canvas.style.width = W + "px"; canvas.style.height = H + "px";
-  const ctx = canvas.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const cs = getComputedStyle(document.documentElement);
-  const C = { text: cs.getPropertyValue("--text").trim() || "#eee", muted: cs.getPropertyValue("--muted").trim() || "#999", line: cs.getPropertyValue("--line").trim() || "#333", gain: "#10b981", loss: "#ef4444" };
-  const plotW = W - 8, step = plotW / N;
   const priceH = Math.round(H * 0.58), volTop = priceH + 6, volH = Math.round(H * 0.11), rsiTop = volTop + volH + 10, rsiH = H - rsiTop - 16;
   let mn = Infinity, mx = -Infinity, vmax = 0;
   bars.forEach(b => { mn = Math.min(mn, b.l); mx = Math.max(mx, b.h); vmax = Math.max(vmax, b.v || 0); });
   if (taState.bb) for (let i = 0; i < N; i++) { const gi = from + i; if (sd20[gi] !== null) { mx = Math.max(mx, sma20[gi] + 2 * sd20[gi]); mn = Math.min(mn, sma20[gi] - 2 * sd20[gi]); } }
   const pad = (mx - mn) * 0.06 || 1; mx += pad; mn -= pad;
-  const Y = v => priceH - (v - mn) / (mx - mn) * priceH;
-  const X = i => i * step + step / 2;
-  ctx.clearRect(0, 0, W, H);
+  const calc = { all: all, bars: bars, from: from, N: N, W: W, H: H, priceH: priceH, volTop: volTop, volH: volH, rsiTop: rsiTop, rsiH: rsiH, mn: mn, mx: mx, vmax: vmax, step: (W - 8) / N, ema: ema, sma: sma, sma20: sma20, sd20: sd20, rsi: rsi };
+  calc.Y = v => calc.priceH - (v - calc.mn) / (calc.mx - calc.mn) * calc.priceH;
+  calc.X = i => i * calc.step + calc.step / 2;
+  taState._calc = calc;
+  return calc;
+}
+function taDraw() {
+  const calc = taPrepare();
+  if (!calc) return;
+  taDrawBase(calc);
+  taDrawOverlay();
+  const note = $("taNote");
+  if (note && !taState.preview) note.textContent = new Date(calc.bars[0].t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " → " + new Date(calc.bars[calc.N - 1].t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " · " + calc.N + (taState.tf.kind === "days" ? " days" : " bars") + " · free data";
+  if (note && taState.preview) note.textContent = "Estimated preview (anchored to the live price) — real history is loading in the background.";
+  taVerdict(calc);
+}
+function taDrawBase(calc) {
+  const canvas = $("taCanvas"), overlay = $("taOverlay");
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  [canvas, overlay].forEach(cv => { if (!cv) return; cv.width = calc.W * dpr; cv.height = calc.H * dpr; cv.style.width = calc.W + "px"; cv.style.height = calc.H + "px"; });
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cs = getComputedStyle(document.documentElement);
+  const C = { text: cs.getPropertyValue("--text").trim() || "#eee", muted: cs.getPropertyValue("--muted").trim() || "#999", line: cs.getPropertyValue("--line").trim() || "#333", gain: "#10b981", loss: "#ef4444" };
+  const bars = calc.bars, N = calc.N, from = calc.from, Y = calc.Y, X = calc.X;
+  ctx.clearRect(0, 0, calc.W, calc.H);
   ctx.strokeStyle = C.line; ctx.fillStyle = C.muted; ctx.font = "10px system-ui"; ctx.lineWidth = 1;
-  for (let g = 0; g <= 3; g++) { const v = mn + (mx - mn) * g / 3, y = Y(v); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.fillText("₹" + Math.round(v).toLocaleString("en-IN"), 4, Math.max(10, y - 3)); }
+  for (let g = 0; g <= 3; g++) { const v = calc.mn + (calc.mx - calc.mn) * g / 3, y = Y(v); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(calc.W, y); ctx.stroke(); ctx.fillText("₹" + Math.round(v).toLocaleString("en-IN"), 4, Math.max(10, y - 3)); }
   const line = (series, color, width) => {
     ctx.strokeStyle = color; ctx.lineWidth = width || 1.4; ctx.beginPath(); let started = false;
     for (let i = 0; i < N; i++) { const v = series[from + i]; if (v === null || v === undefined) continue; const x = X(i), y = Y(v); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }
@@ -2845,18 +2910,18 @@ function taDraw() {
   };
   if (taState.bb) {
     ctx.fillStyle = "rgba(120,144,180,0.10)"; ctx.beginPath(); let started = false;
-    for (let i = 0; i < N; i++) { const gi = from + i; if (sd20[gi] === null) continue; const x = X(i), y = Y(sma20[gi] + 2 * sd20[gi]); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }
-    for (let i = N - 1; i >= 0; i--) { const gi = from + i; if (sd20[gi] === null) continue; ctx.lineTo(X(i), Y(sma20[gi] - 2 * sd20[gi])); }
+    for (let i = 0; i < N; i++) { const gi = from + i; if (calc.sd20[gi] === null) continue; const x = X(i), y = Y(calc.sma20[gi] + 2 * calc.sd20[gi]); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }
+    for (let i = N - 1; i >= 0; i--) { const gi = from + i; if (calc.sd20[gi] === null) continue; ctx.lineTo(X(i), Y(calc.sma20[gi] - 2 * calc.sd20[gi])); }
     ctx.closePath(); ctx.fill();
   }
-  const bw = Math.max(1, Math.floor(step * 0.68));
+  const bw = Math.max(1, Math.floor(calc.step * 0.68));
   if (taState.mode === "area") {
-    const grad = ctx.createLinearGradient(0, 0, 0, priceH);
+    const grad = ctx.createLinearGradient(0, 0, 0, calc.priceH);
     grad.addColorStop(0, "rgba(16,185,129,0.36)"); grad.addColorStop(1, "rgba(16,185,129,0.02)");
     ctx.beginPath();
     bars.forEach((b, i) => { const x = X(i), y = Y(b.c); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
     ctx.strokeStyle = "#10b981"; ctx.lineWidth = 1.6; ctx.stroke();
-    ctx.lineTo(X(N - 1), priceH); ctx.lineTo(X(0), priceH); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    ctx.lineTo(X(N - 1), calc.priceH); ctx.lineTo(X(0), calc.priceH); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
   } else if (taState.mode === "bars") {
     bars.forEach((b, i) => {
       const x = X(i), col = b.c >= b.o ? C.gain : C.loss;
@@ -2875,68 +2940,78 @@ function taDraw() {
       ctx.fillRect(x - bw / 2, Math.min(yO, yC), bw, Math.max(1, Math.abs(yC - yO)));
     });
   }
-  if (taState.ema) line(ema, "#2962ff", 1.4);
-  if (taState.sma) line(sma, "#ff6d00", 1.4);
-  if (taState.bb) { line(sma20.map((v, i) => (sd20[i] === null ? null : v + 2 * sd20[i])), "rgba(120,144,180,0.55)", 1); line(sma20.map((v, i) => (sd20[i] === null ? null : v - 2 * sd20[i])), "rgba(120,144,180,0.55)", 1); }
+  if (taState.ema) line(calc.ema, "#2962ff", 1.4);
+  if (taState.sma) line(calc.sma, "#ff6d00", 1.4);
+  if (taState.bb) { line(calc.sma20.map((v, i) => (calc.sd20[i] === null ? null : v + 2 * calc.sd20[i])), "rgba(120,144,180,0.55)", 1); line(calc.sma20.map((v, i) => (calc.sd20[i] === null ? null : v - 2 * calc.sd20[i])), "rgba(120,144,180,0.55)", 1); }
   if (taState.sr) {
     ctx.font = "9.5px system-ui";
     taLevels().forEach(L => {
-      if (L.v < mn || L.v > mx) return;
+      if (L.v < calc.mn || L.v > calc.mx) return;
       const y = Y(L.v);
       ctx.strokeStyle = "rgba(150,160,175,0.5)"; ctx.setLineDash([5, 4]);
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = C.muted; ctx.fillText(L.t + " ₹" + Math.round(L.v).toLocaleString("en-IN"), W - 118, y - 3);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(calc.W, y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.muted; ctx.fillText(L.t + " ₹" + Math.round(L.v).toLocaleString("en-IN"), calc.W - 118, y - 3);
     });
   }
   bars.forEach((b, i) => {
-    if (!b.v || !vmax) return;
+    if (!b.v || !calc.vmax) return;
     ctx.fillStyle = b.c >= b.o ? "rgba(16,185,129,0.55)" : "rgba(239,68,68,0.55)";
-    const h = b.v / vmax * volH;
-    ctx.fillRect(X(i) - bw / 2, volTop + volH - h, bw, h);
+    const h = b.v / calc.vmax * calc.volH;
+    ctx.fillRect(X(i) - bw / 2, calc.volTop + calc.volH - h, bw, h);
   });
-  ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(0, rsiTop); ctx.lineTo(W, rsiTop); ctx.stroke();
-  ctx.fillStyle = C.muted; ctx.font = "9.5px system-ui"; ctx.fillText("RSI (14)", 4, rsiTop + 11);
-  const rsiY = v => rsiTop + rsiH - (v / 100) * rsiH;
-  [30, 70].forEach(v => { ctx.strokeStyle = "rgba(150,160,175,0.4)"; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(0, rsiY(v)); ctx.lineTo(W, rsiY(v)); ctx.stroke(); ctx.setLineDash([]); });
+  ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(0, calc.rsiTop); ctx.lineTo(calc.W, calc.rsiTop); ctx.stroke();
+  ctx.fillStyle = C.muted; ctx.font = "9.5px system-ui"; ctx.fillText("RSI (14)", 4, calc.rsiTop + 11);
+  const rsiY = v => calc.rsiTop + calc.rsiH - (v / 100) * calc.rsiH;
+  [30, 70].forEach(v => { ctx.strokeStyle = "rgba(150,160,175,0.4)"; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(0, rsiY(v)); ctx.lineTo(calc.W, rsiY(v)); ctx.stroke(); ctx.setLineDash([]); });
   ctx.strokeStyle = "#a78bfa"; ctx.lineWidth = 1.3; ctx.beginPath(); let rs0 = false;
-  for (let i = 0; i < N; i++) { const v = rsi[from + i]; if (v === null) continue; const x = X(i), y = rsiY(v); if (!rs0) { ctx.moveTo(x, y); rs0 = true; } else ctx.lineTo(x, y); }
+  for (let i = 0; i < N; i++) { const v = calc.rsi[from + i]; if (v === null) continue; const x = X(i), y = rsiY(v); if (!rs0) { ctx.moveTo(x, y); rs0 = true; } else ctx.lineTo(x, y); }
   ctx.stroke();
-  try {
-    (state.txns || []).filter(t => t.sym === taState.sym && (t.type === "BUY" || t.type === "SELL")).forEach(t => {
-      const td = new Date(t.date + "T23:59:59").getTime();
-      let idx = -1;
-      for (let i = 0; i < N; i++) if (bars[i].t <= td) idx = i;
-      if (idx < 0) return;
-      const x = X(idx), b = bars[idx], buy = t.type === "BUY";
-      const y = buy ? Y(b.l) + 6 : Y(b.h) - 6;
-      ctx.fillStyle = buy ? C.gain : C.loss;
-      ctx.beginPath();
-      if (buy) { ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 8); ctx.lineTo(x + 5, y + 8); } else { ctx.moveTo(x, y); ctx.lineTo(x - 5, y - 8); ctx.lineTo(x + 5, y - 8); }
-      ctx.closePath(); ctx.fill();
-      ctx.font = "bold 9px system-ui"; ctx.fillText((buy ? "B " : "S ") + "₹" + Math.round(t.price).toLocaleString("en-IN"), x - 14, buy ? y + 19 : y - 12);
-    });
-  } catch (e) {}
-  if (taState.mA >= 0 && taState.mB >= 0 && taState.mA !== taState.mB) {
-    const a = taState.mA, b2 = taState.mB;
-    ctx.strokeStyle = C.text; ctx.lineWidth = 1.4;
-    ctx.beginPath(); ctx.moveTo(X(a - from), Y(all[a].c)); ctx.lineTo(X(b2 - from), Y(all[b2].c)); ctx.stroke();
+  if (taState.trades) {
+    try {
+      (state.txns || []).filter(t => baseTicker(t.sym) === baseTicker(taState.sym) && (t.type === "BUY" || t.type === "SELL")).forEach(t => {
+        const td = new Date(t.date + "T23:59:59").getTime();
+        let idx = -1;
+        for (let i = 0; i < N; i++) if (bars[i].t <= td) idx = i;
+        if (idx < 0) return;
+        const x = X(idx), b = bars[idx], buy = t.type === "BUY";
+        const y = buy ? Y(b.l) + 6 : Y(b.h) - 6;
+        ctx.fillStyle = buy ? C.gain : C.loss;
+        ctx.beginPath();
+        if (buy) { ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 8); ctx.lineTo(x + 5, y + 8); } else { ctx.moveTo(x, y); ctx.lineTo(x - 5, y - 8); ctx.lineTo(x + 5, y - 8); }
+        ctx.closePath(); ctx.fill();
+        ctx.font = "bold 9px system-ui"; ctx.fillText((buy ? "B " : "S ") + "₹" + Math.round(t.price).toLocaleString("en-IN"), x - 14, buy ? y + 19 : y - 12);
+      });
+    } catch (e) {}
   }
-  if (taState.cross >= 0 && taState.cross < N) {
-    const i = taState.cross, x = X(i);
-    ctx.strokeStyle = "rgba(160,170,185,0.65)"; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, rsiTop + rsiH); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, Y(bars[i].c), 3.4, 0, Math.PI * 2); ctx.fillStyle = C.text; ctx.fill();
-  }
-  taState._view = { from: from, N: N, step: step, ema: ema, rsi: rsi, bars: bars };
-  const note = $("taNote");
-  if (note) note.textContent = taState.preview ? "Estimated preview (anchored to the live price) — real history is loading in the background." : (bars[0] ? new Date(bars[0].t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " → " + new Date(bars[N - 1].t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " · " + N + " days · free daily data" : "");
-  taVerdict(ema, sma, rsi);
 }
-function taVerdict(ema, sma, rsi) {
+function taDrawOverlay() {
+  const overlay = $("taOverlay"), calc = taState._calc;
+  if (!overlay || !calc) return;
+  const dpr = window.devicePixelRatio || 1;
+  const ctx = overlay.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, calc.W, calc.H);
+  const cs = getComputedStyle(document.documentElement);
+  const text = cs.getPropertyValue("--text").trim() || "#eee";
+  if (taState.mA >= 0 && taState.mB >= 0 && taState.mA !== taState.mB) {
+    const a = taState.mA - calc.from, b2 = taState.mB - calc.from;
+    if (a >= 0 && b2 >= 0 && a < calc.N && b2 < calc.N) {
+      ctx.strokeStyle = text; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(calc.X(a), calc.Y(calc.all[taState.mA].c)); ctx.lineTo(calc.X(b2), calc.Y(calc.all[taState.mB].c)); ctx.stroke();
+    }
+  }
+  if (taState.cross >= 0 && taState.cross < calc.N) {
+    const i = taState.cross, x = calc.X(i);
+    ctx.strokeStyle = "rgba(160,170,185,0.65)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, calc.rsiTop + calc.rsiH); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, calc.Y(calc.bars[i].c), 3.4, 0, Math.PI * 2); ctx.fillStyle = text; ctx.fill();
+  }
+}
+function taVerdict(calc) {
   const box = $("taVerdict");
-  if (!box || !taState.bars.length) return;
-  const all = taState.bars, last = all[all.length - 1], li = all.length - 1;
-  const e = ema[li], s = sma[li], r = rsi[li];
+  if (!box || !calc) return;
+  const all = calc.all, last = all[all.length - 1], li = all.length - 1;
+  const e = calc.ema[li], s = calc.sma[li], r = calc.rsi[li];
   const trend = (e && s) ? (last.c > e && last.c > s ? "Bullish — above 20 EMA & 200 SMA" : (last.c < e && last.c < s ? "Bearish — below 20 EMA & 200 SMA" : "Mixed — between the averages")) : "Not enough history for a trend call";
   const lv = taLevels().map(L => L.v);
   const sup = lv.filter(v => v < last.c).sort((a, b) => b - a)[0];
@@ -2953,34 +3028,235 @@ function taVerdict(ema, sma, rsi) {
     (taState.preview ? '<span class="chip">Preview data — real history loading</span>' : "");
 }
 (function wireTa() {
-  const canvas = $("taCanvas");
-  if (!canvas) return;
+  const overlay = $("taOverlay");
+  if (!overlay) return;
+  const tfSeg = $("taTfSeg");
+  if (tfSeg) tfSeg.querySelectorAll(".seg-btn").forEach(b => b.addEventListener("click", () => {
+    tfSeg.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x === b));
+    if (b.dataset.tadays) taState.tf = { kind: "days", days: Number(b.dataset.tadays), range: "", interval: "" };
+    else taState.tf = { kind: b.dataset.takind, days: 0, range: b.dataset.range, interval: b.dataset.interval };
+    taState.mA = -1; taState.mB = -1; taState.cross = -1;
+    try { renderTA(); } catch (e) {}
+  }));
   const segWire = (id, attr, fn) => { const seg = $(id); if (!seg) return; seg.querySelectorAll("[" + attr + "]").forEach(b => b.addEventListener("click", () => fn(b, seg))); };
   segWire("taModeSeg", "data-ta", (b, seg) => { taState.mode = b.dataset.ta; seg.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x === b)); taDraw(); });
-  segWire("taTfSeg", "data-tatf", (b, seg) => { taState.days = Number(b.dataset.tatf); seg.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x === b)); taDraw(); });
   segWire("taIndSeg", "data-taind", b => {
     const k = b.dataset.taind;
-    if (k === "measure") { taState.measure = !taState.measure; taState.mA = -1; taState.mB = -1; b.classList.toggle("active", taState.measure); const hud = $("taHud"); if (hud) hud.textContent = taState.measure ? "Measure: tap two points on the chart" : "Drag on the chart to inspect any day"; taDraw(); return; }
+    if (k === "measure") { taState.measure = !taState.measure; taState.mA = -1; taState.mB = -1; b.classList.toggle("active", taState.measure); const hud = $("taHud"); if (hud) hud.textContent = taState.measure ? "Measure: tap two points on the chart" : "Drag on the chart to inspect any day"; taDrawOverlay(); return; }
     taState[k] = !taState[k]; b.classList.toggle("active", taState[k]); taDraw();
   });
-  const pos = ev => { const r = canvas.getBoundingClientRect(); const v = taState._view; if (!v) return -1; const x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left; const i = Math.floor(x / v.step); return Math.max(0, Math.min(v.N - 1, i)); };
+  const pos = ev => { const r = overlay.getBoundingClientRect(); const c = taState._calc; if (!c) return -1; const x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left; const i = Math.floor(x / c.step); return Math.max(0, Math.min(c.N - 1, i)); };
   const hud = idx => {
-    const v = taState._view, h = $("taHud");
-    if (!v || !h || idx < 0) return;
-    const b = v.bars[idx], gi = v.from + idx;
-    h.textContent = new Date(b.t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " · O " + inr2(b.o) + " · H " + inr2(b.h) + " · L " + inr2(b.l) + " · C " + inr2(b.c) + " · RSI " + (v.rsi[gi] !== null && v.rsi[gi] !== undefined ? v.rsi[gi].toFixed(1) : "—") + " · EMA20 " + (v.ema[gi] ? inr2(v.ema[gi]) : "—");
+    const c = taState._calc, h = $("taHud");
+    if (!c || !h || idx < 0) return;
+    const b = c.bars[idx], gi = c.from + idx;
+    h.textContent = new Date(b.t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " · O " + inr2(b.o) + " · H " + inr2(b.h) + " · L " + inr2(b.l) + " · C " + inr2(b.c) + " · RSI " + (c.rsi[gi] !== null && c.rsi[gi] !== undefined ? c.rsi[gi].toFixed(1) : "—") + " · EMA20 " + (c.ema[gi] ? inr2(c.ema[gi]) : "—");
   };
-  let dragging = false;
-  canvas.addEventListener("pointerdown", ev => {
+  let dragging = false, rafPending = false;
+  overlay.addEventListener("pointerdown", ev => {
     const idx = pos(ev); if (idx < 0) return;
-    const v = taState._view, gi = v.from + idx;
+    const c = taState._calc, gi = c.from + idx;
     if (taState.measure) {
       if (taState.mA < 0 || (taState.mA >= 0 && taState.mB >= 0)) { taState.mA = gi; taState.mB = -1; }
       else { taState.mB = gi; const A = taState.bars[taState.mA], B = taState.bars[taState.mB]; const h = $("taHud"); if (h && A && B) h.textContent = "Measured: " + inr2(A.c) + " → " + inr2(B.c) + " · " + (B.c - A.c >= 0 ? "+" : "") + inr(B.c - A.c) + " (" + pct((B.c - A.c) / A.c * 100) + ") · " + Math.abs(taState.mB - taState.mA) + " bars/days"; }
-      taDraw(); return;
+      taDrawOverlay(); return;
     }
-    dragging = true; taState.cross = idx; hud(idx); taDraw();
+    dragging = true; taState.cross = idx; hud(idx); taDrawOverlay();
   });
-  canvas.addEventListener("pointermove", ev => { if (!dragging) return; const idx = pos(ev); if (idx < 0) return; taState.cross = idx; hud(idx); taDraw(); });
-  ["pointerup", "pointercancel", "pointerleave"].forEach(t => canvas.addEventListener(t, () => { dragging = false; }));
+  overlay.addEventListener("pointermove", ev => {
+    if (!dragging || rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => { rafPending = false; const idx = pos(ev); if (idx < 0) return; taState.cross = idx; hud(idx); taDrawOverlay(); });
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(t => overlay.addEventListener(t, () => { dragging = false; }));
 })();
+
+/* =====================================================================
+   IPO Master — curated snapshot + custom IPOs + application tracker.
+   Snapshot figures are approximate public data for tracking; the UI
+   labels them as a snapshot and points to NSE/BSE for verification.
+   ===================================================================== */
+const IPO_CATALOG = [
+  { name: "Bajaj Housing Finance", sym: "BAJAJHFL", sector: "Housing Finance", board: "MAINBOARD", status: "listed", open: "2024-09-09", close: "2024-09-11", allot: "2024-09-12", listing: "2024-09-16", low: 66, high: 70, lot: 214, issueCr: 6560, listedPrice: 165, registrar: "KFintech", about: "Non-deposit-taking housing finance company of the Bajaj group — home loans, loans against property and developer financing." },
+  { name: "Hyundai Motor India", sym: "HYUNDAI", sector: "Automobiles", board: "MAINBOARD", status: "listed", open: "2024-10-15", close: "2024-10-17", allot: "2024-10-18", listing: "2024-10-22", low: 1865, high: 1960, lot: 7, issueCr: 27870, listedPrice: 1934, registrar: "KFintech", about: "India's second-largest carmaker — a pure offer-for-sale by Hyundai Motor Company, the largest IPO in Indian market history at the time." },
+  { name: "Waaree Energies", sym: "WAAREEENER", sector: "Solar Manufacturing", board: "MAINBOARD", status: "listed", open: "2024-10-21", close: "2024-10-23", allot: "2024-10-24", listing: "2024-10-28", low: 1427, high: 1503, lot: 9, issueCr: 4321, listedPrice: 2550, registrar: "Link Intime", about: "India's largest solar PV module manufacturer by capacity, exporting to the US and other markets." },
+  { name: "Ola Electric Mobility", sym: "OLAELEC", sector: "EV Two-Wheelers", board: "MAINBOARD", status: "listed", open: "2024-08-02", close: "2024-08-06", allot: "2024-08-07", listing: "2024-08-09", low: 72, high: 76, lot: 195, issueCr: 6146, listedPrice: 91, registrar: "Link Intime", about: "India's largest electric two-wheeler maker — scooters, battery cells and the S1 portfolio." },
+  { name: "Swiggy", sym: "SWIGGY", sector: "Food Delivery & Quick Commerce", board: "MAINBOARD", status: "listed", open: "2024-11-06", close: "2024-11-08", allot: "2024-11-11", listing: "2024-11-13", low: 371, high: 390, lot: 38, issueCr: 11327, listedPrice: 420, registrar: "Link Intime", about: "Food delivery (Swiggy), quick commerce (Instamart) and dining-out platform." },
+  { name: "NTPC Green Energy", sym: "NTPCGREEN", sector: "Renewable Energy", board: "MAINBOARD", status: "listed", open: "2024-11-19", close: "2024-11-22", allot: "2024-11-25", listing: "2024-11-27", low: 102, high: 108, lot: 138, issueCr: 10000, listedPrice: 111.5, registrar: "KFintech", about: "The renewable-energy arm of NTPC — utility-scale solar and wind assets with a large development pipeline." },
+  { name: "Vishal Mega Mart", sym: "VMM", sector: "Retail", board: "MAINBOARD", status: "listed", open: "2024-12-11", close: "2024-12-13", allot: "2024-12-16", listing: "2024-12-18", low: 74, high: 78, lot: 190, issueCr: 8000, listedPrice: 110, registrar: "KFintech", about: "Value-retail hypermarket chain for apparel, groceries and general merchandise across smaller Indian cities." },
+  { name: "One Mobikwik Systems", sym: "MOBIKWIK", sector: "Fintech Payments", board: "MAINBOARD", status: "listed", open: "2024-12-11", close: "2024-12-13", allot: "2024-12-16", listing: "2024-12-18", low: 265, high: 279, lot: 53, issueCr: 572, listedPrice: 442, registrar: "Link Intime", about: "Digital payments and financial-services platform — wallet, UPI, and consumer credit (BNPL and loans)." }
+];
+const REGISTRAR_URLS = { "Link Intime": "https://linkintime.co.in/initial_offer/public-issues.html", "KFintech": "https://ris.kfintech.com/ipostatus/", "Bigshare": "https://www.bigshareonline.com/ipo_Allotment.html" };
+let ipoSub = "live", ipoBoard = "ALL", ipoQuery = "";
+function ipoAll() {
+  const custom = (typeof state !== "undefined" && state && state.profile && state.profile.customIpos) || [];
+  return custom.concat(IPO_CATALOG);
+}
+function ipoFmtDate(iso) { if (!iso) return "—"; const d = new Date(iso + "T00:00:00"); return isNaN(d) ? iso : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); }
+function ipoStatusBadge(x) {
+  if (x.status === "open") return '<span class="ipo-badge open">🟢 OPEN NOW</span>';
+  if (x.status === "upcoming") return '<span class="ipo-badge upcoming">⏳ UPCOMING</span>';
+  if (x.status === "listed") { const g = x.listedPrice && x.high ? (x.listedPrice - x.high) / x.high * 100 : null; return '<span class="ipo-badge listed">🚀 LISTED' + (g !== null ? " " + pct(g) : "") + "</span>"; }
+  return "";
+}
+function ipoCard(x, idx) {
+  const minAmt = x.lot && x.high ? x.lot * x.high : null;
+  const sNiiLots = minAmt ? Math.max(1, Math.ceil(200000 / minAmt)) : null;
+  const bNiiLots = minAmt ? Math.max(sNiiLots + 1, Math.ceil(1000000 / minAmt)) : null;
+  const subs = x.subs || null;
+  const listGain = x.status === "listed" && x.listedPrice && x.high ? (x.listedPrice - x.high) / x.high * 100 : null;
+  return '<div class="ipo-card" data-ipocard="' + idx + '">' +
+    '<button type="button" class="ipo-card-head" data-ipotoggle="' + idx + '">' +
+      '<span class="ipo-head-l"><b>' + esc(x.name) + '</b><small>' + esc(x.sector || "—") + (x.sym ? " · " + esc(x.sym) : "") + '</small></span>' +
+      '<span class="ipo-head-r"><span class="ipo-board ' + (x.board === "MAINBOARD" ? "main" : "sme") + '">' + esc(x.board) + "</span>" + ipoStatusBadge(x) + '<span class="acc-chev">▼</span></span>' +
+    "</button>" +
+    '<div class="ipo-metrics">' +
+      '<div><span>Price Band</span><b>' + (x.low ? inr2(x.low) + " – " : "") + (x.high ? inr2(x.high) : "—") + "</b></div>" +
+      '<div><span>Lot Size</span><b>' + (x.lot ? x.lot + " shares" : "—") + "</b></div>" +
+      '<div><span>Min Retail (1 Lot)</span><b>' + (minAmt ? inr(minAmt) : "—") + "</b></div>" +
+      '<div><span>Issue Size</span><b>' + (x.issueCr ? "₹" + Number(x.issueCr).toLocaleString("en-IN") + " Cr" : "—") + "</b></div>" +
+      '<div><span>Subscription</span><b>' + (subs ? subs.t + "x total" : "—") + "</b>" + (subs ? '<span class="ipo-subbar"><i style="width:' + Math.min(100, subs.t * 4) + '%"></i></span><small>R ' + subs.r + "x · NII " + subs.n + "x · QIB " + subs.q + "x</small>" : "") + "</div>" +
+      '<div><span>' + (x.status === "listed" ? "Listing Gain" : "Est. Listing Buzz") + "</span><b>" + (listGain !== null ? '<span class="' + (listGain >= 0 ? "gain" : "loss") + '">' + pct(listGain) + "</span> " + (x.listedPrice ? "at " + inr2(x.listedPrice) : "") : (x.gmp ? "+" + inr2(x.gmp.rs) + " (" + pct(x.gmp.pct) + ") unofficial" : "—")) + "</b></div>" +
+    "</div>" +
+    '<div class="ipo-timeline"><span>Open<b>' + ipoFmtDate(x.open) + "</b></span><i>➔</i><span>Close<b>" + ipoFmtDate(x.close) + "</b></span><i>➔</i><span>Allotment<b>" + ipoFmtDate(x.allot) + "</b></span><i>➔</i><span>Listing<b>" + ipoFmtDate(x.listing) + "</b></span></div>" +
+    '<div class="ipo-drawer hidden">' +
+      '<h4>About & Issue</h4><p>' + esc(x.about || "Details not in the snapshot — check the official prospectus on NSE/BSE.") + "</p>" +
+      (x.managers ? '<p class="price-meta">Lead Managers: ' + esc(x.managers) + "</p>" : "") +
+      '<h4>Lot & Category Calculator <span class="price-meta">(at the top of the band)</span></h4>' +
+      '<div class="ipo-metrics">' +
+        '<div><span>Retail — 1 Lot</span><b>' + (minAmt ? x.lot + " shares = " + inr(minAmt) : "—") + "</b></div>" +
+        '<div><span>Small HNI — ' + (sNiiLots || "—") + ' Lots</span><b>' + (minAmt ? inr(sNiiLots * minAmt) : "—") + "</b></div>" +
+        '<div><span>Big HNI — ' + (bNiiLots || "—") + '+ Lots</span><b>' + (minAmt ? inr(bNiiLots * minAmt) + "+" : "—") + "</b></div>" +
+      "</div>" +
+      '<h4>Check Allotment (Official)</h4><div class="ipo-reg-row">' +
+        '<a class="mini-btn link-btn" target="_blank" rel="noopener" href="' + (REGISTRAR_URLS[x.registrar] || REGISTRAR_URLS["Link Intime"]) + '">Check on ' + esc(x.registrar || "Link Intime") + " ↗</a>" +
+        '<a class="mini-btn link-btn" target="_blank" rel="noopener" href="https://www.nseindia.com/products-services/ipo-bid-verification">NSE IPO Bid Verify ↗</a>' +
+        '<a class="mini-btn link-btn" target="_blank" rel="noopener" href="https://news.google.com/search?q=' + encodeURIComponent(x.name + " IPO") + '">IPO News ↗</a>' +
+      "</div>" +
+      '<button type="button" class="btn btn-small" data-ipolog="' + idx + '">➕ Log My Application / UPI Mandate</button>' +
+      '<div class="ipo-logform hidden" data-ipologform="' + idx + '">' +
+        '<select data-lf="category"><option>Retail</option><option>sHNI</option><option>bHNI</option><option>Shareholder</option></select>' +
+        '<input type="number" data-lf="lots" min="1" value="1" placeholder="Lots applied">' +
+        '<input type="text" data-lf="upi" placeholder="UPI app (BHIM, GPay, iMobile…)">' +
+        '<input type="number" data-lf="amount" placeholder="Amount blocked ₹" value="' + (minAmt || "") + '">' +
+        '<select data-lf="status"><option>Applied</option><option>Mandate Approved</option><option>Allotted</option><option>Not Allotted</option><option>Refunded</option></select>' +
+        '<button type="button" class="btn btn-gold btn-small" data-iposave="' + idx + '">Save Application</button>' +
+      "</div>" +
+    "</div></div>";
+}
+function renderIpo() {
+  const list = $("ipoList"), appsWrap = $("ipoAppsWrap");
+  if (!list) return;
+  if (typeof state === "undefined" || !state) return;
+  if (!state.profile) state.profile = {};
+  if (!Array.isArray(state.profile.ipoApps)) state.profile.ipoApps = [];
+  if (!Array.isArray(state.profile.customIpos)) state.profile.customIpos = [];
+  const isApps = ipoSub === "apps";
+  list.classList.toggle("hidden", isApps);
+  appsWrap.classList.toggle("hidden", !isApps);
+  if (isApps) { renderIpoApps(); return; }
+  let items = ipoAll().map((x, i) => ({ x: x, i: i }));
+  items = items.filter(({ x }) => {
+    if (ipoSub === "live" && x.status !== "open") return false;
+    if (ipoSub === "upcoming" && x.status !== "upcoming") return false;
+    if (ipoSub === "listed" && x.status !== "listed") return false;
+    if (ipoSub === "sme" && x.board === "MAINBOARD") return false;
+    if (ipoBoard !== "ALL" && x.board !== ipoBoard) return false;
+    if (ipoQuery && (x.name + " " + (x.sym || "")).toLowerCase().indexOf(ipoQuery) < 0) return false;
+    return true;
+  });
+  if (!items.length) {
+    list.innerHTML = '<p class="empty-note">' + (ipoSub === "live" ? "No IPO is marked Live/Open in the current snapshot. New issues appear here the moment they are added — use ➕ Add Custom IPO for any new issue, and 🔄 Refresh for the latest buzz." : ipoSub === "upcoming" ? "No upcoming IPO in the current snapshot — add one with ➕ Add Custom IPO." : ipoSub === "sme" ? "No SME IPO in the current snapshot — add one with ➕ Add Custom IPO (choose NSE SME / BSE SME)." : "Nothing matches this filter.") + "</p>";
+    return;
+  }
+  list.innerHTML = items.map(({ x, i }) => ipoCard(x, i)).join("");
+}
+function renderIpoApps() {
+  const wrap = $("ipoAppsWrap");
+  if (!wrap) return;
+  const apps = state.profile.ipoApps || [];
+  if (!apps.length) { wrap.innerHTML = '<p class="empty-note">No applications logged yet. Open any IPO card and tap “➕ Log My Application / UPI Mandate”.</p>'; return; }
+  wrap.innerHTML = apps.map((a, i) =>
+    '<div class="ipo-app-row"><div class="ipo-app-main"><b>' + esc(a.ipoName) + '</b><span class="price-meta">' + esc(a.category) + " · " + a.lots + " lot(s) · " + inr(a.amount || 0) + " blocked" + (a.upi ? " · " + esc(a.upi) : "") + '</span></div>' +
+    '<span class="ipo-badge ' + (a.status === "Allotted" ? "open" : a.status === "Not Allotted" || a.status === "Refunded" ? "listed" : "upcoming") + '">' + esc(a.status) + "</span>" +
+    '<select data-appstatus="' + i + '">' + ["Applied", "Mandate Approved", "Allotted", "Not Allotted", "Refunded"].map(s2 => '<option' + (a.status === s2 ? " selected" : "") + ">" + s2 + "</option>").join("") + "</select>" +
+    (a.status === "Allotted" && !a.added && a.sym ? '<button type="button" class="btn btn-gold btn-small" data-appadd="' + i + '">🚀 Add Allotted Shares to Holdings</button>' : "") +
+    (a.added ? '<span class="price-meta">✓ In Holdings</span>' : "") +
+    '<button type="button" class="mini-btn danger" data-appdel="' + i + '">Delete</button></div>').join("");
+  wrap.querySelectorAll("[data-appstatus]").forEach(sel => sel.addEventListener("change", () => {
+    const a = state.profile.ipoApps[Number(sel.dataset.appstatus)];
+    if (a) { a.status = sel.value; persist(); renderIpoApps(); toast("Status updated: " + sel.value); }
+  }));
+  wrap.querySelectorAll("[data-appadd]").forEach(b => b.addEventListener("click", () => {
+    const a = state.profile.ipoApps[Number(b.dataset.appadd)];
+    if (!a || a.added) return;
+    const qty = (Number(a.lots) || 1) * (Number(a.lotSize) || 0);
+    if (!qty) { toast("Lot size missing on this application — cannot add shares"); return; }
+    state.txns.push({ id: "t" + Date.now(), type: "BUY", sym: a.sym, name: a.ipoName, qty: qty, price: Number(a.price) || 0, charges: 0, broker: "IPO Allotment", exchange: "NSE", note: "IPO allotment — " + a.ipoName, date: a.listingDate || new Date().toISOString().slice(0, 10) });
+    a.added = true;
+    persist(); renderAll(); renderIpoApps();
+    toast("Added " + qty + " shares of " + a.sym + " to your Holdings");
+  }));
+  wrap.querySelectorAll("[data-appdel]").forEach(b => b.addEventListener("click", () => {
+    state.profile.ipoApps.splice(Number(b.dataset.appdel), 1);
+    persist(); renderIpoApps(); toast("Application removed");
+  }));
+}
+(function wireIpo() {
+  const sub = $("ipoSubSeg"), board = $("ipoBoardSeg"), list = $("ipoList");
+  if (!sub || !list) return;
+  sub.querySelectorAll("[data-iposub]").forEach(b => b.addEventListener("click", () => { ipoSub = b.dataset.iposub; sub.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x === b)); renderIpo(); }));
+  if (board) board.querySelectorAll("[data-ipoboard]").forEach(b => b.addEventListener("click", () => { ipoBoard = b.dataset.ipoboard; board.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x === b)); renderIpo(); }));
+  const search = $("ipoSearch");
+  if (search) search.addEventListener("input", () => { ipoQuery = search.value.trim().toLowerCase(); renderIpo(); });
+  const refresh = $("ipoRefreshBtn");
+  if (refresh) refresh.addEventListener("click", async () => {
+    const box = $("ipoBuzz"); if (!box) return;
+    box.innerHTML = '<p class="empty-note">Loading the latest IPO headlines…</p>';
+    try {
+      const url = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent("https://news.google.com/rss/search?q=%22IPO%22+GMP+subscription+NSE+BSE+India&hl=en-IN&gl=IN&ceid=IN:en");
+      const res = await fetchViaProxies(url, 9000);
+      const data = JSON.parse(res);
+      const items = (data.items || []).slice(0, 10);
+      if (!items.length) throw new Error("no items");
+      box.innerHTML = items.map(it => '<a class="ipo-news-item" href="' + esc(it.link) + '" target="_blank" rel="noopener"><b>' + esc(it.title) + '</b><span>' + esc((it.pubDate || "").slice(0, 10)) + "</span></a>").join("");
+    } catch (e) {
+      box.innerHTML = '<p class="empty-note">Headlines could not load from this network. <a href="https://news.google.com/search?q=IPO+GMP+subscription+NSE+BSE+India" target="_blank" rel="noopener">Open Google News ↗</a></p>';
+    }
+  });
+  const addBtn = $("ipoAddBtn"), form = $("ipoCustomForm");
+  if (addBtn && form) {
+    addBtn.addEventListener("click", () => form.classList.toggle("hidden"));
+    $("icCancel").addEventListener("click", () => form.classList.add("hidden"));
+    form.addEventListener("submit", ev => {
+      ev.preventDefault();
+      const name = $("icName").value.trim();
+      if (!name) return;
+      state.profile.customIpos.unshift({ custom: true, name: name, sym: $("icSymbol").value.trim().toUpperCase(), sector: "—", board: $("icBoard").value, status: $("icStatus").value, low: Number($("icLow").value) || null, high: Number($("icHigh").value) || null, lot: Number($("icLot").value) || null, issueCr: Number($("icIssue").value) || null, open: $("icOpen").value || "", close: $("icClose").value || "", allot: "", listing: $("icListing").value || "", registrar: $("icRegistrar").value, about: "Custom IPO added by you." });
+      persist(); form.classList.add("hidden"); form.reset(); renderIpo();
+      toast("IPO added: " + name);
+    });
+  }
+  list.addEventListener("click", ev => {
+    const tog = ev.target.closest("[data-ipotoggle]");
+    if (tog) { const card = tog.closest(".ipo-card"); const dr = card && card.querySelector(".ipo-drawer"); if (dr) dr.classList.toggle("hidden"); return; }
+    const log = ev.target.closest("[data-ipolog]");
+    if (log) { const form2 = list.querySelector('[data-ipologform="' + log.dataset.ipolog + '"]'); if (form2) form2.classList.toggle("hidden"); return; }
+    const save = ev.target.closest("[data-iposave]");
+    if (save) {
+      const idx = Number(save.dataset.iposave);
+      const x = ipoAll()[idx];
+      const form2 = list.querySelector('[data-ipologform="' + idx + '"]');
+      if (!x || !form2) return;
+      const get = k => form2.querySelector('[data-lf="' + k + '"]');
+      const lots = Number(get("lots").value) || 1;
+      state.profile.ipoApps.unshift({ id: "a" + Date.now(), ipoName: x.name, sym: x.sym || "", category: get("category").value, lots: lots, lotSize: x.lot || 0, price: x.high || 0, amount: Number(get("amount").value) || lots * (x.lot || 0) * (x.high || 0), upi: get("upi").value.trim(), status: get("status").value, listingDate: x.listing || "" });
+      persist();
+      toast("Application logged for " + x.name);
+      ipoSub = "apps";
+      sub.querySelectorAll(".seg-btn").forEach(x2 => x2.classList.toggle("active", x2.dataset.iposub === "apps"));
+      renderIpo();
+    }
+  });
+})();
+
