@@ -1692,3 +1692,62 @@ input,select,textarea{border-radius:var(--r-sm)}
 .samsung-bottom-capsule .mobile-nav-item{flex:1 1 0;min-width:60px;padding:0 6px}
 body.ipo-world-active #ipo-bottom-dock{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 16px);bottom:calc(14px + env(safe-area-inset-bottom, 0px))}
 @media (max-width:380px){ .samsung-bottom-capsule .mobile-nav-item{min-width:52px} .samsung-bottom-capsule .mobile-nav-item span{font-size:9.5px} }
+
+/* ===== v83: Samsung split dock (solid) + segmented pills + layer-safe ===== */
+:root{--liquid-bar-solid:#10161d}
+html[data-theme="light"]{--liquid-bar-solid:#ffffff}
+/* Dock wrapper: transparent, centered — the GAP between pill and circle shows.
+   z-index note: 950 keeps the dock above content but BELOW popups (1300),
+   so a popup can never slide behind it again. */
+.samsung-bottom-dock-wrap,.ipo-bottom-dock{
+  position:fixed !important;bottom:14px !important;left:50% !important;right:auto !important;
+  transform:translateX(-50%) !important;width:min(500px, calc(100vw - 20px)) !important;
+  box-sizing:border-box !important;display:flex !important;align-items:center !important;
+  justify-content:space-between !important;gap:10px !important;background:transparent !important;
+  border:none !important;box-shadow:none !important;padding:0 !important;z-index:950 !important;pointer-events:none !important;
+}
+.samsung-bottom-capsule{
+  flex:1 1 auto !important;min-width:0 !important;height:60px !important;padding:5px !important;
+  border-radius:999px !important;background:var(--liquid-bar-solid) !important;
+  border:1px solid var(--liquid-border) !important;
+  box-shadow:0 12px 30px rgba(0,0,0,.35), inset 0 1px 1px rgba(255,255,255,.2) !important;
+  display:flex !important;align-items:center !important;justify-content:space-around !important;pointer-events:auto !important;
+}
+.samsung-circle-btn,.samsung-profile-circle-btn,.return-to-portfolio-btn{
+  display:flex !important;flex:0 0 58px !important;width:58px !important;height:58px !important;
+  border-radius:50% !important;background:var(--liquid-bar-solid) !important;
+  border:1px solid var(--liquid-border) !important;
+  box-shadow:0 12px 30px rgba(0,0,0,.35), inset 0 1px 1px rgba(255,255,255,.25) !important;
+  color:var(--liquid-text-primary) !important;flex-direction:column !important;align-items:center !important;
+  justify-content:center !important;gap:2px !important;cursor:pointer !important;pointer-events:auto !important;
+  visibility:visible !important;opacity:1 !important;
+}
+html[data-theme="light"] .samsung-bottom-capsule,html[data-theme="light"] .samsung-profile-circle-btn{
+  background:rgba(255,255,255,.98) !important;box-shadow:0 10px 28px rgba(15,23,42,.14), inset 0 1px 1px #ffffff !important;
+}
+/* Fix 5 — the floating dock never covers the last card or the footer */
+main{padding-bottom:100px !important}
+section#view-ipo{padding-bottom:100px !important}
+/* Fix 2 — holdings view switcher as a segmented pill capsule */
+.hold-view-seg{display:inline-flex !important;align-items:center;gap:2px;background:var(--liquid-inner-card-bg);padding:4px;border:1px solid var(--liquid-border);border-radius:999px}
+.hold-view-seg button{border-radius:999px;border:none;background:transparent;color:var(--liquid-text-muted);padding:6px 14px;font-weight:600;font-size:12.5px;cursor:pointer;min-height:36px}
+.hold-view-seg button.active{background:var(--liquid-active-pill);color:var(--liquid-text-primary)}
+#holdGroupTgl{accent-color:#3b82f6;width:18px;height:18px;border-radius:5px;flex:none}
+/* Buy Dates strip: one line, never wraps, never clips */
+.hold-chev{white-space:nowrap !important;font-size:12.5px !important;padding:10px 12px !important}
+.hold-chev .chev-label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hold-chev .chev-pill{flex:none}
+/* Fix 3 — dashboard sub-bar as one rounded pill track */
+.dash-chips{flex-wrap:nowrap !important;border-radius:999px;background:var(--liquid-card-bg);border:1px solid var(--liquid-border);padding:5px 8px;gap:6px;margin:10px 0 4px;align-items:center}
+.dash-chips .insx-chip{color:var(--liquid-text-primary);font-size:12.5px;font-weight:600;border-radius:999px;background:transparent;border-color:transparent;white-space:nowrap}
+.dash-chips .insx-chip.on{background:var(--liquid-active-pill)}
+/* card collapse: a clean circular chevron button */
+.dash-collapse{width:32px !important;height:32px !important;min-width:32px;border-radius:50% !important;display:inline-flex !important;align-items:center;justify-content:center;background:var(--liquid-inner-card-bg);border:1px solid var(--liquid-border);color:var(--liquid-text-primary);cursor:pointer;padding:0}
+.dash-collapse svg{transition:transform .2s ease;display:block}
+.dash-collapse.collapsed svg{transform:rotate(-90deg)}
+/* IPO status pills: one Samsung capsule track */
+.ipo-sub-seg{display:inline-flex !important;gap:2px;background:var(--liquid-inner-card-bg);padding:4px;border:1px solid var(--liquid-border);border-radius:999px;flex-wrap:nowrap;overflow-x:auto;max-width:100%}
+.ipo-sub-seg .ipo-status-pill{border-radius:999px !important;border:none;background:transparent;color:var(--liquid-text-muted);padding:6px 14px;font-weight:600;white-space:nowrap}
+.ipo-sub-seg .ipo-status-pill.active{background:var(--liquid-active-pill);color:var(--liquid-text-primary)}
+.ipo-search-row{margin:10px 0}
+.ipo-search-row input{width:100%}

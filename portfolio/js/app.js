@@ -690,7 +690,7 @@ function renderHoldings() {
         <div><span>Day's P&amp;L</span><b class="${h.day >= 0 ? "gain" : "loss"}">${inr(h.day)}</b></div>
       </div>
       <div class="hold-meta">Qty: ${h.qty} shares · Avg Buy: ${inr2(h.avg)} · Weight: ${weight.toFixed(1)}% of portfolio${h.ltp === null ? ' · <span class="alert-chip">Custom Quote — valued at your buy price (no live feed)</span>' : ""} · Booked P&amp;L: <b class="${h.realised >= 0 ? "gain" : "loss"}">${inr(h.realised)}</b>${alertChip ? " · " + alertChip : ""}</div>
-      <button class="hold-chev" data-hold-toggle="${esc(h.sym)}" type="button"><span class="chev-label">📅 Buy Dates, Live Status &amp; Edit</span><span class="chev-pill">Tap to Open ▼</span></button>
+      <button class="hold-chev" data-hold-toggle="${esc(h.sym)}" type="button"><span class="chev-label"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Buy Dates, Status &amp; Edit</span><span class="chev-pill">Open ▼</span></button>
       <div class="hold-drawer" data-drawer="${esc(h.sym)}" data-avg="${h.avg}" data-ltp="${h.ltp === null ? "" : h.ltp}">
        <div class="drawer-inner">
         <div class="dr-block"><h4>Live Status</h4><div class="dr-status"><span class="muted small">Loading status…</span></div></div>
@@ -729,7 +729,7 @@ function renderHoldings() {
     if (!drawer) return;
     const opening = !card.classList.contains("open");
     card.classList.toggle("open", opening);
-    card.querySelectorAll(".chev-pill").forEach(c => c.textContent = opening ? "Hide Details ▲" : "Tap to Open ▼");
+    card.querySelectorAll(".chev-pill").forEach(c => c.textContent = opening ? "Close ▲" : "Open ▼");
     if (opening && !drawer.dataset.filled) {
       drawer.dataset.filled = "1";
       if (typeof fillHoldDrawer === "function") fillHoldDrawer(drawer.dataset.drawer, drawer);
