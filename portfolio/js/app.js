@@ -63,7 +63,7 @@ const LS_USERS = "pf_users_v1", LS_SESSION = "pf_session_v1";
 function lsUsers() { try { return JSON.parse(localStorage.getItem(LS_USERS)) || {}; } catch (e) { return {}; } }
 function lsSaveUsers(u) { localStorage.setItem(LS_USERS, JSON.stringify(u)); }
 function localSave() {
-  if (!currentUser) return;
+  if (!currentUser || syncFrozen) return;
   const u = lsUsers(); if (u[currentUser.email]) { u[currentUser.email].state = state; lsSaveUsers(u); }
 }
 
@@ -79,11 +79,19 @@ function initFirebase() {
   } catch (e) { console.warn("Firebase init failed", e); return false; }
 }
 let saveTimer = null;
+let syncFrozen = true;            /* no saves until enterApp installs THIS account's state */
+let lastLocalEditTs = 0;          /* newest local change not yet echoed back */
+let lastAppliedCloudTs = 0;       /* updatedAt of the newest cloud state we applied */
 function cloudSave() {
+  if (syncFrozen) return;
+  lastLocalEditTs = Date.now();
   if (FIREBASE_ON && fb.docRef) {
     clearTimeout(saveTimer);
+    const ref = fb.docRef, uid = currentUser ? currentUser.email : "";
     saveTimer = setTimeout(() => {
-      fb.docRef.set({ state: state, updatedAt: Date.now() }).catch(e => console.warn("save failed", e));
+      if (syncFrozen || !currentUser || currentUser.email !== uid || fb.docRef !== ref) return; /* account changed mid-flight: drop the write */
+      const ts = Date.now();
+      ref.set({ state: state, updatedAt: ts }).then(() => { lastAppliedCloudTs = Math.max(lastAppliedCloudTs, ts); }).catch(e => console.warn("save failed", e));
     }, 400);
   } else { localSave(); }
 }
@@ -141,6 +149,7 @@ function friendlyFbError(e) {
   return "Something went wrong. Please check your internet and try again.";
 }
 async function doLogout() {
+  syncFrozen = true; clearTimeout(saveTimer);
   const em = currentUser ? currentUser.email : null;
   if (em) sessionStorage.removeItem("pf_gate_" + em);
   if (FIREBASE_ON) { try { await fb.auth.signOut(); } catch (e) {} }
@@ -174,6 +183,7 @@ async function doGoogleSignIn() {
 function enterApp(user, initialState) {
   currentUser = user;
   state = normalizeState(initialState);
+  syncFrozen = false;
   if (window.__symRepaired) { window.__symRepaired = false; try { persist(); } catch (e) {} }
   buildDatalist();
   if (needsGate()) { showGate(); return; }
@@ -646,7 +656,7 @@ function renderHoldings() {
           <div class="al-btns"><button class="mini-btn" data-alertsave="${esc(h.sym)}" type="button">Save Alert</button><button class="mini-btn danger" data-alertclear="${esc(h.sym)}" type="button">Clear</button><span class="price-meta">Alerts show on this card when the live price crosses them (checked on every refresh — not a broker order).</span></div>
         </div>
         <div class="dr-block whatif" data-qty="${h.qty}" data-avg="${h.avg}" data-inv="${h.invested}"><h4>What-If Average Calculator</h4>
-          <div class="wi-row"><label>New Qty<input type="number" class="wi-qty" min="0" step="any" placeholder="0"></label><label>Buy Price<input type="number" class="wi-price" min="0" step="any" value="${h.ltp === null ? "" : h.ltp}"></label></div>
+          <div class="wi-row"><label>New Qty<input type="number" class="wi-qty" min="0" step="any" placeholder="0"></label><label>Buy Price<input type="number" class="wi-price" min="0" step="any" value="${h.ltp === null ? "" : h.ltp.toFixed(2)}"></label></div>
           <p class="wi-out price-meta">Add a quantity to see your new average price.</p>
         </div>
         <div class="hold-actions">
@@ -1059,11 +1069,16 @@ document.addEventListener("DOMContentLoaded", () => {
   if (window.refreshDemoBanner) window.refreshDemoBanner();
   if (fbOn) {
     fb.auth.onAuthStateChanged(user => {
+      syncFrozen = true; clearTimeout(saveTimer);
       if (user) {
         fb.docRef = fb.db.collection("users").doc(user.uid);
         if (fb.unsub) fb.unsub();
         fb.unsub = fb.docRef.onSnapshot(doc => {
           const data = doc.exists ? doc.data() : null;
+          const ts = data && data.updatedAt ? data.updatedAt : 0;
+          if (ts && ts < lastAppliedCloudTs) return;               /* older echo: never roll back */
+          if (ts && lastLocalEditTs > ts) { cloudSave(); return; } /* our newer edits win; re-push them */
+          if (ts) lastAppliedCloudTs = ts;
           enterApp({ email: user.email, name: user.displayName || "" }, data && data.state ? data.state : emptyState());
         }, err => console.warn("snapshot error", err));
       } else {

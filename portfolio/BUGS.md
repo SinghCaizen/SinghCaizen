@@ -64,6 +64,33 @@ ENV = environment/platform behaviour, not an app-code bug.
     newest cards are viewport-lazy; older panels compute on first view open.
 17. **Refresh keeps running when the tab is hidden** — OPEN (Task 7).
 
+## Found by the combined E2E (2026-11-12 evening, builds v58–v60)
+
+21. **Cross-account contamination / rollback risk in cloud sync** — FIXED in v68.
+    A new account in the same browser could see the previous account's trades,
+    and trades could vanish after re-login. Mechanism: the in-memory state is
+    global while the account (and its Firestore doc) switches instantly, so a
+    save scheduled in the gap could write one account's state into another's
+    document; snapshot echoes could also roll the in-memory state back to an
+    older cloud copy, discarding fresh local edits. Fix: saves are frozen from
+    the moment auth changes until enterApp installs the new account's state;
+    each debounced write re-checks the account + document it was scheduled
+    for; snapshots older than the last applied cloud timestamp are ignored;
+    and if local edits are newer than an incoming snapshot, the local state
+    wins and is re-pushed.
+22. **Auto-lock could fire during automation-style activity** — HARDENED in
+    v68. The inactivity timer now also resets on scroll, wheel and pointer
+    movement, not only clicks/keys/touches.
+23. **What-If calculator prefilled a raw float price** (12.979999…) — FIXED in
+    v68 (prefill rounds to 2 decimals).
+24. **Holdings 52-week label could clip at the card edge** — FIXED in v68
+    (sparkline row wraps; the range bar keeps a minimum width).
+25. **Market Pulse had no fallback** when the 1-month index fetch failed —
+    v68 retries each index on the 5-day range before showing the empty note.
+26. **Goal Tracker date field fought the tester** — NOT REPRODUCED as an app
+    bug: the repeated Terms modal (bug 8, fixed in v65) kept re-rendering the
+    page and scrambling the half-typed date. Re-test on the current build.
+
 ## Environment, not app bugs
 
 18. **GitHub Pages can serve a stale build for hours** — ENV. Observed

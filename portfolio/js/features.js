@@ -2116,7 +2116,7 @@ function wireAccountCenter() {
   if (sm) sm.addEventListener("change", () => { stockMa = sm.checked; if (stockSym) drawStock(); });
   /* auto-lock engine */
   let lastAct = Date.now();
-  ["pointerdown", "keydown", "touchstart"].forEach(ev => document.addEventListener(ev, () => { lastAct = Date.now(); }, { passive: true }));
+  ["pointerdown", "keydown", "touchstart", "pointermove", "wheel", "scroll"].forEach(ev => document.addEventListener(ev, () => { lastAct = Date.now(); }, { passive: true }));
   setInterval(() => {
     if (!currentUser || !$("appView") || $("appView").classList.contains("hidden")) return;
     const p = state.profile || {};
@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v63";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v64";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -4833,7 +4833,7 @@ async function pulseLoad() {
   }
   const idxBox = $("pulseIdx");
   const IDX = [["^NSEI", "NIFTY 50"], ["^BSESN", "SENSEX"], ["^NSEBANK", "BANK NIFTY"], ["^CNXIT", "NIFTY IT"], ["^CNXPHARMA", "NIFTY PHARMA"], ["^CNXAUTO", "NIFTY AUTO"], ["^CNXMETAL", "NIFTY METAL"], ["^CNXFMCG", "NIFTY FMCG"]];
-  const res = await Promise.all(IDX.map(([s]) => fetchHistory(s, "1mo").catch(() => null)));
+  const res = await Promise.all(IDX.map(async ([s]) => { let h = await fetchHistory(s, "1mo").catch(() => null); if (!h || !h.points || h.points.length <= 2) h = await fetchHistory(s, "5d").catch(() => null); return h; }));
   let html = "";
   res.forEach((r, i) => {
     const pts = r && r.points ? r.points : [];

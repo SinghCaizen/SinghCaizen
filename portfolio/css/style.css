@@ -1581,3 +1581,8 @@ body:not([data-view="dashboard"]) .site-foot{display:none}
 @keyframes viewIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){ .view-enter{animation:none} }
 .profile-legal{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* ===== v68: small E2E fixes ===== */
+.hold-spark{flex-wrap:wrap}
+.hold-spark small{white-space:nowrap}
+.hold-range{min-width:56px}
