@@ -1,0 +1,1 @@
+try{var t=localStorage.getItem("pf_theme");if(t)document.documentElement.setAttribute("data-theme",t);if(sessionStorage.getItem("folio_splash_v1"))document.documentElement.classList.add("splash-seen");}catch(e){}

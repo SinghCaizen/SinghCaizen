@@ -608,19 +608,10 @@ function lwSave() { try { localStorage.setItem("folio_lw", JSON.stringify(lwStat
 
 let lwLibPromise = null;
 function ensureLWLib() {
+  /* The chart library is vendored in the repo (assets/lightweight-charts.*);
+     there is deliberately no CDN fallback — the CSP allows only own scripts. */
   if (window.LightweightCharts) return Promise.resolve(true);
-  if (lwLibPromise) return lwLibPromise;
-  const urls = ["https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js", "https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"];
-  lwLibPromise = (async () => {
-    for (const u of urls) {
-      try {
-        await new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = u; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); setTimeout(rej, 8000); });
-        if (window.LightweightCharts) return true;
-      } catch (e) {}
-    }
-    return !!window.LightweightCharts;
-  })();
-  return lwLibPromise;
+  return Promise.resolve(false);
 }
 
 /* ---------- TradingView Lightweight Charts engine (modal pro chart) ---------- */
@@ -2368,7 +2359,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v65";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v66";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
