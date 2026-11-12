@@ -568,6 +568,11 @@ setInterval(() => {
   document.querySelectorAll("[data-bnav]").forEach(b => b.classList.toggle("active", b.dataset.bnav === folioView));
 }, 1000);
 
+/* ---------- LW chart state (declared before the controls IIFE below) ---------- */
+let lwState = { type: "candles", ema: true, sma: false, vol: true };
+try { Object.assign(lwState, JSON.parse(localStorage.getItem("folio_lw") || "{}")); } catch (e) {}
+function lwSave() { try { localStorage.setItem("folio_lw", JSON.stringify(lwState)); } catch (e) {} }
+
 /* ---------- LW chart controls ---------- */
 (function wireLwControls() {
   const seg = $("lwTypeSeg");
@@ -594,9 +599,6 @@ setInterval(() => {
 
 /* ---------- TradingView Lightweight Charts engine (modal pro chart) ---------- */
 let lwChart = null, lwSeries = null;
-let lwState = { type: "candles", ema: true, sma: false, vol: true };
-try { Object.assign(lwState, JSON.parse(localStorage.getItem("folio_lw") || "{}")); } catch (e) {}
-function lwSave() { try { localStorage.setItem("folio_lw", JSON.stringify(lwState)); } catch (e) {} }
 function lwDispose() { if (lwChart) { try { lwChart.remove(); } catch (e) {} lwChart = null; lwSeries = null; } }
 function dayStr(t) { return new Date(t).toISOString().slice(0, 10); }
 async function fetchOHLC(sym, range, interval) {
@@ -2297,7 +2299,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v28";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v29";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
