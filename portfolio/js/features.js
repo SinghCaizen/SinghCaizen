@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v56";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v58";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3821,7 +3821,7 @@ function insxRenderContrib() {
   const head = pos.slice(0, 5), tail = neg.slice(-5).reverse();
   const mid = rows.filter(r => !head.includes(r) && !tail.includes(r));
   head.forEach(r => steps.push(r));
-  if (mid.length) steps.push({ sym: "Other " + mid.length + " stocks", pnl: mid.reduce((a, r) => a + r.pnl, 0), other: true });
+  if (mid.length) steps.push({ sym: "Others", pnl: mid.reduce((a, r) => a + r.pnl, 0), other: true, tipName: "Other " + mid.length + " stocks" });
   tail.forEach(r => steps.push(r));
   const maxAbs = Math.max(1, Math.abs(total), ...steps.map(s => Math.abs(s.pnl)));
   let cum = 0; const H = 190, W = 680, base = H - 34, top = 14, colW = W / (steps.length + 1);
@@ -3832,7 +3832,7 @@ function insxRenderContrib() {
     const x = 8 + i * colW, w = Math.min(54, colW - 14);
     const y1 = y(Math.max(from, to)), y2 = y(Math.min(from, to));
     const col = s.pnl >= 0 ? "var(--gain)" : "var(--loss)";
-    bars += '<g class="insx-wf-bar" data-insx-tip="' + esc(s.sym) + ": " + moneyFmt(s.pnl) + (total ? " (" + (s.pnl / total * 100).toFixed(1) + "% of total P&L)" : "") + '"><rect x="' + x + '" y="' + y1 + '" width="' + w + '" height="' + Math.max(2, y2 - y1) + '" rx="4" fill="' + col + '" opacity="' + (s.other ? "0.45" : "0.92") + '"/><text x="' + (x + w / 2) + '" y="' + (base + 14) + '" class="insx-wf-lab">' + esc(s.sym.length > 9 ? s.sym.slice(0, 9) : s.sym) + "</text></g>";
+    bars += '<g class="insx-wf-bar" data-insx-tip="' + esc(s.tipName || s.sym) + ": " + moneyFmt(s.pnl) + (total ? " (" + (s.pnl / total * 100).toFixed(1) + "% of total P&L)" : "") + '"><rect x="' + x + '" y="' + y1 + '" width="' + w + '" height="' + Math.max(2, y2 - y1) + '" rx="4" fill="' + col + '" opacity="' + (s.other ? "0.45" : "0.92") + '"/><text x="' + (x + w / 2) + '" y="' + (base + 14) + '" class="insx-wf-lab">' + esc(s.sym.length > 9 ? s.sym.slice(0, 9) : s.sym) + "</text></g>";
   });
   const tx = 8 + steps.length * colW;
   bars += '<g class="insx-wf-bar" data-insx-tip="Total P&L: ' + moneyFmt(total) + '"><rect x="' + tx + '" y="' + y(Math.max(0, total)) + '" width="' + Math.min(54, colW - 14) + '" height="' + Math.max(2, Math.abs(y(total) - y(0))) + '" rx="4" fill="var(--text)" opacity="0.85"/><text x="' + (tx + Math.min(54, colW - 14) / 2) + '" y="' + (base + 14) + '" class="insx-wf-lab">Total</text></g>';
@@ -3840,7 +3840,7 @@ function insxRenderContrib() {
   const list = rows.map(r => '<div class="insx-row"><span>' + esc(r.sym) + '</span><b class="' + (r.pnl >= 0 ? "pos" : "neg") + '">' + insxAmt(r.pnl) + (total ? ' <small>(' + (r.pnl / total * 100).toFixed(1) + '%)</small>' : "") + "</b></div>").join("");
   box.innerHTML = '<div class="panel-head"><h2>Return Contribution</h2>' + insxInfoBtn("contribution") + '</div>' +
     '<svg class="insx-chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Waterfall chart of profit contribution by stock">' + bars + "</svg>" +
-    '<p class="insx-note">Total P&L so far: <b class="' + (total >= 0 ? "pos" : "neg") + '">' + insxAmt(total) + '</b> · Green added money, red took it away. Tap a bar for exact values.</p><div class="insx-list">' + list + "</div>";
+    '<p class="insx-note">Total P&L so far: <b class="' + (total >= 0 ? "pos" : "neg") + '">' + insxAmt(total) + '</b> · Bars above the line added money, bars below took it away. Tap a bar for exact values.</p><div class="insx-list">' + list + "</div>";
 }
 function insxRenderRealized() {
   const box = $("insx-real"); if (!box) return;
@@ -3910,8 +3910,10 @@ async function insxBuildSeries() {
   const ff = (m, dates) => { let last = null; return dates.map(d => { if (m[d] != null) last = m[d]; return last; }); };
   const nifArr = ff(closeMap(nif.points), axis);
   const symArr = {}; syms.forEach((s, i) => { const r = res[i + 1]; symArr[s] = ff(r && r.points ? closeMap(r.points) : {}, axis); });
+  const usable = syms.filter((s2, i2) => { const r = res[i2 + 1]; return r && r.points && r.points.length >= 10; });
+  const excluded = syms.filter(s2 => !usable.includes(s2));
   const txns = [...state.txns].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
-  const qty = {}; syms.forEach(s => qty[s] = 0);
+  const qty = {}; usable.forEach(s => qty[s] = 0);
   const V = [], INV = [], SIM = [], FLOW = [], MARKS = [];
   let invested = 0, units = 0, ti = 0;
   axis.forEach((d, i) => {
@@ -3919,19 +3921,23 @@ async function insxBuildSeries() {
     while (ti < txns.length && txns[ti].date <= d) {
       const t = txns[ti]; ti++;
       if (t.type === "DIV") continue;
+      if (!(t.sym in qty)) continue;
       const amt = (Number(t.qty) || 0) * effPrice(t);
       if (t.type === "BUY") { if (t.sym in qty) qty[t.sym] += Number(t.qty) || 0; invested += amt; flow += amt; if (nifArr[i]) units += amt / nifArr[i]; MARKS.push({ i, type: "B" }); }
       else if (t.type === "SELL") { if (t.sym in qty) qty[t.sym] -= Number(t.qty) || 0; invested -= amt; flow -= amt; if (nifArr[i]) units = Math.max(0, units - amt / nifArr[i]); MARKS.push({ i, type: "S" }); }
     }
-    let v = 0; syms.forEach(s => { const c = symArr[s][i]; if (c != null && qty[s]) v += qty[s] * c; });
+    let v = 0; usable.forEach(s => { const c = symArr[s][i]; if (c != null && qty[s]) v += qty[s] * c; });
     V.push(v); INV.push(invested); FLOW.push(flow); SIM.push(units * (nifArr[i] || 0));
   });
   /* flow-adjusted daily returns (deposits are not profit) */
   const rets = [], brets = [];
   for (let i = 1; i < axis.length; i++) {
-    if (V[i - 1] > 0 && nifArr[i - 1] && nifArr[i]) { rets.push((V[i] - FLOW[i]) / V[i - 1] - 1); brets.push(nifArr[i] / nifArr[i - 1] - 1); }
+    if (V[i - 1] > 0 && nifArr[i - 1] && nifArr[i]) {
+      const r = (V[i] - FLOW[i]) / V[i - 1] - 1, b = nifArr[i] / nifArr[i - 1] - 1;
+      if (r > -0.95 && r < 5 && b > -0.5 && b < 0.5) { rets.push(r); brets.push(b); }
+    }
   }
-  return { axis, V, INV, SIM, FLOW, nifArr, symArr, syms, rets, brets };
+  return { axis, V, INV, SIM, FLOW, nifArr, symArr, syms: usable, allSyms: syms, excluded, rets, brets };
 }
 async function insxLoadSeries() {
   if (insXSeriesBusy) return; insXSeriesBusy = true;
@@ -3950,6 +3956,21 @@ function insxSeriesError() {
     box.innerHTML = '<div class="panel-head"><h2>' + esc(title) + '</h2></div><p class="empty-note">Price history could not be loaded right now. Check your connection and reopen Insights to try again.</p>';
   });
 }
+function insxShowInfo(text) {
+  let pop = $("insxInfoPop");
+  if (!pop) {
+    pop = document.createElement("div"); pop.id = "insxInfoPop"; pop.className = "insx-info-pop hidden";
+    pop.innerHTML = '<div class="insx-info-card"><p></p><button type="button" class="btn small">Got it</button></div>';
+    document.body.appendChild(pop);
+    pop.addEventListener("click", e => { if (e.target === pop || e.target.closest("button")) pop.classList.add("hidden"); });
+  }
+  pop.querySelector("p").textContent = text;
+  pop.classList.remove("hidden");
+}
+function insxExclNote() {
+  const ex = insXSeries && insXSeries.excluded;
+  return ex && ex.length ? '<p class="insx-note">Note: ' + ex.map(esc).join(", ") + ' left out of the history charts — its price history could not be loaded right now.</p>' : "";
+}
 function insxLineSvg(seriesList, marks) {
   const W = 680, H = 210, P = 10;
   const all = []; seriesList.forEach(s => s.data.forEach(v => { if (v != null && isFinite(v)) all.push(v); }));
@@ -3963,7 +3984,7 @@ function insxLineSvg(seriesList, marks) {
     let dAttr = "", started = false;
     s.data.forEach((v, i) => { if (v == null || !isFinite(v)) return; dAttr += (started ? " L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); started = true; });
     if (s.area) out += '<path d="' + dAttr + " L" + X(n - 1) + " " + (H - 22) + " L" + X(0) + " " + (H - 22) + ' Z" fill="' + s.color + '" opacity="0.10"/>';
-    out += '<path class="insx-line" d="' + dAttr + '" fill="none" stroke="' + s.color + '" stroke-width="2"/>';
+    out += '<path class="insx-line" d="' + dAttr + '" fill="none" stroke="' + s.color + '" stroke-width="2"' + (s.dash ? ' stroke-dasharray="6 4"' : "") + "/>";
     const last = [...s.data].reverse().find(v => v != null && isFinite(v));
     if (last != null) out += '<text x="' + (W - P) + '" y="' + (Y(last) - 5) + '" class="insx-end-lab" fill="' + s.color + '">' + inrShort(last) + "</text>";
   });
@@ -4004,7 +4025,7 @@ function insxRenderRisk() {
     tile("Sortino ratio", "sortino", sortino == null ? "—" : sortino.toFixed(2), sortino == null ? "—" : sortino > 1 ? "Downside has been well paid for" : sortino > 0 ? "Some pay for the falls" : "Falls were not rewarded") +
     tile("Max drawdown", "maxdd", (mdd * 100).toFixed(1) + "%", "Worst peak-to-low fall: " + (mdd * 100).toFixed(1) + "%") +
     tile("1-day VaR (95%)", "var", insxAmt(varR), "A bad day (1 in 20) could cost about this much") +
-    "</div>" +
+    "</div>" + insxExclNote() +
     '<div class="insx-setrow"><label>Risk-free rate <input type="number" id="insxRf" min="0" max="20" step="0.1" value="' + (Number(set.rf) || 6.5) + '"> % per year</label><small>Used for Sharpe and Sortino. Information only, not advice.</small></div>';
   const rfIn = $("insxRf");
   if (rfIn) rfIn.addEventListener("change", () => { set.rf = Math.min(20, Math.max(0, Number(rfIn.value) || 6.5)); persist(); insxRenderRisk(); });
@@ -4020,8 +4041,8 @@ function insxRenderNifty() {
   box.innerHTML = head +
     '<div class="insx-legend"><button type="button" class="insx-chip' + (insXShowPort ? " on" : "") + '" data-insx-leg="port"><span class="insx-dot" style="background:var(--text)"></span>My portfolio ' + insxAmt(mine) + '</button>' +
     '<button type="button" class="insx-chip' + (insXShowNifty ? " on" : "") + '" data-insx-leg="nifty"><span class="insx-dot" style="background:var(--gold)"></span>Same money in NIFTY ' + insxAmt(nif) + "</button></div>" +
-    insxLineSvg([{ data: V, color: "var(--text)", hidden: !insXShowPort }, { data: SIM, color: "var(--gold)", hidden: !insXShowNifty }]) +
-    '<p class="insx-note">Alpha: <b class="' + (alpha >= 0 ? "pos" : "neg") + '">' + insxAmt(alpha) + (alphaPct != null ? " (" + insxPct(alphaPct) + ")" : "") + "</b> — " + (alpha >= 0 ? "your stock picking is ahead of the index on the same money." : "the index is ahead on the same money so far.") + " Tap a legend chip to show or hide a line.</p>";
+    insxLineSvg([{ data: V, color: "var(--text)", hidden: !insXShowPort }, { data: SIM, color: "var(--gold)", dash: true, hidden: !insXShowNifty }]) +
+    '<p class="insx-note">Alpha: <b class="' + (alpha >= 0 ? "pos" : "neg") + '">' + insxAmt(alpha) + (alphaPct != null ? " (" + insxPct(alphaPct) + ")" : "") + "</b> — " + (alpha >= 0 ? "your stock picking is ahead of the index on the same money." : "the index is ahead on the same money so far.") + " Tap a legend chip to show or hide a line.</p>" + insxExclNote();
 }
 /* ---------- 4. Invested vs Current Value ---------- */
 function insxRenderInv() {
@@ -4032,7 +4053,7 @@ function insxRenderInv() {
   box.innerHTML = '<div class="panel-head"><h2>Invested vs Current Value</h2>' + insxInfoBtn("invested") + "</div>" +
     '<div class="insx-legend"><span class="insx-chip on"><span class="insx-dot" style="background:var(--text)"></span>Current value</span><span class="insx-chip on"><span class="insx-dot" style="background:#8a8a8a"></span>Net invested (step)</span></div>' +
     insxInvSvg(V, INV) +
-    '<p class="insx-note">Green dots are buy days, red dots are sell days. When the blue line is above the grey line, you are in profit.</p>';
+    '<p class="insx-note">The dots on the invested line are your buy and sell days. When the value line is above the invested line, you are in profit.</p>' + insxExclNote() + '';
 }
 function insxInvSvg(V, INV) {
   const s = insXSeries; if (!s) return "";
@@ -4149,7 +4170,7 @@ function insxRenderScore() {
   box.innerHTML = head +
     '<input type="search" id="insxScoreQ" class="insx-search" placeholder="Search a stock…" value="' + esc(insXQuery) + '">' +
     '<div class="insx-table-wrap"><table class="insx-table"><thead><tr><th data-insx-sort="sym2">Stock</th>' + th("cagr", "CAGR %") + th("xirr", "XIRR %") + th("days", "Days held") + th("weight", "Weight %") + th("divYield", "Div yield on cost %") + th("dayChg", "Day %") + "</tr></thead><tbody>" +
-    sorted.map(r => "<tr><td>" + esc(r.sym) + "</td><td>" + (r.cagr == null ? "—" : r.cagr.toFixed(1)) + "</td><td>" + (r.xirr == null ? "—" : r.xirr.toFixed(1)) + "</td><td>" + r.days + "</td><td>" + r.weight.toFixed(1) + "</td><td>" + r.divYield.toFixed(2) + "</td><td class=\"" + (r.dayChg == null ? "" : r.dayChg >= 0 ? "pos" : "neg") + '">' + (r.dayChg == null ? "—" : insxPct(r.dayChg, 2)) + "</td></tr>").join("") +
+    sorted.map(r => "<tr><td>" + esc(r.sym) + "</td><td>" + (r.cagr == null ? "—" : (Math.abs(r.cagr) < 0.05 ? 0 : r.cagr).toFixed(1)) + "</td><td>" + (r.xirr == null ? "—" : (Math.abs(r.xirr) < 0.05 ? 0 : r.xirr).toFixed(1)) + "</td><td>" + r.days + "</td><td>" + r.weight.toFixed(1) + "</td><td>" + r.divYield.toFixed(2) + "</td><td class=\"" + (r.dayChg == null ? "" : r.dayChg >= 0 ? "pos" : "neg") + '">' + (r.dayChg == null ? "—" : insxPct(r.dayChg, 2)) + "</td></tr>").join("") +
     "</tbody></table></div>" +
     (sorted.length ? "" : '<p class="empty-note">No stock matches your search.</p>') +
     '<p class="insx-note">Tap a column heading to sort. CAGR covers the shares you still hold; XIRR covers every rupee in and out of that stock.</p>';
@@ -4159,7 +4180,7 @@ function insxRenderScore() {
 /* ---------- wiring: info buttons, legend chips, calendar, sorting ---------- */
 document.addEventListener("click", e => {
   const info = e.target.closest("[data-insx-info]");
-  if (info) { toast(INSX_INFO[info.dataset.insxInfo] || ""); return; }
+  if (info) { insxShowInfo(INSX_INFO[info.dataset.insxInfo] || ""); return; }
   const tip = e.target.closest("[data-insx-tip]");
   if (tip) { toast(tip.dataset.insxTip); return; }
   const leg = e.target.closest("[data-insx-leg]");
@@ -4454,3 +4475,204 @@ const _renderInsightsT2 = renderInsights;
 renderInsights = function (d) { _renderInsightsT2(d); try { planEnsure(); } catch (e) {} };
 const _renderHistoryT2 = renderHistory;
 renderHistory = function () { _renderHistoryT2(); try { journalEnsure(); } catch (e) {} };
+
+/* ================= TASK 3 (v62): Tijori-style stock page =================
+   Field test first (2026-11-12): Yahoo's v8 chart feed — the app's existing
+   source — returns prices, OHLCV, 52-week range and dividend/split events.
+   Yahoo's fundamentals endpoints (quoteSummary / v6 / v7 quote) are
+   crumb-gated ("Invalid Crumb") and cannot be used by a browser app, so
+   revenue, profit, EPS, margins, debt, cash flow, P/E, P/B, ROE, market
+   cap, holder breakdown and analyst targets DO NOT EXIST in the free feed.
+   Per the brief, those tabs/fields are simply not built; everything below
+   uses only data that really returns. */
+let sxSym = null, sxMaster = null, sxPeersDone = false, sxIndDone = false;
+function sxEnsure() {
+  const card = document.querySelector("#stockModal .modal-card");
+  if (!card || $("sheetX")) return;
+  const box = document.createElement("div"); box.id = "sheetX";
+  box.innerHTML =
+    '<div id="sxPosition"></div><div id="sxStats"></div>' +
+    '<div class="sheet-tabs" role="tablist"><button type="button" class="insx-chip on" data-sx-tab="overview">Overview</button><button type="button" class="insx-chip" data-sx-tab="peers">Peers</button><button type="button" class="insx-chip" data-sx-tab="ind">Indicators</button></div>' +
+    '<div id="sxPeers" class="hidden"></div><div id="sxInd" class="hidden"></div>';
+  const head = card.querySelector(".modal-head");
+  if (head && head.nextSibling) card.insertBefore(box, head.nextSibling); else card.appendChild(box);
+  box.querySelectorAll("[data-sx-tab]").forEach(b => b.addEventListener("click", () => sxSetTab(b.dataset.sxTab)));
+}
+function sxSetTab(tab) {
+  const card = document.querySelector("#stockModal .modal-card"); if (!card) return;
+  document.querySelectorAll("[data-sx-tab]").forEach(b => b.classList.toggle("on", b.dataset.sxTab === tab));
+  card.classList.toggle("sx-away", tab !== "overview");
+  $("sxPeers").classList.toggle("hidden", tab !== "peers");
+  $("sxInd").classList.toggle("hidden", tab !== "ind");
+  if (tab === "peers" && !sxPeersDone) sxRenderPeers();
+  if (tab === "ind" && !sxIndDone) sxRenderInd();
+}
+function sxRenderPosition(sym) {
+  const box = $("sxPosition"); if (!box) return;
+  const { holdings } = computeHoldings();
+  const h = holdings.find(x => x.sym === sym);
+  if (!h) { box.innerHTML = ""; return; }
+  const p = priceOf(sym); const val = p ? h.qty * p.price : h.invested;
+  const total = planHoldVals().total || 1;
+  const cfs = [];
+  state.txns.filter(t => t.sym === sym).forEach(t => {
+    if (t.type === "BUY") cfs.push({ date: new Date(t.date + "T00:00:00"), amount: -((Number(t.qty) || 0) * effPrice(t)) });
+    else if (t.type === "SELL") cfs.push({ date: new Date(t.date + "T00:00:00"), amount: (Number(t.qty) || 0) * effPrice(t) });
+    else if (t.type === "DIV") cfs.push({ date: new Date(t.date + "T00:00:00"), amount: Number(t.price) || 0 });
+  });
+  cfs.push({ date: new Date(), amount: val }); cfs.sort((a, b) => a.date - b.date);
+  let xr = null; try { const r = xirr(cfs); if (r != null && isFinite(r)) xr = r * 100; } catch (e) {}
+  const pnl = val - h.invested;
+  box.innerHTML = '<div class="sx-strip"><h4>My Position</h4><div class="sx-cells">' +
+    '<span>Qty <b>' + h.qty + '</b></span><span>Avg Buy <b>' + inr2(h.avg) + '</b></span><span>Current Value <b>' + insxAmt(val) + '</b></span>' +
+    '<span>P&amp;L <b class="' + (pnl >= 0 ? "pos" : "neg") + '">' + insxAmt(pnl) + " (" + insxPct(h.invested ? pnl / h.invested * 100 : null) + ')</b></span>' +
+    '<span>XIRR <b>' + (xr == null ? "—" : xr.toFixed(1) + "%") + '</b></span><span>Weight <b>' + (val / total * 100).toFixed(1) + '%</b></span></div></div>';
+}
+function sxRenderStats(sym, master) {
+  const box = $("sxStats"); if (!box) return;
+  if (!master || !master.ohlc || master.ohlc.length < 20) { box.innerHTML = '<p class="empty-note">Key stats need the price history, which could not be loaded right now.</p>'; return; }
+  const bars = master.ohlc;
+  const last = bars[bars.length - 1], first = bars[0];
+  const hi = Math.max(...bars.map(b => b.h)), lo = Math.min(...bars.map(b => b.l));
+  const below = hi > 0 ? (last.c / hi - 1) * 100 : null;
+  const rangePos = hi > lo ? (last.c - lo) / (hi - lo) * 100 : 50;
+  const ret1y = first && first.c ? (last.c / first.c - 1) * 100 : null;
+  const vol20 = bars.slice(-20).reduce((a, b) => a + (b.v || 0), 0) / Math.min(20, bars.length);
+  const yrAgo = Date.now() - 365 * 86400000;
+  const dps = (master.divs || []).filter(d => d.ts >= yrAgo).reduce((a, d) => a + (Number(d.amount) || 0), 0);
+  const dy = dps > 0 && last.c ? dps / last.c * 100 : null;
+  const cell = (k, v) => '<span>' + k + ' <b>' + v + '</b></span>';
+  box.innerHTML = '<div class="sx-strip"><h4>Key Stats <small>(from the free price feed — P/E, ROE and market cap are not published in it)</small></h4><div class="sx-cells">' +
+    cell("Price", inr2(last.c)) + cell("1Y Return", ret1y == null ? "—" : insxPct(ret1y)) + cell("Avg Volume (20d)", vol20 ? Math.round(vol20).toLocaleString("en-IN") : "—") +
+    (dy != null ? cell("Dividend Yield", dy.toFixed(2) + "%") : "") + cell("52W High", inr2(hi)) + cell("52W Low", inr2(lo)) + "</div>" +
+    '<div class="sx-range"><span class="sx-range-fill" style="width:' + rangePos.toFixed(1) + '%"></span><span class="sx-range-dot" style="left:' + rangePos.toFixed(1) + '%"></span></div>' +
+    '<div class="tgt-labs"><span>' + inr2(lo) + '</span><span>' + (below == null ? "" : Math.abs(below).toFixed(1) + "% below the 52-week high") + '</span><span>' + inr2(hi) + "</span></div></div>";
+}
+async function sxRenderPeers() {
+  sxPeersDone = true;
+  const box = $("sxPeers"); if (!box || !sxSym) return;
+  box.innerHTML = '<div class="sx-strip"><h4>Peers</h4>' + insxSkel(3) + "</div>";
+  const sector = sectorOf(sxSym);
+  const list = (window.STOCK_LIST || []).filter(e => e[0] !== sxSym && sector && (e[2] === sector || sectorOf(e[0]) === sector)).slice(0, 8).map(e => e[0]);
+  const all = [sxSym].concat(list);
+  const res = await Promise.all(all.map(s => fetchHistory(s, "1y").catch(() => null)));
+  const rows = all.map((s, i) => {
+    const r = res[i]; const pts = r && r.points ? r.points : [];
+    if (pts.length < 2) return { sym: s, price: null, ret: null, day: null };
+    const lastC = pts[pts.length - 1].c, prevC = pts[pts.length - 2].c, firstC = pts[0].c;
+    return { sym: s, price: lastC, ret: firstC ? (lastC / firstC - 1) * 100 : null, day: prevC ? (lastC / prevC - 1) * 100 : null };
+  });
+  rows.sort((a, b) => (b.ret == null ? -1e9 : b.ret) - (a.ret == null ? -1e9 : a.ret));
+  box.innerHTML = '<div class="sx-strip"><h4>Peers — ' + esc(sector || "same sector") + '</h4>' +
+    '<div class="insx-table-wrap"><table class="insx-table"><thead><tr><th>Stock</th><th>Price</th><th>1Y Return %</th><th>Day %</th></tr></thead><tbody>' +
+    rows.map(r => '<tr class="' + (r.sym === sxSym ? "sx-self" : "") + '"><td>' + esc(r.sym) + (r.sym === sxSym ? " (you)" : "") + "</td><td>" + (r.price == null ? "—" : inr2(r.price)) + "</td><td class=\"" + (r.ret == null ? "" : r.ret >= 0 ? "pos" : "neg") + '">' + (r.ret == null ? "—" : insxPct(r.ret)) + "</td><td class=\"" + (r.day == null ? "" : r.day >= 0 ? "pos" : "neg") + '">' + (r.day == null ? "—" : insxPct(r.day, 2)) + "</td></tr>").join("") +
+    '</tbody></table></div><p class="insx-note">Built-in same-sector list, compared on price and returns — the only figures the free price feed publishes. Market cap, P/E and ROE are not in it, so they are not shown.</p></div>';
+}
+function sxEma(vals, period) {
+  const k = 2 / (period + 1); const out = []; let prev = null;
+  vals.forEach((v, i) => { if (v == null) { out.push(null); return; } prev = prev == null ? v : v * k + prev * (1 - k); out.push(i < period - 1 ? null : prev); });
+  return out;
+}
+function sxRsi(closes, period) {
+  const out = new Array(closes.length).fill(null);
+  let g = 0, l = 0;
+  for (let i = 1; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1], up = Math.max(d, 0), dn = Math.max(-d, 0);
+    if (i <= period) { g += up / period; l += dn / period; if (i === period) out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l); }
+    else { g = (g * (period - 1) + up) / period; l = (l * (period - 1) + dn) / period; out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l); }
+  }
+  return out;
+}
+function sxRenderInd() {
+  sxIndDone = true;
+  const box = $("sxInd"); if (!box || !sxSym) return;
+  const master = sxMaster;
+  if (!master || !master.ohlc || master.ohlc.length < 40) { box.innerHTML = '<div class="sx-strip"><h4>Indicators</h4><p class="empty-note">Not enough daily price history yet for RSI and MACD.</p></div>'; return; }
+  const bars = master.ohlc.slice(-180);
+  const closes = bars.map(b => b.c);
+  const rsi = sxRsi(closes, 14);
+  const ema12 = sxEma(closes, 12), ema26 = sxEma(closes, 26);
+  const macd = closes.map((_, i) => (ema12[i] != null && ema26[i] != null) ? ema12[i] - ema26[i] : null);
+  const sig = sxEma(macd.map(v => v == null ? 0 : v), 9).map((v, i) => macd[i] == null ? null : v);
+  const hist = macd.map((v, i) => (v != null && sig[i] != null) ? v - sig[i] : null);
+  const hi = Math.max(...master.ohlc.map(b => b.h)), lo = Math.min(...master.ohlc.map(b => b.l));
+  const W = 680, panes = [
+    { h: 132, label: "Price + 52W high/low lines" },
+    { h: 54, label: "RSI (14)" },
+    { h: 54, label: "MACD (12, 26, 9)" },
+    { h: 40, label: "Volume" }
+  ];
+  const totalH = panes.reduce((a, p) => a + p.h + 16, 8);
+  const X = i => 8 + (i / (bars.length - 1)) * (W - 16);
+  const line = (arr, y0, h, min, max, color, dash) => {
+    let d = "", started = false;
+    arr.forEach((v, i) => { if (v == null || !isFinite(v)) return; const y = y0 + h - ((v - min) / (max - min)) * h; d += (started ? " L" : "M") + X(i).toFixed(1) + " " + y.toFixed(1); started = true; });
+    return d ? '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.6"' + (dash ? ' stroke-dasharray="5 4"' : "") + "/>" : "";
+  };
+  let y = 8, svg = "";
+  const pMin = Math.min(...closes), pMax = Math.max(...closes);
+  svg += '<text x="8" y="' + (y + 10) + '" class="insx-end-lab" style="text-anchor:start">' + panes[0].label + "</text>";
+  svg += line(closes, y + 14, panes[0].h - 18, pMin, pMax, "var(--text)");
+  const yHi = y + 14 + (panes[0].h - 18) * (1 - (hi - pMin) / (pMax - pMin)), yLo = y + 14 + (panes[0].h - 18) * (1 - (lo - pMin) / (pMax - pMin));
+  if (yHi > y && yHi < y + panes[0].h) svg += '<line x1="8" x2="' + (W - 8) + '" y1="' + yHi + '" y2="' + yHi + '" stroke="var(--gain)" stroke-dasharray="4 4" opacity="0.7"/>';
+  if (yLo > y && yLo < y + panes[0].h) svg += '<line x1="8" x2="' + (W - 8) + '" y1="' + yLo + '" y2="' + yLo + '" stroke="var(--loss)" stroke-dasharray="4 4" opacity="0.7"/>';
+  y += panes[0].h + 16;
+  svg += '<text x="8" y="' + (y + 10) + '" class="insx-end-lab" style="text-anchor:start">' + panes[1].label + "</text>";
+  svg += line(rsi, y + 14, panes[1].h - 18, 0, 100, "var(--gold)");
+  [30, 70].forEach(lv => { const ly = y + 14 + (panes[1].h - 18) * (1 - lv / 100); svg += '<line x1="8" x2="' + (W - 8) + '" y1="' + ly + '" y2="' + ly + '" stroke="var(--line)" stroke-dasharray="3 4"/>'; });
+  y += panes[1].h + 16;
+  const mVals = macd.concat(sig, hist).filter(v => v != null && isFinite(v));
+  const mMin = Math.min(...mVals, 0), mMax = Math.max(...mVals, 0);
+  svg += '<text x="8" y="' + (y + 10) + '" class="insx-end-lab" style="text-anchor:start">' + panes[2].label + "</text>";
+  hist.forEach((v, i) => { if (v == null) return; const yA = y + 14 + (panes[2].h - 18) * (1 - (Math.max(v, 0) - mMin) / (mMax - mMin)), yB = y + 14 + (panes[2].h - 18) * (1 - (Math.min(v, 0) - mMin) / (mMax - mMin)); svg += '<line x1="' + X(i) + '" x2="' + X(i) + '" y1="' + yA + '" y2="' + yB + '" stroke="' + (v >= 0 ? "var(--gain)" : "var(--loss)") + '" stroke-width="2" opacity="0.55"/>'; });
+  svg += line(macd, y + 14, panes[2].h - 18, mMin, mMax, "var(--text)") + line(sig, y + 14, panes[2].h - 18, mMin, mMax, "var(--gold)", true);
+  y += panes[2].h + 16;
+  const vMax = Math.max(...bars.map(b => b.v || 0), 1);
+  svg += '<text x="8" y="' + (y + 10) + '" class="insx-end-lab" style="text-anchor:start">' + panes[3].label + "</text>";
+  bars.forEach((b, i) => { const bh = ((b.v || 0) / vMax) * (panes[3].h - 16); svg += '<rect x="' + (X(i) - 1) + '" y="' + (y + panes[3].h - bh) + '" width="2" height="' + Math.max(0.5, bh) + '" fill="' + (b.c >= b.o ? "var(--gain)" : "var(--loss)") + '" opacity="0.6"/>'; });
+  box.innerHTML = '<div class="sx-strip"><h4>Indicators</h4><div id="sxIndRead" class="price-meta">Touch or move across the chart to inspect any day.</div>' +
+    '<svg id="sxIndSvg" class="insx-chart" viewBox="0 0 ' + W + " " + totalH + '" style="touch-action:pan-y">' + svg + '<line id="sxCross" x1="0" x2="0" y1="0" y2="' + totalH + '" stroke="var(--muted)" stroke-dasharray="3 3" opacity="0"/></svg>' +
+    '<label class="sx-cmp"><input type="checkbox" id="sxCmpTgl"> Compare with NIFTY (normalised %)</label><div id="sxCmp"></div>' +
+    '<p class="insx-note">Dashed lines on the price pane are the 52-week high and low. RSI above 70 is usually called overbought, below 30 oversold — information only, not a signal to act.</p></div>';
+  const svgEl = $("sxIndSvg"), read = $("sxIndRead"), cross = $("sxCross");
+  const show = clientX => {
+    const r = svgEl.getBoundingClientRect();
+    const fx = (clientX - r.left) / r.width;
+    const i = Math.max(0, Math.min(bars.length - 1, Math.round((fx * W - 8) / (W - 16) * (bars.length - 1))));
+    cross.setAttribute("x1", X(i)); cross.setAttribute("x2", X(i)); cross.setAttribute("opacity", "0.8");
+    const d = new Date(bars[i].t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+    read.textContent = d + " · Close " + inr2(bars[i].c) + (rsi[i] != null ? " · RSI " + rsi[i].toFixed(0) : "") + (macd[i] != null ? " · MACD " + macd[i].toFixed(2) : "") + " · Vol " + (bars[i].v ? Math.round(bars[i].v).toLocaleString("en-IN") : "—");
+  };
+  svgEl.addEventListener("pointermove", e => show(e.clientX));
+  svgEl.addEventListener("pointerdown", e => show(e.clientX));
+  const tgl = $("sxCmpTgl");
+  if (tgl) tgl.addEventListener("change", () => { if (tgl.checked) sxRenderCmp(bars); else $("sxCmp").innerHTML = ""; });
+}
+async function sxRenderCmp(bars) {
+  const box = $("sxCmp"); if (!box) return;
+  box.innerHTML = insxSkel(2);
+  const nif = await fetchHistory("^NSEI", "1y").catch(() => null);
+  if (!nif || !nif.points || !bars.length) { box.innerHTML = '<p class="empty-note">NIFTY history could not be loaded for the comparison.</p>'; return; }
+  const dstr = t => { try { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(t)); } catch (e) { return new Date(t).toISOString().slice(0, 10); } };
+  const nMap = {}; nif.points.forEach(p => nMap[dstr(p.t)] = p.c);
+  const s0 = bars[0].c; let n0 = null;
+  const sLine = [], nLine = [];
+  bars.forEach(b => { const nc = nMap[dstr(b.t)]; if (nc && n0 == null) n0 = nc; sLine.push((b.c / s0 - 1) * 100); nLine.push(nc && n0 ? (nc / n0 - 1) * 100 : null); });
+  box.innerHTML = '<div class="insx-legend"><span class="insx-chip on"><span class="insx-dot" style="background:var(--text)"></span>' + esc(sxSym) + '</span><span class="insx-chip on"><span class="insx-dot" style="background:var(--gold)"></span>NIFTY 50</span></div>' +
+    insxLineSvg([{ data: sLine, color: "var(--text)" }, { data: nLine, color: "var(--gold)", dash: true }]) +
+    '<p class="insx-note">Both lines start at 0% — the gap is how far the stock is ahead of (or behind) the index over this period.</p>';
+}
+const _loadSheetT3 = loadCompanySheet;
+loadCompanySheet = async function (sym) {
+  await _loadSheetT3(sym);
+  try {
+    sxEnsure(); sxSym = sym; sxPeersDone = false; sxIndDone = false; sxMaster = null;
+    sxSetTab("overview");
+    sxRenderPosition(sym);
+    const st = $("sxStats"); if (st) st.innerHTML = insxSkel(2);
+    const m = await fetchMaster(sym).catch(() => null);
+    if (sxSym !== sym) return;
+    sxMaster = m;
+    sxRenderStats(sym, m);
+  } catch (e) {}
+};

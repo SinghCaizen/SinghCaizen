@@ -1453,3 +1453,27 @@ body.privacy-on .insx-amt,body.privacy-on .insx-tile b,body.privacy-on .insx-row
 .divplan-val{font-size:9.5px;color:var(--muted);font-weight:600}
 .divplan-lab{font-size:10px;color:var(--muted);font-weight:600}
 @media (prefers-reduced-motion: reduce){.goal-ring-fg{transition:none}}
+
+/* ===== v61: info popup (readable above the bottom dock) ===== */
+.insx-info-pop{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:400;padding:20px}
+.insx-info-pop.hidden{display:none}
+.insx-info-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:420px;width:100%;box-shadow:0 14px 40px rgba(0,0,0,.35)}
+.insx-info-card p{font-size:14px;line-height:1.55;margin:0 0 12px}
+.insx-corr-h{word-break:break-all;line-height:1.15}
+
+/* ===== TASK 3 (v62): Tijori-style stock page ===== */
+#sheetX{padding:2px 0 4px}
+.sheet-tabs{display:flex;gap:8px;overflow-x:auto;padding:10px 0 6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.sheet-tabs::-webkit-scrollbar{display:none}
+.modal-card.sx-away #taWrap,.modal-card.sx-away #stockAbout,.modal-card.sx-away #stockResults,.modal-card.sx-away #stockNews,.modal-card.sx-away #stockLinks{display:none!important}
+.sx-strip{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:8px 0}
+.sx-strip h4{margin:0 0 8px;font-size:13.5px}
+.sx-strip h4 small{color:var(--muted);font-weight:500}
+.sx-cells{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
+.sx-cells b{color:var(--text);font-variant-numeric:tabular-nums}
+.sx-range{position:relative;height:8px;border-radius:99px;background:var(--line);margin:12px 0 2px}
+.sx-range-fill{position:absolute;left:0;top:0;height:100%;border-radius:99px;background:var(--gold)}
+.sx-range-dot{position:absolute;top:50%;width:13px;height:13px;border-radius:50%;background:var(--panel);border:3px solid var(--text);transform:translate(-50%,-50%)}
+.sx-self td{background:var(--liquid-inner-card-bg);font-weight:700}
+.sx-cmp{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin-top:10px;min-height:44px}
+.sx-cmp input{width:19px;height:19px;accent-color:var(--gold)}
