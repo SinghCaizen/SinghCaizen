@@ -1477,3 +1477,35 @@ body.privacy-on .insx-amt,body.privacy-on .insx-tile b,body.privacy-on .insx-row
 .sx-self td{background:var(--liquid-inner-card-bg);font-weight:700}
 .sx-cmp{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;margin-top:10px;min-height:44px}
 .sx-cmp input{width:19px;height:19px;accent-color:var(--gold)}
+
+/* ===== TASK 4 (v63): dashboard + holdings experience ===== */
+.dash-chips{position:sticky;top:0;z-index:60;display:flex;gap:8px;overflow-x:auto;padding:10px 2px;background:var(--bg);scrollbar-width:none}
+.dash-chips::-webkit-scrollbar{display:none}
+.dash-chips .insx-chip{flex:none}
+.dash-collapse{margin-left:auto;background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:14px;flex:none}
+.panel.collapsed>*:not(.panel-head){display:none!important}
+.dash-ctl{display:none;gap:4px;margin-left:8px}
+body.dash-customizing .dash-ctl{display:inline-flex}
+.dash-ctl button{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:8px;width:32px;height:32px;cursor:pointer}
+.dash-hidden-panel{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+body.compact-dash .panel{padding:10px 12px}
+body.compact-dash .stat-card{padding:8px 10px}
+body.compact-dash .stat-value{font-size:19px}
+.hero-spark{display:block;margin-top:4px}
+.pulse-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px}
+.pulse-cell{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:1px;font-size:12px}
+.pulse-cell b{font-size:15px}
+.pulse-name{color:var(--muted);font-weight:700;font-size:11px}
+.pulse-spark{margin-top:4px}
+.pulse-heat{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pulse-heat-cell{border-radius:8px;padding:5px 9px;font-size:12px;font-weight:600}
+.hold-tools{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px}
+.hold-tools input[type="search"]{flex:1;min-width:150px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--input);color:var(--text);font:inherit;min-height:44px}
+.hold-tools select{padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--input);color:var(--text);font:inherit;min-height:44px}
+.hold-group{margin:0;min-height:44px}
+.hold-spark{display:flex;align-items:center;gap:10px;padding:2px 2px 8px}
+.hold-spark svg{flex:none}
+.hold-range{position:relative;flex:1;height:6px;border-radius:99px;background:var(--line)}
+.hold-range-dot{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;background:var(--panel);border:2.5px solid var(--gold);transform:translate(-50%,-50%)}
+.hold-spark small{color:var(--muted);font-weight:700}
+.hold-sector-head{font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:12px 2px 4px}

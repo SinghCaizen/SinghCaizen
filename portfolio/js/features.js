@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v58";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v59";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -4676,3 +4676,260 @@ loadCompanySheet = async function (sym) {
     sxRenderStats(sym, m);
   } catch (e) {}
 };
+
+/* ================= TASK 4 (v63): dashboard experience ================= */
+function dashPanels() { return [...document.querySelectorAll("#view-dashboard > .panel")]; }
+function dashKey(panel) { const h = panel.querySelector("h2"); return (h ? h.textContent : "panel").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase(); }
+function dashFindPanel(titlePart) { return dashPanels().find(p => { const h = p.querySelector("h2"); return h && h.textContent.toLowerCase().includes(titlePart); }); }
+let heroPnlMode = "overall";
+function dashEnsure() {
+  const view = $("view-dashboard"); if (!view || $("dashChips")) return;
+  const bar = document.createElement("div"); bar.id = "dashChips"; bar.className = "dash-chips";
+  bar.innerHTML = ["Overview", "Performance", "Risk", "Income", "Tax", "Market", "News"].map(n => '<button type="button" class="insx-chip" data-dash-chip="' + n + '">' + n + "</button>").join("") +
+    '<button type="button" class="insx-chip" id="dashCustomBtn">⚙ Customize</button>' +
+    '<button type="button" class="insx-chip" id="dashCompactBtn">Compact</button>';
+  const grid = view.querySelector(".stat-grid");
+  if (grid) view.insertBefore(bar, grid); else view.prepend(bar);
+  bar.addEventListener("click", e => {
+    const chip = e.target.closest("[data-dash-chip]");
+    if (chip) { dashGo(chip.dataset.dashChip); return; }
+    if (e.target.closest("#dashCustomBtn")) { document.body.classList.toggle("dash-customizing"); toast(document.body.classList.contains("dash-customizing") ? "Customize mode: use the ↑ ↓ 👁 buttons on each card. Tap Customize again to finish." : "Dashboard layout saved."); return; }
+    if (e.target.closest("#dashCompactBtn")) {
+      const on = document.body.classList.toggle("compact-dash");
+      e.target.closest("#dashCompactBtn").classList.toggle("on", on);
+      const L = dashLayout(); L.compact = on; state.profile.dashLayout = L; persist();
+    }
+  });
+  /* collapsible cards (state remembered on this device) */
+  let saved = {}; try { saved = JSON.parse(localStorage.getItem("folio_dash_collapse") || "{}"); } catch (e) {}
+  dashPanels().forEach(p => {
+    const head = p.querySelector(".panel-head"); if (!head || head.querySelector(".dash-collapse")) return;
+    const key = dashKey(p);
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "dash-collapse"; btn.setAttribute("aria-label", "Collapse or expand this card");
+    btn.textContent = saved[key] ? "▸" : "▾";
+    if (saved[key]) p.classList.add("collapsed");
+    btn.addEventListener("click", () => {
+      const now = p.classList.toggle("collapsed");
+      btn.textContent = now ? "▸" : "▾";
+      let s2 = {}; try { s2 = JSON.parse(localStorage.getItem("folio_dash_collapse") || "{}"); } catch (e) {}
+      s2[key] = now; try { localStorage.setItem("folio_dash_collapse", JSON.stringify(s2)); } catch (e) {}
+    });
+    head.appendChild(btn);
+    /* customize controls */
+    const ctl = document.createElement("span"); ctl.className = "dash-ctl";
+    ctl.innerHTML = '<button type="button" data-dctl="up" aria-label="Move card up">↑</button><button type="button" data-dctl="down" aria-label="Move card down">↓</button><button type="button" data-dctl="hide" aria-label="Hide card">👁</button>';
+    ctl.addEventListener("click", e => {
+      const b = e.target.closest("[data-dctl]"); if (!b) return;
+      const L = dashLayout(); const k = dashKey(p);
+      if (b.dataset.dctl === "hide") { if (!L.hidden.includes(k)) L.hidden.push(k); }
+      else {
+        const order = dashPanels().map(dashKey);
+        const i = order.indexOf(k); const j = b.dataset.dctl === "up" ? i - 1 : i + 1;
+        if (j < 0 || j >= order.length) return;
+        [order[i], order[j]] = [order[j], order[i]]; L.order = order;
+      }
+      state.profile.dashLayout = L; persist(); dashApplyLayout();
+    });
+    head.appendChild(ctl);
+  });
+  /* restore-hidden strip */
+  const strip = document.createElement("div"); strip.id = "dashHiddenStrip"; view.appendChild(strip);
+  /* hero: tap P&L to toggle Today / Overall */
+  const pnlCard = $("stPnl") && $("stPnl").closest(".stat-card");
+  if (pnlCard && !pnlCard.dataset.tgl) {
+    pnlCard.dataset.tgl = "1"; pnlCard.style.cursor = "pointer"; pnlCard.title = "Tap to switch between today's P&L and overall P&L";
+    pnlCard.addEventListener("click", () => { heroPnlMode = heroPnlMode === "overall" ? "today" : "overall"; dashHero(); });
+  }
+  /* hero sparkline holder */
+  const valCard = $("stValue") && $("stValue").closest(".stat-card");
+  if (valCard && !$("heroSpark")) { const s = document.createElement("span"); s.id = "heroSpark"; valCard.appendChild(s); }
+  /* active-chip highlighting */
+  const io = new IntersectionObserver(es => {
+    es.forEach(en => {
+      if (!en.isIntersecting) return;
+      const map = [["portfolio", "Overview"], ["performance", "Performance"], ["dividend snowball", "Income"], ["tax", "Tax"], ["market mood", "Market"]];
+      const h = en.target.querySelector("h2"); if (!h) return;
+      const m = map.find(([t]) => h.textContent.toLowerCase().includes(t));
+      document.querySelectorAll("[data-dash-chip]").forEach(c => c.classList.toggle("on", !!m && c.dataset.dashChip === m[1]));
+    });
+  }, { rootMargin: "-30% 0px -55% 0px" });
+  dashPanels().forEach(p => io.observe(p));
+}
+function dashGo(name) {
+  const scrollTo = p => { if (p) p.scrollIntoView({ behavior: "smooth", block: "start" }); };
+  if (name === "Overview") scrollTo(dashFindPanel("portfolio"));
+  else if (name === "Performance") scrollTo(dashFindPanel("performance"));
+  else if (name === "Income") scrollTo(dashFindPanel("dividend snowball"));
+  else if (name === "Tax") scrollTo(dashFindPanel("tax"));
+  else if (name === "Market") scrollTo(dashFindPanel("market mood"));
+  else if (name === "News") switchView("news");
+  else if (name === "Risk") { switchView("insights"); setTimeout(() => { const r = $("insx-risk"); if (r) r.scrollIntoView({ behavior: "smooth", block: "start" }); }, 350); }
+}
+function dashLayout() { const p = state.profile || (state.profile = {}); if (!p.dashLayout) p.dashLayout = { order: [], hidden: [], compact: false }; return p.dashLayout; }
+function dashApplyLayout() {
+  const L = dashLayout();
+  const view = $("view-dashboard"); if (!view) return;
+  if (L.compact) document.body.classList.add("compact-dash"); 
+  if (L.order && L.order.length) {
+    const panels = dashPanels();
+    const sorted = [...panels].sort((a, b) => {
+      const ia = L.order.indexOf(dashKey(a)), ib = L.order.indexOf(dashKey(b));
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    sorted.forEach(p => view.appendChild(p));
+  }
+  dashPanels().forEach(p => { p.style.display = L.hidden.includes(dashKey(p)) ? "none" : ""; });
+  const strip = $("dashHiddenStrip");
+  if (strip) {
+    strip.innerHTML = L.hidden.length ? '<div class="panel dash-hidden-panel"><div class="panel-head"><h2>Hidden cards</h2></div>' + L.hidden.map(k => '<button type="button" class="insx-chip" data-unhide="' + k + '">Show: ' + esc(k.replace(/-/g, " ")) + "</button>").join(" ") + "</div>" : "";
+    strip.querySelectorAll("[data-unhide]").forEach(b => b.addEventListener("click", () => { const L2 = dashLayout(); L2.hidden = L2.hidden.filter(x => x !== b.dataset.unhide); state.profile.dashLayout = L2; persist(); dashApplyLayout(); }));
+  }
+}
+function dashHero() {
+  try {
+    const d = enriched();
+    if (heroPnlMode === "overall" && $("stPnl")) {
+      $("stPnl").textContent = moneyFmt(d.totalPnl);
+      $("stPnl").className = "stat-value " + (d.totalPnl >= 0 ? "gain" : "loss");
+      const pctEl2 = $("stPnlPct"); if (pctEl2) pctEl2.textContent = d.invested > 0 ? (d.totalPnl >= 0 ? "▲ +" : "▼ ") + (d.totalPnl / d.invested * 100).toFixed(2) + "% overall" : "";
+      const lab2 = $("stPnl").closest(".stat-card").querySelector(".stat-label"); if (lab2) lab2.textContent = "Total Profit / Loss (tap)";
+    }
+    if (heroPnlMode === "today" && $("stPnl")) {
+      const base = d.value - d.dayPnl;
+      $("stPnl").textContent = moneyFmt(d.dayPnl);
+      $("stPnl").className = "stat-value " + (d.dayPnl >= 0 ? "gain" : "loss");
+      const pctEl = $("stPnlPct"); if (pctEl) pctEl.textContent = (base > 0 ? (d.dayPnl >= 0 ? "▲ +" : "▼ ") + (d.dayPnl / base * 100).toFixed(2) + "% today" : "");
+      const lab = $("stPnl").closest(".stat-card").querySelector(".stat-label"); if (lab) lab.textContent = "Today's P&L (tap)";
+    }
+    /* sparkline: portfolio value, last ~30 trading days, from the on-device history seeds */
+    const sp = $("heroSpark");
+    if (sp) {
+      const { holdings } = computeHoldings();
+      const series = holdings.map(h => { const s = histLsGet(h.sym + "|1y"); return s && s.data && s.data.points ? { qty: h.qty, pts: s.data.points.slice(-30) } : null; }).filter(Boolean);
+      if (series.length && series[0].pts.length > 3) {
+        const n = Math.min(...series.map(s => s.pts.length));
+        const vals = []; for (let i = 0; i < n; i++) vals.push(series.reduce((a, s) => a + s.qty * s.pts[s.pts.length - n + i].c, 0));
+        const min = Math.min(...vals), max = Math.max(...vals), W = 120, H = 26;
+        const pts = vals.map((v, i) => (i / (vals.length - 1) * W).toFixed(1) + "," + (H - 3 - (max > min ? (v - min) / (max - min) : 0.5) * (H - 6)).toFixed(1)).join(" ");
+        const up = vals[vals.length - 1] >= vals[0];
+        sp.innerHTML = '<svg class="hero-spark" viewBox="0 0 ' + W + " " + H + '"><polyline points="' + pts + '" fill="none" stroke="' + (up ? "var(--gain)" : "var(--loss)") + '" stroke-width="1.8"/></svg>';
+      } else sp.innerHTML = "";
+    }
+  } catch (e) {}
+}
+/* ---------- Market Pulse ---------- */
+let pulseLoadedAt = 0;
+async function pulseLoad() {
+  if (Date.now() - pulseLoadedAt < 5 * 60 * 1000) return;
+  pulseLoadedAt = Date.now();
+  const view = $("view-dashboard"); if (!view) return;
+  let panel = $("pulsePanel");
+  if (!panel) {
+    panel = document.createElement("div"); panel.className = "panel"; panel.id = "pulsePanel";
+    panel.innerHTML = '<div class="panel-head"><h2>Market Pulse</h2><span class="price-meta" id="pulseMeta"></span></div><div id="pulseIdx" class="pulse-row"></div><div id="pulseHeat"></div>';
+    const mood = $("moodPanel");
+    if (mood && mood.nextSibling) view.insertBefore(panel, mood.nextSibling); else view.appendChild(panel);
+  }
+  const idxBox = $("pulseIdx");
+  const IDX = [["^NSEI", "NIFTY 50"], ["^BSESN", "SENSEX"], ["^NSEBANK", "BANK NIFTY"], ["^CNXIT", "NIFTY IT"], ["^CNXPHARMA", "NIFTY PHARMA"], ["^CNXAUTO", "NIFTY AUTO"], ["^CNXMETAL", "NIFTY METAL"], ["^CNXFMCG", "NIFTY FMCG"]];
+  const res = await Promise.all(IDX.map(([s]) => fetchHistory(s, "1mo").catch(() => null)));
+  let html = "";
+  res.forEach((r, i) => {
+    const pts = r && r.points ? r.points : [];
+    if (pts.length < 2) return;
+    const last = pts[pts.length - 1].c, prev = pts[pts.length - 2].c;
+    const day = prev ? (last / prev - 1) * 100 : 0;
+    const sp = pts.slice(-22), min = Math.min(...sp.map(p => p.c)), max = Math.max(...sp.map(p => p.c));
+    const line = sp.map((p, j) => (j / (sp.length - 1) * 74).toFixed(1) + "," + (20 - (max > min ? (p.c - min) / (max - min) : 0.5) * 17).toFixed(1)).join(" ");
+    html += '<div class="pulse-cell"><span class="pulse-name">' + IDX[i][1] + '</span><b>' + last.toLocaleString("en-IN", { maximumFractionDigits: 2 }) + '</b><span class="' + (day >= 0 ? "pos" : "neg") + '">' + (day >= 0 ? "▲ +" : "▼ ") + day.toFixed(2) + '%</span><svg class="pulse-spark" viewBox="0 0 74 22"><polyline points="' + line + '" fill="none" stroke="' + (day >= 0 ? "var(--gain)" : "var(--loss)") + '" stroke-width="1.6"/></svg></div>';
+  });
+  if (idxBox) idxBox.innerHTML = html || '<p class="empty-note">Index data could not be loaded right now.</p>';
+  const meta = $("pulseMeta"); if (meta) meta.textContent = "Free Yahoo feed · updated " + new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  /* sector heat strip from her own holdings */
+  const heat = $("pulseHeat");
+  if (heat) {
+    const { holdings } = computeHoldings();
+    const sec = {};
+    holdings.forEach(h => { const p = priceOf(h.sym); const v = p ? h.qty * p.price : h.invested; const day = p && p.prevClose ? (p.price / p.prevClose - 1) * 100 : 0; const s = h.sector || sectorOf(h.sym); sec[s] = sec[s] || { v: 0, w: 0 }; sec[s].v += v; sec[s].w += v * day; });
+    const cells = Object.entries(sec).map(([s, x]) => ({ s, day: x.v ? x.w / x.v : 0, v: x.v })).sort((a, b) => b.v - a.v);
+    heat.innerHTML = cells.length ? '<div class="pulse-heat">' + cells.map(c => '<span class="pulse-heat-cell" style="background:' + (c.day >= 0 ? "rgba(47,158,68," : "rgba(224,49,49,") + Math.min(0.75, Math.abs(c.day) / 3 + 0.12).toFixed(2) + ')">' + esc(c.s) + " " + (c.day >= 0 ? "▲" : "▼") + " " + Math.abs(c.day).toFixed(1) + "%</span>").join("") + "</div>" : "";
+  }
+}
+const _renderDashboardT4 = renderDashboard;
+renderDashboard = function () {
+  _renderDashboardT4();
+  try { dashEnsure(); dashApplyLayout(); if (heroPnlMode === "today") dashHero(); else dashHeroSparkOnly(); pulseLoad(); } catch (e) {}
+};
+function dashHeroSparkOnly() { const keep = heroPnlMode; heroPnlMode = "spark"; dashHero(); heroPnlMode = keep; }
+
+/* ---------- TASK 4: Holdings tools (search, sort, group, sparkline, 52W bar, swipe) ---------- */
+let holdQuery = "", holdSort = "value", holdGroup = false;
+function holdEnsure() {
+  const panel = $("view-holdings") && $("view-holdings").querySelector(".panel");
+  if (!panel || $("holdTools")) return;
+  const bar = document.createElement("div"); bar.id = "holdTools"; bar.className = "hold-tools";
+  bar.innerHTML = '<input type="search" id="holdQ" placeholder="Search holdings…" aria-label="Search holdings">' +
+    '<select id="holdSortSel" aria-label="Sort holdings"><option value="value">Sort: Value</option><option value="pnl">Sort: P&amp;L %</option><option value="day">Sort: Day %</option><option value="name">Sort: Name</option><option value="weight">Sort: Weight</option></select>' +
+    '<label class="sx-cmp hold-group"><input type="checkbox" id="holdGroupTgl"> Group by sector</label>';
+  const list = $("holdingsList");
+  if (list) panel.insertBefore(bar, list);
+  $("holdQ").addEventListener("input", e => { holdQuery = e.target.value.trim().toLowerCase(); holdApply(); });
+  $("holdSortSel").addEventListener("change", e => { holdSort = e.target.value; holdApply(); });
+  $("holdGroupTgl").addEventListener("change", e => { holdGroup = e.target.checked; holdApply(); });
+}
+function holdApply() {
+  const list = $("holdingsList"); if (!list) return;
+  const { holdings } = computeHoldings();
+  const info = {};
+  const total = planHoldVals().total || 1;
+  holdings.forEach(h => { const p = priceOf(h.sym); const v = p ? h.qty * p.price : h.invested; info[h.sym] = { v, pnlPct: h.invested ? (v - h.invested) / h.invested * 100 : 0, day: p && p.prevClose ? (p.price / p.prevClose - 1) * 100 : -999, weight: v / total * 100, sector: h.sector || sectorOf(h.sym), name: h.name || h.sym }; });
+  const cards = [...list.querySelectorAll(".hold-card")];
+  cards.forEach(c => {
+    const tog = c.querySelector("[data-hold-toggle]"); if (!tog) return;
+    const sym = tog.dataset.holdToggle, inf = info[sym];
+    c.style.display = (!holdQuery || sym.toLowerCase().includes(holdQuery) || (inf && inf.name.toLowerCase().includes(holdQuery))) ? "" : "none";
+    /* sparkline + 52W mini bar from the on-device history seed */
+    if (!c.querySelector(".hold-spark") && inf) {
+      const seed = histLsGet(sym + "|1y");
+      const pts = seed && seed.data && seed.data.points ? seed.data.points : null;
+      if (pts && pts.length > 5) {
+        const last30 = pts.slice(-30), min = Math.min(...pts.map(p => p.c)), max = Math.max(...pts.map(p => p.c));
+        const cur = last30[last30.length - 1].c;
+        const mn = Math.min(...last30.map(p => p.c)), mx = Math.max(...last30.map(p => p.c));
+        const line = last30.map((p, i) => (i / (last30.length - 1) * 84).toFixed(1) + "," + (22 - (mx > mn ? (p.c - mn) / (mx - mn) : 0.5) * 19).toFixed(1)).join(" ");
+        const pos = max > min ? (cur - min) / (max - min) * 100 : 50;
+        const div = document.createElement("div"); div.className = "hold-spark";
+        div.innerHTML = '<svg viewBox="0 0 84 24"><polyline points="' + line + '" fill="none" stroke="var(--muted)" stroke-width="1.6"/></svg>' +
+          '<span class="hold-range" title="52-week range (closing prices)"><span class="hold-range-dot" style="left:' + pos.toFixed(1) + '%"></span></span><small>52W</small>';
+        const strip = c.querySelector(".hold-strip");
+        if (strip) strip.after(div);
+      }
+    }
+    /* swipe left/right opens the actions drawer */
+    if (!c.dataset.swipe) {
+      c.dataset.swipe = "1";
+      let sx = 0, sy = 0;
+      c.addEventListener("touchstart", e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+      c.addEventListener("touchend", e => {
+        const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+        if (Math.abs(dx) > 72 && Math.abs(dy) < 32) { const t = c.querySelector(".hold-chev"); if (t) t.click(); }
+      }, { passive: true });
+    }
+  });
+  const visible = cards.filter(c => c.style.display !== "none");
+  const key = { value: c => (info[c.querySelector("[data-hold-toggle]").dataset.holdToggle] || {}).v || 0, pnl: c => (info[c.querySelector("[data-hold-toggle]").dataset.holdToggle] || {}).pnlPct || 0, day: c => (info[c.querySelector("[data-hold-toggle]").dataset.holdToggle] || {}).day || 0, weight: c => (info[c.querySelector("[data-hold-toggle]").dataset.holdToggle] || {}).weight || 0, name: c => c.querySelector("[data-hold-toggle]").dataset.holdToggle };
+  visible.sort((a, b) => { const ka = key[holdSort](a), kb = key[holdSort](b); return typeof ka === "string" ? ka.localeCompare(kb) : kb - ka; });
+  list.querySelectorAll(".hold-sector-head").forEach(el => el.remove());
+  let lastSector = null;
+  visible.forEach(c => {
+    if (holdGroup) {
+      const sym = c.querySelector("[data-hold-toggle]").dataset.holdToggle;
+      const sec = (info[sym] || {}).sector || "Other";
+      if (sec !== lastSector) { const h = document.createElement("div"); h.className = "hold-sector-head"; h.textContent = sec; list.appendChild(h); lastSector = sec; }
+    }
+    list.appendChild(c);
+  });
+}
+const _renderHoldingsT4 = renderHoldings;
+renderHoldings = function () { _renderHoldingsT4(); try { holdEnsure(); holdApply(); } catch (e) {} };
