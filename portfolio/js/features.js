@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v38";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v39";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2461,6 +2461,7 @@ openStock = function (sym) {
     taToken++;
     taState.bars = []; taState._calc = null; taState.sym = activeModalSymbol;
     taState.cross = -1; taState.mA = -1; taState.mB = -1; taState.preview = false;
+    ["taCanvas", "taOverlay"].forEach(id => { const cv = $(id); if (cv) { const w = cv.width; cv.width = 0; cv.width = w; } });
     const nt = $("taNote"); if (nt) nt.textContent = "Loading chart data…";
     const vd = $("taVerdict"); if (vd) vd.innerHTML = "";
     const hd = $("taHud"); if (hd) hd.textContent = "Drag on the chart to inspect any day";
@@ -2635,12 +2636,12 @@ setInterval(() => { try { enhanceProfileAccordions(); } catch (e) {} }, 1500);
 
 /* ---------- multi-watchlist manager ---------- */
 function activeWl() { return (state && state.watchlists || []).find(w => w.id === state.activeWatchlistId) || null; }
-let wlEdit = null, wlDelArm = false, wlDelTimer = null, lastWlSig = "";
+let wlEdit = null, wlDelArm = false, wlDelTimer = null, lastWlSig = "", wlDelConfirm = false;
 function renderWlBar() {
   const bar = $("wlBar");
   if (!bar || !state || !Array.isArray(state.watchlists)) return;
   if (wlEdit && bar.querySelector("#wlNameInput")) return;
-  const sig = state.watchlists.map(w => w.id + ":" + w.name + ":" + w.items.length).join("|") + "#" + state.activeWatchlistId + "#" + (wlDelArm ? 1 : 0) + "#" + (wlEdit ? wlEdit.mode : "");
+  const sig = state.watchlists.map(w => w.id + ":" + w.name + ":" + w.items.length).join("|") + "#" + state.activeWatchlistId + "#" + (wlDelConfirm ? "confirm" : "") + "#" + (wlEdit ? wlEdit.mode : "");
   if (sig === lastWlSig && bar.innerHTML) return;
   lastWlSig = sig;
   if (wlEdit) {
@@ -2653,11 +2654,18 @@ function renderWlBar() {
     const cn = bar.querySelector("[data-wlcancel]"); if (cn) cn.addEventListener("click", () => { wlEdit = null; renderWlBar(); });
     return;
   }
+  if (wlDelConfirm) {
+    const act2 = activeWl();
+    bar.innerHTML = '<span class="wl-confirm">Delete “' + esc(act2 ? act2.name : "") + '” and its ' + (act2 ? act2.items.length : 0) + ' stock(s)? <button type="button" class="wl-act danger" data-wldelyes="1">Yes, Delete</button><button type="button" class="wl-act" data-wldelno="1">Cancel</button></span>';
+    const yes = bar.querySelector("[data-wldelyes]"); if (yes) yes.addEventListener("click", doDeleteWl);
+    const no = bar.querySelector("[data-wldelno]"); if (no) no.addEventListener("click", () => { wlDelConfirm = false; renderWlBar(); });
+    return;
+  }
   bar.innerHTML = state.watchlists.map(w =>
     '<button type="button" class="wl-pill' + (w.id === state.activeWatchlistId ? " active" : "") + '" data-wlswitch="' + w.id + '">' + esc(w.name) + ' <span class="wl-count">' + w.items.length + "</span></button>").join("") +
     '<span class="wl-actions"><button type="button" class="wl-act" data-wlnew="1" title="Create a new watchlist">➕ New</button>' +
     '<button type="button" class="wl-act" data-wlrename="1" title="Rename this watchlist">✏️</button>' +
-    '<button type="button" class="wl-act danger" data-wldel="1" title="Delete this watchlist">' + (wlDelArm ? "Tap again to confirm delete" : "🗑️") + "</button></span>";
+    '<button type="button" class="wl-act danger" data-wldel="1" title="Delete this watchlist">🗑️</button></span>";
   bar.querySelectorAll("[data-wlswitch]").forEach(b => b.addEventListener("click", () => switchWl(b.dataset.wlswitch)));
   const nb = bar.querySelector("[data-wlnew]"); if (nb) nb.addEventListener("click", newWl);
   const rb = bar.querySelector("[data-wlrename]"); if (rb) rb.addEventListener("click", renameWl);
@@ -2689,14 +2697,13 @@ function newWl() { wlEdit = { mode: "new" }; renderWlBar(); }
 function renameWl() { if (!activeWl()) return; wlEdit = { mode: "rename" }; renderWlBar(); }
 function deleteWl() {
   if (!state.watchlists || state.watchlists.length <= 1) { toast("Keep at least one watchlist"); return; }
-  const a = activeWl(); if (!a) return;
-  if (!wlDelArm) {
-    wlDelArm = true; renderWlBar();
-    clearTimeout(wlDelTimer);
-    wlDelTimer = setTimeout(() => { wlDelArm = false; renderWlBar(); }, 3500);
-    return;
-  }
-  clearTimeout(wlDelTimer); wlDelArm = false;
+  if (!activeWl()) return;
+  wlDelConfirm = true;
+  renderWlBar();
+}
+function doDeleteWl() {
+  const a = activeWl(); if (!a) { wlDelConfirm = false; renderWlBar(); return; }
+  wlDelConfirm = false;
   state.watchlists = state.watchlists.filter(w => w.id !== a.id);
   switchWl(state.watchlists[0].id);
   toast("Watchlist deleted: " + a.name);
