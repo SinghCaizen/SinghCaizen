@@ -1037,3 +1037,8 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
 #taCanvas{display: block; width: 100%; border-radius: 14px; background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); touch-action: pan-y; cursor: crosshair;}
 .ta-hud{font-size: 12px; font-weight: 600; color: var(--liquid-text-muted, var(--muted)); padding: 6px 2px; min-height: 18px;}
 #taNote{margin-top: 6px;}
+
+/* v36 — in-app watchlist name editor */
+.wl-edit{display: flex; align-items: center; gap: 6px; width: 100%;}
+.wl-edit input{flex: 1; min-width: 0; padding: 9px 12px; border-radius: 999px; border: 1px solid var(--liquid-border); background: var(--liquid-inner-card-bg); color: var(--liquid-text-primary, var(--text)); font-size: 13px;}
+.wl-act.danger{color: var(--loss);}

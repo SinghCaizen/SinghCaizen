@@ -2363,7 +2363,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v35";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v36";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2619,18 +2619,43 @@ setInterval(() => { try { enhanceProfileAccordions(); } catch (e) {} }, 1500);
 
 /* ---------- multi-watchlist manager ---------- */
 function activeWl() { return (state && state.watchlists || []).find(w => w.id === state.activeWatchlistId) || null; }
+let wlEdit = null, wlDelArm = false, wlDelTimer = null;
 function renderWlBar() {
   const bar = $("wlBar");
   if (!bar || !state || !Array.isArray(state.watchlists)) return;
+  if (wlEdit) {
+    bar.innerHTML = '<span class="wl-edit"><input type="text" id="wlNameInput" maxlength="32" placeholder="Watchlist name — e.g. Swing Trades" value="' + (wlEdit.mode === "rename" ? esc((activeWl() || {}).name || "") : "") + '">' +
+      '<button type="button" class="wl-act" data-wlsave="1">' + (wlEdit.mode === "rename" ? "Save" : "Create") + '</button>' +
+      '<button type="button" class="wl-act" data-wlcancel="1">Cancel</button></span>';
+    const inp = $("wlNameInput");
+    if (inp) { inp.focus(); inp.addEventListener("keydown", ev => { if (ev.key === "Enter") saveWlEdit(); if (ev.key === "Escape") { wlEdit = null; renderWlBar(); } }); }
+    const sv = bar.querySelector("[data-wlsave]"); if (sv) sv.addEventListener("click", saveWlEdit);
+    const cn = bar.querySelector("[data-wlcancel]"); if (cn) cn.addEventListener("click", () => { wlEdit = null; renderWlBar(); });
+    return;
+  }
   bar.innerHTML = state.watchlists.map(w =>
     '<button type="button" class="wl-pill' + (w.id === state.activeWatchlistId ? " active" : "") + '" data-wlswitch="' + w.id + '">' + esc(w.name) + ' <span class="wl-count">' + w.items.length + "</span></button>").join("") +
     '<span class="wl-actions"><button type="button" class="wl-act" data-wlnew="1" title="Create a new watchlist">➕ New</button>' +
     '<button type="button" class="wl-act" data-wlrename="1" title="Rename this watchlist">✏️</button>' +
-    '<button type="button" class="wl-act" data-wldel="1" title="Delete this watchlist">🗑️</button></span>';
+    '<button type="button" class="wl-act danger" data-wldel="1" title="Delete this watchlist">' + (wlDelArm ? "Tap again to confirm delete" : "🗑️") + "</button></span>";
   bar.querySelectorAll("[data-wlswitch]").forEach(b => b.addEventListener("click", () => switchWl(b.dataset.wlswitch)));
   const nb = bar.querySelector("[data-wlnew]"); if (nb) nb.addEventListener("click", newWl);
   const rb = bar.querySelector("[data-wlrename]"); if (rb) rb.addEventListener("click", renameWl);
   const db = bar.querySelector("[data-wldel]"); if (db) db.addEventListener("click", deleteWl);
+}
+function saveWlEdit() {
+  const inp = $("wlNameInput");
+  const name = inp ? inp.value.trim() : "";
+  if (!name) { if (inp) inp.focus(); return; }
+  if (wlEdit && wlEdit.mode === "rename") {
+    const a = activeWl(); if (a) { a.name = name; persist(); toast("Renamed to " + name); }
+    wlEdit = null; renderWlBar(); return;
+  }
+  const L = { id: "wl_" + Date.now().toString(36), name: name, items: [] };
+  state.watchlists.push(L);
+  wlEdit = null;
+  switchWl(L.id);
+  toast("Watchlist created: " + name);
 }
 function switchWl(id) {
   const L = (state.watchlists || []).find(w => w.id === id);
@@ -2640,27 +2665,21 @@ function switchWl(id) {
   persist(); renderWatch();
   if (typeof refreshPrices === "function") refreshPrices();
 }
-function newWl() {
-  const name = (window.prompt("Name your new watchlist (e.g. IT Stocks, Swing Trades, IPO Watch):", "") || "").trim();
-  if (!name) return;
-  const L = { id: "wl_" + Date.now().toString(36), name: name, items: [] };
-  state.watchlists.push(L);
-  switchWl(L.id);
-  toast("Watchlist created: " + name);
-}
-function renameWl() {
-  const a = activeWl(); if (!a) return;
-  const name = (window.prompt("Rename this watchlist:", a.name) || "").trim();
-  if (!name) return;
-  a.name = name; persist(); renderWlBar(); toast("Renamed to " + name);
-}
+function newWl() { wlEdit = { mode: "new" }; renderWlBar(); }
+function renameWl() { if (!activeWl()) return; wlEdit = { mode: "rename" }; renderWlBar(); }
 function deleteWl() {
   if (!state.watchlists || state.watchlists.length <= 1) { toast("Keep at least one watchlist"); return; }
   const a = activeWl(); if (!a) return;
-  if (!window.confirm("Delete the watchlist \"" + a.name + "\" and its " + a.items.length + " stocks?")) return;
+  if (!wlDelArm) {
+    wlDelArm = true; renderWlBar();
+    clearTimeout(wlDelTimer);
+    wlDelTimer = setTimeout(() => { wlDelArm = false; renderWlBar(); }, 3500);
+    return;
+  }
+  clearTimeout(wlDelTimer); wlDelArm = false;
   state.watchlists = state.watchlists.filter(w => w.id !== a.id);
   switchWl(state.watchlists[0].id);
-  toast("Watchlist deleted");
+  toast("Watchlist deleted: " + a.name);
 }
 function ensureWatchlists() {
   if (typeof state === "undefined" || !state) return;
@@ -2750,6 +2769,11 @@ async function renderTA() {
   if (!bars && ["5y", "max"].includes(stockRange)) { const c = lsCacheGet("folio_ohlc_" + sym + "|" + stockRange, 12 * 3600 * 1000); if (c && c.bars && c.bars.length > 5) bars = c.bars; }
   if (!bars) { bars = taSynthetic(sym); preview = bars.length > 0; }
   if (bars && bars.length) { taState.bars = bars; taState.preview = preview; taDraw(); }
+  else {
+    const nt0 = $("taNote"); if (nt0) nt0.textContent = "Loading chart data…";
+    if (taState.trySym !== sym) { taState.trySym = sym; taState.tries = 0; }
+    if (taState.tries < 3) { taState.tries++; setTimeout(() => { if (stockSym === sym) { try { renderTA(); } catch (e) {} } }, 3000); }
+  }
   try {
     let real = null;
     if (["5y", "max"].includes(stockRange)) real = await fetchOHLC(sym, stockRange === "5y" ? "5y" : "max", stockRange === "5y" ? "1wk" : "1mo");
@@ -2832,7 +2856,7 @@ function taDraw() {
   } else if (taState.mode === "bars") {
     bars.forEach((b, i) => {
       const x = X(i), col = b.c >= b.o ? C.gain : C.loss;
-      ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, bw * 0.5);
+      ctx.strokeStyle = col; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(x, Y(b.h)); ctx.lineTo(x, Y(b.l));
       ctx.moveTo(x - bw / 2, Y(b.o)); ctx.lineTo(x, Y(b.o));
       ctx.moveTo(x, Y(b.c)); ctx.lineTo(x + bw / 2, Y(b.c)); ctx.stroke();
