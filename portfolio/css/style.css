@@ -1095,3 +1095,66 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
 .ipo-app-row select{padding: 7px 9px; border-radius: 9px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-size: 12.5px;}
 .ipo-news-item{display: flex; flex-direction: column; gap: 2px; padding: 9px 4px; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none;}
 .ipo-news-item span{color: var(--muted); font-size: 11.5px;}
+
+/* v41 — IPO Master hub: hero, KPIs, patti views, sidebar, desktop table, allotment vault */
+.ipo-hero-line{font-size: 13.5px; line-height: 1.6; margin: 6px 0 12px;}
+.ipo-kpis{display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px;}
+@media (max-width: 760px){ .ipo-kpis{grid-template-columns: repeat(2, minmax(0, 1fr));} .ipo-kpis .ipo-kpi:last-child{grid-column: span 2;} }
+.ipo-kpi{background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;}
+.ipo-kpi span{font-size: 10.5px; color: var(--muted); font-weight: 700; letter-spacing: .03em; text-transform: uppercase;}
+.ipo-kpi b{font-size: 19px;}
+.ipo-kpi small{color: var(--muted); font-size: 11px;}
+.ipo-sync-row{display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;}
+.ipo-main-patti{margin: 0 0 12px; flex-wrap: wrap;}
+.ipo-sel{padding: 9px 10px; border-radius: 999px; border: 1px solid var(--liquid-border); background: var(--liquid-inner-card-bg); color: var(--liquid-text-primary, var(--text)); font-size: 12.5px;}
+.ipo-layout{display: block;}
+@media (min-width: 1024px){
+  .ipo-layout{display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start;}
+  .ipo-aside{position: sticky; top: 12px;}
+  .ipo-cards-wrap{display: none;}
+}
+@media (max-width: 1023px){ .ipo-table-wrap{display: none;} .ipo-table-wrap.gmp, .ipo-table-wrap.subs{display: block; overflow-x: auto;} }
+.ipo-aside{display: flex; flex-direction: column; gap: 10px; margin-top: 12px;}
+@media (min-width: 1024px){ .ipo-aside{margin-top: 0;} }
+.ipo-widget{background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 16px; padding: 12px;}
+.ipo-widget h4{margin: 0 0 8px; font-size: 13px;}
+.ipo-widget p{font-size: 12.5px; color: var(--muted); margin: 0 0 8px;}
+.ipo-side-row{width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; margin-bottom: 6px; color: inherit; cursor: pointer; font: inherit; text-align: left; flex-wrap: wrap;}
+.ipo-side-row b{font-size: 13px;}
+.ipo-side-row span{font-size: 11.5px; color: var(--muted);}
+.ipo-gain-pill{background: rgba(16,185,129,.16); color: #34d399; font-weight: 800; font-size: 12px; padding: 3px 8px; border-radius: 999px;}
+.ipo-act-sub{font-size: 11px !important;}
+.ipo-bars{display: flex; align-items: flex-end; gap: 4px; height: 88px;}
+.ipo-bar-col{flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end;}
+.ipo-bar-stack{width: 100%; max-width: 18px; background: linear-gradient(180deg, #2563eb, #38bdf8); border-radius: 4px 4px 0 0; position: relative; overflow: hidden; min-height: 3px;}
+.ipo-bar-sme{position: absolute; left: 0; right: 0; bottom: 0; background: #a855f7; display: block;}
+.ipo-bar-col span{font-size: 9px; color: var(--muted);}
+.ipo-table-wrap{overflow-x: auto; margin-bottom: 12px;}
+.ipo-table{width: 100%; border-collapse: collapse; font-size: 13px;}
+.ipo-table th{text-align: left; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap;}
+.ipo-table td{padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top;}
+.ipo-table tbody tr{cursor: pointer;}
+.ipo-table tbody tr:hover{background: var(--panel-2);}
+.ipo-sub-grid{display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 6px 0 10px;}
+.ipo-sub-grid > div{background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px;}
+.ipo-sub-grid span{font-size: 10.5px; color: var(--muted); font-weight: 600;}
+.ipo-sub-grid b{font-size: 13.5px;}
+.ipo-mgr{font-size: 12px !important; font-weight: 600;}
+.ipo-expand-btn{width: 100%; margin-top: 10px;}
+.ipo-detail-card{margin-top: 4px;}
+.ipo-vault{display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-bottom: 12px;}
+.ipo-vault label{font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 5px; font-weight: 600;}
+.ipo-vault input, .ipo-vault select{padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-size: 13px;}
+.ipo-vault-row{display: flex; gap: 6px;}
+.ipo-vault-row input{flex: 1; min-width: 0;}
+.ipo-allot-sel{display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 10px; flex-wrap: wrap;}
+.ipo-allot-sel select{padding: 9px 10px; border-radius: 10px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-size: 13px; flex: 1; min-width: 180px;}
+.ipo-reg-grid{display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin-bottom: 8px;}
+.ipo-reg-card{display: flex; flex-direction: column; gap: 2px; align-items: flex-start; background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 14px; padding: 11px 12px; color: inherit; cursor: pointer; font: inherit; text-align: left;}
+.ipo-reg-card b{font-size: 13.5px;}
+.ipo-reg-card span{font-size: 11.5px; color: var(--muted);}
+.ipo-faq{border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; background: var(--panel);}
+.ipo-faq summary{cursor: pointer; font-weight: 700; font-size: 13.5px;}
+.ipo-faq p{font-size: 13px; line-height: 1.6; margin: 8px 0 2px;}
+.ipo-mgr-row{display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line);}
+.ipo-mgr-rank{width: 24px; height: 24px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0;}

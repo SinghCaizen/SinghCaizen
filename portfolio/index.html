@@ -24,7 +24,7 @@
 <link rel="manifest" href='data:application/manifest+json,{"name":"Folio — A Singh Caizen Product","short_name":"Folio","display":"standalone","start_url":".","background_color":"%23000000","theme_color":"%23000000","icons":[]}'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=38">
+<link rel="stylesheet" href="css/style.css?v=41">
 </head>
 <body>
 
@@ -398,37 +398,81 @@
 
     <!-- HISTORY -->
     <section id="view-ipo" class="view hidden">
-      <div class="panel">
-        <div class="panel-head"><h2>IPO MASTER</h2><span class="price-meta">Live, upcoming &amp; listed Indian IPOs — curated snapshot, verify on NSE/BSE before applying</span></div>
-        <div class="seg seg-small ipo-sub-seg" id="ipoSubSeg"><button type="button" data-iposub="live" class="seg-btn active">🔥 Live / Open</button><button type="button" data-iposub="upcoming" class="seg-btn">📅 Upcoming</button><button type="button" data-iposub="listed" class="seg-btn">📈 Listed / Past</button><button type="button" data-iposub="sme" class="seg-btn">🏢 SME IPOs</button><button type="button" data-iposub="apps" class="seg-btn">🏦 My Applications</button></div>
-        <div class="ipo-filter-row">
-          <div class="seg seg-small" id="ipoBoardSeg"><button type="button" data-ipoboard="ALL" class="seg-btn active">All Boards</button><button type="button" data-ipoboard="MAINBOARD" class="seg-btn">Mainboard</button><button type="button" data-ipoboard="NSE SME" class="seg-btn">NSE SME</button><button type="button" data-ipoboard="BSE SME" class="seg-btn">BSE SME</button></div>
-          <input type="text" id="ipoSearch" placeholder="Search IPO company name…" autocomplete="off">
-          <button class="btn btn-small" id="ipoRefreshBtn" type="button">🔄 Refresh Live IPO Buzz</button>
-          <button class="btn btn-small" id="ipoAddBtn" type="button">➕ Add Custom IPO</button>
-        </div>
-        <form id="ipoCustomForm" class="ipo-custom hidden" autocomplete="off">
-          <input type="text" id="icName" placeholder="Company name *" required>
-          <input type="text" id="icSymbol" placeholder="Listing symbol (e.g. VNL)">
-          <select id="icBoard"><option>MAINBOARD</option><option>NSE SME</option><option>BSE SME</option></select>
-          <select id="icStatus"><option value="upcoming">Upcoming</option><option value="open">Live / Open</option><option value="listed">Listed</option></select>
-          <input type="number" id="icLow" placeholder="Price band low ₹" step="any">
-          <input type="number" id="icHigh" placeholder="Price band high ₹" step="any">
-          <input type="number" id="icLot" placeholder="Lot size (shares)">
-          <input type="number" id="icIssue" placeholder="Issue size ₹ Cr" step="any">
-          <label>Open <input type="date" id="icOpen"></label>
-          <label>Close <input type="date" id="icClose"></label>
-          <label>Listing <input type="date" id="icListing"></label>
-          <select id="icRegistrar"><option>Link Intime</option><option>KFintech</option><option>Bigshare</option></select>
-          <button class="btn btn-gold btn-small" type="submit">Save IPO</button>
-          <button class="btn btn-small" id="icCancel" type="button">Cancel</button>
-        </form>
-        <div id="ipoList"></div>
-        <div id="ipoAppsWrap" class="hidden"></div>
+      <div class="panel ipo-hero">
+        <div class="panel-head"><h2>Open &amp; Upcoming IPOs in India</h2><span class="price-meta" id="ipoSyncNote">IPO Master-style dashboard · market figures = IPO Master snapshot (Nov 2026) · Folio's list = curated catalog below — verify on NSE/BSE before applying</span></div>
+        <p class="ipo-hero-line" id="ipoHeroLine"></p>
+        <div class="ipo-kpis" id="ipoKpis"></div>
+        <div class="ipo-sync-row"><button class="btn btn-gold btn-small" id="ipoSyncBtn" type="button">🔄 Sync Live from IPO Master</button><span class="price-meta" id="ipoSyncState">Built-in catalog loads instantly · sync tries ipomaster.net in the background</span></div>
       </div>
-      <div class="panel">
-        <div class="panel-head"><h2>LIVE IPO BUZZ</h2><span class="price-meta">Latest IPO headlines from Google News</span></div>
-        <div id="ipoBuzz"><p class="empty-note">Tap “🔄 Refresh Live IPO Buzz” to load the latest headlines.</p></div>
+      <div class="seg ipo-main-patti" id="ipoMainSeg"><button type="button" data-ipomain="all" class="seg-btn active">📊 All IPOs</button><button type="button" data-ipomain="gmp" class="seg-btn">🔥 IPO GMP</button><button type="button" data-ipomain="subs" class="seg-btn">📈 Subscription</button><button type="button" data-ipomain="allot" class="seg-btn">🎯 Allotment</button><button type="button" data-ipomain="faqs" class="seg-btn">❓ FAQs &amp; Lead Managers</button></div>
+
+      <div id="ipoViewAll">
+        <div class="panel">
+          <div class="seg seg-small ipo-sub-seg" id="ipoSubSeg"></div>
+          <div class="ipo-filter-row">
+            <div class="seg seg-small" id="ipoBoardSeg"><button type="button" data-ipoboard="ALL" class="seg-btn active">All</button><button type="button" data-ipoboard="MAINBOARD" class="seg-btn">Mainboard</button><button type="button" data-ipoboard="SME" class="seg-btn">SME</button></div>
+            <select id="ipoYearSel" class="ipo-sel"><option value="all">All years</option><option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option></select>
+            <select id="ipoSortSel" class="ipo-sel"><option value="new">Newest first</option><option value="gain">GMP / Listing Gain (High → Low)</option><option value="subs">Subscription (High → Low)</option><option value="size">Issue Size (High → Low)</option></select>
+            <input type="text" id="ipoSearch" placeholder="Search IPO company..." autocomplete="off">
+            <button class="btn btn-small" id="ipoApplyBtn" type="button">Apply</button>
+            <button class="btn btn-small" id="ipoResetBtn" type="button">Reset</button>
+            <button class="btn btn-small" id="ipoAddBtn" type="button">➕ Add Custom IPO</button>
+          </div>
+          <form id="ipoCustomForm" class="ipo-custom hidden" autocomplete="off">
+            <input type="text" id="icName" placeholder="Company name *" required>
+            <input type="text" id="icSymbol" placeholder="Listing symbol (e.g. VNL)">
+            <select id="icBoard"><option>MAINBOARD</option><option>NSE SME</option><option>BSE SME</option></select>
+            <select id="icStatus"><option value="upcoming">Upcoming</option><option value="open">Live / Open</option><option value="listed">Listed</option></select>
+            <input type="number" id="icLow" placeholder="Price band low ₹" step="any">
+            <input type="number" id="icHigh" placeholder="Price band high ₹" step="any">
+            <input type="number" id="icLot" placeholder="Lot size (shares)">
+            <input type="number" id="icIssue" placeholder="Issue size ₹ Cr" step="any">
+            <label>Open <input type="date" id="icOpen"></label>
+            <label>Close <input type="date" id="icClose"></label>
+            <label>Listing <input type="date" id="icListing"></label>
+            <select id="icRegistrar"><option>Link Intime</option><option>KFintech</option><option>Bigshare</option></select>
+            <button class="btn btn-gold btn-small" type="submit">Save IPO</button>
+            <button class="btn btn-small" id="icCancel" type="button">Cancel</button>
+          </form>
+          <div class="ipo-layout">
+            <div class="ipo-main-col"><div id="ipoList"></div><div id="ipoDetail"></div></div>
+            <aside class="ipo-aside">
+              <div class="ipo-widget" id="ipoAsideOpen"></div>
+              <div class="ipo-widget" id="ipoAsideWeek"></div>
+              <div class="ipo-widget" id="ipoAsideBest"></div>
+              <div class="ipo-widget" id="ipoAsideActivity"></div>
+            </aside>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>LIVE IPO BUZZ</h2><span class="price-meta">Latest IPO headlines from Google News</span></div>
+          <div class="ipo-sync-row"><button class="btn btn-small" id="ipoRefreshBtn" type="button">🔄 Refresh Live IPO Buzz</button></div>
+          <div id="ipoBuzz"><p class="empty-note">Tap “🔄 Refresh Live IPO Buzz” to load the latest headlines.</p></div>
+        </div>
+      </div>
+
+      <div id="ipoViewGmp" class="hidden"><div class="panel"><div class="panel-head"><h2>IPO GMP TRACKER</h2><span class="price-meta">Grey Market Premium is unofficial &amp; unregulated — for listed IPOs this shows the actual listing gain</span></div><div id="ipoGmpList"></div></div></div>
+
+      <div id="ipoViewSubs" class="hidden"><div class="panel"><div class="panel-head"><h2>IPO SUBSCRIPTION STATUS</h2><span class="price-meta">Category-wise demand (times subscribed) · splits shown where the snapshot carries them</span></div><div id="ipoSubsList"></div></div></div>
+
+      <div id="ipoViewAllot" class="hidden">
+        <div class="panel">
+          <div class="panel-head"><h2>ALLOTMENT CHECKER HUB</h2><span class="price-meta">Your PAN &amp; DP ID stay on this device only (local vault — never uploaded)</span></div>
+          <div class="ipo-vault">
+            <label>PAN Number <span class="ipo-vault-row"><input type="text" id="ipoVaultPan" placeholder="ABCDE1234F" maxlength="10" autocomplete="off"><button class="btn btn-small" id="ipoCopyPan" type="button">📋 Copy PAN</button></span></label>
+            <label>DP ID / Client ID <span class="ipo-vault-row"><input type="text" id="ipoVaultDp" placeholder="CDSL / NSDL DP + Client ID" autocomplete="off"><button class="btn btn-small" id="ipoCopyDp" type="button">📋 Copy DP ID</button></span></label>
+            <label>Default UPI App <select id="ipoVaultUpi"><option>iMobile Pay</option><option>Kotak 811</option><option>BHIM</option><option>PhonePe</option><option>Google Pay</option><option>Paytm</option><option>Other</option></select></label>
+          </div>
+          <label class="ipo-allot-sel">Check allotment for <select id="ipoAllotSel"></select></label>
+          <div class="ipo-reg-grid" id="ipoRegGrid"></div>
+          <p class="price-meta">Tapping a registrar copies your saved PAN first, then opens the official allotment page in a new tab.</p>
+        </div>
+        <div class="panel"><div class="panel-head"><h2>MY IPO APPLICATIONS &amp; UPI MANDATES</h2><span class="price-meta">Log an application from any IPO card (All IPOs → tap a card → Log My Application)</span></div><div id="ipoAppsWrap"></div></div>
+      </div>
+
+      <div id="ipoViewFaqs" class="hidden">
+        <div class="panel"><div class="panel-head"><h2>IPO FAQs</h2><span class="price-meta">The questions every first-time applicant asks</span></div><div id="ipoFaqList"></div></div>
+        <div class="panel"><div class="panel-head"><h2>LEAD MANAGERS — LEADERBOARD</h2><span class="price-meta">Ranked from Folio's catalog (issues handled &amp; their average listing gain)</span></div><div id="ipoManagers"></div></div>
       </div>
     </section>
 
@@ -806,6 +850,6 @@
 <script src="js/stocks.js?v=23"></script>
 <script src="js/app.js?v=38"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/features.js?v=40"></script>
+<script src="js/features.js?v=41"></script>
 </body>
 </html>
