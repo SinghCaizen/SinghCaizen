@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v53";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v54";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3243,7 +3243,7 @@ function ipoFiltered() {
   else if (ipoSort === "subs") list.sort((a, b) => (b.subsT || -1) - (a.subsT || -1));
   else if (ipoSort === "size") list.sort((a, b) => (b.size || -1) - (a.size || -1));
   else list.sort((a, b) => dkey(b).localeCompare(dkey(a)));
-  if (ipoQuick === "listed") list.sort((a, b) => String(b.close || b.listing || "").localeCompare(String(a.close || a.listing || "")));
+  if (ipoQuick === "listed") { list.sort((a, b) => String(b.close || b.listing || "").localeCompare(String(a.close || a.listing || ""))); list = list.slice(0, 10); }
   return list;
 }
 function ipoBadge(x) {
@@ -3286,7 +3286,7 @@ function ipoCardHtml(x) {
   const sizeTxt = x.size ? "₹" + Number(x.size).toLocaleString("en-IN") + " Cr." : (x.fresh ? "₹" + Number(x.fresh).toFixed(2) + " Cr. (Fresh)" : "TBA");
   const steps = [[x.open, "Open"], [x.close, "Close"], [x.allot, "Allotment"], [x.listing, "Listing"]];
   return '<article class="ipo-card">' +
-    '<div class="ipo-card-top"><span class="ipo-logo" style="--hue:' + ipoHue(x) + '">' + logo + '</span><span class="ipo-title-wrap"><b class="ipo-title">' + title + '</b><small>Book-building IPO (BSE, NSE)' + (x.board ? " · " + (x.board === "SME" ? "SME" : "Mainboard") : "") + '</small></span><span class="ipo-top-r">' + statusPill + '<button type="button" class="ipo-star-btn' + (starred ? " on" : "") + '" data-ipostar="' + key + '" title="Save to IPO Watchlist">' + (starred ? "★" : "☆") + "</button></span></div>" +
+    '<div class="ipo-card-top"><span class="ipo-logo" style="--hue:' + ipoHue(x) + '">' + logo + '</span><span class="ipo-title-wrap"><b class="ipo-title">' + title + '</b><small>Book-building IPO (BSE, NSE)' + (x.board ? " · " + (x.board === "SME" ? "SME" : "Mainboard") : "") + "</small>" + (ipoCountBadge(x) ? '<small class="ipo-count-badge">' + ipoCountBadge(x) + "</small>" : "") + '</span><span class="ipo-top-r">' + statusPill + '<button type="button" class="ipo-star-btn' + (starred ? " on" : "") + '" data-ipostar="' + key + '" title="Save to IPO Watchlist">' + (starred ? "★" : "☆") + "</button></span></div>" +
     '<div class="ipo-date-grid"><div class="ipo-date-box open"><span>Open Date</span><b>' + (x.open ? ipoShortD(x.open) + " " + x.open.slice(0, 4) : "—") + '</b></div><div class="ipo-date-box close"><span>Close Date</span><b>' + (x.close ? ipoShortD(x.close) + " " + x.close.slice(0, 4) : "—") + "</b></div></div>" +
     '<div class="ipo-mrow r3"><div><span>Price Band</span><b>' + band + '</b></div><div><span>Lot Size</span><b>' + (x.lot || "-") + '</b></div><div><span>Min Invest.</span><b>' + minInv + "</b></div></div>" +
     '<div class="ipo-mrow r2"><div><span>Face Value</span><b>' + (x.fv ? x.fv.toFixed(1) : "—") + '</b></div><div><span>Issue Size</span><b>' + sizeTxt + "</b></div></div>" +
@@ -3316,9 +3316,12 @@ function renderIpoHero() {
 }
 function renderIpoQuick() {
   const seg = $("ipoSubSeg"); if (!seg) return;
-  const all = ipoCat === "watch" ? ipoAll().filter(x => ipoWatch().includes(ipoKey(x))) : ipoAll();
-  const n = s => all.filter(x => ipoEffStatus(x) === s).length;
-  const items = [["live", "Ongoing (" + n("open") + ")"], ["upcoming", "Upcoming (" + n("upcoming") + ")"], ["listed", "Closed (" + n("listed") + ")"]];
+  let base = ipoAll();
+  if (ipoCat === "watch") { const w = ipoWatch(); base = base.filter(x => w.includes(ipoKey(x))); }
+  if (ipoBoard === "MAINBOARD") base = base.filter(x => x.board === "MAINBOARD");
+  if (ipoBoard === "SME") base = base.filter(x => /SME/.test(x.board || ""));
+  const n = s => base.filter(x => ipoEffStatus(x) === s).length;
+  const items = [["live", "Ongoing (" + n("open") + ")"], ["upcoming", "Upcoming (" + n("upcoming") + ")"], ["listed", "Closed (" + Math.min(10, n("listed")) + ")"]];
   seg.innerHTML = items.map(i => '<button type="button" data-ipoquick="' + i[0] + '" class="seg-btn ipo-status-pill' + (ipoQuick === i[0] ? " active" : "") + '">' + i[1] + "</button>").join("");
   seg.querySelectorAll("[data-ipoquick]").forEach(b => b.addEventListener("click", () => { ipoQuick = b.dataset.ipoquick; ipoOpenKey = ""; renderIpo(); }));
 }
@@ -3427,33 +3430,40 @@ function ipoRegInfo(x) {
   if (r) return r;
   return { name: (x.reg || "Registrar") + " · via BSE", url: "https://www.bseindia.com/investors/appli_check.aspx" };
 }
+function ipoDayDiff(a, b) { return Math.round((new Date(a + "T00:00:00+05:30") - new Date(b + "T00:00:00+05:30")) / 86400000); }
+function ipoCountBadge(x) {
+  const eff = ipoEffStatus(x); const t = istTodayStr();
+  if (eff === "upcoming" && x.open) { const d = ipoDayDiff(x.open, t); return d <= 0 ? "Opens Today" : d === 1 ? "Opens Tomorrow" : "Opens in " + d + " Days"; }
+  if (eff === "open" && x.close) { const d = ipoDayDiff(x.close, t); return d <= 0 ? "Closing Today" : d === 1 ? "Closes Tomorrow" : "Closes in " + d + " Days"; }
+  return "";
+}
 function ipoAllotCard(x) {
   const key = ipoKey(x);
   const reg = ipoRegInfo(x);
   const today = istTodayStr();
   const future = x.allot && x.allot >= today;
   const dateBadge = future ? "📅 Allotment: " + ipoFmtD(x.allot) : "Allotted: " + ipoFmtD(x.allot);
-  const statusPill = future ? '<span class="ipo-badge upcoming-blue">⏳ Allotment on ' + ipoShortD(x.allot) + "</span>" : '<span class="ipo-badge open">✅ Allotment Out</span>';
+  const statusPill = future ? '<span class="ipo-badge upcoming-blue">⏳ Allotment on ' + ipoShortD(x.allot) + "</span>" : '<span class="ipo-badge open">✅ Allotment Out · Check Now</span>';
   const boardPill = x.board === "SME" ? "NSE SME" : "Mainboard";
   const price = x.high != null ? "₹" + Number(x.high).toLocaleString("en-IN") : "TBA";
   const subs = x.subsT != null ? Number(x.subsT).toFixed(2).replace(/\.00$/, "") + "x" : "—";
   return '<article class="ipo-card ipo-allot-card">' +
     '<div class="ipo-card-top"><span class="ipo-logo" style="--hue:' + ipoHue(x) + '"><span class="ipo-logo-mono">' + ipoMono(x) + '</span></span><span class="ipo-title-wrap"><b class="ipo-title">' + esc(x.name) + '</b><small><span class="ipo-board-pill">' + boardPill + '</span></small></span><span class="ipo-top-r allot-r"><span class="ipo-allot-date">' + dateBadge + "</span>" + statusPill + "</span></div>" +
     '<div class="ipo-allot-strip"><span>Issue Date: ' + ipoFmtD(x.open) + "</span><span>Issue Price: " + price + "</span><span>Sub: " + subs + "</span><span>Registrar: <b>" + esc(reg.name) + "</b></span></div>" +
-    '<a class="btn btn-gold ipo-allot-btn" href="' + reg.url + '" target="_blank" rel="noopener">🎯 Check Allotment on ' + esc(reg.name) + " ↗</a>" +
+    '<a class="btn btn-gold ipo-allot-btn" href="' + reg.url + '" target="_blank" rel="noopener">' + (future ? "🎯 Registrar: " + esc(reg.name) + " (Opens on Allotment Day) ↗" : "🎯 Check Allotment on " + esc(reg.name) + " ↗") + "</a>" +
     "</article>";
 }
 function renderIpoAllot() {
   const box = $("ipoViewAllot"); if (!box) return;
   const today = istTodayStr();
-  let list = ipoAll().filter(x => x.allot);
+  let list = ipoAll().filter(x => x.allot && ipoDayDiff(today, x.allot) <= 7);
   if (ipoAllotQuery) { const q = ipoAllotQuery.toLowerCase(); list = list.filter(x => x.name.toLowerCase().includes(q)); }
   const upcoming = list.filter(x => x.allot >= today).sort((a, b) => a.allot.localeCompare(b.allot));
-  const past = list.filter(x => x.allot < today).sort((a, b) => b.allot.localeCompare(a.allot));
-  const ordered = upcoming.concat(past);
+  const recent = list.filter(x => x.allot < today).sort((a, b) => b.allot.localeCompare(a.allot));
+  const ordered = upcoming.concat(recent);
   box.innerHTML = '<div class="panel ipo-allot-head"><h2>IPO Allotment Status</h2><p class="ipo-allot-sub">Sorted by allotment date · Tap "Check Allotment" to open the official registrar portal for that IPO.</p>' +
     '<input id="ipoAllotSearch" class="ipo-allot-search" type="search" placeholder="Search company name..." value="' + esc(ipoAllotQuery) + '"></div>' +
-    '<div class="ipo-cards-wrap">' + (ordered.length ? ordered.map(ipoAllotCard).join("") : '<p class="empty-note">No IPOs match your search.</p>') + "</div>";
+    '<div class="ipo-cards-wrap">' + (ordered.length ? ordered.map(ipoAllotCard).join("") : '<p class="empty-note">No allotments this week — upcoming and last-7-days allotments appear here.</p>') + "</div>";
   const s = $("ipoAllotSearch");
   if (s) s.addEventListener("input", () => { ipoAllotQuery = s.value; const pos = s.selectionStart; renderIpoAllot(); const s2 = $("ipoAllotSearch"); if (s2) { s2.focus(); try { s2.setSelectionRange(pos, pos); } catch (e) {} } });
 }
