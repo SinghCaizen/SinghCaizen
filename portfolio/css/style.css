@@ -1671,3 +1671,8 @@ input,select,textarea{border-radius:var(--r-sm)}
 .hold-table td,.hold-table th{white-space:nowrap}
 .hold-table tbody tr{cursor:pointer}
 .tbl-scroll{overflow-x:auto}
+
+/* ===== v81: chips bar tidy on both form factors ===== */
+.dash-chips{scroll-snap-type:x proximity}
+.dash-chips .insx-chip{scroll-snap-align:start}
+@media (min-width:1024px){ .dash-chips{flex-wrap:wrap;overflow-x:visible} }

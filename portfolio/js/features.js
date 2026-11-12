@@ -394,6 +394,8 @@ function openStock(sym) {
   $("stockName").textContent = row ? row.name : (metaStock ? metaStock[1] : "");
   document.querySelectorAll("#stockSeg .seg-btn").forEach(b => b.classList.toggle("active", b.dataset.r === stockRange));
   $("stockModal").classList.remove("hidden");
+  /* the previous stock's chart must vanish NOW, not when the new data lands */
+  try { lwDispose(); const w = $("lwWrap"), b = $("lwBar"), l = $("lwLegend"); if (w) w.classList.add("hidden"); if (b) b.classList.add("hidden"); if (l) l.classList.add("hidden"); const sb = $("stockChart"); if (sb) sb.classList.remove("hidden"); } catch (e) {}
   requestAnimationFrame(() => requestAnimationFrame(() => drawStock()));
 }
 async function drawStock() {
@@ -622,6 +624,7 @@ function ensureLWLib() {
 
 /* ---------- TradingView Lightweight Charts engine (modal pro chart) ---------- */
 let lwChart = null, lwSeries = null;
+let lwTok = 0; /* chart paint token: only the newest open may paint */
 function lwDispose() { if (lwChart) { try { lwChart.remove(); } catch (e) {} lwChart = null; lwSeries = null; } }
 function dayStr(t) { return new Date(t).toISOString().slice(0, 10); }
 /* Sanitise Yahoo OHLCV: Lightweight Charts dies silently on null/NaN values,
@@ -662,20 +665,24 @@ async function renderLW() {
   if (!wrap || !bar) return;
   const off = () => { wrap.classList.add("hidden"); bar.classList.add("hidden"); if (legend) legend.classList.add("hidden"); if (svgBox) svgBox.classList.remove("hidden"); lwDispose(); };
   if (!stockSym) return off();
-  if (!window.LightweightCharts) { const okLib = await ensureLWLib(); if (!okLib) return off(); }
+  const mySym = stockSym, myTok = ++lwTok;
+  if (!window.LightweightCharts) { const okLib = await ensureLWLib(); if (!okLib) return off(); if (myTok !== lwTok || stockSym !== mySym) return; }
   if (["1d5m", "5d15m", "5d1h"].includes(stockRange)) return off();
   let bars = null, fullCloses = null;
   const DAILY = { "7d15m": 7, "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366 };
   if (DAILY[stockRange]) {
-    const mst = await fetchMaster(stockSym);
+    const mst = await fetchMaster(mySym);
     if (!mst || !mst.ohlc || mst.ohlc.length < 2) return off();
     fullCloses = mst.points.map(p => ({ t: p.t, c: p.c }));
     bars = stockRange === "1y" ? mst.ohlc : mst.ohlc.filter(b => b.t >= Date.now() - DAILY[stockRange] * 86400000);
   } else {
-    try { bars = await fetchOHLC(stockSym, stockRange === "5y" ? "5y" : "max", stockRange === "5y" ? "1wk" : "1mo"); } catch (e) { return off(); }
+    try { bars = await fetchOHLC(mySym, stockRange === "5y" ? "5y" : "max", stockRange === "5y" ? "1wk" : "1mo"); } catch (e) { return off(); }
     if (!bars || bars.length < 2) return off();
     fullCloses = bars.map(b => ({ t: b.t, c: b.c }));
   }
+  /* root fix for "previous stock's chart": if a newer open happened while
+     this data was loading, this paint belongs to an old stock — drop it. */
+  if (myTok !== lwTok || stockSym !== mySym) return;
   const modal = $("stockModal");
   if (!modal || modal.classList.contains("hidden")) return;
   const byDay = new Map();
@@ -1510,7 +1517,14 @@ async function fetchChartValidated(targetUrl, timeoutMs) {
 
 /* ---------- single-fetch master engine (v8 chart powers the whole modal) ---------- */
 const masterCache = {};
+const masterInflight = {};
 async function fetchMaster(sym) {
+  if (masterInflight[sym]) return masterInflight[sym];
+  const p = fetchMasterImpl(sym);
+  masterInflight[sym] = p;
+  try { return await p; } finally { delete masterInflight[sym]; }
+}
+async function fetchMasterImpl(sym) {
   const mc = masterCache[sym];
   if (mc && Date.now() - mc.ts < 6 * 3600 * 1000) return mc;
   let master = null;
@@ -1527,9 +1541,7 @@ async function fetchMaster(sym) {
     ];
     if (norm.endsWith(".NS")) candidates.push("https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(baseTicker(sym) + ".BO") + suffix);
     let r0 = null;
-    for (const u of candidates) {
-      try { r0 = await fetchChartValidated(u, 6500); break; } catch (e) { /* next candidate */ }
-    }
+    try { r0 = await Promise.any(candidates.map(u => fetchChartValidated(u, 6500))); } catch (e) { r0 = null; }
     try {
       if (!r0) throw new Error("no validated chart");
       const q0 = (r0.indicators.quote && r0.indicators.quote[0]) || {};
@@ -2373,7 +2385,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v76";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v77";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -4720,6 +4732,41 @@ function dashPanels() { return [...document.querySelectorAll("#view-dashboard > 
 function dashKey(panel) { const h = panel.querySelector("h2"); return (h ? h.textContent : "panel").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase(); }
 function dashFindPanel(titlePart) { return dashPanels().find(p => { const h = p.querySelector("h2"); return h && h.textContent.toLowerCase().includes(titlePart); }); }
 let heroPnlMode = "overall";
+function dashDecoratePanels() {
+  /* collapsible cards (state remembered on this device) */
+let saved = {}; try { saved = JSON.parse(localStorage.getItem("folio_dash_collapse") || "{}"); } catch (e) {}
+dashPanels().forEach(p => {
+  const head = p.querySelector(".panel-head"); if (!head || head.querySelector(".dash-collapse")) return;
+  const key = dashKey(p);
+  const btn = document.createElement("button");
+  btn.type = "button"; btn.className = "dash-collapse"; btn.setAttribute("aria-label", "Collapse or expand this card");
+  btn.textContent = saved[key] ? "▸" : "▾";
+  if (saved[key]) p.classList.add("collapsed");
+  btn.addEventListener("click", () => {
+    const now = p.classList.toggle("collapsed");
+    btn.textContent = now ? "▸" : "▾";
+    let s2 = {}; try { s2 = JSON.parse(localStorage.getItem("folio_dash_collapse") || "{}"); } catch (e) {}
+    s2[key] = now; try { localStorage.setItem("folio_dash_collapse", JSON.stringify(s2)); } catch (e) {}
+  });
+  head.appendChild(btn);
+  /* customize controls */
+  const ctl = document.createElement("span"); ctl.className = "dash-ctl";
+  ctl.innerHTML = '<button type="button" data-dctl="up" aria-label="Move card up">↑</button><button type="button" data-dctl="down" aria-label="Move card down">↓</button><button type="button" data-dctl="hide" aria-label="Hide card">👁</button>';
+  ctl.addEventListener("click", e => {
+    const b = e.target.closest("[data-dctl]"); if (!b) return;
+    const L = dashLayout(); const k = dashKey(p);
+    if (b.dataset.dctl === "hide") { if (!L.hidden.includes(k)) L.hidden.push(k); }
+    else {
+      const order = dashPanels().map(dashKey);
+      const i = order.indexOf(k); const j = b.dataset.dctl === "up" ? i - 1 : i + 1;
+      if (j < 0 || j >= order.length) return;
+      [order[i], order[j]] = [order[j], order[i]]; L.order = order;
+    }
+    state.profile.dashLayout = L; persist(); dashApplyLayout();
+  });
+  head.appendChild(ctl);
+});
+}
 function dashEnsure() {
   const view = $("view-dashboard"); if (!view || $("dashChips")) return;
   const bar = document.createElement("div"); bar.id = "dashChips"; bar.className = "dash-chips";
@@ -4728,6 +4775,7 @@ function dashEnsure() {
     '<button type="button" class="insx-chip" id="dashCompactBtn">Compact</button>';
   const grid = view.querySelector(".stat-grid");
   if (grid) view.insertBefore(bar, grid); else view.prepend(bar);
+  try { platInstallBtn(); } catch (e) {}
   bar.addEventListener("click", e => {
     const chip = e.target.closest("[data-dash-chip]");
     if (chip) { dashGo(chip.dataset.dashChip); return; }
@@ -4738,39 +4786,7 @@ function dashEnsure() {
       const L = dashLayout(); L.compact = on; state.profile.dashLayout = L; persist();
     }
   });
-  /* collapsible cards (state remembered on this device) */
-  let saved = {}; try { saved = JSON.parse(localStorage.getItem("folio_dash_collapse") || "{}"); } catch (e) {}
-  dashPanels().forEach(p => {
-    const head = p.querySelector(".panel-head"); if (!head || head.querySelector(".dash-collapse")) return;
-    const key = dashKey(p);
-    const btn = document.createElement("button");
-    btn.type = "button"; btn.className = "dash-collapse"; btn.setAttribute("aria-label", "Collapse or expand this card");
-    btn.textContent = saved[key] ? "▸" : "▾";
-    if (saved[key]) p.classList.add("collapsed");
-    btn.addEventListener("click", () => {
-      const now = p.classList.toggle("collapsed");
-      btn.textContent = now ? "▸" : "▾";
-      let s2 = {}; try { s2 = JSON.parse(localStorage.getItem("folio_dash_collapse") || "{}"); } catch (e) {}
-      s2[key] = now; try { localStorage.setItem("folio_dash_collapse", JSON.stringify(s2)); } catch (e) {}
-    });
-    head.appendChild(btn);
-    /* customize controls */
-    const ctl = document.createElement("span"); ctl.className = "dash-ctl";
-    ctl.innerHTML = '<button type="button" data-dctl="up" aria-label="Move card up">↑</button><button type="button" data-dctl="down" aria-label="Move card down">↓</button><button type="button" data-dctl="hide" aria-label="Hide card">👁</button>';
-    ctl.addEventListener("click", e => {
-      const b = e.target.closest("[data-dctl]"); if (!b) return;
-      const L = dashLayout(); const k = dashKey(p);
-      if (b.dataset.dctl === "hide") { if (!L.hidden.includes(k)) L.hidden.push(k); }
-      else {
-        const order = dashPanels().map(dashKey);
-        const i = order.indexOf(k); const j = b.dataset.dctl === "up" ? i - 1 : i + 1;
-        if (j < 0 || j >= order.length) return;
-        [order[i], order[j]] = [order[j], order[i]]; L.order = order;
-      }
-      state.profile.dashLayout = L; persist(); dashApplyLayout();
-    });
-    head.appendChild(ctl);
-  });
+  dashDecoratePanels();
   /* restore-hidden strip */
   const strip = document.createElement("div"); strip.id = "dashHiddenStrip"; view.appendChild(strip);
   /* hero: tap P&L to toggle Today / Overall */
@@ -4897,7 +4913,7 @@ async function pulseLoad() {
 const _renderDashboardT4 = renderDashboard;
 renderDashboard = function () {
   _renderDashboardT4();
-  try { dashEnsure(); dashApplyLayout(); if (heroPnlMode === "today") dashHero(); else dashHeroSparkOnly(); pulseLoad(); } catch (e) {}
+  try { dashEnsure(); dashDecoratePanels(); dashApplyLayout(); if (heroPnlMode === "today") dashHero(); else dashHeroSparkOnly(); pulseLoad(); } catch (e) {}
 };
 function dashHeroSparkOnly() { const keep = heroPnlMode; heroPnlMode = "spark"; dashHero(); heroPnlMode = keep; }
 
@@ -5003,6 +5019,7 @@ function platInstallBtn() {
   const b = document.createElement("button");
   b.type = "button"; b.className = "insx-chip"; b.id = "installBtn"; b.textContent = "📲 Install Folio";
   b.addEventListener("click", async () => {
+    if (window.matchMedia("(display-mode: standalone)").matches) { toast("Folio is already installed on this device — open it from your home screen / app list."); return; }
     if (deferredInstall) { deferredInstall.prompt(); try { await deferredInstall.userChoice; } catch (e) {} deferredInstall = null; b.remove(); }
     else toast("To install: open your browser menu and choose “Add to Home screen” / “Install app”.");
   });
