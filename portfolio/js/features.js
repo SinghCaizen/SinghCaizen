@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v64";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v65";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3187,7 +3187,7 @@ const IPO_FAQS = [
   ["When and how do I check allotment?", "Allotment finalises a day or two after the issue closes. Check on the registrar's website (Link Intime / KFintech / Bigshare) with PAN, or on BSE's application check. This hub's Allotment tab keeps the official links one tap away."],
   ["What happens on listing day?", "Shares credit to your demat a day before listing. On listing day you can sell immediately or hold — there is no lock-in for IPO allottees (except anchor investors). SME listings have a lot-size exit: you can only sell multiples of the lot initially."]
 ];
-let ipoMainView = "all", ipoQuick = "live", ipoBoard = "ALL", ipoYear = "all", ipoSort = "new", ipoQuery = "", ipoOpenKey = "";
+let ipoMainView = "all", ipoQuick = "openup", ipoBoard = "ALL", ipoYear = "2026", ipoSort = "new", ipoQuery = "", ipoOpenKey = "", ipoShowOlder = false;
 let ipoSyncing = false;
 function ipoSynced() { try { return JSON.parse(localStorage.getItem("folio_ipo_synced") || "[]").filter(s => !(/crystal/i.test(s.name || "") && (s.low == null || s.low < 272.07))); } catch (e) { return []; } }
 function ipoWatch() { try { return JSON.parse(localStorage.getItem("folio_ipo_watch") || "[]"); } catch (e) { return []; } }
@@ -3205,17 +3205,20 @@ function ipoHue(x) { let h = 0; const s = x.name || ""; for (let i = 0; i < s.le
 function ipoShortD(d) { if (!d) return "—"; const p = d.split("-"); const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return p.length === 3 ? p[2].replace(/^0/, "") + " " + M[parseInt(p[1], 10) - 1] : d; }
 let ipoCat = "mainline";
 function istTodayStr() { try { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } }
+function ipoIstHour() { try { return parseInt(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", hour12: false }).format(new Date()), 10) % 24; } catch (e) { return new Date().getHours(); } }
 function ipoEffStatus(x) {
   if (!x || !x.open || !x.close) return x ? x.status : "listed";
   const t = istTodayStr();
   if (t < x.open) return "upcoming";
-  if (t > x.close) return "listed";
-  return "open";
+  if (t < x.close) return "open";
+  if (t === x.close) return ipoIstHour() >= 17 ? "closed" : "open";
+  /* past the close date: Closed until the listing date arrives */
+  if (x.listing) return t >= x.listing ? "listed" : "closed";
+  return ipoDayDiff(t, x.close) > 14 ? "listed" : "closed";
 }
 function ipoAll() {
   const custom = ((state.profile && state.profile.customIpos) || []).map(x => Object.assign({}, x, { custom: true }));
-  const synced = ipoSynced().filter(s => !custom.some(c => c.name.toLowerCase() === s.name.toLowerCase()) && !IPO_CATALOG.some(c => c.name.toLowerCase() === s.name.toLowerCase()));
-  return custom.concat(synced, IPO_CATALOG);
+  return custom.concat(IPO_CATALOG);
 }
 function ipoKey(x) { return (x.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-"); }
 function ipoFmtD(d) { if (!d) return "—"; const p = d.split("-"); if (p.length !== 3) return d; const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return p[2].replace(/^0/, "") + " " + M[parseInt(p[1], 10) - 1] + " " + p[0]; }
@@ -3228,8 +3231,10 @@ function ipoSubsParts(x) { return x.subs || null; }
 function ipoFiltered() {
   let list = ipoAll();
   if (ipoCat === "watch") { const w = ipoWatch(); list = list.filter(x => w.includes(ipoKey(x))); }
-  if (ipoQuick === "live") list = list.filter(x => ipoEffStatus(x) === "open");
+  if (ipoQuick === "openup") list = list.filter(x => { const s = ipoEffStatus(x); return s === "open" || s === "upcoming"; });
+  else if (ipoQuick === "live") list = list.filter(x => ipoEffStatus(x) === "open");
   else if (ipoQuick === "upcoming") list = list.filter(x => ipoEffStatus(x) === "upcoming");
+  else if (ipoQuick === "closed") list = list.filter(x => ipoEffStatus(x) === "closed");
   else if (ipoQuick === "listed") list = list.filter(x => ipoEffStatus(x) === "listed");
   else if (ipoQuick === "sme") list = list.filter(x => /SME/.test(x.board || ""));
   else if (ipoQuick === "y2026") list = list.filter(x => x.year === 2026);
@@ -3243,12 +3248,17 @@ function ipoFiltered() {
   else if (ipoSort === "subs") list.sort((a, b) => (b.subsT || -1) - (a.subsT || -1));
   else if (ipoSort === "size") list.sort((a, b) => (b.size || -1) - (a.size || -1));
   else list.sort((a, b) => dkey(b).localeCompare(dkey(a)));
-  if (ipoQuick === "listed") { list.sort((a, b) => String(b.close || b.listing || "").localeCompare(String(a.close || a.listing || ""))); list = list.slice(0, 10); }
+  window.__ipoOlderCount = 0;
+  if (ipoQuick === "closed" || ipoQuick === "listed") {
+    list.sort((a, b) => String(b.listing || b.close || "").localeCompare(String(a.listing || a.close || "")));
+    if (!ipoShowOlder && list.length > 20) { window.__ipoOlderCount = list.length - 20; list = list.slice(0, 20); }
+  }
   return list;
 }
 function ipoBadge(x) {
   if (ipoEffStatus(x) === "open") return '<span class="ipo-badge open">● LIVE · Closes ' + ipoFmtD(x.close) + "</span>";
   if (ipoEffStatus(x) === "upcoming") return '<span class="ipo-badge upcoming">Opens ' + ipoFmtD(x.open) + "</span>";
+  if (ipoEffStatus(x) === "closed") return '<span class="ipo-badge closed">Bidding closed' + (x.allot ? " · Allotment " + ipoFmtD(x.allot) : "") + (x.listing ? " · Listing " + ipoFmtD(x.listing) : "") + "</span>";
   const g = ipoGain(x);
   return '<span class="ipo-badge listed">Listed ' + ipoFmtD(x.listing) + (g != null ? ' · <b class="' + (g >= 0 ? "pos" : "neg") + '">' + (g >= 0 ? "+" : "") + g.toFixed(1) + "%</b>" : "") + "</span>";
 }
@@ -3320,10 +3330,11 @@ function renderIpoQuick() {
   if (ipoCat === "watch") { const w = ipoWatch(); base = base.filter(x => w.includes(ipoKey(x))); }
   if (ipoBoard === "MAINBOARD") base = base.filter(x => x.board === "MAINBOARD");
   if (ipoBoard === "SME") base = base.filter(x => /SME/.test(x.board || ""));
+  if (ipoYear !== "all") base = base.filter(x => x.year === parseInt(ipoYear, 10));
   const n = s => base.filter(x => ipoEffStatus(x) === s).length;
-  const items = [["live", "Ongoing (" + n("open") + ")"], ["upcoming", "Upcoming (" + n("upcoming") + ")"], ["listed", "Closed (" + Math.min(10, n("listed")) + ")"]];
+  const items = [["openup", "Open + Upcoming (" + (n("open") + n("upcoming")) + ")"], ["live", "Open (" + n("open") + ")"], ["upcoming", "Upcoming (" + n("upcoming") + ")"], ["closed", "Closed (" + n("closed") + ")"], ["listed", "Listed (" + n("listed") + ")"]];
   seg.innerHTML = items.map(i => '<button type="button" data-ipoquick="' + i[0] + '" class="seg-btn ipo-status-pill' + (ipoQuick === i[0] ? " active" : "") + '">' + i[1] + "</button>").join("");
-  seg.querySelectorAll("[data-ipoquick]").forEach(b => b.addEventListener("click", () => { ipoQuick = b.dataset.ipoquick; ipoOpenKey = ""; renderIpo(); }));
+  seg.querySelectorAll("[data-ipoquick]").forEach(b => b.addEventListener("click", () => { ipoQuick = b.dataset.ipoquick; ipoOpenKey = ""; ipoShowOlder = false; renderIpo(); }));
 }
 function renderIpoAside() {
   const all = ipoAll();
@@ -3355,17 +3366,18 @@ function renderIpoAll() {
   const detail = $("ipoDetail"); if (detail) detail.innerHTML = "";
   if (!list.length) {
     if (ipoCat === "watch") { wrap.innerHTML = '<div class="ipo-card ipo-empty"><h3>No starred IPOs yet</h3><p class="empty-note">Tap the ☆ on any IPO card to track it here.</p></div>'; return; }
-    if (ipoQuick === "live") {
-      const upN = ipoAll().filter(x => x.status === "upcoming").length;
-      wrap.innerHTML = '<div class="ipo-card ipo-empty"><svg class="ipo-empty-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><h3>No Ongoing IPOs</h3><p class="empty-note">You can visit upcoming section</p><button type="button" class="btn btn-gold" data-emptyup="1">View Upcoming (' + upN + ') IPO →</button></div>';
+    if (ipoQuick === "live" || ipoQuick === "openup") {
+      const next = ipoAll().filter(x => ipoEffStatus(x) === "upcoming").sort((a, b) => String(a.open).localeCompare(String(b.open)))[0];
+      wrap.innerHTML = '<div class="ipo-card ipo-empty"><svg class="ipo-empty-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><h3>No IPO open right now</h3><p class="empty-note">' + (next ? "Next: " + esc(next.name) + " on " + ipoFmtD(next.open) + "." : "No upcoming IPO is on the calendar yet.") + '</p>' + (next ? '<button type="button" class="btn btn-gold" data-emptyup="1">View Upcoming →</button>' : "") + "</div>";
       const u = wrap.querySelector("[data-emptyup]"); if (u) u.addEventListener("click", () => { ipoQuick = "upcoming"; renderIpo(); });
       return;
     }
-    wrap.innerHTML = '<p class="empty-note">No IPOs match this filter in the Folio catalog. Add one with “➕ Add Custom IPO” or tap “🔄 Sync Live from IPO Master”.</p>';
+    wrap.innerHTML = '<p class="empty-note">No IPOs match this filter. Try another year, or add one with “➕ Add Custom IPO”.</p>';
     return;
   }
-  wrap.innerHTML = ipoTableHtml(list) + '<div class="ipo-cards-wrap">' + list.map(ipoCardHtml).join("") + "</div>";
+  wrap.innerHTML = ipoTableHtml(list) + '<div class="ipo-cards-wrap">' + list.map(ipoCardHtml).join("") + "</div>" + (window.__ipoOlderCount > 0 ? '<button type="button" class="btn btn-gold" id="ipoShowOlderBtn" style="width:100%;margin-top:10px">Show older (' + window.__ipoOlderCount + " more)</button>" : "");
   wrap.querySelectorAll("[data-deskipo]").forEach(r => r.addEventListener("click", () => openIpoDeep(r.dataset.deskipo)));
+  const sob = $("ipoShowOlderBtn"); if (sob) sob.addEventListener("click", () => { ipoShowOlder = true; renderIpoAll(); });
 }
 function ipoShowDetail(key, keep) {
   const x = ipoAll().find(i => ipoKey(i) === key); const d = $("ipoDetail"); if (!x || !d) return;
@@ -3490,7 +3502,6 @@ function renderIpo() {
   else if (ipoMainView === "subs") renderIpoSubs();
   else if (ipoMainView === "allot") renderIpoAllot();
   else if (ipoMainView === "faqs") renderIpoFaqs();
-  if (!window.__ipoSyncTried) { window.__ipoSyncTried = 1; setTimeout(() => ipoSyncMaster(true), 1500); }
 }
 async function ipoSyncMaster(silent) {
   if (ipoSyncing) return; ipoSyncing = true;
@@ -3644,7 +3655,7 @@ function wireIpo() {
   const ss = $("ipoSortSel"); if (ss) ss.addEventListener("change", () => { ipoSort = ss.value; renderIpoAll(); });
   const search = $("ipoSearch"); if (search) search.addEventListener("input", () => { ipoQuery = search.value.trim(); renderIpoAll(); });
   const ap = $("ipoApplyBtn"); if (ap) ap.addEventListener("click", () => { renderIpoAll(); toast("Filters applied"); });
-  const rs = $("ipoResetBtn"); if (rs) rs.addEventListener("click", () => { ipoQuick = "all"; ipoBoard = "ALL"; ipoYear = "all"; ipoSort = "new"; ipoQuery = ""; if (search) search.value = ""; if (ys) ys.value = "all"; if (ss) ss.value = "new"; if (bs) bs.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x.dataset.ipoboard === "ALL")); renderIpo(); });
+  const rs = $("ipoResetBtn"); if (rs) rs.addEventListener("click", () => { ipoQuick = "openup"; ipoShowOlder = false; ipoBoard = "ALL"; ipoYear = "2026"; ipoSort = "new"; ipoQuery = ""; if (search) search.value = ""; if (ys) ys.value = "2026"; if (ss) ss.value = "new"; if (bs) bs.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x.dataset.ipoboard === "ALL")); renderIpo(); });
   const sync = $("ipoSyncBtn"); if (sync) sync.addEventListener("click", () => ipoSyncMaster(false));
   const add = $("ipoAddBtn"); if (add) add.addEventListener("click", () => { const f = $("ipoCustomForm"); if (f) f.classList.toggle("hidden"); });
   const cancel = $("icCancel"); if (cancel) cancel.addEventListener("click", () => { const f = $("ipoCustomForm"); if (f) f.classList.add("hidden"); });

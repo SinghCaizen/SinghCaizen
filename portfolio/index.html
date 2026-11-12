@@ -35,7 +35,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=65">
+<link rel="stylesheet" href="css/style.css?v=66">
 <style>
 #splash{position:fixed;inset:0;z-index:2000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease}
 html[data-theme="light"] #splash{background:#f6f1e7}
@@ -445,7 +445,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
         <div class="panel-head"><h2>Open &amp; Upcoming IPOs in India</h2><span class="price-meta" id="ipoSyncNote">IPO Master-style dashboard · market figures = IPO Master snapshot (Nov 2026) · Folio's list = curated catalog below — verify on NSE/BSE before applying</span></div>
         <p class="ipo-hero-line" id="ipoHeroLine"></p>
         <div class="ipo-kpis" id="ipoKpis"></div>
-        <div class="ipo-sync-row"><button class="btn btn-gold btn-small" id="ipoSyncBtn" type="button">🔄 Sync Live from IPO Master</button><span class="price-meta" id="ipoSyncState">Built-in catalog loads instantly · sync tries ipomaster.net in the background</span></div>
+        <div class="ipo-sync-row"><span class="price-meta" id="ipoSyncState">Built-in catalog (works offline) · statuses are computed from dates on every load · the live list arrives through the free data pipeline</span></div>
       </div>
       <div class="seg ipo-main-patti" id="ipoMainSeg"><button type="button" data-ipomain="all" class="seg-btn active">📊 All IPOs</button><button type="button" data-ipomain="gmp" class="seg-btn">🔥 IPO GMP</button><button type="button" data-ipomain="subs" class="seg-btn">📈 Subscription</button><button type="button" data-ipomain="allot" class="seg-btn">🎯 Allotment</button><button type="button" data-ipomain="faqs" class="seg-btn">❓ FAQs &amp; Lead Managers</button></div>
 
@@ -455,7 +455,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
           <div class="seg seg-small ipo-sub-seg" id="ipoSubSeg"></div>
           <div class="ipo-filter-row">
             <div class="seg seg-small" id="ipoBoardSeg"><button type="button" data-ipoboard="ALL" class="seg-btn active">All</button><button type="button" data-ipoboard="MAINBOARD" class="seg-btn">Mainboard</button><button type="button" data-ipoboard="SME" class="seg-btn">SME</button></div>
-            <select id="ipoYearSel" class="ipo-sel"><option value="all">All years</option><option value="2026">2026</option><option value="2025">2025</option><option value="2024">2024</option></select>
+            <select id="ipoYearSel" class="ipo-sel"><option value="2026" selected>2026</option><option value="all">All years</option><option value="2025">2025</option><option value="2024">2024</option></select>
             <select id="ipoSortSel" class="ipo-sel"><option value="new">Newest first</option><option value="gain">GMP / Listing Gain (High → Low)</option><option value="subs">Subscription (High → Low)</option><option value="size">Issue Size (High → Low)</option></select>
             <input type="text" id="ipoSearch" placeholder="Search IPO company..." autocomplete="off">
             <button class="btn btn-small" id="ipoApplyBtn" type="button">Apply</button>
@@ -923,6 +923,6 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <script src="js/stocks.js?v=23"></script>
 <script src="js/app.js?v=47"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/features.js?v=64"></script>
+<script src="js/features.js?v=65"></script>
 </body>
 </html>
