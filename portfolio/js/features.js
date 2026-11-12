@@ -598,6 +598,23 @@ function lwSave() { try { localStorage.setItem("folio_lw", JSON.stringify(lwStat
   document.querySelectorAll("[data-bnav]").forEach(b => b.addEventListener("click", () => switchView(b.dataset.bnav)));
 })();
 
+let lwLibPromise = null;
+function ensureLWLib() {
+  if (window.LightweightCharts) return Promise.resolve(true);
+  if (lwLibPromise) return lwLibPromise;
+  const urls = ["https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js", "https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"];
+  lwLibPromise = (async () => {
+    for (const u of urls) {
+      try {
+        await new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = u; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); setTimeout(rej, 8000); });
+        if (window.LightweightCharts) return true;
+      } catch (e) {}
+    }
+    return !!window.LightweightCharts;
+  })();
+  return lwLibPromise;
+}
+
 /* ---------- TradingView Lightweight Charts engine (modal pro chart) ---------- */
 let lwChart = null, lwSeries = null;
 function lwDispose() { if (lwChart) { try { lwChart.remove(); } catch (e) {} lwChart = null; lwSeries = null; } }
@@ -623,7 +640,8 @@ async function renderLW() {
   const wrap = $("lwWrap"), bar = $("lwBar"), svgBox = $("stockChart"), legend = $("lwLegend");
   if (!wrap || !bar) return;
   const off = () => { wrap.classList.add("hidden"); bar.classList.add("hidden"); if (legend) legend.classList.add("hidden"); if (svgBox) svgBox.classList.remove("hidden"); lwDispose(); };
-  if (!window.LightweightCharts || !stockSym) return off();
+  if (!stockSym) return off();
+  if (!window.LightweightCharts) { const okLib = await ensureLWLib(); if (!okLib) return off(); }
   if (["1d5m", "5d15m", "5d1h"].includes(stockRange)) return off();
   let bars = null, fullCloses = null;
   const DAILY = { "7d15m": 7, "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366 };
@@ -769,6 +787,7 @@ document.addEventListener("DOMContentLoaded", () => {
 let insKey = "", insCapFilter = "All", insLastD = null;
 let insDiv = null, insMom = null, insRisk = null, insQual = null, insPer = null;
 function capOf(sym) { return (window.CAP_MAP && window.CAP_MAP[sym]) || "S"; }
+function CAP_CLASS(sym) { return capOf(sym); }
 function capLabel(c) { return c === "L" ? "Large Cap" : c === "M" ? "Mid Cap" : "Small Cap"; }
 function trendBadge(ret) {
   if (ret === null || ret === undefined) return '<span class="trend-badge tb-flat">No data</span>';
@@ -1649,6 +1668,7 @@ async function loadCompanySheet(sym) {
   lk.innerHTML =
     '<a class="mini-btn link-btn" href="https://www.screener.in/company/' + encodeURIComponent(sym) + '/" target="_blank" rel="noopener">Full financials on Screener ↗</a>' +
     '<a class="mini-btn link-btn" href="https://www.nseindia.com/get-quotes/equity?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">View on NSE ↗</a>';
+  ab.dataset.instant = "1";
   const ip = prices[sym];
   const iDay = ip && ip.prevClose ? (ip.price - ip.prevClose) / ip.prevClose * 100 : null;
   ab.innerHTML = '<p class="comp-line"><b>' + esc(name) + '</b> · NSE' + (sectorOf(sym) ? ' · ' + esc(sectorOf(sym)) : '') + '</p>' +
@@ -1664,7 +1684,7 @@ async function loadCompanySheet(sym) {
      unexpected error), no section may sit on a skeleton beyond ~9 seconds. */
   const sheetFallback = () => {
     const sec = sectorOf(sym);
-    ab.innerHTML = '<p class="comp-line"><b>' + esc(name) + '</b> · NSE' + (sec ? ' · ' + esc(sec) : '') + '</p>' +
+    if (!ab.dataset.instant) ab.innerHTML = '<p class="comp-line"><b>' + esc(name) + '</b> · NSE' + (sec ? ' · ' + esc(sec) : '') + '</p>' +
       '<p class="empty-note">Live company data could not be fetched right now — the free sources are unreachable from this network. Everything about this company is one tap away:</p>' + extButtonsHtml(sym);
     if (cp) cp.innerHTML = '<p class="empty-note">No dividends or splits in the last 12 months — or the data could not be fetched right now.</p>';
     const fb = '<p class="empty-note">News is taking too long on this network right now. Read it directly from the source:</p>' + extButtonsHtml(sym);
@@ -2313,7 +2333,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v30";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v31";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {

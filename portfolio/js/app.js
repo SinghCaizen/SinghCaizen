@@ -531,13 +531,19 @@ function renderDashboard() {
     }
     let a0 = -Math.PI / 2, parts = "";
     const cx = 100, cy = 100, r = 82, r2 = 48;
+    const sectorPath = (sa, ea) => {
+      const span = ea - sa, n = Math.max(1, Math.ceil(span / Math.PI));
+      const pt = (ang, rad) => (cx + rad * Math.cos(ang)).toFixed(2) + "," + (cy + rad * Math.sin(ang)).toFixed(2);
+      let dd = "M" + pt(sa, r);
+      for (let i = 1; i <= n; i++) dd += " A" + r + "," + r + " 0 0 1 " + pt(sa + span * i / n, r);
+      dd += " L" + pt(ea, r2);
+      for (let i = 1; i <= n; i++) dd += " A" + r2 + "," + r2 + " 0 0 0 " + pt(ea - span * i / n, r2);
+      return dd + " Z";
+    };
     for (const sl of slices) {
       const frac = sl.value / d.value; if (frac <= 0) continue;
       const a1 = a0 + frac * Math.PI * 2;
-      const large = frac > 0.5 ? 1 : 0;
-      const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0), x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
-      const xi1 = cx + r2 * Math.cos(a1), yi1 = cy + r2 * Math.sin(a1), xi0 = cx + r2 * Math.cos(a0), yi0 = cy + r2 * Math.sin(a0);
-      parts += `<path class="seg" data-sym="${esc(sl.key)}" d="M${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} L${xi1},${yi1} A${r2},${r2} 0 ${large} 0 ${xi0},${yi0} Z" fill="${sl.color}" stroke="var(--panel)" stroke-width="1.5"/>`;
+      parts += `<path class="seg" data-sym="${esc(sl.key)}" d="${sectorPath(a0, a1)}" fill="${sl.color}" stroke="var(--panel)" stroke-width="1.5"/>`;
       a0 = a1;
     }
     svg.innerHTML = parts + `<text id="donutTop" x="100" y="92" text-anchor="middle" fill="var(--muted)" font-size="10.5" letter-spacing="1.5">TOTAL VALUE</text><text id="donutMain" x="100" y="112" text-anchor="middle" fill="var(--text)" font-size="14.5" font-weight="bold">${esc(inr(d.value))}</text><text id="donutSub" x="100" y="128" text-anchor="middle" fill="var(--muted)" font-size="10"></text>`;
