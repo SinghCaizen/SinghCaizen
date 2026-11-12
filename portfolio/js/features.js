@@ -2363,7 +2363,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v36";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v37";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2619,10 +2619,14 @@ setInterval(() => { try { enhanceProfileAccordions(); } catch (e) {} }, 1500);
 
 /* ---------- multi-watchlist manager ---------- */
 function activeWl() { return (state && state.watchlists || []).find(w => w.id === state.activeWatchlistId) || null; }
-let wlEdit = null, wlDelArm = false, wlDelTimer = null;
+let wlEdit = null, wlDelArm = false, wlDelTimer = null, lastWlSig = "";
 function renderWlBar() {
   const bar = $("wlBar");
   if (!bar || !state || !Array.isArray(state.watchlists)) return;
+  if (wlEdit && bar.querySelector("#wlNameInput")) return;
+  const sig = state.watchlists.map(w => w.id + ":" + w.name + ":" + w.items.length).join("|") + "#" + state.activeWatchlistId + "#" + (wlDelArm ? 1 : 0) + "#" + (wlEdit ? wlEdit.mode : "");
+  if (sig === lastWlSig && bar.innerHTML) return;
+  lastWlSig = sig;
   if (wlEdit) {
     bar.innerHTML = '<span class="wl-edit"><input type="text" id="wlNameInput" maxlength="32" placeholder="Watchlist name — e.g. Swing Trades" value="' + (wlEdit.mode === "rename" ? esc((activeWl() || {}).name || "") : "") + '">' +
       '<button type="button" class="wl-act" data-wlsave="1">' + (wlEdit.mode === "rename" ? "Save" : "Create") + '</button>' +
