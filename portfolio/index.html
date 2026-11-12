@@ -7,9 +7,16 @@
 <title>FOLIO — Portfolio Tracker | A Singh Caizen Product</title>
 <meta name="description" content="Folio — a private portfolio tracker for Indian stocks, by Singh Caizen. Add your stocks manually, see live profit and loss. No broker connection needed.">
 <link rel="icon" href="assets/folio-dark.svg" type="image/svg+xml">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Folio">
+<link rel="apple-touch-icon" href="assets/folio-dark.svg">
+<link rel="manifest" href='data:application/manifest+json,{"name":"Folio — A Singh Caizen Product","short_name":"Folio","display":"standalone","start_url":".","background_color":"%23000000","theme_color":"%23000000","icons":[]}'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Public+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=26">
+<link rel="stylesheet" href="css/style.css?v=27">
 </head>
 <body>
 
@@ -130,6 +137,7 @@
   </div>
 
   <div id="tickerWrap" class="ticker-wrap hidden"><div id="tickerTrack" class="ticker-track"></div></div>
+  <div id="mktBar" class="mkt-bar hidden"><span id="mktPill" class="mkt-pill">⚪ Market Closed · EOD Prices</span><button id="liveRefreshBtn" class="mini-btn" type="button">🔄 Live Refresh</button><span id="tickMeta" class="price-meta"></span></div>
 
   <nav class="tabs">
     <button class="tab active" data-view="dashboard" type="button">Dashboard</button>
@@ -149,6 +157,11 @@
         <div class="stat-card"><span class="stat-label">Current Value</span><span class="stat-value" id="stValue">—</span></div>
         <div class="stat-card"><span class="stat-label">Total Profit / Loss</span><span class="stat-value" id="stPnl">—</span><span class="stat-sub" id="stPnlPct"></span></div>
         <div class="stat-card"><span class="stat-label">XIRR (per year) <button class="info-btn" type="button" data-help="xirr" title="What is XIRR?">i</button></span><span class="stat-value" id="stXirr">—</span><span class="stat-sub" id="stRealised"></span></div>
+      </div>
+
+      <div class="panel" id="moodPanel">
+        <div class="panel-head"><h2>Market Mood</h2><span class="price-meta">Fear &amp; Greed · India VIX + NIFTY RSI &amp; trend</span></div>
+        <div id="moodBox"><p class="empty-note">Reading the market mood…</p></div>
       </div>
 
       <div class="panel">
@@ -462,6 +475,7 @@
         <img decoding="async" class="folio-logo-top logo-on-light" src="assets/folio-dark.svg" alt="Folio">
         <p><b>Folio</b> is a private portfolio tracker for Indian stocks — manual entries, delayed free prices, charts, a heatmap and tax views. No broker connection, ever.</p>
         <p class="product-line">A <span class="sc-brand">Singh Caizen</span> Product</p>
+        <p class="scuts-hint">⌨️ Shortcuts: <b>/</b> search · <b>N</b> add transaction · <b>1–6</b> switch tabs · <b>M</b> privacy · <b>Esc</b> close</p>
       </div>
       <div class="foot-links">
         <h4>Tracker</h4>
@@ -535,6 +549,15 @@
       <button type="button" data-r="max" class="seg-btn">MAX</button>
     </div>
     <label class="bench-toggle ma-toggle"><input type="checkbox" id="stockMa"> Moving Averages (20 EMA · 200 SMA) + my Buy/Sell markers</label>
+    <div id="lwBar" class="lw-bar hidden">
+      <div class="seg seg-small" id="lwTypeSeg"><button type="button" data-lwt="candles" class="seg-btn active">🕯️ Candles</button><button type="button" data-lwt="area" class="seg-btn">📈 Area</button><button type="button" data-lwt="bars" class="seg-btn">📊 Bars</button></div>
+      <label class="bench-toggle"><input type="checkbox" id="lwEma" checked> 20 EMA</label>
+      <label class="bench-toggle"><input type="checkbox" id="lwSma"> 200 SMA</label>
+      <label class="bench-toggle"><input type="checkbox" id="lwVol" checked> Volume</label>
+      <button id="lwReset" class="mini-btn" type="button">Reset View</button>
+    </div>
+    <div id="lwLegend" class="price-meta hidden"></div>
+    <div id="lwWrap" class="hidden"></div>
     <div id="stockChart"></div>
     <p id="stockRangeMeta" class="price-meta"></p>
     <div id="stockStats" class="hold-grid"></div>
@@ -700,14 +723,22 @@
 <datalist id="stockList"></datalist>
 <div id="toast" class="toast hidden"></div>
 
+<nav id="bnav" class="bnav">
+  <button type="button" data-bnav="dashboard"><span class="bnav-ic">🏠</span><span>Home</span></button>
+  <button type="button" data-bnav="holdings"><span class="bnav-ic">💼</span><span>Holdings</span></button>
+  <button type="button" data-bnav="watchlist"><span class="bnav-ic">★</span><span>Watchlist</span></button>
+  <button type="button" data-bnav="insights"><span class="bnav-ic">📊</span><span>Insights</span></button>
+  <button type="button" data-bnav="profile"><span class="bnav-ic">👤</span><span>Profile</span></button>
+</nav>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="js/firebase-config.js?v=6"></script>
 <script src="js/stocks.js?v=22"></script>
-<script src="js/app.js?v=26"></script>
+<script src="js/app.js?v=27"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/features.js?v=26"></script>
+<script src="js/features.js?v=27"></script>
 </body>
 </html>

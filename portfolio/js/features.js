@@ -130,7 +130,7 @@ async function loadTicker() {
   const wrap = $("tickerWrap"), track = $("tickerTrack");
   if (!wrap || !track || !currentUser) return;
   if (Date.now() - tickerLoadedAt < 5 * 60 * 1000 && track.innerHTML) return;
-  const idx = [["^NSEI", "NIFTY 50"], ["^BSESN", "SENSEX"], ["^NSEBANK", "NIFTY BANK"], ["^INDIAVIX", "INDIA VIX"]];
+  const idx = [["^NSEI", "NIFTY 50"], ["^BSESN", "SENSEX"], ["^NSEBANK", "NIFTY BANK"], ["^INDIAVIX", "INDIA VIX"], ["^CNXIT", "NIFTY IT"], ["GC=F", "GOLD"], ["INR=X", "USD/INR"]];
   const items = [];
   for (const pair of idx) {
     const h = await fetchHistory(pair[0], "1d");
@@ -138,11 +138,12 @@ async function loadTicker() {
     const price = h.meta.regularMarketPrice;
     const prev = h.meta.chartPreviousClose || h.meta.previousClose || (h.points.length > 1 ? h.points[h.points.length - 2].c : price);
     const chg = prev ? (price - prev) / prev * 100 : 0;
-    items.push('<span class="tick-item">' + pair[1] + ' <b>' + Number(price).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + '</b> <span class="' + (chg >= 0 ? "tick-up" : "tick-dn") + '">' + (chg >= 0 ? "▲" : "▼") + " " + Math.abs(chg).toFixed(2) + "%</span></span>");
+    items.push('<span class="tick-item" data-tick="' + pair[0] + '" title="Open chart">' + pair[1] + ' <b>' + Number(price).toLocaleString("en-IN", { maximumFractionDigits: 2 }) + '</b> <span class="' + (chg >= 0 ? "tick-up" : "tick-dn") + '">' + (chg >= 0 ? "▲" : "▼") + " " + Math.abs(chg).toFixed(2) + "%</span></span>");
   }
   if (!items.length) return;
   const seq = items.join("");
   track.innerHTML = seq + seq;
+  track.querySelectorAll("[data-tick]").forEach(el => el.addEventListener("click", () => openStock(el.dataset.tick)));
   wrap.classList.remove("hidden");
   tickerLoadedAt = Date.now();
 }
@@ -151,6 +152,7 @@ async function loadTicker() {
 let folioView = "dashboard";
 function renderExtras(d) {
   renderHeat(d); renderTax(d); renderPerf(d); renderCorp(d); renderDivChart(d);
+  try { renderMood(); } catch (e) {}
   /* Heavy analytics render only for the tab actually on screen (zero lag). */
   if (folioView === "insights" || folioView === "news") { renderInsights(d); renderNews(d); renderEvents(d); }
 }
@@ -407,6 +409,255 @@ async function drawStock() {
   }
   stats.innerHTML = cells.map(c => "<div><span>" + c[0] + "</span>" + c[1] + "</div>").join("");
 }
+
+/* ---------- market mood (Fear & Greed from VIX + NIFTY RSI + trend) ---------- */
+let moodCache = null, moodBusy = false;
+async function renderMood() {
+  const box = $("moodBox");
+  if (!box || !currentUser) return;
+  if (moodCache && Date.now() - moodCache.ts < 10 * 60 * 1000) { box.innerHTML = moodCache.html; return; }
+  if (moodBusy) return;
+  moodBusy = true;
+  try {
+    const vixH = await fetchHistory("^INDIAVIX", "1mo");
+    const nifH = await fetchHistory("^NSEI", "1y");
+    if (!vixH || !vixH.points.length || !nifH || nifH.points.length < 60) { box.innerHTML = '<p class="empty-note">Market mood needs the index data — it will appear when the free feed responds.</p>'; return; }
+    const vix = vixH.points[vixH.points.length - 1].c;
+    const closes = nifH.points.map(p => p.c);
+    const last = closes[closes.length - 1];
+    const rsi = rsi14(closes) || 50;
+    const sma200 = smaSeries(closes, 200);
+    const ma = sma200[sma200.length - 1];
+    const vixScore = Math.max(0, Math.min(100, (32 - vix) / 22 * 100));
+    const trendScore = ma ? Math.max(0, Math.min(100, 50 + (last / ma - 1) * 600)) : 50;
+    const score = Math.round(0.4 * vixScore + 0.35 * rsi + 0.25 * trendScore);
+    const label = score <= 20 ? "Extreme Fear" : score <= 40 ? "Fear" : score <= 60 ? "Neutral" : score <= 80 ? "Greed" : "Extreme Greed";
+    const color = score <= 20 ? "#e03131" : score <= 40 ? "#f08c00" : score <= 60 ? "#b8a100" : score <= 80 ? "#5aa73c" : "#089981";
+    const angle = -90 + score * 1.8;
+    const html = '<div class="mood-wrap"><svg class="mood-gauge" viewBox="0 0 200 112">' +
+      '<path d="M 16 100 A 84 84 0 0 1 184 100" fill="none" stroke="var(--line)" stroke-width="13" stroke-linecap="round"/>' +
+      '<path d="M 16 100 A 84 84 0 0 1 184 100" fill="none" stroke="' + color + '" stroke-width="13" stroke-linecap="round" pathLength="100" stroke-dasharray="' + score + ' 100"/>' +
+      '<line x1="100" y1="100" x2="100" y2="38" stroke="' + color + '" stroke-width="3" stroke-linecap="round" transform="rotate(' + angle + ' 100 100)"/>' +
+      '<circle cx="100" cy="100" r="6" fill="' + color + '"/></svg>' +
+      '<div class="mood-info"><div class="mood-score" style="color:' + color + '">' + score + ' · ' + label + '</div>' +
+      '<p class="price-meta">India VIX <b>' + vix.toFixed(2) + '</b> · NIFTY RSI(14) <b>' + rsi.toFixed(0) + '</b>' + (ma ? ' · NIFTY <b>' + (last >= ma ? "above" : "below") + '</b> its 200-day average' : '') + '</p>' +
+      '<p class="price-meta">A mood reading from free data — not investment advice.</p></div></div>';
+    moodCache = { ts: Date.now(), html: html };
+    box.innerHTML = html;
+  } catch (e) { /* mood is best-effort */ }
+  moodBusy = false;
+}
+
+/* ---------- live engine: market pill, 25s auto-tick, price flash ---------- */
+function marketOpenIST() {
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const day = now.getDay();
+  if (day === 0 || day === 6) return false;
+  const mins = now.getHours() * 60 + now.getMinutes();
+  return mins >= 555 && mins <= 930;
+}
+function updateMktPill() {
+  const pill = $("mktPill"), bar = $("mktBar");
+  if (!pill || !bar) return;
+  if (!currentUser) { bar.classList.add("hidden"); return; }
+  bar.classList.remove("hidden");
+  const open = marketOpenIST();
+  pill.textContent = open ? "🟢 NSE LIVE · Auto-updating" : "⚪ Market Closed · EOD Prices";
+  pill.classList.toggle("live", open);
+}
+async function doTick() {
+  if (!currentUser || typeof refreshPrices !== "function") return;
+  const before = {};
+  Object.keys(prices || {}).forEach(k => { if (prices[k]) before[k] = prices[k].price; });
+  await refreshPrices();
+  Object.keys(prices || {}).forEach(sym => {
+    const old = before[sym], now = prices[sym] && prices[sym].price;
+    if (old === undefined || now === undefined || now === old) return;
+    const cls = now > old ? "flash-up" : "flash-down";
+    document.querySelectorAll('[data-pflash="' + sym + '"]').forEach(el => {
+      el.classList.remove("flash-up", "flash-down");
+      void el.offsetWidth;
+      el.classList.add(cls);
+      setTimeout(() => el.classList.remove(cls), 1200);
+    });
+  });
+  const tm = $("tickMeta");
+  if (tm) tm.textContent = "Ticked " + new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  tickerLoadedAt = 0;
+  try { loadTicker(); } catch (e) {}
+}
+setInterval(() => { updateMktPill(); if (marketOpenIST() && currentUser && !document.hidden) doTick(); }, 25000);
+setInterval(updateMktPill, 30000);
+
+/* ---------- Yahoo search top-up for autocomplete (beyond the built-in list) ---------- */
+window.__yahooSuggest = async function (q) {
+  try {
+    const url = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q) + "&quotesCount=10&newsCount=0";
+    const j = await fetchViaProxies(url, true);
+    const out = [];
+    ((j && j.quotes) || []).forEach(x => {
+      if (!x || !x.symbol || x.quoteType !== "EQUITY") return;
+      if (x.exchange && !["NSI", "NSE", "BSE"].includes(x.exchange)) return;
+      const base = String(x.symbol).replace(/\.(NS|BO)$/i, "");
+      if (!/^[A-Z0-9&.-]+$/.test(base)) return;
+      out.push([base, x.longname || x.shortname || base, "Other", x.exchange === "BSE" ? "BSE" : "NSE", 1]);
+    });
+    return out.slice(0, 6);
+  } catch (e) { return []; }
+};
+
+/* ---------- keyboard shortcuts + bottom nav (desktop & phone chrome) ---------- */
+document.addEventListener("keydown", e => {
+  if (!currentUser) return;
+  const tag = (e.target && e.target.tagName) || "";
+  const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (e.target && e.target.isContentEditable);
+  if (e.key === "Escape") {
+    document.querySelectorAll(".modal:not(.hidden)").forEach(m => m.classList.add("hidden"));
+    document.querySelectorAll(".hold-card.open").forEach(c => c.classList.remove("open"));
+    return;
+  }
+  if (typing) return;
+  const anyModal = document.querySelector(".modal:not(.hidden)");
+  if (anyModal) return;
+  if (e.key === "/" || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k")) {
+    e.preventDefault();
+    switchView("watchlist");
+    setTimeout(() => { const i = $("watchInput"); if (i) i.focus(); }, 60);
+  } else if (e.key.toLowerCase() === "n" || e.key.toLowerCase() === "a") {
+    if (typeof openTxn === "function") openTxn("BUY");
+  } else if (["1", "2", "3", "4", "5", "6"].includes(e.key)) {
+    const views = ["dashboard", "holdings", "insights", "news", "watchlist", "profile"];
+    switchView(views[Number(e.key) - 1]);
+  } else if (e.key.toLowerCase() === "m") {
+    const pb = $("privacyBtn");
+    if (pb) pb.click();
+  }
+});
+setInterval(() => {
+  document.querySelectorAll("[data-bnav]").forEach(b => b.classList.toggle("active", b.dataset.bnav === folioView));
+}, 1000);
+
+/* ---------- LW chart controls ---------- */
+(function wireLwControls() {
+  const seg = $("lwTypeSeg");
+  if (seg) {
+    seg.querySelectorAll("[data-lwt]").forEach(b => {
+      b.classList.toggle("active", b.dataset.lwt === lwState.type);
+      b.addEventListener("click", () => {
+        lwState.type = b.dataset.lwt; lwSave();
+        seg.querySelectorAll("[data-lwt]").forEach(x => x.classList.toggle("active", x === b));
+        renderLW();
+      });
+    });
+  }
+  const ema = $("lwEma"), sma = $("lwSma"), vol = $("lwVol");
+  if (ema) { ema.checked = !!lwState.ema; ema.addEventListener("change", () => { lwState.ema = ema.checked; lwSave(); renderLW(); }); }
+  if (sma) { sma.checked = !!lwState.sma; sma.addEventListener("change", () => { lwState.sma = sma.checked; lwSave(); renderLW(); }); }
+  if (vol) { vol.checked = !!lwState.vol; vol.addEventListener("change", () => { lwState.vol = vol.checked; lwSave(); renderLW(); }); }
+  const rst = $("lwReset");
+  if (rst) rst.addEventListener("click", () => { if (lwChart) lwChart.timeScale().fitContent(); });
+  const rb = $("liveRefreshBtn");
+  if (rb) rb.addEventListener("click", doTick);
+  document.querySelectorAll("[data-bnav]").forEach(b => b.addEventListener("click", () => switchView(b.dataset.bnav)));
+})();
+
+/* ---------- TradingView Lightweight Charts engine (modal pro chart) ---------- */
+let lwChart = null, lwSeries = null;
+let lwState = { type: "candles", ema: true, sma: false, vol: true };
+try { Object.assign(lwState, JSON.parse(localStorage.getItem("folio_lw") || "{}")); } catch (e) {}
+function lwSave() { try { localStorage.setItem("folio_lw", JSON.stringify(lwState)); } catch (e) {} }
+function lwDispose() { if (lwChart) { try { lwChart.remove(); } catch (e) {} lwChart = null; lwSeries = null; } }
+function dayStr(t) { return new Date(t).toISOString().slice(0, 10); }
+async function fetchOHLC(sym, range, interval) {
+  const key = "folio_ohlc_" + sym + "|" + range;
+  const cached = lsCacheGet(key, 12 * 3600 * 1000);
+  if (cached && cached.bars && cached.bars.length) return cached.bars;
+  const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(normalizeTicker(sym)) + "?range=" + range + "&interval=" + interval + "&events=div,split";
+  const r0 = await fetchChartValidated(url, 7000);
+  const q0 = (r0.indicators.quote && r0.indicators.quote[0]) || {};
+  const ts = r0.timestamp || [];
+  const bars = [];
+  for (let i = 0; i < ts.length; i++) {
+    const c = q0.close && q0.close[i];
+    if (typeof c !== "number") continue;
+    bars.push({ t: ts[i] * 1000, o: typeof q0.open?.[i] === "number" ? q0.open[i] : c, h: typeof q0.high?.[i] === "number" ? q0.high[i] : c, l: typeof q0.low?.[i] === "number" ? q0.low[i] : c, c: c, v: typeof q0.volume?.[i] === "number" ? q0.volume[i] : 0 });
+  }
+  lsCacheSet(key, { ts: Date.now(), bars: bars });
+  return bars;
+}
+async function renderLW() {
+  const wrap = $("lwWrap"), bar = $("lwBar"), svgBox = $("stockChart"), legend = $("lwLegend");
+  if (!wrap || !bar) return;
+  const off = () => { wrap.classList.add("hidden"); bar.classList.add("hidden"); if (legend) legend.classList.add("hidden"); if (svgBox) svgBox.classList.remove("hidden"); lwDispose(); };
+  if (!window.LightweightCharts || !stockSym) return off();
+  if (["1d5m", "5d15m", "5d1h"].includes(stockRange)) return off();
+  let bars = null, fullCloses = null;
+  const DAILY = { "7d15m": 7, "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366 };
+  if (DAILY[stockRange]) {
+    const mst = await fetchMaster(stockSym);
+    if (!mst || !mst.ohlc || mst.ohlc.length < 2) return off();
+    fullCloses = mst.points.map(p => ({ t: p.t, c: p.c }));
+    bars = stockRange === "1y" ? mst.ohlc : mst.ohlc.filter(b => b.t >= Date.now() - DAILY[stockRange] * 86400000);
+  } else {
+    try { bars = await fetchOHLC(stockSym, stockRange === "5y" ? "5y" : "max", stockRange === "5y" ? "1wk" : "1mo"); } catch (e) { return off(); }
+    if (!bars || bars.length < 2) return off();
+    fullCloses = bars.map(b => ({ t: b.t, c: b.c }));
+  }
+  const modal = $("stockModal");
+  if (!modal || modal.classList.contains("hidden")) return;
+  const byDay = new Map();
+  bars.forEach(b => byDay.set(dayStr(b.t), b));
+  const ubars = [...byDay.values()].sort((a, b) => a.t - b.t);
+  if (ubars.length < 2) return off();
+  wrap.classList.remove("hidden"); bar.classList.remove("hidden");
+  if (legend) legend.classList.remove("hidden");
+  if (svgBox) svgBox.classList.add("hidden");
+  lwDispose();
+  const dark = document.documentElement.dataset.theme !== "light";
+  lwChart = LightweightCharts.createChart(wrap, {
+    layout: { background: { type: "solid", color: "transparent" }, textColor: dark ? "#e8e8e8" : "#222222" },
+    grid: { vertLines: { color: "rgba(128,128,128,.14)" }, horzLines: { color: "rgba(128,128,128,.14)" } },
+    timeScale: { borderVisible: false }, rightPriceScale: { borderVisible: false },
+    crosshair: { mode: 1 }, width: wrap.clientWidth || 320, height: 320, autoSize: true
+  });
+  const data = ubars.map(b => ({ time: dayStr(b.t), open: b.o, high: b.h, low: b.l, close: b.c }));
+  if (lwState.type === "area") {
+    lwSeries = lwChart.addAreaSeries({ lineColor: "#2962ff", topColor: "rgba(41,98,255,.35)", bottomColor: "rgba(41,98,255,0)", lineWidth: 2 });
+    lwSeries.setData(ubars.map(b => ({ time: dayStr(b.t), value: b.c })));
+  } else if (lwState.type === "bars") {
+    lwSeries = lwChart.addBarSeries({ upColor: "#089981", downColor: "#f23645" });
+    lwSeries.setData(data);
+  } else {
+    lwSeries = lwChart.addCandlestickSeries({ upColor: "#089981", downColor: "#f23645", borderVisible: false, wickUpColor: "#089981", wickDownColor: "#f23645" });
+    lwSeries.setData(data);
+  }
+  if (lwState.vol) {
+    const vs = lwChart.addHistogramSeries({ priceScaleId: "", priceFormat: { type: "volume" } });
+    lwChart.priceScale("").applyOptions({ scaleMargins: { top: 0.84, bottom: 0 } });
+    vs.setData(ubars.map(b => ({ time: dayStr(b.t), value: b.v, color: b.c >= b.o ? "rgba(8,153,129,.45)" : "rgba(242,54,69,.45)" })));
+  }
+  const closes = fullCloses.map(p => p.c);
+  const firstDay = dayStr(ubars[0].t);
+  const lineData = series => fullCloses.map((p, i) => series[i] ? { time: dayStr(p.t), value: series[i] } : null).filter(x => x && x.time >= firstDay);
+  if (lwState.ema) { const d = lineData(emaSeries(closes, 20)); if (d.length) lwChart.addLineSeries({ color: "#2962ff", lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(d); }
+  if (lwState.sma) { const d = lineData(smaSeries(closes, 200)); if (d.length) lwChart.addLineSeries({ color: "#ff6d00", lineWidth: 1, priceLineVisible: false, lastValueVisible: false }).setData(d); }
+  const marks = [];
+  (state.txns || []).filter(t => t.sym === stockSym && t.type !== "DIV").forEach(t => marks.push({ time: t.date, position: t.type === "BUY" ? "belowBar" : "aboveBar", color: t.type === "BUY" ? "#089981" : "#f23645", shape: t.type === "BUY" ? "arrowUp" : "arrowDown", text: t.type + " @ " + inr2(t.price) }));
+  if (marks.length && lwSeries.setMarkers) { marks.sort((a, b) => a.time < b.time ? -1 : 1); try { lwSeries.setMarkers(marks); } catch (e) {} }
+  lwChart.timeScale().fitContent();
+  const barByDay = {};
+  ubars.forEach(b => barByDay[dayStr(b.t)] = b);
+  lwChart.subscribeCrosshairMove(param => {
+    const lg = $("lwLegend");
+    if (!lg) return;
+    if (!param || !param.time || !barByDay[param.time]) { lg.textContent = "TradingView chart · drag to pan · scroll / pinch to zoom"; return; }
+    const b = barByDay[param.time];
+    lg.textContent = param.time + " · O " + inr2(b.o) + " · H " + inr2(b.h) + " · L " + inr2(b.l) + " · C " + inr2(b.c) + (b.v ? " · Vol " + b.v.toLocaleString("en-IN") : "");
+  });
+  if (legend) legend.textContent = "TradingView chart · drag to pan · scroll / pinch to zoom";
+}
+const _drawStockBase = drawStock;
+drawStock = async function () { await _drawStockBase(); try { await renderLW(); } catch (e) {} };
 
 /* ---------- report issue ---------- */
 const WEB3_KEY = "94e01d94-8fae-4cdc-b9b9-716cf169d7dc";
@@ -1040,6 +1291,72 @@ function maybeEventPopup(dated, hits) {
   $("eventClose").onclick = () => { mark(); $("eventModal").classList.add("hidden"); };
 }
 
+/* ---------- quant helpers (RSI / EMA / SMA / pivots / volume) ---------- */
+function emaSeries(vals, period) {
+  const out = new Array(vals.length).fill(null);
+  if (vals.length < period) return out;
+  const k = 2 / (period + 1);
+  let e = vals.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  out[period - 1] = e;
+  for (let i = period; i < vals.length; i++) { e = vals[i] * k + e * (1 - k); out[i] = e; }
+  return out;
+}
+function smaSeries(vals, period) {
+  const out = new Array(vals.length).fill(null);
+  let sum = 0;
+  for (let i = 0; i < vals.length; i++) {
+    sum += vals[i];
+    if (i >= period) sum -= vals[i - period];
+    if (i >= period - 1) out[i] = sum / period;
+  }
+  return out;
+}
+function rsi14(closes) {
+  if (!closes || closes.length < 15) return null;
+  let g = 0, l = 0;
+  for (let i = 1; i <= 14; i++) { const d = closes[i] - closes[i - 1]; if (d > 0) g += d; else l -= d; }
+  let ag = g / 14, al = l / 14;
+  for (let i = 15; i < closes.length; i++) {
+    const d = closes[i] - closes[i - 1];
+    ag = (ag * 13 + Math.max(d, 0)) / 14;
+    al = (al * 13 + Math.max(-d, 0)) / 14;
+  }
+  if (al === 0) return 100;
+  return 100 - 100 / (1 + ag / al);
+}
+function techBadges(master) {
+  if (!master || !master.points || master.points.length < 15) return "";
+  const closes = master.points.map(p => p.c);
+  const last = closes[closes.length - 1];
+  const chips = [];
+  const rsi = rsi14(closes);
+  if (rsi !== null) chips.push('<span class="tech-chip ' + (rsi < 30 ? "pos" : rsi > 70 ? "neg" : "") + '">RSI(14) ' + rsi.toFixed(0) + (rsi < 30 ? " · Oversold" : rsi > 70 ? " · Overbought" : " · Neutral") + "</span>");
+  const ema = emaSeries(closes, 20), sma = smaSeries(closes, 200);
+  const e20 = ema[ema.length - 1], s200 = sma[sma.length - 1];
+  if (e20) chips.push('<span class="tech-chip ' + (last >= e20 ? "pos" : "neg") + '">' + (last >= e20 ? "Above" : "Below") + " 20 EMA</span>");
+  if (s200) chips.push('<span class="tech-chip ' + (last >= s200 ? "pos" : "neg") + '">' + (last >= s200 ? "Above" : "Below") + " 200 SMA</span>");
+  if (e20 && s200) chips.push('<span class="tech-chip ' + (e20 >= s200 ? "pos" : "neg") + '">' + (e20 >= s200 ? "Golden Cross structure" : "Bearish cross structure") + "</span>");
+  const bars = master.ohlc || [];
+  if (bars.length > 21) {
+    const vols = bars.map(b => b.v || 0);
+    const avg20 = vols.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
+    const lastVol = vols[vols.length - 1];
+    if (avg20 > 0 && lastVol >= 1.5 * avg20) chips.push('<span class="tech-chip pos">🔥 High volume — ' + (lastVol / avg20).toFixed(1) + "× the 20-day average</span>");
+    else if (avg20 > 0) chips.push('<span class="tech-chip">Volume ' + (lastVol / avg20).toFixed(1) + "× 20-day avg</span>");
+  }
+  return chips.length ? '<div class="tech-chips">' + chips.join("") + "</div>" : "";
+}
+function techHtml(master) {
+  let html = techBadges(master);
+  const bars = (master && master.ohlc) || [];
+  if (bars.length) {
+    const b = bars[bars.length - 1];
+    const P = (b.h + b.l + b.c) / 3, R = b.h - b.l;
+    html += '<p class="dr-line">Classic pivots (from the last session): S2 ' + inr2(P - R) + " · S1 " + inr2(2 * P - b.h) + " · <b>Pivot " + inr2(P) + "</b> · R1 " + inr2(2 * P - b.l) + " · R2 " + inr2(P + R) + "</p>";
+  }
+  return html ? '<div class="tech-box"><h4 class="company-h">Technicals — Auto Scanner</h4>' + html + "</div>" : "";
+}
+
 /* ---------- company sheet (inside the stock chart popup) ---------- */
 let sheetToken = 0;
 const _origOpenStock = openStock;
@@ -1120,7 +1437,7 @@ async function fetchMaster(sym) {
   const saved = lsCacheGet("folio_master_" + sym, 6 * 3600 * 1000);
   if (saved && saved.meta) {
     const h = await fetchHistory(sym, "1y");
-    master = { ts: saved.ts || Date.now(), meta: saved.meta, points: h ? h.points : [], divs: saved.divs || [], splits: saved.splits || [] };
+    master = { ts: saved.ts || Date.now(), meta: saved.meta, points: h ? h.points : [], ohlc: saved.ohlc || [], divs: saved.divs || [], splits: saved.splits || [] };
   } else {
     const norm = normalizeTicker(sym);
     const suffix = "?range=1y&interval=1d&events=div,split&includePrePost=false";
@@ -1136,17 +1453,23 @@ async function fetchMaster(sym) {
     try {
       if (!r0) throw new Error("no validated chart");
       const tsArr = r0.timestamp || [];
-      const closes = (r0.indicators.quote[0].close) || [];
+      const q0 = (r0.indicators.quote && r0.indicators.quote[0]) || {};
+      const closes = q0.close || [];
       const points = [];
-      for (let i = 0; i < tsArr.length; i++) if (typeof closes[i] === "number") points.push({ t: tsArr[i] * 1000, c: closes[i] });
+      const ohlc = [];
+      for (let i = 0; i < tsArr.length; i++) {
+        if (typeof closes[i] !== "number") continue;
+        points.push({ t: tsArr[i] * 1000, c: closes[i] });
+        ohlc.push({ t: tsArr[i] * 1000, o: typeof q0.open?.[i] === "number" ? q0.open[i] : closes[i], h: typeof q0.high?.[i] === "number" ? q0.high[i] : closes[i], l: typeof q0.low?.[i] === "number" ? q0.low[i] : closes[i], c: closes[i], v: typeof q0.volume?.[i] === "number" ? q0.volume[i] : 0 });
+      }
       const ev = r0.events || {};
       const divs = ev.dividends ? Object.values(ev.dividends).map(x => ({ ts: x.date * 1000, amount: x.amount })).sort((a, b) => b.ts - a.ts) : [];
       const splits = ev.splits ? Object.values(ev.splits).map(x => ({ ts: x.date * 1000, text: x.splitRatio || (x.numerator + ":" + x.denominator) })).sort((a, b) => b.ts - a.ts) : [];
       if (points.length) {
-        master = { ts: Date.now(), meta: r0.meta || {}, points: points, divs: divs, splits: splits };
+        master = { ts: Date.now(), meta: r0.meta || {}, points: points, ohlc: ohlc, divs: divs, splits: splits };
         histCache[sym + "|1y"] = { points: points, meta: r0.meta || {} };
         histLsSet(sym + "|1y", histCache[sym + "|1y"]);
-        lsCacheSet("folio_master_" + sym, { ts: master.ts, meta: master.meta, divs: divs, splits: splits });
+        lsCacheSet("folio_master_" + sym, { ts: master.ts, meta: master.meta, ohlc: ohlc, divs: divs, splits: splits });
       }
     } catch (e) {}
   }
@@ -1154,7 +1477,7 @@ async function fetchMaster(sym) {
     const h = await fetchHistory(sym, "1y");
     if (!h) return null;
     const ca = await fetchCorpActions(sym);
-    master = { ts: Date.now(), meta: h.meta || {}, points: h.points, divs: ca.divs, splits: ca.splits };
+    master = { ts: Date.now(), meta: h.meta || {}, points: h.points, ohlc: [], divs: ca.divs, splits: ca.splits };
   }
   masterCache[sym] = master;
   return master;
@@ -1248,6 +1571,8 @@ async function fillHoldDrawer(sym, drawer) {
       const pos = Math.min(100, Math.max(0, (ltp - lo) / (hi - lo) * 100));
       html += `<div class="rng-wrap"><div class="rng-lab"><span>52W Low ${inr2(lo)}</span><span>52W High ${inr2(hi)}</span></div><div class="rng-track"><div class="rng-fill" style="width:${pos}%"></div><div class="rng-dot" style="left:${pos}%"></div></div></div>`;
     }
+    const badges = techBadges(m);
+    if (badges) html += badges;
     const dl = meta.regularMarketDayLow, dh = meta.regularMarketDayHigh, vol = meta.regularMarketVolume;
     const bits = [];
     if (typeof dl === "number" && typeof dh === "number") bits.push("Day range: " + inr2(dl) + " – " + inr2(dh));
@@ -1308,7 +1633,7 @@ async function loadCompanySheet(sym) {
   const master = await Promise.race([fetchMaster(sym), new Promise(r => setTimeout(() => r(null), 6000))]);
   if (tok !== sheetToken) return;
   if (master && master.points && master.points.length) {
-    ab.innerHTML = masterAboutHtml(sym, name, master);
+    ab.innerHTML = masterAboutHtml(sym, name, master) + techHtml(master);
     if (cp) cp.innerHTML = masterCorpHtml(master);
   } else {
     const sec = sectorOf(sym);

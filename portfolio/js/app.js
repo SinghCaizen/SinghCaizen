@@ -229,11 +229,11 @@ function attachSuggest(input) {
   const box = document.createElement("div");
   box.className = "suggest-box hidden";
   wrap.appendChild(box);
-  let items = [], active = -1;
+  let items = [], active = -1, remoteItems = [], remoteFor = "", sugTimer = null;
   function close() { box.classList.add("hidden"); active = -1; }
   function pick(i) {
     if (!items[i]) return;
-    input.value = items[i][1];
+    input.value = items[i][4] ? items[i][0] : items[i][1];
     close();
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.focus();
@@ -248,9 +248,19 @@ function attachSuggest(input) {
       if (sy.indexOf(txt) === 0 || nm.indexOf(txt) === 0) { starts.push(s); if (starts.length >= 8) break; }
       else if (contains.length < 8 && (nm.indexOf(txt) >= 0 || sy.indexOf(txt) >= 0)) contains.push(s);
     }
-    items = starts.concat(contains).slice(0, 8);
+    const local = starts.concat(contains);
+    if (local.length < 4 && window.__yahooSuggest && remoteFor !== txt) {
+      remoteFor = txt;
+      clearTimeout(sugTimer);
+      sugTimer = setTimeout(async () => {
+        const res = await window.__yahooSuggest(txt);
+        if (input.value.trim().toLowerCase() === txt) { remoteItems = res || []; render(); }
+      }, 350);
+    }
+    if (remoteFor !== txt) remoteItems = [];
+    items = local.concat(remoteItems.filter(r => !local.some(l => l[0] === r[0]))).slice(0, 8);
     if (!items.length) { close(); return; }
-    box.innerHTML = items.map((s, i) => '<button type="button" class="suggest-item" data-i="' + i + '"><b>' + esc(s[0]) + '</b><span>' + esc(s[1]) + '</span></button>').join("");
+    box.innerHTML = items.map((s, i) => '<button type="button" class="suggest-item" data-i="' + i + '"><b>' + esc(s[0]) + '</b><span>' + esc(s[1]) + '</span>' + (s[3] ? '<span class="sug-exch">' + esc(s[3]) + '</span>' : '') + '</button>').join("");
     box.classList.remove("hidden");
     box.querySelectorAll(".suggest-item").forEach(b => b.addEventListener("mousedown", e => { e.preventDefault(); pick(Number(b.dataset.i)); }));
   }
@@ -266,6 +276,13 @@ function attachSuggest(input) {
     } else if (e.key === "Enter" && active >= 0) { e.preventDefault(); pick(active); }
     else if (e.key === "Escape") close();
   });
+}
+function fmtDate(ds) {
+  if (!ds) return "—";
+  const M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const p = String(ds).split("-");
+  if (p.length !== 3) return ds;
+  return Number(p[2]) + " " + (M[Number(p[1]) - 1] || "") + " " + p[0];
 }
 function fyStartOf(dateStr) { const d = new Date(dateStr + "T00:00:00"); return d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; }
 function effPrice(t) {
@@ -544,19 +561,21 @@ function renderHoldings() {
     const lotsHtml = (h.lots || []).map(l => {
       const days = Math.max(0, Math.round((today - new Date(l.date + "T00:00:00")) / 86400000));
       const long = days >= 365;
-      return `<div class="lot-row"><span class="lot-date">${esc(l.date)}</span><span>${l.qty} shares × ${inr2(l.price)}</span><span class="lot-age">${days} days</span><span class="tax-chip ${long ? "ltcg" : "stcg"}">${long ? "LTCG" : "STCG"}</span></div>`;
+      const lp = h.ltp !== null ? l.qty * (h.ltp - l.price) : null;
+      const lpPct = h.ltp !== null && l.price ? (h.ltp - l.price) / l.price * 100 : null;
+      return `<div class="lot-row"><span class="lot-date">${esc(fmtDate(l.date))}</span><span>${l.qty} shares × ${inr2(l.price)}</span><span class="lot-age">${days} days held</span><span class="tax-chip ${long ? "ltcg" : "stcg"}">${long ? "LTCG" : "STCG"}</span>${lp !== null ? `<span class="lot-pnl ${lp >= 0 ? "gain" : "loss"}">${inr(lp)} (${pct(lpPct)})</span>` : ""}</div>`;
     }).join("");
     const ltcgQty = (h.lots || []).filter(l => (today - new Date(l.date + "T00:00:00")) / 86400000 >= 365).reduce((a, l) => a + l.qty, 0);
     const taxLine = ltcgQty > 0
       ? (ltcgQty >= h.qty ? "All " + h.qty + " shares are past 1 year — selling now counts as LTCG (12.5% above ₹1.25 lakh a year)." : ltcgQty + " of " + h.qty + " shares are past 1 year (LTCG); the rest are still under 1 year (STCG if sold).")
       : "No shares past 1 year yet — selling now counts as STCG (20%).";
     const txns = state.txns.filter(t => t.sym === h.sym).sort((a, b) => b.date < a.date ? -1 : 1);
-    const txnHtml = txns.map(t => `<div class="dr-txn"><span class="hist-type ${t.type}">${t.type}</span><span class="dr-txn-main">${t.type === "DIV" ? inr(t.price) + " received" : t.qty + " × " + inr2(t.price)} · ${esc(t.date)}</span><button class="mini-btn" data-edittxn="${t.id}" type="button">✎ Edit</button><button class="mini-btn danger" data-deltxn="${t.id}" type="button">Delete</button></div>`).join("");
+    const txnHtml = txns.map(t => `<div class="dr-txn"><span class="hist-type ${t.type}">${t.type}</span><span class="dr-txn-main">${t.type === "DIV" ? inr(t.price) + " received" : t.qty + " × " + inr2(t.price)} · ${esc(fmtDate(t.date))}</span><button class="mini-btn" data-edittxn="${t.id}" type="button">✎ Edit</button><button class="mini-btn danger" data-deltxn="${t.id}" type="button">Delete</button></div>`).join("");
     return `
     <div class="hold-card" style="animation-delay:${i * 60}ms">
       <button class="hold-head" data-hold-toggle="${esc(h.sym)}" type="button">
         <span class="hh-left"><span class="hh-symrow"><span class="hold-sym">${esc(h.sym)}</span><span class="sector-chip">${esc(h.sector || "Other")}</span></span><span class="hold-name">${esc(h.name)}</span></span>
-        <span class="hh-right"><span class="hh-ltp">${h.ltp !== null ? "LTP " + inr2(h.ltp) : "LTP —"}</span>${dayPct !== null ? `<span class="wp-pill ${dayPct >= 0 ? "gain" : "loss"}">${dayPct >= 0 ? "▲" : "▼"} ${pct(dayPct)}</span>` : ""}</span>
+        <span class="hh-right"><span class="hh-ltp" data-pflash="${esc(h.sym)}">${h.ltp !== null ? "LTP " + inr2(h.ltp) : "LTP —"}</span>${dayPct !== null ? `<span class="wp-pill ${dayPct >= 0 ? "gain" : "loss"}">${dayPct >= 0 ? "▲" : "▼"} ${pct(dayPct)}</span>` : ""}</span>
       </button>
       <div class="hold-strip">
         <div><span>Current Value</span><b>${inr(h.cur)}</b></div>
@@ -566,18 +585,24 @@ function renderHoldings() {
       </div>
       <div class="hold-meta">Qty: ${h.qty} shares · Avg Buy: ${inr2(h.avg)} · Weight: ${weight.toFixed(1)}% of portfolio · Booked P&amp;L: <b class="${h.realised >= 0 ? "gain" : "loss"}">${inr(h.realised)}</b></div>
       <button class="hold-chev" data-hold-toggle="${esc(h.sym)}" type="button">▼ Buy dates, live status &amp; edit</button>
-      <div class="hold-drawer hidden" data-drawer="${esc(h.sym)}" data-avg="${h.avg}" data-ltp="${h.ltp === null ? "" : h.ltp}">
+      <div class="hold-drawer" data-drawer="${esc(h.sym)}" data-avg="${h.avg}" data-ltp="${h.ltp === null ? "" : h.ltp}">
+       <div class="drawer-inner">
         <div class="dr-block"><h4>Live Status</h4><div class="dr-status"><span class="muted small">Loading status…</span></div></div>
         <div class="dr-block"><h4>Kab Kharida — Your Buy Lots</h4>${lotsHtml}<p class="dr-tax">${taxLine}</p></div>
         <div class="dr-block"><h4>All Entries</h4>${txnHtml || '<p class="muted small">No entries.</p>'}</div>
+        <div class="dr-block whatif" data-qty="${h.qty}" data-avg="${h.avg}" data-inv="${h.invested}"><h4>What-If Average Calculator</h4>
+          <div class="wi-row"><label>New Qty<input type="number" class="wi-qty" min="0" step="any" placeholder="0"></label><label>Buy Price<input type="number" class="wi-price" min="0" step="any" value="${h.ltp === null ? "" : h.ltp}"></label></div>
+          <p class="wi-out price-meta">Add a quantity to see your new average price.</p>
+        </div>
         <div class="hold-actions">
-          <button class="mini-btn" data-act="chart" data-sym="${esc(h.sym)}">📈 Company Page</button>
+          <button class="mini-btn" data-act="chart" data-sym="${esc(h.sym)}">📊 Chart &amp; News</button>
           <button class="mini-btn" data-act="buy" data-sym="${esc(h.sym)}" data-name="${esc(h.name)}">+ Buy More</button>
           <button class="mini-btn" data-act="sell" data-sym="${esc(h.sym)}" data-name="${esc(h.name)}">Sell</button>
           <button class="mini-btn" data-act="div" data-sym="${esc(h.sym)}" data-name="${esc(h.name)}">Dividend</button>
           <button class="mini-btn" data-act="price" data-sym="${esc(h.sym)}">Set Price</button>
           <button class="mini-btn danger" data-act="del" data-sym="${esc(h.sym)}">Remove All</button>
         </div>
+       </div>
       </div>
     </div>`;
   }).join("");
@@ -592,8 +617,7 @@ function renderHoldings() {
     const card = b.closest(".hold-card");
     const drawer = card && card.querySelector(".hold-drawer");
     if (!drawer) return;
-    const opening = drawer.classList.contains("hidden");
-    drawer.classList.toggle("hidden");
+    const opening = !card.classList.contains("open");
     card.classList.toggle("open", opening);
     card.querySelectorAll(".hold-chev").forEach(c => c.textContent = opening ? "▲ Hide details" : "▼ Buy dates, live status & edit");
     if (opening && !drawer.dataset.filled) {
@@ -601,6 +625,18 @@ function renderHoldings() {
       if (typeof fillHoldDrawer === "function") fillHoldDrawer(drawer.dataset.drawer, drawer);
     }
   }));
+  el.querySelectorAll(".whatif").forEach(w => {
+    const qtyEl = w.querySelector(".wi-qty"), priceEl = w.querySelector(".wi-price"), out = w.querySelector(".wi-out");
+    const calc = () => {
+      const nq = Number(qtyEl.value) || 0, pr = Number(priceEl.value) || 0;
+      const cq = Number(w.dataset.qty), ca = Number(w.dataset.avg), ci = Number(w.dataset.inv);
+      if (!(nq > 0) || !(pr > 0)) { out.textContent = "Add a quantity to see your new average price."; return; }
+      const na = (cq * ca + nq * pr) / (cq + nq);
+      out.innerHTML = "New Avg Price: <b>" + inr2(na) + "</b> · New Total Invested: <b>" + inr(ci + nq * pr) + "</b> · Total Qty: <b>" + (cq + nq) + "</b>";
+    };
+    qtyEl.addEventListener("input", calc);
+    priceEl.addEventListener("input", calc);
+  });
 }
 function holdingAction(ds) {
   if (ds.act === "chart") { if (typeof openStock === "function") openStock(ds.sym); return; }
@@ -629,8 +665,8 @@ function renderWatch() {
       <button class="star-btn ${w.fav ? "fav" : ""}" data-star="${esc(w.sym)}" type="button" title="Favourite">${w.fav ? "★" : "☆"}</button>
       <div class="w-id"><span class="w-sym">${esc(w.sym)}</span><span class="w-name">${esc(w.name)}</span></div>
       <div class="watch-spark">${p && p.spark && p.spark.length > 1 ? sparkSvg(p.spark) : ""}</div>
-      <div class="w-price"><span class="wp-price">${p ? inr2(p.price) : "—"}</span>${chg !== null ? `<span class="wp-pill ${chg >= 0 ? "gain" : "loss"}">${chg >= 0 ? "▲" : "▼"} ${pct(chg)}</span>` : `<span class="wp-pill flat">—</span>`}</div>
-      <button class="watch-x" data-unwatch="${esc(w.sym)}" type="button" title="Remove from watchlist">✕</button>
+      <div class="w-price" data-pflash="${esc(w.sym)}"><span class="wp-price">${p ? inr2(p.price) : "—"}</span>${chg !== null ? `<span class="wp-pill ${chg >= 0 ? "gain" : "loss"}">${chg >= 0 ? "▲" : "▼"} ${pct(chg)}</span>` : `<span class="wp-pill flat">—</span>`}</div>
+      <button class="watch-x" data-unwatch="${esc(w.sym)}" type="button" title="Remove from watchlist">🗑️</button>
     </div>`;
   }).join("");
   el.querySelectorAll("[data-star]").forEach(b => b.addEventListener("click", e => {
@@ -803,23 +839,60 @@ function importCsv(file) {
   const rd = new FileReader();
   rd.onload = () => {
     try {
-      const rows = String(rd.result).split(/\r?\n/).slice(1).filter(r => r.trim());
-      let n = 0;
-      for (const r of rows) {
-        const c = r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x => x.replace(/^"|"$/g, "").trim());
-        if (c.length < 6) continue;
-        const type = c[1].toUpperCase(); if (!["BUY", "SELL", "DIV"].includes(type)) continue;
-        const hit = (window.STOCK_LIST || []).find(s => s[0] === c[2].toUpperCase());
-        state.txns.push({ id: uid(), date: c[0], type: type, sym: c[2].toUpperCase(), name: c[3], sector: hit ? (hit[2] || "Other") : "Other", qty: Number(c[4]) || 0, price: Number(c[5]) || 0, charges: Number(c[6]) || 0, broker: c[7] || "", exch: c[8] || "", note: c[9] || "" });
+      const lines = String(rd.result).split(/\r?\n/).filter(r => r.trim());
+      if (lines.length < 2) { toast("That file looks empty."); return; }
+      const splitRow = r => r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x => x.replace(/^"|"$/g, "").trim());
+      const header = splitRow(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, " "));
+      const ALIASES = {
+        sym: ["symbol", "instrument", "trading symbol", "tradingsymbol", "scrip", "scrip name", "stock", "symbol name", "company"],
+        date: ["date", "trade date", "trade_date", "order execution time", "execution time", "transaction date", "order time"],
+        type: ["type", "trade type", "trade_type", "transaction type", "buy/sell", "side", "txn type"],
+        qty: ["qty", "quantity", "filled qty", "qty.", "shares", "quantity filled"],
+        price: ["price", "trade price", "avg. cost", "avg cost", "average price", "rate", "price per share", "avg. price"]
+      };
+      const col = {};
+      for (const k of Object.keys(ALIASES)) col[k] = header.findIndex(h => ALIASES[k].includes(h));
+      const mapped = col.sym >= 0 && col.date >= 0 && col.qty >= 0 && col.price >= 0;
+      let n = 0, skipped = 0;
+      const normDate = v => {
+        v = String(v || "").trim();
+        let m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m) return m[1] + "-" + m[2] + "-" + m[3];
+        m = v.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+        if (m) return m[3] + "-" + String(m[2]).padStart(2, "0") + "-" + String(m[1]).padStart(2, "0");
+        return "";
+      };
+      const num = v => Number(String(v || "").replace(/[^0-9.\-]/g, "")) || 0;
+      for (const r of lines.slice(1)) {
+        const c = splitRow(r);
+        let symCell, dateCell, typeCell, qtyCell, priceCell, charges = 0, broker = "", exch = "", note = "";
+        if (mapped) {
+          symCell = c[col.sym]; dateCell = c[col.date]; typeCell = col.type >= 0 ? c[col.type] : "BUY";
+          qtyCell = c[col.qty]; priceCell = c[col.price];
+        } else {
+          if (c.length < 6) { skipped++; continue; }
+          dateCell = c[0]; typeCell = c[1]; symCell = c[2]; qtyCell = c[4]; priceCell = c[5];
+          charges = num(c[6]); broker = c[7] || ""; exch = c[8] || ""; note = c[9] || "";
+        }
+        const date = normDate(dateCell);
+        const tu = String(typeCell || "").toUpperCase();
+        const type = tu.includes("SELL") || tu === "S" ? "SELL" : tu.includes("DIV") ? "DIV" : "BUY";
+        const qty = num(qtyCell), price = num(priceCell);
+        if (!date || !symCell || !(price >= 0) || (type !== "DIV" && !(qty > 0))) { skipped++; continue; }
+        const rawSym = String(symCell).toUpperCase().trim();
+        const hit = (window.STOCK_LIST || []).find(x => x[0] === rawSym);
+        const st = hit ? { sym: hit[0], name: hit[1], sector: hit[2] || "Other" } : resolveStock(symCell);
+        if (!st.sym) { skipped++; continue; }
+        state.txns.push({ id: uid(), date: date, type: type, sym: st.sym, name: st.name, sector: st.sector || "Other", qty: type === "DIV" ? 0 : qty, price: price, charges: charges, broker: broker, exch: exch, note: note });
         n++;
       }
-      persist(); renderAll(); refreshPrices(); toast("Imported " + n + " entries.");
+      persist(); renderAll(); refreshPrices();
+      toast("Imported " + n + " entries" + (skipped ? " · " + skipped + " rows skipped" : "") + (mapped ? " · broker format detected" : "") + ".");
     } catch (e) { toast("That CSV could not be read."); }
   };
   rd.readAsText(file);
 }
 
-/* ================= misc ui ================= */
 function buildDatalist() {
   const dl = $("stockList");
   const seen = new Set(); let html = "";
