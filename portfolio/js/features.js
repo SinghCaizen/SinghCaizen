@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v55";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v56";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -4173,3 +4173,284 @@ document.addEventListener("click", e => {
 });
 const _renderInsightsT1 = renderInsights;
 renderInsights = function (d) { _renderInsightsT1(d); try { insxEnsure(); } catch (e) {} };
+
+/* ================= TASK 2 (v60): planning & discipline =================
+   Targets/stop-loss reuse the existing price alerts (state.profile.alerts)
+   — this block adds the progress bars, near badges, the signals feed,
+   optional browser notifications and a summary panel. */
+function tgtStatus(sym) {
+  const cfg = state.profile && state.profile.alerts && state.profile.alerts[sym];
+  const p = priceOf(sym);
+  if (!cfg || !p) return null;
+  const ltp = p.price;
+  if (cfg.target && ltp >= cfg.target) return { st: "target", label: "🎯 Target hit", cfg, ltp };
+  if (cfg.sl && ltp <= cfg.sl) return { st: "sl", label: "🛑 Stop-loss hit", cfg, ltp };
+  if (cfg.sl && ltp <= cfg.sl * 1.03) return { st: "near-sl", label: "⚠ Near stop-loss", cfg, ltp };
+  if (cfg.target && ltp >= cfg.target * 0.97) return { st: "near-target", label: "🎯 Near target", cfg, ltp };
+  return { st: "watching", label: "Watching", cfg, ltp };
+}
+function tgtDecorate() {
+  const alerts = (state.profile && state.profile.alerts) || {};
+  document.querySelectorAll("#view-holdings .hold-card").forEach(card => {
+    const tog = card.querySelector("[data-hold-toggle]"); if (!tog) return;
+    const sym = tog.dataset.holdToggle;
+    const cfg = alerts[sym]; if (!cfg || (!cfg.target && !cfg.sl)) return;
+    const p = priceOf(sym); const meta = card.querySelector(".hold-meta"); if (!meta) return;
+    const st = tgtStatus(sym);
+    if (st && (st.st === "near-sl" || st.st === "near-target")) meta.innerHTML += ' · <span class="alert-chip hit">' + st.label + "</span>";
+    const h = computeHoldings().holdings.find(x => x.sym === sym);
+    if (!p || !h) return;
+    const avg = h.avg, ltp = p.price;
+    const lo = cfg.sl != null ? cfg.sl : Math.min(avg, ltp) * 0.85;
+    const hi = cfg.target != null ? cfg.target : Math.max(avg, ltp) * 1.18;
+    if (!(hi > lo)) return;
+    const pos = v => Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100));
+    const wrap = document.createElement("div");
+    wrap.className = "tgt-wrap";
+    wrap.innerHTML = '<div class="tgt-track"><span class="tgt-mark sl" style="left:' + pos(lo) + '%"></span><span class="tgt-mark avg" style="left:' + pos(avg) + '%"></span><span class="tgt-mark tp" style="left:' + pos(hi) + '%"></span><span class="tgt-dot" style="left:' + pos(ltp) + '%"></span></div>' +
+      '<div class="tgt-labs"><span class="neg">SL ' + (cfg.sl ? inr2(cfg.sl) : "—") + '</span><span>Avg ' + inr2(avg) + '</span><span class="pos">Target ' + (cfg.target ? inr2(cfg.target) : "—") + '</span></div>';
+    meta.after(wrap);
+  });
+  tgtPanelRender();
+}
+function tgtPanelRender() {
+  const view = $("view-holdings"); if (!view) return;
+  let panel = $("tgtPanel");
+  if (!panel) { panel = document.createElement("div"); panel.id = "tgtPanel"; view.appendChild(panel); }
+  const alerts = (state.profile && state.profile.alerts) || {};
+  const syms = Object.keys(alerts).filter(s => alerts[s].target || alerts[s].sl);
+  const notifyOn = !!(state.profile && state.profile.notify);
+  const supported = "Notification" in window;
+  let rows = "";
+  syms.forEach(s => { const st = tgtStatus(s); rows += '<div class="insx-row"><span>' + esc(s) + '</span><small>Target ' + (alerts[s].target ? inr2(alerts[s].target) : "—") + ' · SL ' + (alerts[s].sl ? inr2(alerts[s].sl) : "—") + (st ? ' · LTP ' + inr2(st.ltp) : "") + '</small><b>' + (st ? st.label : "Waiting for price") + "</b></div>"; });
+  panel.innerHTML = '<div class="panel insx-card"><div class="panel-head"><h2>Targets &amp; Stop-loss</h2><button type="button" class="insx-i" data-insx-info="targets">i</button></div>' +
+    (syms.length ? '<div class="insx-list">' + rows + "</div>" : '<p class="empty-note">No targets set yet — open any holding above and use its 🔔 Price Alerts box to set a target and a stop-loss. The bar then tracks the price between them.</p>') +
+    '<div class="insx-setrow"><button type="button" class="btn small" id="tgtNotifyBtn">' + (notifyOn ? "🔔 Browser notifications: ON" : "🔔 Browser notifications: OFF") + "</button><small>" + (supported ? "When on, Folio pops a notification if a target or stop-loss is crossed while the app is open. It is not a broker order." : "This browser does not support notifications.") + "</small></div></div>";
+  const btn = $("tgtNotifyBtn");
+  if (btn) btn.addEventListener("click", async () => {
+    if (!supported) { toast("This browser does not support notifications."); return; }
+    if (!notifyOn) {
+      let perm = Notification.permission;
+      if (perm === "default") { try { perm = await Notification.requestPermission(); } catch (e) {} }
+      if (perm !== "granted") { toast("Notifications are blocked in the browser settings."); return; }
+      state.profile.notify = true;
+    } else state.profile.notify = false;
+    persist(); tgtPanelRender();
+    toast(state.profile.notify ? "Price notifications on — while Folio is open." : "Price notifications off.");
+  });
+}
+function tgtNotifyCheck() {
+  if (!state.profile || !state.profile.notify) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  let seen = {}; try { seen = JSON.parse(localStorage.getItem("folio_alert_state") || "{}"); } catch (e) {}
+  const alerts = state.profile.alerts || {}; let changed = false;
+  for (const sym of Object.keys(alerts)) {
+    const cfg = alerts[sym]; const p = priceOf(sym); if (!p) continue;
+    const st = cfg.target && p.price >= cfg.target ? "target" : cfg.sl && p.price <= cfg.sl ? "sl" : "in";
+    if (seen[sym] && seen[sym] !== st && st !== "in") {
+      try { new Notification("Folio — " + (st === "target" ? "Target hit: " : "Stop-loss hit: ") + sym, { body: sym + " is now " + inr2(p.price) + (st === "target" ? " · your target was " + inr2(cfg.target) : " · your stop-loss was " + inr2(cfg.sl)), icon: "assets/folio-icon.svg" }); } catch (e) {}
+    }
+    if (seen[sym] !== st) { seen[sym] = st; changed = true; }
+  }
+  if (changed) { try { localStorage.setItem("folio_alert_state", JSON.stringify(seen)); } catch (e) {} }
+}
+const _renderHoldingsT2 = renderHoldings;
+renderHoldings = function () { _renderHoldingsT2(); try { tgtDecorate(); } catch (e) {} };
+const _renderSignalsT2 = renderSignalsSync;
+renderSignalsSync = function (d) {
+  _renderSignalsT2(d);
+  try {
+    const el = $("insSignals"); if (!el) return;
+    const alerts = (state.profile && state.profile.alerts) || {};
+    const rows = Object.keys(alerts).filter(s => alerts[s].target || alerts[s].sl).map(s => {
+      const st = tgtStatus(s); if (!st) return "";
+      return '<div class="sig-row"><span class="sig-sym">' + esc(s) + '</span><span class="sig-txt">' + st.label + " · LTP " + inr2(st.ltp) + " · Target " + (st.cfg.target ? inr2(st.cfg.target) : "—") + " · SL " + (st.cfg.sl ? inr2(st.cfg.sl) : "—") + "</span></div>";
+    }).join("");
+    if (rows) el.innerHTML += '<div class="sig-group"><h4>🎯 Your targets &amp; stop-losses</h4>' + rows + "</div>";
+  } catch (e) {}
+};
+const _doTickT2 = doTick;
+doTick = async function () { await _doTickT2(); try { tgtNotifyCheck(); } catch (e) {} };
+INSX_INFO.targets = "Targets & Stop-loss: you pick a target price and a stop-loss for a stock (in its Price Alerts box). The bar shows where the live price sits between them, and badges appear when the price gets close or crosses. Folio only watches and informs — it never places an order.";
+
+/* ---------- planning cards in Insights: Rebalancing, Goal, Dividends ---------- */
+INSX_INFO.rebal = "Rebalancing: you choose what share of your portfolio each stock (or sector) should be. Drift is how far today's share has wandered from your target, and the rupee figure is what buying or selling would bring it back in line. Information only — Folio never places orders.";
+INSX_INFO.goal = "Goal Tracker: your target corpus and date. Required CAGR is the yearly growth your current value must compound at to reach the goal on time. The projection uses your assumed yearly return — a straight-line what-if, not a forecast.";
+INSX_INFO.divplan = "Dividend Income Planner: expected dividends for the next 12 months, estimated from what your current holdings actually paid over the last 12 months (same shares, same payouts, same months). Companies can change or skip dividends, so treat this as a guide, not a promise. Yield on cost is that expected income divided by what you paid.";
+INSX_INFO.journal = "Trade Journal: every closed (sold) trade, matched first-in-first-out. Win rate is winning trades out of all closed trades. Expectancy is your average result per trade after wins and losses are both counted. Tags come from the Tags box in the Add/Edit form's + details.";
+let planRebalMode = "stocks", planNewMoney = 0;
+function planStore() { const p = state.profile || (state.profile = {}); if (!p.rebal) p.rebal = { stocks: {}, sectors: {} }; return p.rebal; }
+function planHoldVals() {
+  const { holdings } = computeHoldings();
+  const rows = holdings.map(h => { const p = priceOf(h.sym); return { sym: h.sym, sector: h.sector || sectorOf(h.sym), qty: h.qty, invested: h.invested, v: p ? h.qty * p.price : h.invested }; });
+  const total = rows.reduce((a, r) => a + r.v, 0);
+  return { rows, total };
+}
+function planEnsure() {
+  const view = $("view-insights"); if (!view || $("planWrap")) return;
+  const wrap = document.createElement("div"); wrap.id = "planWrap";
+  wrap.innerHTML = insxCard("plan-rebal", "Rebalancing", "rebal", insxSkel(3)) + insxCard("plan-goal", "Goal Tracker", "goal", insxSkel(3)) + insxCard("plan-div", "Dividend Income Planner", "divplan", insxSkel(3));
+  view.appendChild(wrap);
+  planRenderRebal(); planRenderGoal();
+  const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) planLoadDivs(); }, { rootMargin: "240px" });
+  io.observe(wrap);
+}
+function planRenderRebal() {
+  const box = $("plan-rebal"); if (!box) return;
+  const head = '<div class="panel-head"><h2>Rebalancing</h2>' + insxInfoBtn("rebal") + "</div>";
+  const { rows, total } = planHoldVals();
+  if (!rows.length || !total) { box.innerHTML = head + '<p class="empty-note">No holdings yet — set target percentages here once you own stocks, and Folio will show the drift.</p>'; return; }
+  const store = planStore();
+  let items = [];
+  if (planRebalMode === "stocks") items = rows.map(r => ({ key: r.sym, label: r.sym, v: r.v }));
+  else { const m = {}; rows.forEach(r => m[r.sector] = (m[r.sector] || 0) + r.v); items = Object.keys(m).map(k => ({ key: k, label: k, v: m[k] })); }
+  items.forEach(it => { it.cur = it.v / total * 100; it.target = Number((planRebalMode === "stocks" ? store.stocks : store.sectors)[it.key]) || 0; it.drift = it.target - it.cur; it.action = it.drift / 100 * total; });
+  const sumT = items.reduce((a, i) => a + i.target, 0);
+  const maxScale = Math.max(25, ...items.map(i => Math.max(i.cur, i.target)));
+  const list = items.map(it => '<div class="insx-row plan-row"><span>' + esc(it.label) + '</span><span class="drift-wrap"><span class="drift-cur" style="width:' + (it.cur / maxScale * 100) + '%"></span><span class="drift-mark" style="left:' + (it.target / maxScale * 100) + '%"></span></span><small>' + it.cur.toFixed(1) + '% now</small><input type="number" class="plan-tgt" data-plan-key="' + esc(it.key) + '" min="0" max="100" step="0.5" value="' + (it.target || "") + '" placeholder="Target %"><b class="' + (Math.abs(it.action) < 1 ? "" : it.action > 0 ? "pos" : "neg") + '">' + (Math.abs(it.action) < 1 ? "In line" : (it.action > 0 ? "Buy " : "Sell ") + insxAmt(Math.abs(it.action))) + "</b></div>").join("");
+  box.innerHTML = head +
+    '<div class="insx-legend"><button type="button" class="insx-chip' + (planRebalMode === "stocks" ? " on" : "") + '" data-plan-mode="stocks">By stock</button><button type="button" class="insx-chip' + (planRebalMode === "sectors" ? " on" : "") + '" data-plan-mode="sectors">By sector</button></div>' +
+    '<div class="insx-list">' + list + "</div>" +
+    '<p class="insx-note">Targets add up to <b>' + sumT.toFixed(1) + '%</b>' + (Math.abs(sumT - 100) > 0.5 && sumT > 0 ? " — for a full plan they should add up to 100%." : ".") + ' The white tick on each bar is your target; the fill is today\'s share.</p>' +
+    '<div class="insx-setrow"><label>Where to put new money ₹ <input type="number" id="planMoney" min="0" step="any" value="' + (planNewMoney || "") + '" placeholder="e.g. 25000"></label><button type="button" class="btn small" id="planMoneyBtn">Split it</button></div><div id="planMoneyOut"></div>';
+  box.querySelectorAll(".plan-tgt").forEach(inp => inp.addEventListener("change", () => {
+    const v = Math.min(100, Math.max(0, Number(inp.value) || 0));
+    (planRebalMode === "stocks" ? store.stocks : store.sectors)[inp.dataset.planKey] = v;
+    persist(); planRenderRebal();
+  }));
+  const mb = $("planMoneyBtn");
+  if (mb) mb.addEventListener("click", () => { planNewMoney = Number($("planMoney").value) || 0; planSplitMoney(items, total); });
+}
+function planSplitMoney(items, total) {
+  const out = $("planMoneyOut"); if (!out) return;
+  if (!(planNewMoney > 0)) { out.innerHTML = '<p class="empty-note">Enter an amount above first.</p>'; return; }
+  const withTargets = items.filter(i => i.target > 0);
+  if (!withTargets.length) { out.innerHTML = '<p class="empty-note">Set at least one target % first — the split follows your targets.</p>'; return; }
+  const newTotal = total + planNewMoney;
+  const alloc = {}; let remaining = planNewMoney;
+  for (let pass = 0; pass < 4 && remaining > 0.5; pass++) {
+    const gaps = withTargets.map(i => ({ key: i.key, gap: Math.max(0, i.target / 100 * newTotal - i.v - (alloc[i.key] || 0)) })).filter(g => g.gap > 0.5);
+    if (!gaps.length) break;
+    const gsum = gaps.reduce((a, g) => a + g.gap, 0);
+    gaps.forEach(g => { const give = Math.min(g.gap, remaining * (g.gap / gsum)); alloc[g.key] = (alloc[g.key] || 0) + give; remaining -= give; });
+  }
+  const rows = Object.entries(alloc).filter(([, v]) => v >= 1).sort((a, b) => b[1] - a[1]);
+  out.innerHTML = rows.length ? '<div class="insx-list">' + rows.map(([k, v]) => '<div class="insx-row"><span>' + esc(k) + '</span><b class="pos">Buy ' + insxAmt(v) + "</b></div>").join("") + "</div>" + (remaining >= 1 ? '<p class="insx-note">' + insxAmt(remaining) + " is left over — every target is already met at the new total.</p>" : "") : '<p class="empty-note">All your targets are already met — new money is not needed in any of them right now.</p>';
+}
+function planRenderGoal() {
+  const box = $("plan-goal"); if (!box) return;
+  const head = '<div class="panel-head"><h2>Goal Tracker</h2>' + insxInfoBtn("goal") + "</div>";
+  const p = state.profile || (state.profile = {});
+  const g = p.goal || (p.goal = { amount: 0, date: "", assumed: 12 });
+  const { total } = planHoldVals();
+  const editor = '<div class="insx-setrow"><label>Target corpus ₹ <input type="number" id="goalAmt" min="0" step="any" value="' + (g.amount || "") + '" placeholder="e.g. 1000000"></label><label>By date <input type="date" id="goalDate" value="' + (g.date || "") + '"></label><label>Assumed return <input type="number" id="goalAssumed" min="0" max="40" step="0.5" value="' + (g.assumed == null ? 12 : g.assumed) + '"> %/yr</label></div>';
+  let body = "";
+  if (!g.amount || !g.date) body = '<p class="empty-note">Set a target amount and a date — Folio will show how much of the goal you already hold, the growth rate you need, and a projection.</p>';
+  else if (!total) body = '<p class="empty-note">Add holdings first — the goal progress is measured on your portfolio\'s current value.</p>';
+  else {
+    const target = Number(g.amount), assumed = Math.min(40, Math.max(0, Number(g.assumed) || 12)) / 100;
+    const months = Math.max(1, Math.round((new Date(g.date + "T00:00:00") - new Date()) / 2629800000));
+    const years = months / 12;
+    const pctDone = Math.min(100, total / target * 100);
+    const reqCagr = total > 0 && target > total ? (Math.pow(target / total, 1 / years) - 1) * 100 : 0;
+    const circ = 2 * Math.PI * 34;
+    const assumedPath = [], reqPath = [];
+    for (let m = 0; m <= months; m++) { assumedPath.push(total * Math.pow(1 + assumed, m / 12)); reqPath.push(total * Math.pow(target / total, m / Math.max(1, months))); }
+    body = '<div class="goal-flex"><svg class="goal-ring" viewBox="0 0 84 84"><circle cx="42" cy="42" r="34" class="goal-ring-bg"/><circle cx="42" cy="42" r="34" class="goal-ring-fg" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="' + (circ * (1 - pctDone / 100)).toFixed(1) + '"/><text x="42" y="47" class="goal-ring-tx">' + pctDone.toFixed(1) + '%</text></svg>' +
+      '<div class="insx-tiles goal-tiles"><div class="insx-tile"><span>Current value</span><b>' + insxAmt(total) + '</b></div><div class="insx-tile"><span>Goal</span><b>' + insxAmt(target) + '</b><small>by ' + esc(fmtDate(g.date)) + '</small></div><div class="insx-tile"><span>Required CAGR</span><b>' + (target > total ? reqCagr.toFixed(1) + "%" : "Reached") + '</b><small>per year from today</small></div></div></div>' +
+      '<div class="insx-legend"><span class="insx-chip on"><span class="insx-dot" style="background:var(--text)"></span>At your assumed ' + (assumed * 100).toFixed(1) + '%</span><span class="insx-chip on"><span class="insx-dot" style="background:var(--gold)"></span>Path the goal needs</span></div>' +
+      insxLineSvg([{ data: assumedPath, color: "var(--text)" }, { data: reqPath, color: "var(--gold)" }]) +
+      '<p class="insx-note">A what-if picture, not a forecast — markets do not grow in straight lines.</p>';
+  }
+  box.innerHTML = head + body + editor;
+  const bind = (id, key, num) => { const el = $(id); if (el) el.addEventListener("change", () => { g[key] = num ? (Number(el.value) || 0) : el.value; persist(); planRenderGoal(); }); };
+  bind("goalAmt", "amount", true); bind("goalDate", "date", false); bind("goalAssumed", "assumed", true);
+}
+let planDivBusy = false;
+async function planLoadDivs() {
+  if (planDivBusy) return; planDivBusy = true;
+  const box = $("plan-div"); if (!box) { planDivBusy = false; return; }
+  const head = '<div class="panel-head"><h2>Dividend Income Planner</h2>' + insxInfoBtn("divplan") + "</div>";
+  const { holdings } = computeHoldings();
+  if (!holdings.length) { box.innerHTML = head + '<p class="empty-note">No holdings yet — once you own dividend-paying stocks, your expected income for the next 12 months appears here.</p>'; planDivBusy = false; return; }
+  try {
+    const masters = await Promise.all(holdings.map(h => fetchMaster(h.sym).catch(() => null)));
+    const now = Date.now(), yrAgo = now - 365 * 86400000;
+    const months = []; const start = new Date(); start.setDate(1);
+    for (let i = 1; i <= 12; i++) { const d = new Date(start.getFullYear(), start.getMonth() + i, 1); months.push({ key: d.getFullYear() + "-" + (d.getMonth() + 1), label: d.toLocaleDateString("en-IN", { month: "short" }), amt: 0 }); }
+    let expected = 0; const perStock = [];
+    holdings.forEach((h, i) => {
+      const m = masters[i]; if (!m || !m.divs) return;
+      const recent = m.divs.filter(d => d.ts >= yrAgo && d.ts <= now);
+      if (!recent.length) return;
+      const dps = recent.reduce((a, d) => a + (Number(d.amount) || 0), 0);
+      const exp = dps * h.qty; if (!(exp > 0)) return;
+      expected += exp; perStock.push({ sym: h.sym, exp, invested: h.invested });
+      recent.forEach(d => { const dt = new Date(d.ts); const key = (dt.getFullYear() + 1) + "-" + (dt.getMonth() + 1); const b = months.find(x => x.key === key); if (b) b.amt += (Number(d.amount) || 0) * h.qty; });
+    });
+    if (!expected) { box.innerHTML = head + '<p class="empty-note">None of your holdings paid a dividend in the last 12 months, so there is no past pattern to project from.</p>'; planDivBusy = false; return; }
+    const invested = holdings.reduce((a, h) => a + h.invested, 0);
+    const maxM = Math.max(1, ...months.map(m => m.amt));
+    const bars = '<div class="divplan-bars">' + months.map(m => '<div class="divplan-col"><span class="divplan-val">' + (m.amt >= 1 ? inrShort(m.amt) : "") + '</span><span class="divplan-bar" style="height:' + Math.max(2, m.amt / maxM * 74) + 'px"></span><span class="divplan-lab">' + m.label + "</span></div>").join("") + "</div>";
+    box.innerHTML = head + '<div class="insx-tiles"><div class="insx-tile"><span>Expected next 12 months</span><b>' + insxAmt(expected) + '</b></div><div class="insx-tile"><span>Yield on cost</span><b>' + (invested > 0 ? (expected / invested * 100).toFixed(2) + "%" : "—") + '</b><small>on ' + insxAmt(invested) + ' invested</small></div></div>' + bars +
+      '<div class="insx-list">' + perStock.sort((a, b) => b.exp - a.exp).map(s => '<div class="insx-row"><span>' + esc(s.sym) + '</span><b>' + insxAmt(s.exp) + "</b></div>").join("") + "</div>" +
+      '<p class="insx-note">Estimated from the last 12 months of actual payouts on the shares you hold today.</p>';
+  } catch (e) { box.innerHTML = head + '<p class="empty-note">Dividend history could not be loaded right now. Reopen Insights to try again.</p>'; }
+  planDivBusy = false;
+}
+/* ---------- Trade Journal (History view) ---------- */
+function closedTrades() {
+  const lots = {}; const closed = [];
+  [...state.txns].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0).forEach(t => {
+    if (t.type === "BUY") (lots[t.sym] = lots[t.sym] || []).push({ qty: Number(t.qty) || 0, price: effPrice(t), date: t.date, txn: t });
+    else if (t.type === "SELL") {
+      let q = Number(t.qty) || 0;
+      while (q > 0 && (lots[t.sym] || []).length) {
+        const l = lots[t.sym][0]; const take = Math.min(q, l.qty);
+        closed.push({ sym: t.sym, qty: take, buyDate: l.date, sellDate: t.date, pnl: take * (effPrice(t) - l.price), days: Math.max(0, Math.round((new Date(t.date) - new Date(l.date)) / 86400000)), tags: String(t.tags || (l.txn && l.txn.tags) || "").split(",").map(x => x.trim().toLowerCase()).filter(Boolean), reason: t.reason || "" });
+        l.qty -= take; q -= take; if (l.qty <= 0) lots[t.sym].shift();
+      }
+    }
+  });
+  return closed;
+}
+function journalEnsure() {
+  const view = $("view-history"); if (!view || $("journalWrap")) { if ($("journalWrap")) journalRender(); return; }
+  const wrap = document.createElement("div"); wrap.id = "journalWrap"; view.appendChild(wrap);
+  journalRender();
+}
+function journalRender() {
+  const box = $("journalWrap"); if (!box) return;
+  const head = '<div class="panel-head"><h2>Trade Journal</h2><button type="button" class="insx-i" data-insx-info="journal">i</button></div>';
+  const closed = closedTrades();
+  if (!closed.length) { box.innerHTML = '<div class="panel insx-card">' + head + '<p class="empty-note">No closed trades yet — when you sell shares, each finished trade lands here with its result. Add Tags and a Reason from the ＋ details in the Add/Edit form to grade your decisions later.</p></div>'; return; }
+  const wins = closed.filter(c => c.pnl > 0), losses = closed.filter(c => c.pnl <= 0);
+  const sum = a => a.reduce((x, c) => x + c.pnl, 0);
+  const avgW = wins.length ? sum(wins) / wins.length : 0, avgL = losses.length ? sum(losses) / losses.length : 0;
+  const expectancy = sum(closed) / closed.length;
+  const best = [...closed].sort((a, b) => b.pnl - a.pnl)[0], worst = [...closed].sort((a, b) => a.pnl - b.pnl)[0];
+  const avgDays = a => a.length ? Math.round(a.reduce((x, c) => x + c.days, 0) / a.length) : 0;
+  const byTag = {};
+  closed.forEach(c => { (c.tags.length ? c.tags : ["(no tag)"]).forEach(tg => { byTag[tg] = byTag[tg] || { n: 0, pnl: 0 }; byTag[tg].n++; byTag[tg].pnl += c.pnl; }); });
+  const tagRows = Object.entries(byTag).sort((a, b) => b[1].pnl - a[1].pnl);
+  const maxTag = Math.max(1, ...tagRows.map(([, v]) => Math.abs(v.pnl)));
+  const recent = [...closed].sort((a, b) => b.sellDate < a.sellDate ? -1 : 1).slice(0, 8);
+  box.innerHTML = '<div class="panel insx-card">' + head +
+    '<div class="insx-tiles"><div class="insx-tile"><span>Win rate</span><b>' + (wins.length / closed.length * 100).toFixed(0) + '%</b><small>' + wins.length + " of " + closed.length + ' closed trades</small></div>' +
+    '<div class="insx-tile"><span>Average win</span><b class="pos">' + insxAmt(avgW) + '</b></div>' +
+    '<div class="insx-tile"><span>Average loss</span><b class="neg">' + insxAmt(avgL) + '</b></div>' +
+    '<div class="insx-tile"><span>Expectancy per trade</span><b class="' + (expectancy >= 0 ? "pos" : "neg") + '">' + insxAmt(expectancy) + '</b></div>' +
+    '<div class="insx-tile"><span>Best trade</span><b class="pos">' + insxAmt(best.pnl) + '</b><small>' + esc(best.sym) + " · " + best.days + ' days</small></div>' +
+    '<div class="insx-tile"><span>Worst trade</span><b class="neg">' + insxAmt(worst.pnl) + '</b><small>' + esc(worst.sym) + " · " + worst.days + ' days</small></div>' +
+    '<div class="insx-tile"><span>Holding period</span><b>' + avgDays(wins) + " vs " + avgDays(losses) + ' days</b><small>winners vs losers</small></div></div>' +
+    '<h4 class="plan-sub">P&amp;L by tag</h4><div class="insx-list">' + tagRows.map(([tg, v]) => '<div class="insx-row"><span>' + esc(tg) + '</span><span class="insx-bar-wrap"><span class="insx-bar ' + (v.pnl >= 0 ? "pos" : "neg") + '" style="width:' + Math.max(3, Math.abs(v.pnl) / maxTag * 100) + '%"></span></span><small>' + v.n + ' trades</small><b class="' + (v.pnl >= 0 ? "pos" : "neg") + '">' + insxAmt(v.pnl) + "</b></div>").join("") + "</div>" +
+    '<h4 class="plan-sub">Recent closed trades</h4><div class="insx-list">' + recent.map(c => '<div class="insx-row"><span>' + esc(c.sym) + '</span><small>' + esc(fmtDate(c.sellDate)) + " · " + c.days + " days" + (c.tags.length ? " · " + c.tags.map(esc).join(", ") : "") + (c.reason ? " · “" + esc(c.reason) + "”" : "") + '</small><b class="' + (c.pnl >= 0 ? "pos" : "neg") + '">' + insxAmt(c.pnl) + "</b></div>").join("") + "</div></div>";
+}
+document.addEventListener("click", e => {
+  const pm = e.target.closest("[data-plan-mode]");
+  if (pm) { planRebalMode = pm.dataset.planMode; planRenderRebal(); }
+});
+const _renderInsightsT2 = renderInsights;
+renderInsights = function (d) { _renderInsightsT2(d); try { planEnsure(); } catch (e) {} };
+const _renderHistoryT2 = renderHistory;
+renderHistory = function () { _renderHistoryT2(); try { journalEnsure(); } catch (e) {} };

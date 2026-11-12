@@ -698,7 +698,10 @@ function renderHoldings() {
       const cq = Number(w.dataset.qty), ca = Number(w.dataset.avg), ci = Number(w.dataset.inv);
       if (!(nq > 0) || !(pr > 0)) { out.textContent = "Add a quantity to see your new average price."; return; }
       const na = (cq * ca + nq * pr) / (cq + nq);
-      out.innerHTML = "New Avg Price: <b>" + inr2(na) + "</b> · New Total Invested: <b>" + inr(ci + nq * pr) + "</b> · Total Qty: <b>" + (cq + nq) + "</b>";
+      const drw = w.closest(".hold-drawer"); const ltp2 = drw && drw.dataset.ltp !== "" && drw.dataset.ltp != null ? Number(drw.dataset.ltp) : null;
+      let extra2 = "";
+      if (ltp2) { const nqty = cq + nq; const npnl = (ltp2 - na) * nqty; let tot2 = 0; try { tot2 = enriched().value || 0; } catch (err) {} const wgt2 = (tot2 + nq * pr) > 0 ? (ltp2 * nqty) / (tot2 + nq * pr) * 100 : 0; extra2 = " · New P&L at " + inr2(ltp2) + ": <b>" + inr(npnl) + "</b> · New Weight: <b>" + wgt2.toFixed(1) + "%</b>"; }
+      out.innerHTML = "New Avg Price: <b>" + inr2(na) + "</b> · New Total Invested: <b>" + inr(ci + nq * pr) + "</b> · Total Qty: <b>" + (cq + nq) + "</b>" + extra2;
     };
     qtyEl.addEventListener("input", calc);
     priceEl.addEventListener("input", calc);
@@ -791,6 +794,8 @@ function batchRow(prefill) {
     '<label>Total Charges (₹)<input type="number" class="bt-charges" min="0" step="any" placeholder="0"></label>' +
     '<label>Net Amount<input class="bt-net" readonly placeholder="—"></label>' +
     '<label>Notes<input type="text" class="bt-note" placeholder="Note for future reference"></label>' +
+    '<label>Tags<input type="text" class="bt-tags" placeholder="e.g. breakout, long-term, tip"></label>' +
+    '<label>Reason<input type="text" class="bt-reason" placeholder="Why this trade? (journal)"></label>' +
     '</div>';
   const q = s => row.querySelector(s);
   attachSuggest(q(".bt-stock"));
@@ -822,6 +827,8 @@ function batchRow(prefill) {
     if (prefill.charges) { charges.value = prefill.charges; q(".bt-optbox").classList.remove("hidden"); }
     if (prefill.broker) q(".bt-broker").value = prefill.broker;
     if (prefill.note) { q(".bt-note").value = prefill.note; q(".bt-optbox").classList.remove("hidden"); }
+    if (prefill.tags) { q(".bt-tags").value = prefill.tags; q(".bt-optbox").classList.remove("hidden"); }
+    if (prefill.reason) { q(".bt-reason").value = prefill.reason; q(".bt-optbox").classList.remove("hidden"); }
     if (prefill.date) q(".bt-date").value = prefill.date;
   }
   if (!prefill || !prefill.date) q(".bt-date").value = todayStr();
@@ -849,7 +856,7 @@ function openEditTxn(id) {
   setEntryTab(false);
   const box = $("batchRows");
   box.innerHTML = "";
-  box.appendChild(batchRow({ type: t.type, stock: t.name && t.name !== t.sym ? t.name : t.sym, exch: t.exch || "NSE", date: t.date, qty: t.qty, price: t.price, charges: t.charges || 0, broker: t.broker || "Zerodha", note: t.note || "" }));
+  box.appendChild(batchRow({ type: t.type, stock: t.name && t.name !== t.sym ? t.name : t.sym, exch: t.exch || "NSE", date: t.date, qty: t.qty, price: t.price, charges: t.charges || 0, broker: t.broker || "Zerodha", note: t.note || "", tags: t.tags || "", reason: t.reason || "" }));
   $("txnError").textContent = "Editing your " + t.type + " entry of " + t.sym + " — saving replaces the old entry.";
   $("txnModal").classList.remove("hidden");
 }
@@ -877,7 +884,7 @@ function saveTxn(ev) {
       if (qty > have) { $("txnError").textContent = "You hold only " + have + " shares of " + st.sym + "."; return; }
       sellsQueued[st.sym] = (sellsQueued[st.sym] || 0) + qty;
     }
-    adds.push({ id: uid(), type: type, sym: st.sym, name: st.name, sector: st.sector, qty: qty, price: price, date: date, exch: q(".bt-exch").value, broker: q(".bt-broker").value, charges: Number(q(".bt-charges").value) || 0, note: q(".bt-note").value.trim() });
+    adds.push({ id: uid(), type: type, sym: st.sym, name: st.name, sector: st.sector, qty: qty, price: price, date: date, exch: q(".bt-exch").value, broker: q(".bt-broker").value, charges: Number(q(".bt-charges").value) || 0, note: q(".bt-note").value.trim(), tags: q(".bt-tags").value.trim(), reason: q(".bt-reason").value.trim() });
   }
   if (!adds.length) { $("txnError").textContent = "Add at least one stock first."; return; }
   let edited = false;
@@ -903,9 +910,9 @@ function addWatch(ev) {
   if (typeof primeStock === "function") primeStock(st.sym);
 }
 function exportCsv() {
-  const lines = ["Date,Type,Symbol,Name,Qty,Price,Charges,Broker,Exchange,Note"];
+  const lines = ["Date,Type,Symbol,Name,Qty,Price,Charges,Broker,Exchange,Note,Tags,Reason"];
   [...state.txns].sort((a, b) => a.date < b.date ? -1 : 1).forEach(t =>
-    lines.push([t.date, t.type, t.sym, '"' + String(t.name || "").replace(/"/g, '""') + '"', t.qty, t.price, t.charges || 0, t.broker || "", t.exch || "", '"' + String(t.note || "").replace(/"/g, '""') + '"'].join(",")));
+    lines.push([t.date, t.type, t.sym, '"' + String(t.name || "").replace(/"/g, '""') + '"', t.qty, t.price, t.charges || 0, t.broker || "", t.exch || "", '"' + String(t.note || "").replace(/"/g, '""') + '",' + '"' + String(t.tags || "").replace(/"/g, '""') + '",' + '"' + String(t.reason || "").replace(/"/g, '""') + '"'].join(",")));
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
   a.download = "folio-portfolio.csv"; a.click(); URL.revokeObjectURL(a.href);
@@ -924,7 +931,9 @@ function importCsv(file) {
         date: ["date", "trade date", "trade_date", "order execution time", "execution time", "transaction date", "order time"],
         type: ["type", "trade type", "trade_type", "transaction type", "buy/sell", "side", "txn type"],
         qty: ["qty", "quantity", "filled qty", "qty.", "shares", "quantity filled"],
-        price: ["price", "trade price", "avg. cost", "avg cost", "average price", "rate", "price per share", "avg. price"]
+        price: ["price", "trade price", "avg. cost", "avg cost", "average price", "rate", "price per share", "avg. price"],
+        tags: ["tags", "tag"],
+        reason: ["reason"]
       };
       const col = {};
       for (const k of Object.keys(ALIASES)) col[k] = header.findIndex(h => ALIASES[k].includes(h));
@@ -941,14 +950,14 @@ function importCsv(file) {
       const num = v => Number(String(v || "").replace(/[^0-9.\-]/g, "")) || 0;
       for (const r of lines.slice(1)) {
         const c = splitRow(r);
-        let symCell, dateCell, typeCell, qtyCell, priceCell, charges = 0, broker = "", exch = "", note = "";
+        let symCell, dateCell, typeCell, qtyCell, priceCell, charges = 0, broker = "", exch = "", note = "", tags = "", reason = "";
         if (mapped) {
           symCell = c[col.sym]; dateCell = c[col.date]; typeCell = col.type >= 0 ? c[col.type] : "BUY";
-          qtyCell = c[col.qty]; priceCell = c[col.price];
+          qtyCell = c[col.qty]; priceCell = c[col.price]; if (col.tags >= 0) tags = c[col.tags] || ""; if (col.reason >= 0) reason = c[col.reason] || "";
         } else {
           if (c.length < 6) { skipped++; continue; }
           dateCell = c[0]; typeCell = c[1]; symCell = c[2]; qtyCell = c[4]; priceCell = c[5];
-          charges = num(c[6]); broker = c[7] || ""; exch = c[8] || ""; note = c[9] || "";
+          charges = num(c[6]); broker = c[7] || ""; exch = c[8] || ""; note = c[9] || ""; tags = c[10] || ""; reason = c[11] || "";
         }
         const date = normDate(dateCell);
         const tu = String(typeCell || "").toUpperCase();
@@ -959,7 +968,7 @@ function importCsv(file) {
         const hit = (window.STOCK_LIST || []).find(x => x[0] === rawSym);
         const st = hit ? { sym: hit[0], name: hit[1], sector: hit[2] || "Other" } : resolveStock(symCell);
         if (!st.sym) { skipped++; continue; }
-        state.txns.push({ id: uid(), date: date, type: type, sym: st.sym, name: st.name, sector: st.sector || "Other", qty: type === "DIV" ? 0 : qty, price: price, charges: charges, broker: broker, exch: exch, note: note });
+        state.txns.push({ id: uid(), date: date, type: type, sym: st.sym, name: st.name, sector: st.sector || "Other", qty: type === "DIV" ? 0 : qty, price: price, charges: charges, broker: broker, exch: exch, note: note, tags: tags, reason: reason });
         n++;
       }
       persist(); renderAll(); refreshPrices();
