@@ -823,3 +823,25 @@ body.privacy-on .stat-value,body.privacy-on .stat-sub,body.privacy-on #insAssets
   .modal-card{border-radius:20px 20px 0 0}
   .tm-wrap{height:260px}
 }
+
+/* v30 — header grid, expand pill, lot cards, Samsung-style floating dock, modal armour */
+.hold-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:flex-start;gap:12px}
+.hold-sym{font-size:16px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.hh-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px}
+.hh-sub .hold-name{opacity:.78}
+.hh-sub .sector-chip{margin-left:0;vertical-align:0}
+.hold-chev{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;margin-top:12px;padding:10px 14px;border-radius:12px;background:color-mix(in srgb,var(--text) 8%,transparent);border:1px solid color-mix(in srgb,var(--text) 28%,transparent);color:var(--text);font-size:13px;font-weight:700;cursor:pointer;transition:transform .18s ease,background .18s ease}
+.hold-chev:active{transform:scale(.98);background:color-mix(in srgb,var(--text) 14%,transparent)}
+.chev-pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--text);color:var(--bg);white-space:nowrap}
+.lot-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--text) 4%,transparent);margin-bottom:8px}
+.lot-row .mini-btn{padding:5px 10px;font-weight:700}
+.btn-ic{width:13px;height:13px;vertical-align:-2px}
+.modal{z-index:1000}
+#stockClose{width:40px;height:40px;min-width:40px;font-size:17px;position:relative;z-index:1001}
+.bnav svg{width:22px;height:22px}
+@media (max-width:768px){
+  body{padding-bottom:92px}
+  .bnav.mobile-bottom-nav{left:12px;right:12px;bottom:12px;height:64px;border-radius:999px;background:rgba(22,22,26,.95);border:1px solid rgba(255,255,255,.12);box-shadow:0 12px 32px rgba(0,0,0,.40);padding:6px;z-index:900;gap:2px}
+  .bnav .mobile-nav-item{flex:1;height:52px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:rgba(255,255,255,.60);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;transition:all .22s cubic-bezier(.22,1,.36,1)}
+  .bnav .mobile-nav-item.active{background:rgba(255,255,255,.16);color:#fff;font-weight:700}
+}

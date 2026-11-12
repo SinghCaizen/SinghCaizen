@@ -595,7 +595,7 @@ function renderHoldings() {
       const lpPct = h.ltp !== null && l.price ? (h.ltp - l.price) / l.price * 100 : null;
       const origin = state.txns.find(t => t.type === "BUY" && t.sym === h.sym && t.date === l.date && Math.abs(effPrice(t) - l.price) < 0.011 && Number(t.qty) >= l.qty && !claimedLots.has(t.id));
       if (origin) claimedLots.add(origin.id);
-      return `<div class="lot-row"><span class="lot-date">${esc(fmtDate(l.date))}</span><span>${l.qty} shares × ${inr2(l.price)}</span><span class="lot-age">${days} days held</span><span class="tax-chip ${long ? "ltcg" : "stcg"}">${long ? "LTCG" : "STCG"}</span>${lp !== null ? `<span class="lot-pnl ${lp >= 0 ? "gain" : "loss"}">${inr(lp)} (${pct(lpPct)})</span>` : ""}${origin ? `<button class="mini-btn" data-edittxn="${origin.id}" type="button">✏️ Edit</button><button class="mini-btn danger" data-deltxn="${origin.id}" type="button">🗑️</button>` : ""}</div>`;
+      return `<div class="lot-row"><span class="lot-date">${esc(fmtDate(l.date))}</span><span>${l.qty} shares × ${inr2(l.price)}</span><span class="lot-age">${days} days held</span><span class="tax-chip ${long ? "ltcg" : "stcg"}">${long ? "LTCG" : "STCG"}</span>${lp !== null ? `<span class="lot-pnl ${lp >= 0 ? "gain" : "loss"}">${inr(lp)} (${pct(lpPct)})</span>` : ""}${origin ? `<button class="mini-btn lot-edit" data-edittxn="${origin.id}" type="button">✏️ Edit Lot</button><button class="mini-btn danger lot-del" data-deltxn="${origin.id}" type="button">🗑️ Delete Lot</button>` : ""}</div>`;
     }).join("");
     const ltcgQty = (h.lots || []).filter(l => (today - new Date(l.date + "T00:00:00")) / 86400000 >= 365).reduce((a, l) => a + l.qty, 0);
     const taxLine = ltcgQty > 0
@@ -606,7 +606,7 @@ function renderHoldings() {
     return `
     <div class="hold-card" style="animation-delay:${i * 60}ms">
       <button class="hold-head" data-hold-toggle="${esc(h.sym)}" type="button">
-        <span class="hh-left"><span class="hh-symrow"><span class="hold-sym">${esc(h.sym)}</span><span class="sector-chip">${esc(h.sector || "Other")}</span></span><span class="hold-name">${esc(h.name)}</span></span>
+        <span class="hh-left"><span class="hold-sym">${esc(h.sym)}</span><span class="hh-sub"><span class="hold-name">${esc(h.name)}</span><span class="sector-chip">${esc(h.sector || "Other")}</span></span></span>
         <span class="hh-right"><span class="hh-ltp" data-pflash="${esc(h.sym)}">${h.ltp !== null ? "LTP " + inr2(h.ltp) : "LTP —"}</span>${dayPct !== null ? `<span class="wp-pill ${dayPct >= 0 ? "gain" : "loss"}">${dayPct >= 0 ? "▲" : "▼"} ${pct(dayPct)}</span>` : ""}</span>
       </button>
       <div class="hold-strip">
@@ -616,7 +616,7 @@ function renderHoldings() {
         <div><span>Day's P&amp;L</span><b class="${h.day >= 0 ? "gain" : "loss"}">${inr(h.day)}</b></div>
       </div>
       <div class="hold-meta">Qty: ${h.qty} shares · Avg Buy: ${inr2(h.avg)} · Weight: ${weight.toFixed(1)}% of portfolio${h.ltp === null ? ' · <span class="alert-chip">Custom Quote — valued at your buy price (no live feed)</span>' : ""} · Booked P&amp;L: <b class="${h.realised >= 0 ? "gain" : "loss"}">${inr(h.realised)}</b>${alertChip ? " · " + alertChip : ""}</div>
-      <button class="hold-chev" data-hold-toggle="${esc(h.sym)}" type="button">▼ Buy dates, live status &amp; edit</button>
+      <button class="hold-chev" data-hold-toggle="${esc(h.sym)}" type="button"><span class="chev-label">📅 Buy Dates, Live Status &amp; Edit</span><span class="chev-pill">Tap to Open ▼</span></button>
       <div class="hold-drawer" data-drawer="${esc(h.sym)}" data-avg="${h.avg}" data-ltp="${h.ltp === null ? "" : h.ltp}">
        <div class="drawer-inner">
         <div class="dr-block"><h4>Live Status</h4><div class="dr-status"><span class="muted small">Loading status…</span></div></div>
@@ -655,7 +655,7 @@ function renderHoldings() {
     if (!drawer) return;
     const opening = !card.classList.contains("open");
     card.classList.toggle("open", opening);
-    card.querySelectorAll(".hold-chev").forEach(c => c.textContent = opening ? "▲ Hide details" : "▼ Buy dates, live status & edit");
+    card.querySelectorAll(".chev-pill").forEach(c => c.textContent = opening ? "Hide Details ▲" : "Tap to Open ▼");
     if (opening && !drawer.dataset.filled) {
       drawer.dataset.filled = "1";
       if (typeof fillHoldDrawer === "function") fillHoldDrawer(drawer.dataset.drawer, drawer);

@@ -523,8 +523,9 @@ setInterval(updateMktPill, 30000);
 /* ---------- Yahoo search top-up for autocomplete (beyond the built-in list) ---------- */
 window.__yahooSuggest = async function (q) {
   try {
-    const url = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q) + "&quotesCount=10&newsCount=0";
-    const j = await fetchViaProxies(url, true);
+    let j = null;
+    try { j = await fetchViaProxies("https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q) + "&quotesCount=10&newsCount=0", true); } catch (e) {}
+    if (!j || !j.quotes) { try { j = await fetchViaProxies("https://query1.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q) + "&quotesCount=20&newsCount=0", true); } catch (e) {} }
     const out = [];
     ((j && j.quotes) || []).forEach(x => {
       if (!x || !x.symbol || x.quoteType !== "EQUITY") return;
@@ -1648,7 +1649,14 @@ async function loadCompanySheet(sym) {
   lk.innerHTML =
     '<a class="mini-btn link-btn" href="https://www.screener.in/company/' + encodeURIComponent(sym) + '/" target="_blank" rel="noopener">Full financials on Screener ↗</a>' +
     '<a class="mini-btn link-btn" href="https://www.nseindia.com/get-quotes/equity?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">View on NSE ↗</a>';
-  ab.innerHTML = '<div class="skel" style="height:14px;width:92%"></div><div class="skel" style="height:14px;width:78%;margin-top:8px"></div>';
+  const ip = prices[sym];
+  const iDay = ip && ip.prevClose ? (ip.price - ip.prevClose) / ip.prevClose * 100 : null;
+  ab.innerHTML = '<p class="comp-line"><b>' + esc(name) + '</b> · NSE' + (sectorOf(sym) ? ' · ' + esc(sectorOf(sym)) : '') + '</p>' +
+    '<div class="stat-chips">' +
+    (ip ? '<span class="chip">Price <b>' + inr2(ip.price) + '</b>' + (iDay !== null ? ' <span class="' + (iDay >= 0 ? "gain" : "loss") + '">' + pct(iDay) + ' today</span>' : '') + '</span>' : '<span class="chip">Price loads with the chart below</span>') +
+    (held ? '<span class="chip">You hold <b>' + held.qty + ' shares</b> · avg ' + inr2(held.avg) + ' · P&amp;L <b class="' + (held.pnl >= 0 ? "gain" : "loss") + '">' + inr(held.pnl) + '</b></span>' : '<span class="chip">Not in your portfolio</span>') +
+    '</div>' + extButtonsHtml(sym) +
+    '<p class="price-meta">Full details (52-week range, technicals) replace this card the moment the free feed answers.</p>';
   rs.innerHTML = '<div class="skel" style="height:14px;width:60%"></div>';
   nw.innerHTML = '<div class="skel" style="height:14px;width:88%"></div><div class="skel" style="height:14px;width:70%;margin-top:8px"></div>';
   const cp = $("stockCorp"); if (cp) cp.innerHTML = '<div class="skel" style="height:14px;width:55%"></div>';
@@ -1666,6 +1674,12 @@ async function loadCompanySheet(sym) {
   const watchdog = setTimeout(() => {
     if (tok === sheetToken && ab.querySelector(".skel")) sheetFallback();
   }, 9000);
+  setTimeout(() => {
+    if (tok !== sheetToken) return;
+    const fb = '<p class="empty-note">News is taking too long on this network right now. Read it directly from the source:</p>' + extButtonsHtml(sym);
+    if (rs.querySelector(".skel")) rs.innerHTML = fb;
+    if (nw.querySelector(".skel")) nw.innerHTML = fb;
+  }, 3500);
   /* ONE master fetch (1y chart + events) powers About + Corporate Actions.
      Hard timeout: a section can never sit on a skeleton forever. */
   try {
@@ -2299,7 +2313,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v29";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v30";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2366,3 +2380,26 @@ const nseWatch = setInterval(() => { if (currentUser) { clearInterval(nseWatch);
     try { renderHeat(enriched()); } catch (e) {}
   }));
 })();
+
+/* ---------- unbreakable company-modal close (X, backdrop, Esc, phone Back) ---------- */
+window.closeCompanyModal = function () {
+  const m = $("stockModal");
+  if (m) m.classList.add("hidden");
+  document.body.style.overflow = "";
+  try { lwDispose(); } catch (e) {}
+};
+document.addEventListener("click", e => {
+  const t = e.target;
+  if (!t || !t.closest) return;
+  if (t.closest("[data-close-modal]")) { e.stopPropagation(); window.closeCompanyModal(); }
+}, true);
+window.addEventListener("popstate", () => {
+  const m = $("stockModal");
+  if (m && !m.classList.contains("hidden")) window.closeCompanyModal();
+});
+const _openStockPrev = openStock;
+openStock = function (sym) {
+  const r = _openStockPrev(sym);
+  try { history.pushState({ folioStock: 1 }, ""); } catch (e) {}
+  return r;
+};
