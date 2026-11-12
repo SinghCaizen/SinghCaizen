@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v39";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v40";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2665,7 +2665,7 @@ function renderWlBar() {
     '<button type="button" class="wl-pill' + (w.id === state.activeWatchlistId ? " active" : "") + '" data-wlswitch="' + w.id + '">' + esc(w.name) + ' <span class="wl-count">' + w.items.length + "</span></button>").join("") +
     '<span class="wl-actions"><button type="button" class="wl-act" data-wlnew="1" title="Create a new watchlist">➕ New</button>' +
     '<button type="button" class="wl-act" data-wlrename="1" title="Rename this watchlist">✏️</button>' +
-    '<button type="button" class="wl-act danger" data-wldel="1" title="Delete this watchlist">🗑️</button></span>";
+    '<button type="button" class="wl-act danger" data-wldel="1" title="Delete this watchlist">🗑️</button></span>';
   bar.querySelectorAll("[data-wlswitch]").forEach(b => b.addEventListener("click", () => switchWl(b.dataset.wlswitch)));
   const nb = bar.querySelector("[data-wlnew]"); if (nb) nb.addEventListener("click", newWl);
   const rb = bar.querySelector("[data-wlrename]"); if (rb) rb.addEventListener("click", renameWl);
