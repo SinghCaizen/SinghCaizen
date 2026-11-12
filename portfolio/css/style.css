@@ -845,3 +845,109 @@ body.privacy-on .stat-value,body.privacy-on .stat-sub,body.privacy-on #insAssets
   .bnav .mobile-nav-item{flex:1;height:52px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:rgba(255,255,255,.60);font-size:11px;font-weight:600;background:transparent;border:none;cursor:pointer;transition:all .22s cubic-bezier(.22,1,.36,1)}
   .bnav .mobile-nav-item.active{background:rgba(255,255,255,.16);color:#fff;font-weight:700}
 }
+
+/* v32 — Samsung Health Liquid Glass theme engine (dark = :root, light = [data-theme="light"]) */
+:root{
+  --bg-liquid-canvas: radial-gradient(circle at 18% 12%, rgba(14,116,144,.34), transparent 48%), radial-gradient(circle at 82% 28%, rgba(29,78,216,.28), transparent 52%), radial-gradient(circle at 50% 88%, rgba(6,95,70,.22), transparent 55%), #081420;
+  --liquid-card-bg: rgba(19,38,56,.56);
+  --liquid-inner-card-bg: rgba(28,52,74,.48);
+  --liquid-bar-bg: rgba(16,33,49,.72);
+  --liquid-active-pill: rgba(255,255,255,.16);
+  --liquid-border: rgba(255,255,255,.14);
+  --liquid-edge-glow: inset 0 1px 1.5px rgba(255,255,255,.22), inset 0 -1px 1px rgba(0,0,0,.25);
+  --liquid-shadow: 0 14px 34px -6px rgba(0,0,0,.45), 0 4px 14px rgba(0,0,0,.28);
+  --liquid-text-primary: #f8fafc;
+  --liquid-text-muted: rgba(248,250,252,.66);
+  --panel: rgba(19,38,56,.56);
+  --panel-2: rgba(28,52,74,.48);
+  --line: rgba(255,255,255,.14);
+}
+[data-theme="light"]{
+  --bg-liquid-canvas: radial-gradient(circle at 15% 10%, rgba(56,189,248,.16), transparent 45%), radial-gradient(circle at 85% 25%, rgba(59,130,246,.14), transparent 50%), radial-gradient(circle at 50% 85%, rgba(16,185,129,.10), transparent 55%), #eef3f9;
+  --liquid-card-bg: rgba(255,255,255,.66);
+  --liquid-inner-card-bg: rgba(255,255,255,.52);
+  --liquid-bar-bg: rgba(240,246,255,.72);
+  --liquid-active-pill: rgba(255,255,255,.92);
+  --liquid-border: rgba(255,255,255,.75);
+  --liquid-edge-glow: inset 0 1px 1.5px rgba(255,255,255,.9), inset 0 -1px 1px rgba(15,23,42,.04);
+  --liquid-shadow: 0 10px 30px -5px rgba(15,23,42,.08), 0 4px 12px rgba(15,23,42,.04);
+  --liquid-text-primary: #0f172a;
+  --liquid-text-muted: rgba(15,23,42,.62);
+  --panel: rgba(255,255,255,.66);
+  --panel-2: rgba(255,255,255,.52);
+  --line: rgba(15,23,42,.10);
+}
+body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
+.panel,.stat-card,.hold-card,.modal-card,.auth-card,.account-pop,.suggest-box{
+  background: var(--liquid-card-bg);
+  backdrop-filter: blur(24px) saturate(185%);
+  -webkit-backdrop-filter: blur(24px) saturate(185%);
+  border: 1px solid var(--liquid-border);
+  box-shadow: var(--liquid-shadow), var(--liquid-edge-glow);
+}
+.panel,.stat-card,.hold-card{border-radius: 24px;}
+.watchlist-row{background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 16px; margin-bottom: 8px; backdrop-filter: blur(18px) saturate(170%); -webkit-backdrop-filter: blur(18px) saturate(170%);}
+.ticker-wrap{background: var(--liquid-bar-bg); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);}
+.mkt-pill{background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border);}
+/* top liquid capsule strip (the existing .tabs nav, restyled) */
+.tabs.top-liquid-nav-strip{
+  display: flex; align-items: center; gap: 4px; margin: 10px 12px 14px; padding: 5px;
+  border-radius: 999px; background: var(--liquid-bar-bg);
+  backdrop-filter: blur(24px) saturate(190%); -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid var(--liquid-border); box-shadow: var(--liquid-shadow), var(--liquid-edge-glow);
+  overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.tabs.top-liquid-nav-strip::-webkit-scrollbar{display: none;}
+.tabs.top-liquid-nav-strip .tab{
+  flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 16px; border-radius: 999px; border: none; background: transparent;
+  color: var(--liquid-text-muted); font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer;
+  transition: all .25s cubic-bezier(.22,1,.36,1);
+}
+.tabs.top-liquid-nav-strip .tab svg{width: 16px; height: 16px; flex-shrink: 0;}
+.tabs.top-liquid-nav-strip .tab.active{
+  background: var(--liquid-active-pill); color: var(--liquid-text-primary); font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0,0,0,.10), inset 0 1px 1px rgba(255,255,255,.45);
+}
+/* seg pills (donut / heatmap / chart controls) get the same liquid bubble */
+.seg .seg-btn.active{background: var(--liquid-active-pill); color: var(--liquid-text-primary); box-shadow: 0 4px 12px rgba(0,0,0,.10), inset 0 1px 1px rgba(255,255,255,.45);}
+/* header utility droplets */
+.theme-btn, #avatarBtn{
+  background: var(--liquid-bar-bg); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  border: 1px solid var(--liquid-border); border-radius: 50%; box-shadow: var(--liquid-edge-glow);
+}
+/* bottom split dock — desktop hidden, mobile liquid */
+.samsung-bottom-dock-wrap{display: none;}
+@media (max-width: 768px){
+  .samsung-bottom-dock-wrap{
+    position: fixed; bottom: 14px; left: 12px; right: 12px; display: flex; align-items: center; gap: 10px; z-index: 900; pointer-events: none;
+  }
+  .samsung-bottom-capsule{
+    flex: 1; height: 62px; padding: 5px; border-radius: 999px; background: var(--liquid-bar-bg);
+    backdrop-filter: blur(26px) saturate(195%); -webkit-backdrop-filter: blur(26px) saturate(195%);
+    border: 1px solid var(--liquid-border); box-shadow: var(--liquid-shadow), var(--liquid-edge-glow);
+    display: flex; align-items: center; justify-content: space-between; pointer-events: auto;
+  }
+  .samsung-bottom-capsule .mobile-nav-item{
+    flex: 1; height: 52px; border-radius: 999px; border: none; background: transparent; color: var(--liquid-text-muted);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    font-size: 10.5px; font-weight: 600; cursor: pointer; transition: all .25s cubic-bezier(.22,1,.36,1);
+  }
+  .samsung-bottom-capsule .mobile-nav-item svg{width: 21px; height: 21px;}
+  .samsung-bottom-capsule .mobile-nav-item.active{
+    background: var(--liquid-active-pill); color: var(--liquid-text-primary); font-weight: 700;
+    box-shadow: 0 4px 12px rgba(0,0,0,.10), inset 0 1px 1px rgba(255,255,255,.45);
+  }
+  .samsung-profile-circle-btn{
+    width: 62px; height: 62px; flex-shrink: 0; border-radius: 50%; background: var(--liquid-bar-bg);
+    backdrop-filter: blur(26px) saturate(195%); -webkit-backdrop-filter: blur(26px) saturate(195%);
+    border: 1px solid var(--liquid-border); box-shadow: var(--liquid-shadow), var(--liquid-edge-glow);
+    color: var(--liquid-text-primary); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; pointer-events: auto; transition: all .25s cubic-bezier(.22,1,.36,1); position: relative; overflow: hidden;
+  }
+  .samsung-profile-circle-btn:active{transform: scale(.93);}
+  .samsung-profile-circle-btn.active{background: var(--liquid-active-pill); border-color: rgba(56,189,248,.65); box-shadow: 0 0 0 3px rgba(56,189,248,.22), var(--liquid-shadow), var(--liquid-edge-glow);}
+  .samsung-profile-circle-btn svg{width: 26px; height: 26px;}
+  .samsung-profile-circle-btn img{width: 38px; height: 38px; border-radius: 50%; object-fit: cover;}
+  .bnav{display: none !important;}
+}

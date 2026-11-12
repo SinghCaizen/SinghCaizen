@@ -2333,7 +2333,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v31";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v32";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2423,3 +2423,19 @@ openStock = function (sym) {
   try { history.pushState({ folioStock: 1 }, ""); } catch (e) {}
   return r;
 };
+
+/* ---------- liquid dock: profile circle shows her photo; top strip centres the active tab ---------- */
+let lastDpShown = "__init";
+const USER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg>';
+setInterval(() => {
+  const btn = $("bnavProfileBtn");
+  if (!btn || typeof state === "undefined" || !state) return;
+  const dp = (state.profile && state.profile.dp) || "";
+  if (dp === lastDpShown) return;
+  lastDpShown = dp;
+  btn.innerHTML = dp ? '<img src="' + dp + '" alt="Profile">' : USER_SVG;
+}, 2000);
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => setTimeout(() => {
+  const a = document.querySelector(".tab.active");
+  if (a && a.scrollIntoView) a.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+}, 60)));
