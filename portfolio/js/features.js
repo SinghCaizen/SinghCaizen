@@ -305,10 +305,10 @@ function renderHeat(d) {
   const rects = tmLayout(rows, W, H);
   el.innerHTML = '<div class="tm-wrap">' + rects.map(rc => {
     const v = heatMode === "pnl" ? rc.pnlPct : rc.dayPct;
-    let bg, fg = "var(--text)";
-    if (v === null || v === undefined) bg = "var(--panel-2)";
-    else if (v >= 0) { const k = Math.min(72, 16 + Math.abs(v) * 7); bg = "color-mix(in srgb, var(--gain) " + k + "%, var(--panel-2))"; if (k > 52) fg = "#ffffff"; }
-    else { const k = Math.min(72, 16 + Math.abs(v) * 7); bg = "color-mix(in srgb, var(--loss) " + k + "%, var(--panel-2))"; if (k > 40) fg = "#ffffff"; }
+    let bg, fg = "#ffffff";
+    if (v === null || v === undefined || Math.abs(v) <= 0.01) { bg = "var(--panel-2)"; fg = "var(--text)"; }
+    else if (v > 0) bg = "linear-gradient(135deg, #059669, #10b981)";
+    else bg = "linear-gradient(135deg, #dc2626, #ef4444)";
     const big = rc.w >= 120 && rc.h >= 56, mid = rc.w >= 78 && rc.h >= 40;
     const pctTxt = v === null || v === undefined ? "—" : pct(v) + (heatMode === "pnl" ? " overall" : " today");
     return '<button type="button" class="tm-tile" data-heat="' + esc(rc.sym) + '" style="left:' + (rc.x / W * 100) + "%;top:" + (rc.y / H * 100) + "%;width:" + (rc.w / W * 100) + "%;height:" + (rc.h / H * 100) + "%;background:" + bg + ";color:" + fg + '">' +
@@ -496,8 +496,13 @@ function updateMktPill() {
   pill.textContent = open ? "🟢 NSE LIVE · Auto-updating" : "⚪ Market Closed · EOD Prices";
   pill.classList.toggle("live", open);
 }
+let lastScrollAt = 0;
+window.addEventListener("scroll", () => { lastScrollAt = Date.now(); }, { passive: true });
 async function doTick() {
   if (!currentUser || typeof refreshPrices !== "function") return;
+  const modalOpen = ["stockModal", "txnModal", "totpModal", "helpModal"].some(id => { const m = $(id); return m && !m.classList.contains("hidden"); });
+  if (modalOpen) { try { await refreshPrices(); } catch (e) {} return; }
+  if (Date.now() - lastScrollAt < 500) { setTimeout(() => { try { doTick(); } catch (e) {} }, 650); return; }
   const before = {};
   Object.keys(prices || {}).forEach(k => { if (prices[k]) before[k] = prices[k].price; });
   await refreshPrices();
@@ -728,7 +733,7 @@ async function renderLW() {
   if (legend) legend.textContent = "TradingView chart · drag to pan · scroll / pinch to zoom";
 }
 const _drawStockBase = drawStock;
-drawStock = async function () { await _drawStockBase(); try { await renderLW(); } catch (e) {} };
+drawStock = async function () { await _drawStockBase(); try { await renderTA(); } catch (e) {} };
 
 /* ---------- report issue ---------- */
 const WEB3_KEY = "94e01d94-8fae-4cdc-b9b9-716cf169d7dc";
@@ -1058,16 +1063,9 @@ function renderInsViz(d) {
     heat.innerHTML = rows.map(r => {
       const dayPct = (r.ltp !== null && r.prevClose) ? (r.ltp - r.prevClose) / r.prevClose * 100 : null;
       let bg, fg;
-      if (dayPct === null) { bg = "var(--panel-2)"; fg = "var(--text)"; }
-      else if (dayPct >= 0) {
-        const k = Math.min(68, 14 + Math.abs(dayPct) * 18);
-        bg = "color-mix(in srgb, var(--text) " + k + "%, var(--panel-2))";
-        fg = k > 46 ? "var(--bg)" : "var(--text)";
-      } else {
-        const k = Math.min(72, 16 + Math.abs(dayPct) * 18);
-        bg = "color-mix(in srgb, #e03131 " + k + "%, var(--panel-2))";
-        fg = "#ffffff";
-      }
+      if (dayPct === null || Math.abs(dayPct) <= 0.01) { bg = "var(--panel-2)"; fg = "var(--text)"; }
+      else if (dayPct > 0) { bg = "linear-gradient(135deg, #059669, #10b981)"; fg = "#ffffff"; }
+      else { bg = "linear-gradient(135deg, #dc2626, #ef4444)"; fg = "#ffffff"; }
       const flex = Math.max(1, (d.value ? r.cur / d.value : 0) * 10).toFixed(2);
       return '<button type="button" class="heat-tile" data-heat2="' + esc(r.sym) + '" style="flex:' + flex + ' 1 100px;background:' + bg + ';color:' + fg + '">' +
         '<span class="heat-sym">' + esc(r.sym) + '</span>' +
@@ -1674,6 +1672,23 @@ async function loadCompanySheet(sym) {
     persist(); renderWatch(); toast("Added to watchlist");
     loadCompanySheet(sym);
   });
+  try {
+    const others = (state.watchlists || []).filter(w => w.id !== state.activeWatchlistId);
+    if (others.length) {
+      const holder = document.createElement("span");
+      holder.className = "wl-copy";
+      holder.innerHTML = '<select id="sheetWlSel" class="wl-sel">' + others.map(w => '<option value="' + w.id + '">' + esc(w.name) + '</option>').join("") + '</select><button class="mini-btn" id="sheetWlCopy" type="button">Copy to List</button>';
+      wr.appendChild(holder);
+      $("sheetWlCopy").addEventListener("click", () => {
+        const L = (state.watchlists || []).find(w => w.id === $("sheetWlSel").value);
+        if (!L) return;
+        if (L.items.some(w => w.sym === sym)) { toast(sym + " is already in " + L.name); return; }
+        L.items.push({ sym: sym, name: name, fav: false });
+        persist(); toast("Copied to " + L.name);
+        if (typeof primeStock === "function") primeStock(sym);
+      });
+    }
+  } catch (e) {}
   lk.innerHTML =
     '<a class="mini-btn link-btn" href="https://www.screener.in/company/' + encodeURIComponent(sym) + '/" target="_blank" rel="noopener">Full financials on Screener ↗</a>' +
     '<a class="mini-btn link-btn" href="https://www.nseindia.com/get-quotes/equity?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">View on NSE ↗</a>';
@@ -2145,7 +2160,7 @@ function renderScatter(per, d) {
     w: d.value ? p.r.cur / d.value * 100 : 0
   }));
   if (!pts.length) { box.innerHTML = '<p class="empty-note">The scatter needs price history — it appears once 6 months of prices load.</p>'; return; }
-  const W = 680, H = 300, PL = 46, PR = 14, PT = 16, PB = 34;
+  const W = 680, H = 300, PL = 46, PR = 32, PT = 32, PB = 34;
   const maxVol = Math.max(30, ...pts.map(p => p.vol)) * 1.12;
   const minRet = Math.min(-8, ...pts.map(p => p.ret)) * 1.15;
   const maxRet = Math.max(12, ...pts.map(p => p.ret)) * 1.15;
@@ -2166,10 +2181,16 @@ function renderScatter(per, d) {
   [0, Math.round(maxVol / 2), Math.round(maxVol)].forEach(v => {
     svg += '<text x="' + X(v) + '" y="' + (H - PB + 16) + '" text-anchor="middle" fill="var(--muted)" font-size="10.5">' + v + '%</text>';
   });
+  const placedLabels = [];
   pts.forEach(p => {
     const r = Math.min(24, 4.5 + p.w * 0.38);
-    svg += '<g class="scatter-dot" data-sym="' + esc(p.sym) + '" style="cursor:pointer"><circle cx="' + X(p.vol).toFixed(1) + '" cy="' + Y(p.ret).toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + (p.ret >= 0 ? "var(--text)" : "#e03131") + '" opacity="0.55" stroke="var(--bg)" stroke-width="1.2"><title>' + esc(p.sym) + ' — Return ' + pct(p.ret) + ' · Volatility ' + p.vol.toFixed(1) + '% a year · Weight ' + p.w.toFixed(1) + '% of portfolio</title></circle>' +
-      '<text x="' + X(p.vol).toFixed(1) + '" y="' + (Y(p.ret) - r - 3).toFixed(1) + '" text-anchor="middle" fill="var(--text)" font-size="10.5" font-weight="bold">' + esc(p.sym) + '</text></g>';
+    const cx = X(p.vol), cy = Y(p.ret);
+    let ly = cy - r - 3;
+    if (cy < PT + 45) ly = cy + r + 13;
+    if (placedLabels.some(q => Math.abs(q.x - cx) < 24 && Math.abs(q.y - ly) < 10)) ly += 12;
+    placedLabels.push({ x: cx, y: ly });
+    svg += '<g class="scatter-dot" data-sym="' + esc(p.sym) + '" style="cursor:pointer"><circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="' + r.toFixed(1) + '" fill="' + (p.ret >= 0 ? "var(--text)" : "#e03131") + '" opacity="0.55" stroke="var(--bg)" stroke-width="1.2"><title>' + esc(p.sym) + ' — Return ' + pct(p.ret) + ' · Volatility ' + p.vol.toFixed(1) + '% a year · Weight ' + p.w.toFixed(1) + '% of portfolio</title></circle>' +
+      '<text x="' + cx.toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="middle" fill="var(--text)" font-size="10.5" font-weight="bold">' + esc(p.sym) + '</text></g>';
   });
   svg += '</svg><p class="price-meta">Each bubble is one stock: left = calmer, right = wilder; up = profit, down = loss. Bubble size = share of your money in it. Split lines: 0% return and the median volatility (' + medVol.toFixed(0) + '%). Tap a bubble for its full page.</p>';
   box.innerHTML = svg;
@@ -2342,7 +2363,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v34";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v35";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2594,4 +2615,344 @@ setInterval(() => { try { enhanceProfileAccordions(); } catch (e) {} }, 1500);
     seg.querySelectorAll("[data-instf]").forEach(x => x.classList.toggle("active", x === b));
     renderInsPeriod();
   }));
+})();
+
+/* ---------- multi-watchlist manager ---------- */
+function activeWl() { return (state && state.watchlists || []).find(w => w.id === state.activeWatchlistId) || null; }
+function renderWlBar() {
+  const bar = $("wlBar");
+  if (!bar || !state || !Array.isArray(state.watchlists)) return;
+  bar.innerHTML = state.watchlists.map(w =>
+    '<button type="button" class="wl-pill' + (w.id === state.activeWatchlistId ? " active" : "") + '" data-wlswitch="' + w.id + '">' + esc(w.name) + ' <span class="wl-count">' + w.items.length + "</span></button>").join("") +
+    '<span class="wl-actions"><button type="button" class="wl-act" data-wlnew="1" title="Create a new watchlist">➕ New</button>' +
+    '<button type="button" class="wl-act" data-wlrename="1" title="Rename this watchlist">✏️</button>' +
+    '<button type="button" class="wl-act" data-wldel="1" title="Delete this watchlist">🗑️</button></span>';
+  bar.querySelectorAll("[data-wlswitch]").forEach(b => b.addEventListener("click", () => switchWl(b.dataset.wlswitch)));
+  const nb = bar.querySelector("[data-wlnew]"); if (nb) nb.addEventListener("click", newWl);
+  const rb = bar.querySelector("[data-wlrename]"); if (rb) rb.addEventListener("click", renameWl);
+  const db = bar.querySelector("[data-wldel]"); if (db) db.addEventListener("click", deleteWl);
+}
+function switchWl(id) {
+  const L = (state.watchlists || []).find(w => w.id === id);
+  if (!L) return;
+  state.activeWatchlistId = id;
+  state.watch = L.items;
+  persist(); renderWatch();
+  if (typeof refreshPrices === "function") refreshPrices();
+}
+function newWl() {
+  const name = (window.prompt("Name your new watchlist (e.g. IT Stocks, Swing Trades, IPO Watch):", "") || "").trim();
+  if (!name) return;
+  const L = { id: "wl_" + Date.now().toString(36), name: name, items: [] };
+  state.watchlists.push(L);
+  switchWl(L.id);
+  toast("Watchlist created: " + name);
+}
+function renameWl() {
+  const a = activeWl(); if (!a) return;
+  const name = (window.prompt("Rename this watchlist:", a.name) || "").trim();
+  if (!name) return;
+  a.name = name; persist(); renderWlBar(); toast("Renamed to " + name);
+}
+function deleteWl() {
+  if (!state.watchlists || state.watchlists.length <= 1) { toast("Keep at least one watchlist"); return; }
+  const a = activeWl(); if (!a) return;
+  if (!window.confirm("Delete the watchlist \"" + a.name + "\" and its " + a.items.length + " stocks?")) return;
+  state.watchlists = state.watchlists.filter(w => w.id !== a.id);
+  switchWl(state.watchlists[0].id);
+  toast("Watchlist deleted");
+}
+function ensureWatchlists() {
+  if (typeof state === "undefined" || !state) return;
+  if (!Array.isArray(state.watchlists) || !state.watchlists.length) {
+    state.watchlists = [{ id: "wl_default", name: "★ My Watchlist", items: Array.isArray(state.watch) ? state.watch : [] }];
+    state.activeWatchlistId = "wl_default";
+  }
+  const act = state.watchlists.find(w => w.id === state.activeWatchlistId) || state.watchlists[0];
+  state.activeWatchlistId = act.id;
+  if (state.watch !== act.items) state.watch = act.items;
+  renderWlBar();
+}
+const _persistWlBase = persist;
+persist = function () { try { const a = activeWl(); if (a && state.watch !== a.items) a.items = state.watch; } catch (e) {} return _persistWlBase(); };
+const _renderWatchWlBase = renderWatch;
+renderWatch = function () { _renderWatchWlBase(); try { renderWlBar(); } catch (e) {} };
+setInterval(() => { try { ensureWatchlists(); } catch (e) {} }, 1500);
+
+/* =====================================================================
+   Self-contained Canvas TA Terminal — zero external dependencies.
+   Stage 1 renders instantly from cache (or a clearly-labelled estimated
+   preview anchored to the live price); Stage 2 swaps in real Yahoo
+   history in the background. The chart box can never stay blank.
+   ===================================================================== */
+const taState = { mode: "candles", days: 365, ema: true, sma: true, bb: false, sr: true, measure: false, bars: [], sym: "", preview: false, cross: -1, mA: -1, mB: -1 };
+let taToken = 0;
+function taSeedRand(seed) { let x = seed % 2147483647; if (x <= 0) x += 2147483646; return () => (x = x * 16807 % 2147483647) / 2147483647; }
+function taSynthetic(sym) {
+  const q = (typeof prices !== "undefined" && prices[sym]) || null;
+  const end = q && q.price ? q.price : null;
+  if (!end) return [];
+  const rnd = taSeedRand([..."TA" + sym].reduce((a, c) => a + c.charCodeAt(0) * 7, 13));
+  const n = 250, bars = [], dates = [];
+  const dayMs = 86400000, today = new Date(); today.setHours(0, 0, 0, 0);
+  let d = new Date(today);
+  while (dates.length < n) { const wd = d.getDay(); if (wd !== 0 && wd !== 6) dates.unshift(d.getTime()); d = new Date(d.getTime() - dayMs); }
+  let p = end * (0.84 + rnd() * 0.18);
+  for (let i = 0; i < n; i++) {
+    const drift = (end - p) / Math.max(1, n - i);
+    const o = p;
+    let c = p + drift + (rnd() - 0.48) * p * 0.012;
+    if (i === n - 1) c = end;
+    const h = Math.max(o, c) * (1 + rnd() * 0.006), l = Math.min(o, c) * (1 - rnd() * 0.006);
+    bars.push({ t: dates[i], o: o, h: h, l: l, c: c, v: Math.round(40000 + rnd() * 900000) });
+    p = c;
+  }
+  return bars;
+}
+function emaSeries(vals, period) {
+  const out = new Array(vals.length).fill(null);
+  if (vals.length < period) return out;
+  const k = 2 / (period + 1);
+  let e = vals.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  out[period - 1] = e;
+  for (let i = period; i < vals.length; i++) { e = vals[i] * k + e * (1 - k); out[i] = e; }
+  return out;
+}
+function smaSeries(vals, period) {
+  const out = new Array(vals.length).fill(null);
+  let sum = 0;
+  for (let i = 0; i < vals.length; i++) { sum += vals[i]; if (i >= period) sum -= vals[i - period]; if (i >= period - 1) out[i] = sum / period; }
+  return out;
+}
+function rsiSeries(closes, period) {
+  const out = new Array(closes.length).fill(null);
+  if (closes.length <= period) return out;
+  let g = 0, l = 0;
+  for (let i = 1; i <= period; i++) { const d = closes[i] - closes[i - 1]; if (d >= 0) g += d; else l -= d; }
+  g /= period; l /= period;
+  out[period] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+  for (let i = period + 1; i < closes.length; i++) { const d = closes[i] - closes[i - 1]; g = (g * (period - 1) + Math.max(d, 0)) / period; l = (l * (period - 1) + Math.max(-d, 0)) / period; out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l); }
+  return out;
+}
+async function renderTA() {
+  const wrap = $("taWrap"), svgBox = $("stockChart");
+  if (!wrap || !stockSym) return;
+  if (["1d5m", "5d15m", "5d1h"].includes(stockRange)) { wrap.classList.add("hidden"); return; }
+  wrap.classList.remove("hidden");
+  if (svgBox) svgBox.classList.add("hidden");
+  ["lwWrap", "lwBar", "lwLegend"].forEach(id => { const e = $(id); if (e) e.classList.add("hidden"); });
+  const sym = stockSym, tok = ++taToken;
+  taState.sym = sym; taState.mA = -1; taState.mB = -1; taState.cross = -1;
+  let bars = null, preview = false;
+  const mc = masterCache[sym];
+  if (mc && mc.ohlc && mc.ohlc.length > 5) bars = mc.ohlc;
+  if (!bars) { const h = histLsGet(sym + "|1y"); if (h && h.points && h.points.length > 5) bars = h.points.map(p => ({ t: p.t, o: p.c, h: p.c, l: p.c, c: p.c, v: 0 })); }
+  if (!bars && ["5y", "max"].includes(stockRange)) { const c = lsCacheGet("folio_ohlc_" + sym + "|" + stockRange, 12 * 3600 * 1000); if (c && c.bars && c.bars.length > 5) bars = c.bars; }
+  if (!bars) { bars = taSynthetic(sym); preview = bars.length > 0; }
+  if (bars && bars.length) { taState.bars = bars; taState.preview = preview; taDraw(); }
+  try {
+    let real = null;
+    if (["5y", "max"].includes(stockRange)) real = await fetchOHLC(sym, stockRange === "5y" ? "5y" : "max", stockRange === "5y" ? "1wk" : "1mo");
+    else { const m = await fetchMaster(sym); if (m && m.ohlc && m.ohlc.length > 5) real = m.ohlc; }
+    if (tok !== taToken || stockSym !== sym) return;
+    if (real && real.length) { taState.bars = real; taState.preview = false; taDraw(); }
+    else if (preview) { const nt = $("taNote"); if (nt) nt.textContent = "Estimated preview shown — the free history feed did not answer. The live price above is real."; }
+  } catch (e) {}
+}
+function taLevels() {
+  const bars = taState.bars;
+  if (!bars || bars.length < 2) return [];
+  const y = bars[bars.length - 2];
+  const P = (y.h + y.l + y.c) / 3;
+  const lv = [
+    { v: P + (y.h - y.l), t: "R2" }, { v: 2 * P - y.l, t: "R1" }, { v: P, t: "P" },
+    { v: 2 * P - y.h, t: "S1" }, { v: P - (y.h - y.l), t: "S2" }
+  ];
+  let hi = -Infinity, lo = Infinity;
+  bars.slice(-250).forEach(b => { hi = Math.max(hi, b.h); lo = Math.min(lo, b.l); });
+  lv.push({ v: hi, t: "52W H" }, { v: lo, t: "52W L" });
+  return lv;
+}
+function taDraw() {
+  const canvas = $("taCanvas"), wrap = $("taWrap");
+  if (!canvas || !wrap || !taState.bars.length) return;
+  const all = taState.bars;
+  const closes = all.map(b => b.c);
+  const ema = emaSeries(closes, 20), sma = smaSeries(closes, 200);
+  const sma20 = smaSeries(closes, 20), sd20 = closes.map((c, i) => {
+    if (i < 19) return null;
+    const m = sma20[i]; let s = 0; for (let j = i - 19; j <= i; j++) s += (closes[j] - m) * (closes[j] - m);
+    return Math.sqrt(s / 20);
+  });
+  const rsi = rsiSeries(closes, 14);
+  let from = 0;
+  if (taState.days > 0) { const cutoff = all[all.length - 1].t - taState.days * 86400000; from = all.findIndex(b => b.t >= cutoff); if (from < 0) from = 0; }
+  const bars = all.slice(from);
+  const N = bars.length;
+  if (N < 2) return;
+  const W = Math.max(280, wrap.clientWidth - 4);
+  const H = window.innerWidth <= 768 ? 360 : 410;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cs = getComputedStyle(document.documentElement);
+  const C = { text: cs.getPropertyValue("--text").trim() || "#eee", muted: cs.getPropertyValue("--muted").trim() || "#999", line: cs.getPropertyValue("--line").trim() || "#333", gain: "#10b981", loss: "#ef4444" };
+  const plotW = W - 8, step = plotW / N;
+  const priceH = Math.round(H * 0.58), volTop = priceH + 6, volH = Math.round(H * 0.11), rsiTop = volTop + volH + 10, rsiH = H - rsiTop - 16;
+  let mn = Infinity, mx = -Infinity, vmax = 0;
+  bars.forEach(b => { mn = Math.min(mn, b.l); mx = Math.max(mx, b.h); vmax = Math.max(vmax, b.v || 0); });
+  if (taState.bb) for (let i = 0; i < N; i++) { const gi = from + i; if (sd20[gi] !== null) { mx = Math.max(mx, sma20[gi] + 2 * sd20[gi]); mn = Math.min(mn, sma20[gi] - 2 * sd20[gi]); } }
+  const pad = (mx - mn) * 0.06 || 1; mx += pad; mn -= pad;
+  const Y = v => priceH - (v - mn) / (mx - mn) * priceH;
+  const X = i => i * step + step / 2;
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = C.line; ctx.fillStyle = C.muted; ctx.font = "10px system-ui"; ctx.lineWidth = 1;
+  for (let g = 0; g <= 3; g++) { const v = mn + (mx - mn) * g / 3, y = Y(v); ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.fillText("₹" + Math.round(v).toLocaleString("en-IN"), 4, Math.max(10, y - 3)); }
+  const line = (series, color, width) => {
+    ctx.strokeStyle = color; ctx.lineWidth = width || 1.4; ctx.beginPath(); let started = false;
+    for (let i = 0; i < N; i++) { const v = series[from + i]; if (v === null || v === undefined) continue; const x = X(i), y = Y(v); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }
+    ctx.stroke();
+  };
+  if (taState.bb) {
+    ctx.fillStyle = "rgba(120,144,180,0.10)"; ctx.beginPath(); let started = false;
+    for (let i = 0; i < N; i++) { const gi = from + i; if (sd20[gi] === null) continue; const x = X(i), y = Y(sma20[gi] + 2 * sd20[gi]); if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y); }
+    for (let i = N - 1; i >= 0; i--) { const gi = from + i; if (sd20[gi] === null) continue; ctx.lineTo(X(i), Y(sma20[gi] - 2 * sd20[gi])); }
+    ctx.closePath(); ctx.fill();
+  }
+  const bw = Math.max(1, Math.floor(step * 0.68));
+  if (taState.mode === "area") {
+    const grad = ctx.createLinearGradient(0, 0, 0, priceH);
+    grad.addColorStop(0, "rgba(16,185,129,0.36)"); grad.addColorStop(1, "rgba(16,185,129,0.02)");
+    ctx.beginPath();
+    bars.forEach((b, i) => { const x = X(i), y = Y(b.c); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+    ctx.strokeStyle = "#10b981"; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.lineTo(X(N - 1), priceH); ctx.lineTo(X(0), priceH); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+  } else if (taState.mode === "bars") {
+    bars.forEach((b, i) => {
+      const x = X(i), col = b.c >= b.o ? C.gain : C.loss;
+      ctx.strokeStyle = col; ctx.lineWidth = Math.max(1, bw * 0.5);
+      ctx.beginPath(); ctx.moveTo(x, Y(b.h)); ctx.lineTo(x, Y(b.l));
+      ctx.moveTo(x - bw / 2, Y(b.o)); ctx.lineTo(x, Y(b.o));
+      ctx.moveTo(x, Y(b.c)); ctx.lineTo(x + bw / 2, Y(b.c)); ctx.stroke();
+    });
+  } else {
+    bars.forEach((b, i) => {
+      const x = X(i), col = b.c >= b.o ? C.gain : C.loss;
+      ctx.strokeStyle = col; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, Y(b.h)); ctx.lineTo(x, Y(b.l)); ctx.stroke();
+      ctx.fillStyle = col;
+      const yO = Y(b.o), yC = Y(b.c);
+      ctx.fillRect(x - bw / 2, Math.min(yO, yC), bw, Math.max(1, Math.abs(yC - yO)));
+    });
+  }
+  if (taState.ema) line(ema, "#2962ff", 1.4);
+  if (taState.sma) line(sma, "#ff6d00", 1.4);
+  if (taState.bb) { line(sma20.map((v, i) => (sd20[i] === null ? null : v + 2 * sd20[i])), "rgba(120,144,180,0.55)", 1); line(sma20.map((v, i) => (sd20[i] === null ? null : v - 2 * sd20[i])), "rgba(120,144,180,0.55)", 1); }
+  if (taState.sr) {
+    ctx.font = "9.5px system-ui";
+    taLevels().forEach(L => {
+      if (L.v < mn || L.v > mx) return;
+      const y = Y(L.v);
+      ctx.strokeStyle = "rgba(150,160,175,0.5)"; ctx.setLineDash([5, 4]);
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.muted; ctx.fillText(L.t + " ₹" + Math.round(L.v).toLocaleString("en-IN"), W - 118, y - 3);
+    });
+  }
+  bars.forEach((b, i) => {
+    if (!b.v || !vmax) return;
+    ctx.fillStyle = b.c >= b.o ? "rgba(16,185,129,0.55)" : "rgba(239,68,68,0.55)";
+    const h = b.v / vmax * volH;
+    ctx.fillRect(X(i) - bw / 2, volTop + volH - h, bw, h);
+  });
+  ctx.strokeStyle = C.line; ctx.beginPath(); ctx.moveTo(0, rsiTop); ctx.lineTo(W, rsiTop); ctx.stroke();
+  ctx.fillStyle = C.muted; ctx.font = "9.5px system-ui"; ctx.fillText("RSI (14)", 4, rsiTop + 11);
+  const rsiY = v => rsiTop + rsiH - (v / 100) * rsiH;
+  [30, 70].forEach(v => { ctx.strokeStyle = "rgba(150,160,175,0.4)"; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(0, rsiY(v)); ctx.lineTo(W, rsiY(v)); ctx.stroke(); ctx.setLineDash([]); });
+  ctx.strokeStyle = "#a78bfa"; ctx.lineWidth = 1.3; ctx.beginPath(); let rs0 = false;
+  for (let i = 0; i < N; i++) { const v = rsi[from + i]; if (v === null) continue; const x = X(i), y = rsiY(v); if (!rs0) { ctx.moveTo(x, y); rs0 = true; } else ctx.lineTo(x, y); }
+  ctx.stroke();
+  try {
+    (state.txns || []).filter(t => t.sym === taState.sym && (t.type === "BUY" || t.type === "SELL")).forEach(t => {
+      const td = new Date(t.date + "T23:59:59").getTime();
+      let idx = -1;
+      for (let i = 0; i < N; i++) if (bars[i].t <= td) idx = i;
+      if (idx < 0) return;
+      const x = X(idx), b = bars[idx], buy = t.type === "BUY";
+      const y = buy ? Y(b.l) + 6 : Y(b.h) - 6;
+      ctx.fillStyle = buy ? C.gain : C.loss;
+      ctx.beginPath();
+      if (buy) { ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 8); ctx.lineTo(x + 5, y + 8); } else { ctx.moveTo(x, y); ctx.lineTo(x - 5, y - 8); ctx.lineTo(x + 5, y - 8); }
+      ctx.closePath(); ctx.fill();
+      ctx.font = "bold 9px system-ui"; ctx.fillText((buy ? "B " : "S ") + "₹" + Math.round(t.price).toLocaleString("en-IN"), x - 14, buy ? y + 19 : y - 12);
+    });
+  } catch (e) {}
+  if (taState.mA >= 0 && taState.mB >= 0 && taState.mA !== taState.mB) {
+    const a = taState.mA, b2 = taState.mB;
+    ctx.strokeStyle = C.text; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(X(a - from), Y(all[a].c)); ctx.lineTo(X(b2 - from), Y(all[b2].c)); ctx.stroke();
+  }
+  if (taState.cross >= 0 && taState.cross < N) {
+    const i = taState.cross, x = X(i);
+    ctx.strokeStyle = "rgba(160,170,185,0.65)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, rsiTop + rsiH); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, Y(bars[i].c), 3.4, 0, Math.PI * 2); ctx.fillStyle = C.text; ctx.fill();
+  }
+  taState._view = { from: from, N: N, step: step, ema: ema, rsi: rsi, bars: bars };
+  const note = $("taNote");
+  if (note) note.textContent = taState.preview ? "Estimated preview (anchored to the live price) — real history is loading in the background." : (bars[0] ? new Date(bars[0].t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " → " + new Date(bars[N - 1].t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " · " + N + " days · free daily data" : "");
+  taVerdict(ema, sma, rsi);
+}
+function taVerdict(ema, sma, rsi) {
+  const box = $("taVerdict");
+  if (!box || !taState.bars.length) return;
+  const all = taState.bars, last = all[all.length - 1], li = all.length - 1;
+  const e = ema[li], s = sma[li], r = rsi[li];
+  const trend = (e && s) ? (last.c > e && last.c > s ? "Bullish — above 20 EMA & 200 SMA" : (last.c < e && last.c < s ? "Bearish — below 20 EMA & 200 SMA" : "Mixed — between the averages")) : "Not enough history for a trend call";
+  const lv = taLevels().map(L => L.v);
+  const sup = lv.filter(v => v < last.c).sort((a, b) => b - a)[0];
+  const res = lv.filter(v => v > last.c).sort((a, b) => a - b)[0];
+  let sig = "Range Bound";
+  const hi20 = Math.max.apply(null, all.slice(-21, -1).map(b => b.h));
+  if (last.c > hi20) sig = "Breakout — closed above the 20-day high";
+  else if (e && last.c > e && Math.abs(last.c - e) / e < 0.01 && (s ? last.c > s : true)) sig = "2nd Leg Pullback — holding at the 20 EMA in an uptrend";
+  box.innerHTML =
+    '<span class="chip">Trend <b>' + trend + "</b></span>" +
+    '<span class="chip">RSI (14) <b>' + (r !== null && r !== undefined ? r.toFixed(1) : "—") + "</b> " + (r >= 70 ? "· Overbought" : r <= 30 ? "· Oversold" : "· Neutral Momentum") + "</span>" +
+    '<span class="chip">Support <b>' + (sup ? inr2(sup) : "—") + '</b> · Resistance <b>' + (res ? inr2(res) : "—") + "</b></span>" +
+    '<span class="chip">Price Action <b>' + sig + "</b></span>" +
+    (taState.preview ? '<span class="chip">Preview data — real history loading</span>' : "");
+}
+(function wireTa() {
+  const canvas = $("taCanvas");
+  if (!canvas) return;
+  const segWire = (id, attr, fn) => { const seg = $(id); if (!seg) return; seg.querySelectorAll("[" + attr + "]").forEach(b => b.addEventListener("click", () => fn(b, seg))); };
+  segWire("taModeSeg", "data-ta", (b, seg) => { taState.mode = b.dataset.ta; seg.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x === b)); taDraw(); });
+  segWire("taTfSeg", "data-tatf", (b, seg) => { taState.days = Number(b.dataset.tatf); seg.querySelectorAll(".seg-btn").forEach(x => x.classList.toggle("active", x === b)); taDraw(); });
+  segWire("taIndSeg", "data-taind", b => {
+    const k = b.dataset.taind;
+    if (k === "measure") { taState.measure = !taState.measure; taState.mA = -1; taState.mB = -1; b.classList.toggle("active", taState.measure); const hud = $("taHud"); if (hud) hud.textContent = taState.measure ? "Measure: tap two points on the chart" : "Drag on the chart to inspect any day"; taDraw(); return; }
+    taState[k] = !taState[k]; b.classList.toggle("active", taState[k]); taDraw();
+  });
+  const pos = ev => { const r = canvas.getBoundingClientRect(); const v = taState._view; if (!v) return -1; const x = (ev.touches ? ev.touches[0].clientX : ev.clientX) - r.left; const i = Math.floor(x / v.step); return Math.max(0, Math.min(v.N - 1, i)); };
+  const hud = idx => {
+    const v = taState._view, h = $("taHud");
+    if (!v || !h || idx < 0) return;
+    const b = v.bars[idx], gi = v.from + idx;
+    h.textContent = new Date(b.t).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + " · O " + inr2(b.o) + " · H " + inr2(b.h) + " · L " + inr2(b.l) + " · C " + inr2(b.c) + " · RSI " + (v.rsi[gi] !== null && v.rsi[gi] !== undefined ? v.rsi[gi].toFixed(1) : "—") + " · EMA20 " + (v.ema[gi] ? inr2(v.ema[gi]) : "—");
+  };
+  let dragging = false;
+  canvas.addEventListener("pointerdown", ev => {
+    const idx = pos(ev); if (idx < 0) return;
+    const v = taState._view, gi = v.from + idx;
+    if (taState.measure) {
+      if (taState.mA < 0 || (taState.mA >= 0 && taState.mB >= 0)) { taState.mA = gi; taState.mB = -1; }
+      else { taState.mB = gi; const A = taState.bars[taState.mA], B = taState.bars[taState.mB]; const h = $("taHud"); if (h && A && B) h.textContent = "Measured: " + inr2(A.c) + " → " + inr2(B.c) + " · " + (B.c - A.c >= 0 ? "+" : "") + inr(B.c - A.c) + " (" + pct((B.c - A.c) / A.c * 100) + ") · " + Math.abs(taState.mB - taState.mA) + " bars/days"; }
+      taDraw(); return;
+    }
+    dragging = true; taState.cross = idx; hud(idx); taDraw();
+  });
+  canvas.addEventListener("pointermove", ev => { if (!dragging) return; const idx = pos(ev); if (idx < 0) return; taState.cross = idx; hud(idx); taDraw(); });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(t => canvas.addEventListener(t, () => { dragging = false; }));
 })();

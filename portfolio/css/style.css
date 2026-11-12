@@ -1010,3 +1010,30 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
 #insTfSeg{flex-wrap: wrap;}
 .sug-price{margin-left: auto; font-weight: 700; font-size: 12.5px; color: var(--text); white-space: nowrap;}
 .sug-exch{margin-left: 8px;}
+
+/* v35 — insights pill overlap fix, 7-in-a-row timeframe grid, blur hardening, watchlist bar, TA terminal */
+#insTfSeg{display: grid !important; grid-template-columns: repeat(7, minmax(0, 1fr)) !important; gap: 6px !important; width: 100%;}
+#insTfSeg .seg-btn{padding: 8px 2px !important; font-size: 12px !important; font-weight: 700; text-align: center; white-space: nowrap; min-width: 0;}
+#insPeriodBox .stat-chips, #insMoversBox .stat-chips, #insHealthBox .stat-chips, #taVerdict.stat-chips{
+  display: flex !important; flex-direction: column !important; gap: 10px !important; width: 100%; margin-top: 10px;
+}
+#insPeriodBox .chip, #insMoversBox .chip, #insHealthBox .chip, #taVerdict .chip{
+  display: flex !important; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px;
+  width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 14px; line-height: 1.45; margin: 0;
+  background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border);
+}
+.panel,.stat-card,.hold-card,.watchlist-row,.auth-card,.account-pop,.suggest-box{backdrop-filter: none !important; -webkit-backdrop-filter: none !important;}
+.hold-drawer{transition: opacity .16s ease-out, transform .16s ease-out;}
+.wl-bar{display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 10px;}
+.wl-bar::-webkit-scrollbar{display: none;}
+.wl-pill{flex: 0 0 auto; padding: 8px 13px; border-radius: 999px; border: 1px solid var(--liquid-border); background: var(--liquid-inner-card-bg); color: var(--liquid-text-muted, var(--muted)); font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap;}
+.wl-pill.active{background: var(--liquid-active-pill); color: var(--liquid-text-primary, var(--text)); box-shadow: 0 4px 12px rgba(0,0,0,.10);}
+.wl-count{opacity: .75; font-weight: 600;}
+.wl-actions{display: inline-flex; gap: 4px; margin-left: auto; flex: 0 0 auto;}
+.wl-act{padding: 7px 10px; border-radius: 999px; border: 1px solid var(--liquid-border); background: var(--liquid-inner-card-bg); color: var(--liquid-text-primary, var(--text)); font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;}
+.wl-sel{margin-left: 8px; padding: 6px 8px; border-radius: 9px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-size: 12.5px; max-width: 150px;}
+.wl-copy{display: inline-flex; align-items: center; gap: 6px; margin-left: 8px;}
+.ta-bar{flex-wrap: wrap;}
+#taCanvas{display: block; width: 100%; border-radius: 14px; background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); touch-action: pan-y; cursor: crosshair;}
+.ta-hud{font-size: 12px; font-weight: 600; color: var(--liquid-text-muted, var(--muted)); padding: 6px 2px; min-height: 18px;}
+#taNote{margin-top: 6px;}

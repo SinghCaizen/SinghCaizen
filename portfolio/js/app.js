@@ -16,7 +16,7 @@ let currentUser = null;    // {email, name}
 let fb = { auth: null, db: null, docRef: null, unsub: null };
 const FIREBASE_ON = !!window.FIREBASE_READY;
 
-function emptyState() { return { txns: [], watch: [], manualPrices: {}, profile: { name: "", phone: "", dp: "", totp: null, recovery: [] } }; }
+function emptyState() { return { txns: [], watch: [], watchlists: null, activeWatchlistId: "wl_default", manualPrices: {}, profile: { name: "", phone: "", dp: "", totp: null, recovery: [] } }; }
 /* Exchange renames: the old symbol is dead (no data anywhere) and the new
    one is its legal heir (same ISIN). Stored entries heal automatically. */
 const SYMBOL_RENAMES = { "TATAMOTORS": "TMPV" };
@@ -26,6 +26,8 @@ function normalizeState(s) {
   const out = {
     txns: Array.isArray(s.txns) ? s.txns : [],
     watch: Array.isArray(s.watch) ? s.watch : [],
+    watchlists: Array.isArray(s.watchlists) ? s.watchlists : null,
+    activeWatchlistId: s.activeWatchlistId || "wl_default",
     manualPrices: s.manualPrices || {},
     profile: Object.assign(base.profile, s.profile || {})
   };
