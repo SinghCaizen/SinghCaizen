@@ -431,6 +431,7 @@ function totpDisable() {
 let gateAltMode = null;
 function unlockSession() {
   sessionStorage.setItem("pf_gate_" + currentUser.email, "1");
+  if (window.e2eeNeedsUnlock && window.e2eeNeedsUnlock()) { window.e2eeShowUnlock(); return; }
   showApp();
 }
 function wireGate() {

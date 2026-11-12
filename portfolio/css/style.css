@@ -1586,3 +1586,10 @@ body:not([data-view="dashboard"]) .site-foot{display:none}
 .hold-spark{flex-wrap:wrap}
 .hold-spark small{white-space:nowrap}
 .hold-range{min-width:56px}
+
+/* ===== Phase 2 (v71): E2EE modals ===== */
+.fld{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--muted);margin:10px 0}
+.fld input,.fld textarea{padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--input);color:var(--text);font:inherit;font-weight:400;min-height:44px}
+.fld textarea{resize:vertical}
+.e2ee-pane{margin-top:6px}
+#e2eeUnlock,#e2eeSetup{z-index:600}

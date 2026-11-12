@@ -64,7 +64,12 @@ function lsUsers() { try { return JSON.parse(localStorage.getItem(LS_USERS)) || 
 function lsSaveUsers(u) { localStorage.setItem(LS_USERS, JSON.stringify(u)); }
 function localSave() {
   if (!currentUser || syncFrozen) return;
-  const u = lsUsers(); if (u[currentUser.email]) { u[currentUser.email].state = state; lsSaveUsers(u); }
+  const u = lsUsers(); if (!u[currentUser.email]) return;
+  if (window.__e2eeActive && window.e2eeBuildPayload) {
+    window.e2eeBuildPayload(state).then(payload => { const uu = lsUsers(); if (uu[currentUser.email]) { uu[currentUser.email].encDoc = payload; delete uu[currentUser.email].state; lsSaveUsers(uu); } });
+    return;
+  }
+  u[currentUser.email].state = state; lsSaveUsers(u);
 }
 
 /* ---------- firebase ---------- */
@@ -88,10 +93,11 @@ function cloudSave() {
   if (FIREBASE_ON && fb.docRef) {
     clearTimeout(saveTimer);
     const ref = fb.docRef, uid = currentUser ? currentUser.email : "";
-    saveTimer = setTimeout(() => {
+    saveTimer = setTimeout(async () => {
       if (syncFrozen || !currentUser || currentUser.email !== uid || fb.docRef !== ref) return; /* account changed mid-flight: drop the write */
       const ts = Date.now();
-      ref.set({ state: state, updatedAt: ts }).then(() => { lastAppliedCloudTs = Math.max(lastAppliedCloudTs, ts); }).catch(e => console.warn("save failed", e));
+      const payload = (window.__e2eeActive && window.e2eeBuildPayload) ? await window.e2eeBuildPayload(state) : { state: state, updatedAt: ts };
+      ref.set(payload).then(() => { lastAppliedCloudTs = Math.max(lastAppliedCloudTs, ts); }).catch(e => console.warn("save failed", e));
     }, 400);
   } else { localSave(); }
 }
@@ -112,6 +118,7 @@ async function doAuth(ev) {
   ev.preventDefault(); authError("");
   const email = $("authEmail").value.trim().toLowerCase();
   const pass = $("authPass").value;
+  window.__pendingPass = pass;
   const name = $("authName").value.trim();
   if (!email || pass.length < 6) { authError("Email and a 6+ character password are needed."); return; }
   if (FIREBASE_ON) {
@@ -133,6 +140,7 @@ async function doAuth(ev) {
       if (users[email].pass !== pass) { authError("Wrong password."); return; }
     }
     localStorage.setItem(LS_SESSION, email);
+    if (users[email].encDoc && window.e2eeHandleDoc) { window.e2eeHandleDoc(users[email].encDoc, { email: email, name: users[email].name || "" }, "demo"); return; }
     enterApp({ email: email, name: users[email].name || "" }, users[email].state);
   }
 }
@@ -150,6 +158,7 @@ function friendlyFbError(e) {
 }
 async function doLogout() {
   syncFrozen = true; clearTimeout(saveTimer);
+  if (window.e2eeLock) window.e2eeLock();
   const em = currentUser ? currentUser.email : null;
   if (em) sessionStorage.removeItem("pf_gate_" + em);
   if (FIREBASE_ON) { try { await fb.auth.signOut(); } catch (e) {} }
@@ -188,6 +197,7 @@ function enterApp(user, initialState) {
   buildDatalist();
   if (needsGate()) { showGate(); return; }
   showApp();
+  if (window.e2eeMaybeSetup) { try { window.e2eeMaybeSetup(user); } catch (e) {} }
 }
 function needsGate() {
   const t = state.profile && state.profile.totp;
@@ -1079,6 +1089,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (ts && ts < lastAppliedCloudTs) return;               /* older echo: never roll back */
           if (ts && lastLocalEditTs > ts) { cloudSave(); return; } /* our newer edits win; re-push them */
           if (ts) lastAppliedCloudTs = ts;
+          if (data && data.v === 2 && window.e2eeHandleDoc) { window.e2eeHandleDoc(data, { email: user.email, name: user.displayName || "" }, "cloud"); return; }
           enterApp({ email: user.email, name: user.displayName || "" }, data && data.state ? data.state : emptyState());
         }, err => console.warn("snapshot error", err));
       } else {
