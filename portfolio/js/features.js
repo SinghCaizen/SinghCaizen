@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v61";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v62";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -5118,3 +5118,189 @@ const _renderDashboardT4b = renderDashboard;
 renderDashboard = function () { _renderDashboardT4b(); try { platEnsure(); } catch (e) {} };
 const _switchViewT4 = switchView;
 switchView = function (name) { _switchViewT4(name); setTimeout(() => { try { platPngButtons(document); } catch (e) {} }, 400); };
+
+/* ================= TASK 2 (v66): TradingView Lightweight Charts =================
+   The stock chart is now the open-source TradingView Lightweight Charts
+   library (Apache-2.0), vendored at assets/lightweight-charts.standalone.
+   production.js — no CDN, no tracking. It reuses the existing TA data
+   pipeline (cache-first paint, background refresh, preview fallback):
+   taDraw() now renders into the library instead of the hand-drawn canvas. */
+const _taDrawCanvas = taDraw;
+let lwc = null; /* { chart, main, vol, ema, sma, bbU, bbL, box, ro } */
+function lwcColors() {
+  const cs = getComputedStyle(document.documentElement);
+  return { text: cs.getPropertyValue("--text").trim() || "#eee", muted: cs.getPropertyValue("--muted").trim() || "#999", line: cs.getPropertyValue("--line").trim() || "#333", panel: cs.getPropertyValue("--panel").trim() || "#111", up: "#10b981", down: "#ef4444", gold: "#c9a227" };
+}
+function lwcEnsure() {
+  if (lwc) return lwc;
+  if (!window.LightweightCharts) return null;
+  const stack = document.querySelector("#taWrap .ta-stack");
+  if (!stack) return null;
+  stack.querySelectorAll("canvas").forEach(c => c.classList.add("hidden"));
+  const zoom = stack.querySelector(".ta-zoom"); if (zoom) zoom.classList.add("hidden");
+  const box = document.createElement("div"); box.id = "lwcBox";
+  stack.insertBefore(box, stack.firstChild);
+  const empty = document.createElement("div"); empty.id = "lwcEmpty"; empty.className = "hidden";
+  empty.innerHTML = '<p class="empty-note">Chart data could not load — the free feed did not answer.</p><button type="button" class="mini-btn" id="lwcRetry">↻ Retry</button>';
+  stack.appendChild(empty);
+  empty.querySelector("#lwcRetry").addEventListener("click", () => { empty.classList.add("hidden"); try { renderTA(); } catch (e) {} });
+  const C = lwcColors();
+  const chart = LightweightCharts.createChart(box, {
+    height: window.innerWidth < 640 ? 300 : 360,
+    layout: { background: { type: "solid", color: "transparent" }, textColor: C.muted, fontSize: 11 },
+    grid: { vertLines: { color: C.line }, horzLines: { color: C.line } },
+    rightPriceScale: { borderColor: C.line },
+    timeScale: { borderColor: C.line, timeVisible: true },
+    crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+  });
+  const main = chart.addCandlestickSeries({ upColor: C.up, downColor: C.down, borderVisible: false, wickUpColor: C.up, wickDownColor: C.down });
+  const barsS = chart.addBarSeries({ upColor: C.up, downColor: C.down, thinBars: false });
+  barsS.applyOptions({ visible: false });
+  const vol = chart.addHistogramSeries({ priceScaleId: "vol", priceFormat: { type: "volume" } });
+  chart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.84, bottom: 0 } });
+  main.priceScale().applyOptions({ scaleMargins: { top: 0.06, bottom: 0.18 } });
+  const ema = chart.addLineSeries({ color: C.gold, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  const sma = chart.addLineSeries({ color: C.muted, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  const bbU = chart.addLineSeries({ color: C.muted, lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  const bbL = chart.addLineSeries({ color: C.muted, lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+  lwc = { chart, main, barsS, vol, ema, sma, bbU, bbL, box, empty, priceLines: [], barMap: new Map(), measurePts: [] };
+  chart.subscribeCrosshairMove(param => {
+    const hud = $("taHud"); if (!hud) return;
+    if (!param || !param.time) return;
+    const b = lwc.barMap.get(param.time);
+    if (!b) return;
+    const chg = b.o ? (b.c - b.o) / b.o * 100 : 0;
+    const d = new Date(b.t);
+    hud.textContent = d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "2-digit" }) + " · O " + inr2(b.o) + " · H " + inr2(b.h) + " · L " + inr2(b.l) + " · C " + inr2(b.c) + " · " + (chg >= 0 ? "▲ +" : "▼ ") + chg.toFixed(2) + "%" + (b.v ? " · Vol " + Number(b.v).toLocaleString("en-IN") : "");
+  });
+  chart.subscribeClick(param => {
+    if (!taState.measure || !param || !param.time) return;
+    const b = lwc.barMap.get(param.time); if (!b) return;
+    lwc.measurePts.push({ time: param.time, price: b.c });
+    if (lwc.measurePts.length === 2) {
+      const [a, z] = lwc.measurePts;
+      const dPct = (z.price - a.price) / a.price * 100;
+      const hud = $("taHud");
+      if (hud) hud.textContent = "Measure: " + inr2(a.price) + " → " + inr2(z.price) + " · " + (dPct >= 0 ? "▲ +" : "▼ ") + dPct.toFixed(2) + "% (" + (z.price - a.price >= 0 ? "+" : "−") + inr2(Math.abs(z.price - a.price)).replace("₹", "₹ ") + ") — tap the chart again to start a new measure.";
+      lwc.measurePts = [];
+    } else { const hud = $("taHud"); if (hud) hud.textContent = "Measure: first point " + inr2(b.c) + " — tap a second point."; }
+  });
+  if (window.ResizeObserver) { lwc.ro = new ResizeObserver(() => { try { lwc.chart.resize(lwc.box.clientWidth, window.innerWidth < 640 ? 300 : 360); } catch (e) {} }); lwc.ro.observe(box); }
+  return lwc;
+}
+function lwcThemeRefresh() { if (!lwc) return; const C = lwcColors(); try { lwc.chart.applyOptions({ layout: { textColor: C.muted }, grid: { vertLines: { color: C.line }, horzLines: { color: C.line } } }); } catch (e) {} }
+document.addEventListener("click", e => { if (e.target.closest("#themeBtn")) setTimeout(lwcThemeRefresh, 60); });
+function lwcDraw() {
+  const L = lwcEnsure();
+  if (!L) { _taDrawCanvas(); return; }
+  const bars = (taState.bars || []).slice().sort((a, b) => a.t - b.t);
+  if (!bars.length) { L.empty.classList.remove("hidden"); taPill("loading"); return; }
+  L.empty.classList.add("hidden");
+  const C = lwcColors();
+  const seen = new Map();
+  bars.forEach(b => seen.set(Math.floor(b.t / 1000), b));
+  const times = [...seen.keys()].sort((a, b) => a - b);
+  const clean = times.map(t => seen.get(t));
+  L.barMap = new Map(clean.map(b => [Math.floor(b.t / 1000), b]));
+  const closes = clean.map(b => b.c);
+  const T = b => Math.floor(b.t / 1000);
+  const ohlcData = clean.map(b => ({ time: T(b), open: b.o, high: b.h, low: b.l, close: b.c }));
+  if (taState.mode === "area") {
+    L.main.applyOptions({ visible: false }); L.barsS.applyOptions({ visible: false });
+    if (!L.area) { L.area = L.chart.addAreaSeries({ lineColor: C.gold, topColor: "rgba(201,162,39,.28)", bottomColor: "rgba(201,162,39,.02)", lineWidth: 2, priceLineVisible: false }); }
+    L.area.applyOptions({ visible: true });
+    L.area.setData(clean.map(b => ({ time: T(b), value: b.c })));
+  } else if (taState.mode === "bars") {
+    if (L.area) L.area.applyOptions({ visible: false });
+    L.main.applyOptions({ visible: false }); L.barsS.applyOptions({ visible: true });
+    L.barsS.setData(ohlcData);
+  } else {
+    if (L.area) L.area.applyOptions({ visible: false });
+    L.barsS.applyOptions({ visible: false }); L.main.applyOptions({ visible: true });
+    L.main.setData(ohlcData);
+  }
+  L.activeSeries = taState.mode === "bars" ? L.barsS : (taState.mode === "area" && L.area ? L.area : L.main);
+  L.vol.setData(clean.map(b => ({ time: T(b), value: b.v || 0, color: b.c >= b.o ? "rgba(16,185,129,.45)" : "rgba(239,68,68,.45)" })));
+  const line = (arr) => { const out = []; for (let i = 0; i < clean.length; i++) if (arr[i] != null && isFinite(arr[i])) out.push({ time: T(clean[i]), value: arr[i] }); return out; };
+  L.ema.setData(taState.ema ? line(emaSeries(closes, 20)) : []);
+  L.sma.setData(taState.sma ? line(smaSeries(closes, 200)) : []);
+  if (taState.bb) {
+    const mid = smaSeries(closes, 20), up = [], dn = [];
+    for (let i = 0; i < closes.length; i++) {
+      if (mid[i] == null) { up.push(null); dn.push(null); continue; }
+      let s = 0; for (let j = i - 19; j <= i; j++) s += Math.pow(closes[j] - mid[i], 2);
+      const sd = Math.sqrt(s / 20); up.push(mid[i] + 2 * sd); dn.push(mid[i] - 2 * sd);
+    }
+    L.bbU.setData(line(up)); L.bbL.setData(line(dn));
+  } else { L.bbU.setData([]); L.bbL.setData([]); }
+  L.priceLines.forEach(pl => { try { pl.series.removePriceLine(pl.line); } catch (e) {} });
+  L.priceLines = [];
+  if (taState.sr) {
+    try { taLevels().forEach(lv => { L.priceLines.push({ series: L.activeSeries, line: L.activeSeries.createPriceLine({ price: lv.v, color: C.muted, lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, axisLabelVisible: true, title: lv.t }) }); }); } catch (e) {}
+    const valid = clean.filter(b => b.h > 0);
+    if (valid.length > 20) {
+      const hi = Math.max(...valid.map(b => b.h)), lo = Math.min(...valid.map(b => b.l));
+      L.priceLines.push({ series: L.activeSeries, line: L.activeSeries.createPriceLine({ price: hi, color: C.up, lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, axisLabelVisible: true, title: "Range High" }) });
+      L.priceLines.push({ series: L.activeSeries, line: L.activeSeries.createPriceLine({ price: lo, color: C.down, lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dotted, axisLabelVisible: true, title: "Range Low" }) });
+    }
+  }
+  if (taState.trades) {
+    const sym = taState.sym;
+    const marks = (state.txns || []).filter(x => x.sym === sym && (x.type === "BUY" || x.type === "SELL")).map(x => {
+      const t = Math.floor(new Date(x.date + "T00:00:00").getTime() / 1000);
+      const near = times.find(tt => tt >= t) || times[times.length - 1];
+      if (near == null) return null;
+      return { time: near, position: x.type === "BUY" ? "belowBar" : "aboveBar", color: x.type === "BUY" ? C.up : C.down, shape: x.type === "BUY" ? "arrowUp" : "arrowDown", text: x.type + " " + x.qty + " @ " + x.price };
+    }).filter(Boolean).sort((a, b) => a.time - b.time);
+    try { L.activeSeries.setMarkers(marks); } catch (e) {}
+  } else { try { L.activeSeries.setMarkers([]); } catch (e) {} }
+  try { L.chart.timeScale().scrollToPosition(2, false); } catch (e) {}
+  taPill(taState.preview ? "preview" : "live");
+  const last = clean[clean.length - 1], first = clean[0];
+  const vEl = $("taVerdict");
+  if (vEl && last && first) {
+    const chg = (last.c - first.o) / first.o * 100;
+    const e20 = emaSeries(closes, 20), s200 = smaSeries(closes, 200);
+    const stance = (e20[e20.length - 1] && s200[s200.length - 1]) ? (last.c > e20[e20.length - 1] ? (last.c > s200[s200.length - 1] ? "Above 20 EMA and 200 SMA — uptrend structure." : "Above 20 EMA, below 200 SMA — recovering, long trend still down.") : "Below 20 EMA — short-term weak.") : "";
+    vEl.innerHTML = '<span class="chip">Period change <b class="' + (chg >= 0 ? "pos" : "neg") + '">' + (chg >= 0 ? "▲ +" : "▼ ") + chg.toFixed(2) + "%</b></span>" + (stance ? '<span class="chip">' + stance + "</span>" : "") + (taState.preview ? '<span class="chip">Estimated preview — real data swaps in automatically.</span>' : "");
+  }
+}
+taDraw = function () { try { lwcDraw(); } catch (e) { try { _taDrawCanvas(); } catch (e2) {} } };
+/* IndexedDB candle store (second layer under the localStorage cache) */
+const idbC = { db: null,
+  open() { return new Promise(res => { if (idbC.db) return res(idbC.db); try { const rq = indexedDB.open("folio-cache", 1); rq.onupgradeneeded = () => { rq.result.createObjectStore("candles"); }; rq.onsuccess = () => { idbC.db = rq.result; res(idbC.db); }; rq.onerror = () => res(null); } catch (e) { res(null); } }); },
+  async get(k) { const db = await idbC.open(); if (!db) return null; return new Promise(res => { try { const rq = db.transaction("candles").objectStore("candles").get(k); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => res(null); } catch (e) { res(null); } }); },
+  async put(k, v) { const db = await idbC.open(); if (!db) return; try { db.transaction("candles", "readwrite").objectStore("candles").put(v, k); } catch (e) {} }
+};
+const _taFetchRange0 = taFetchRange;
+taFetchRange = async function (sym, range, interval, byDay) {
+  const key = sym + "|" + range + "|" + interval;
+  const ttl = byDay ? 12 * 3600 * 1000 : 5 * 60 * 1000;
+  const hit = await idbC.get(key);
+  if (hit && hit.bars && hit.bars.length && Date.now() - hit.ts < ttl) return hit.bars;
+  const bars = await _taFetchRange0(sym, range, interval, byDay);
+  if (bars && bars.length) idbC.put(key, { ts: Date.now(), bars });
+  return bars;
+};
+/* Snapshot-first daily data (Task 3 pipeline JSON on the data branch).
+   Until the pipeline runs, the fetch 404s and the live feed answers. */
+const _fetchMaster0 = fetchMaster;
+fetchMaster = async function (sym) {
+  const snapP = (async () => {
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 2500);
+    try {
+      const r = await fetch("https://raw.githubusercontent.com/SinghCaizen/SinghCaizen/data/portfolio/data/candles/" + encodeURIComponent(sym) + ".json", { signal: ctl.signal });
+      clearTimeout(to);
+      if (!r.ok) return null;
+      const j = await r.json();
+      if (!j || !Array.isArray(j.bars) || j.bars.length < 10) return null;
+      const ohlc = j.bars.map(a => ({ t: a[0], o: a[1], h: a[2], l: a[3], c: a[4], v: a[5] || 0 }));
+      return { meta: j.meta || {}, points: ohlc.map(b => ({ t: b.t, c: b.c })), ohlc, divs: j.divs || [], splits: j.splits || [], fromSnapshot: true };
+    } catch (e) { clearTimeout(to); return null; }
+  })();
+  try {
+    const winner = await Promise.any([snapP, _fetchMaster0(sym)]);
+    if (winner) return winner;
+  } catch (e) {}
+  return _fetchMaster0(sym);
+};
