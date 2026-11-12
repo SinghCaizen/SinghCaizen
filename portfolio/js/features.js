@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v47";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v48";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3276,7 +3276,7 @@ function ipoCardHtml(x) {
   const sizeTxt = x.size ? "₹" + Number(x.size).toLocaleString("en-IN") + " Cr." : (x.fresh ? "₹" + Number(x.fresh).toFixed(2) + " Cr. (Fresh)" : "TBA");
   const steps = [[x.open, "Open"], [x.close, "Close"], [x.allot, "Allotment"], [x.listing, "Listing"]];
   return '<article class="ipo-card">' +
-    '<div class="ipo-card-top"><span class="ipo-logo" style="--hue:' + ipoHue(x) + '">' + logo + '</span><span class="ipo-title-wrap"><b class="ipo-title">' + title + '</b><small>Book-building IPO (BSE, NSE)</small></span><span class="ipo-top-r">' + statusPill + '<button type="button" class="ipo-star-btn' + (starred ? " on" : "") + '" data-ipostar="' + key + '" title="Save to IPO Watchlist">' + (starred ? "★" : "☆") + "</button></span></div>" +
+    '<div class="ipo-card-top"><span class="ipo-logo" style="--hue:' + ipoHue(x) + '">' + logo + '</span><span class="ipo-title-wrap"><b class="ipo-title">' + title + '</b><small>Book-building IPO (BSE, NSE)' + (x.board ? " · " + (x.board === "SME" ? "SME" : "Mainboard") : "") + '</small></span><span class="ipo-top-r">' + statusPill + '<button type="button" class="ipo-star-btn' + (starred ? " on" : "") + '" data-ipostar="' + key + '" title="Save to IPO Watchlist">' + (starred ? "★" : "☆") + "</button></span></div>" +
     '<div class="ipo-date-grid"><div class="ipo-date-box open"><span>Open Date</span><b>' + (x.open ? ipoShortD(x.open) + " " + x.open.slice(0, 4) : "—") + '</b></div><div class="ipo-date-box close"><span>Close Date</span><b>' + (x.close ? ipoShortD(x.close) + " " + x.close.slice(0, 4) : "—") + "</b></div></div>" +
     '<div class="ipo-mrow r3"><div><span>Price Band</span><b>' + band + '</b></div><div><span>Lot Size</span><b>' + (x.lot || "-") + '</b></div><div><span>Min Invest.</span><b>' + minInv + "</b></div></div>" +
     '<div class="ipo-mrow r2"><div><span>Face Value</span><b>' + (x.fv ? x.fv.toFixed(1) : "—") + '</b></div><div><span>Issue Size</span><b>' + sizeTxt + "</b></div></div>" +
