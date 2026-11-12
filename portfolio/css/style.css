@@ -1541,3 +1541,28 @@ body.printing #printReport{display:block;background:#fff;color:#111;padding:24px
 }
 #bnav{padding-bottom:env(safe-area-inset-bottom)}
 #ipo-bottom-dock{padding-bottom:env(safe-area-inset-bottom)}
+
+/* ===== Engineering pass (v65): TASK 1 mobile fixes ===== */
+.modal-head{flex-wrap:wrap;gap:8px 12px}
+.modal-head>div:first-child{min-width:0;flex:1}
+#stockName{display:block;margin-top:2px}
+#stockAbout .stat-chips{display:flex;flex-wrap:wrap;gap:8px}
+#stockAbout .chip{white-space:normal}
+#stockWatchRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#stockWatchRow .mini-btn{min-height:44px;display:inline-flex;align-items:center}
+#stockWatchRow .wl-sel{min-height:44px}
+.mini-btn{min-height:40px}
+.view{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+.modal-card{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.plan-row{display:block;padding:10px 2px}
+.plan-line1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.plan-line1 .plan-sym{font-weight:700}
+.plan-line1 small{color:var(--muted)}
+.plan-row .drift-wrap{display:block;width:100%;margin:8px 0 10px;background:color-mix(in srgb, var(--text) 18%, transparent);border:1px solid color-mix(in srgb, var(--text) 10%, transparent)}
+.plan-line3{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
+.plan-lab{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:600}
+.plan-row input.plan-tgt{width:92px;min-height:44px;padding:8px 10px}
+.plan-line3 b{white-space:normal;text-align:right}
+.dash-chips .insx-chip{min-height:44px;display:inline-flex;align-items:center}
+.dash-collapse{width:44px;height:44px}
+.dash-ctl button{width:40px;height:40px}

@@ -1634,7 +1634,7 @@ async function fillHoldDrawer(sym, drawer) {
     html += `<div class="dr-vs ${vs >= 0 ? "gain-bg" : "loss-bg"}">Trading <b>${Math.abs(vs).toFixed(2)}% ${vs >= 0 ? "above" : "below"}</b> your Avg Buy Price (${inr2(avg)})</div>`;
   }
   try {
-    const m = await fetchMaster(sym);
+    const m = await Promise.race([fetchMaster(sym), new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 9000))]);
     if (!m || !m.meta) throw new Error("no master");
     const meta = m.meta;
     const hi = meta.fiftyTwoWeekHigh, lo = meta.fiftyTwoWeekLow;
@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v60";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v61";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2567,7 +2567,7 @@ async function renderInsPeriod() {
     const worstR = d.rows.reduce((a, b) => b.pnlPct < a.pnlPct ? b : a);
     hea.innerHTML = '<div class="stat-chips">' +
       '<span class="chip">Win Rate <b>' + (d.rows.length ? Math.round(wins.length / d.rows.length * 100) : 0) + "%</b> (" + wins.length + " of " + d.rows.length + " stocks in profit)</span>" +
-      '<span class="chip">Profit Factor <b>' + (l > 0 ? (g / l).toFixed(2) : "∞") + "</b> (gains ÷ losses)</span>" +
+      '<span class="chip">Profit Factor <b>' + (l > 0 ? (g / l).toFixed(2) : (g > 0 ? "No losses yet" : "—")) + "</b> (gains ÷ losses)</span>" +
       '<span class="chip">Best Holding <b>' + esc(bestR.sym) + '</b> <span class="gain">' + pct(bestR.pnlPct) + '</span></span>' +
       '<span class="chip">Worst Holding <b>' + esc(worstR.sym) + '</b> <span class="loss">' + pct(worstR.pnlPct) + "</span></span></div>";
   }
@@ -4328,7 +4328,7 @@ function planRenderRebal() {
   items.forEach(it => { it.cur = it.v / total * 100; it.target = Number((planRebalMode === "stocks" ? store.stocks : store.sectors)[it.key]) || 0; it.drift = it.target - it.cur; it.action = it.drift / 100 * total; });
   const sumT = items.reduce((a, i) => a + i.target, 0);
   const maxScale = Math.max(25, ...items.map(i => Math.max(i.cur, i.target)));
-  const list = items.map(it => '<div class="insx-row plan-row"><span>' + esc(it.label) + '</span><span class="drift-wrap"><span class="drift-cur" style="width:' + (it.cur / maxScale * 100) + '%"></span><span class="drift-mark" style="left:' + (it.target / maxScale * 100) + '%"></span></span><small>' + it.cur.toFixed(1) + '% now</small><input type="number" class="plan-tgt" data-plan-key="' + esc(it.key) + '" min="0" max="100" step="0.5" value="' + (it.target || "") + '" placeholder="Target %"><b class="' + (Math.abs(it.action) < 1 ? "" : it.action > 0 ? "pos" : "neg") + '">' + (Math.abs(it.action) < 1 ? "In line" : (it.action > 0 ? "Buy " : "Sell ") + insxAmt(Math.abs(it.action))) + "</b></div>").join("");
+  const list = items.map(it => '<div class="insx-row plan-row"><div class="plan-line1"><span class="plan-sym">' + esc(it.label) + '</span><small>' + it.cur.toFixed(1) + '% now</small></div><span class="drift-wrap"><span class="drift-cur" style="width:' + (it.cur / maxScale * 100) + '%"></span><span class="drift-mark" style="left:' + Math.min(100, Math.max(0, it.target / maxScale * 100)) + '%"></span></span><div class="plan-line3"><label class="plan-lab">Target %<input type="number" class="plan-tgt" data-plan-key="' + esc(it.key) + '" min="0" max="100" step="0.5" inputmode="decimal" value="' + (it.target || "") + '" placeholder="e.g. 10"></label><b class="' + (Math.abs(it.action) < 1 ? "" : it.action > 0 ? "pos" : "neg") + '">' + (Math.abs(it.action) < 1 ? "In line" : (it.action > 0 ? "Buy " : "Sell ") + insxAmt(Math.abs(it.action))) + "</b></div></div>").join("");
   box.innerHTML = head +
     '<div class="insx-legend"><button type="button" class="insx-chip' + (planRebalMode === "stocks" ? " on" : "") + '" data-plan-mode="stocks">By stock</button><button type="button" class="insx-chip' + (planRebalMode === "sectors" ? " on" : "") + '" data-plan-mode="sectors">By sector</button></div>' +
     '<div class="insx-list">' + list + "</div>" +

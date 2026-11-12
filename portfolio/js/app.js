@@ -69,10 +69,12 @@ function localSave() {
 
 /* ---------- firebase ---------- */
 function initFirebase() {
+  window.__fbInitOk = false;
   if (!FIREBASE_ON) return false;
   try {
     firebase.initializeApp(window.FIREBASE_CONFIG);
     fb.auth = firebase.auth(); fb.db = firebase.firestore();
+    window.__fbInitOk = true;
     return true;
   } catch (e) { console.warn("Firebase init failed", e); return false; }
 }
@@ -194,7 +196,7 @@ function showApp() {
   loadPricesLS();
   if (typeof renderProfile === "function") renderProfile(); renderAll(); refreshPrices();
   if (typeof loadTicker === "function") loadTicker();
-  if (state.profile && !state.profile.termsSeen) $("termsModal").classList.remove("hidden");
+  if (state.profile && !state.profile.termsSeen && localStorage.getItem("folio_terms_seen") !== "1") $("welcomeModal").classList.remove("hidden");
 }
 
 /* ================= portfolio math ================= */
@@ -865,6 +867,7 @@ function saveTxn(ev) {
   ev.preventDefault();
   const rows = [...document.querySelectorAll(".bt-row")];
   const sellsQueued = {};
+  const buysQueued = {};
   const adds = [];
   for (const row of rows) {
     const q = s => row.querySelector(s);
@@ -878,9 +881,10 @@ function saveTxn(ev) {
     const qty = type === "DIV" ? 0 : Number(q(".bt-qty").value);
     if (!date || !(price >= 0) || (type !== "DIV" && !(price > 0))) { $("txnError").textContent = st.sym + ": please enter a valid date and price."; return; }
     if (type !== "DIV" && !(qty > 0)) { $("txnError").textContent = st.sym + ": quantity must be more than 0."; return; }
+    if (type === "BUY") buysQueued[st.sym] = (buysQueued[st.sym] || 0) + qty;
     if (type === "SELL") {
       const h = computeHoldings().holdings.find(x => x.sym === st.sym);
-      const have = (h ? h.qty : 0) - (sellsQueued[st.sym] || 0);
+      const have = (h ? h.qty : 0) + (buysQueued[st.sym] || 0) - (sellsQueued[st.sym] || 0);
       if (qty > have) { $("txnError").textContent = "You hold only " + have + " shares of " + st.sym + "."; return; }
       sellsQueued[st.sym] = (sellsQueued[st.sym] || 0) + qty;
     }
@@ -999,7 +1003,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
   const syncThemeIcon = () => { const ti = $("themeIcon"); if (ti) ti.textContent = document.documentElement.getAttribute("data-theme") === "light" ? "☀" : "☾"; };
   syncThemeIcon();
-  $("demoBanner").classList.toggle("hidden", FIREBASE_ON);
+  window.refreshDemoBanner = function () { const b = $("demoBanner"); if (!b) return; const ready = !!window.__fbInitOk; b.classList.toggle("hidden", ready); if (!ready) b.textContent = window.FIREBASE_CONFIG ? "Cloud sign-in could not load (network) — you can still use Folio on this device, and your cloud account and data are safe. Reopen the app on a better connection for cloud saving." : "Demo mode is ON — data is saved only in this browser. Cloud saving starts when the Firebase keys are added."; };
   setAuthMode("login");
   $("tabLogin").addEventListener("click", () => setAuthMode("login"));
   $("tabSignup").addEventListener("click", () => setAuthMode("signup"));
@@ -1016,7 +1020,8 @@ document.addEventListener("DOMContentLoaded", () => {
   $("profileChip").addEventListener("click", () => { switchView("profile"); if (typeof renderProfile === "function") renderProfile(); });
   $("termsAgree").addEventListener("click", () => {
     if (state && state.profile) { state.profile.termsSeen = true; persist(); }
-    $("termsModal").classList.add("hidden");
+    try { localStorage.setItem("folio_terms_seen", "1"); } catch (e) {}
+    $("welcomeModal").classList.add("hidden");
     toast("Welcome to Folio");
   });
   $("themeBtn").addEventListener("click", () => {
@@ -1051,6 +1056,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const fbOn = initFirebase();
+  if (window.refreshDemoBanner) window.refreshDemoBanner();
   if (fbOn) {
     fb.auth.onAuthStateChanged(user => {
       if (user) {
