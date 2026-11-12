@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v68";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v69";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -4289,6 +4289,10 @@ function tgtPanelRender() {
     toast(state.profile.notify ? "Price notifications on — while Folio is open." : "Price notifications off.");
   });
 }
+/* ================= Phase 8: pause price refresh while the tab is hidden ================= */
+const _doTickP8 = doTick;
+doTick = function () { if (document.hidden) return; _doTickP8(); };
+
 function tgtNotifyCheck() {
   if (!state.profile || !state.profile.notify) return;
   if (!("Notification" in window) || Notification.permission !== "granted") return;

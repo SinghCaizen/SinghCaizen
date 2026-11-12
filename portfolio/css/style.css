@@ -1593,3 +1593,10 @@ body:not([data-view="dashboard"]) .site-foot{display:none}
 .fld textarea{resize:vertical}
 .e2ee-pane{margin-top:6px}
 #e2eeUnlock,#e2eeSetup{z-index:600}
+
+/* ===== Phase 8: rendering performance ===== */
+.panel{content-visibility:auto;contain-intrinsic-size:auto 320px}
+#view-insights .panel{contain-intrinsic-size:auto 420px}
+@media (max-width:640px){
+  .panel,.glass,.dock,.samsung-bottom-capsule{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+}
