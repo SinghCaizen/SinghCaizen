@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v50";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v51";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3412,12 +3412,50 @@ function addIpoToHoldings(id) {
   persist(); renderAll(); renderIpoApps();
   toast("🎉 " + qty + " " + a.sym + " shares added to Holdings at ₹" + a.price);
 }
+let ipoAllotQuery = "";
+const IPO_REGISTRARS = [
+  { test: /mufg|link intime/i, name: "MUFG Intime (Link Intime)", url: "https://in.mpms.mufg.com/Initial_Offer/public-issues.html" },
+  { test: /kfin/i, name: "KFintech", url: "https://ris.kfintech.com/ipostatus/" },
+  { test: /bigshare/i, name: "Bigshare Services", url: "https://ipo.bigshareonline.com/IPO_Status.html" },
+  { test: /maashitla/i, name: "Maashitla Securities", url: "https://maashitla.com/allotment-status/public-issues" },
+  { test: /skyline/i, name: "Skyline Financial Services", url: "https://www.skylinerta.com/ipo.php" },
+  { test: /purva/i, name: "Purva Sharegistry", url: "https://www.purvashare.com/investor-service/ipo-query" },
+  { test: /cameo/i, name: "Cameo Corporate Services", url: "https://ipo.cameoindia.com/" },
+];
+function ipoRegInfo(x) {
+  const r = IPO_REGISTRARS.find(g => g.test.test(x.reg || ""));
+  if (r) return r;
+  return { name: (x.reg || "Registrar") + " · via BSE", url: "https://www.bseindia.com/investors/appli_check.aspx" };
+}
+function ipoAllotCard(x) {
+  const key = ipoKey(x);
+  const reg = ipoRegInfo(x);
+  const today = istTodayStr();
+  const future = x.allot && x.allot >= today;
+  const dateBadge = future ? "📅 Allotment: " + ipoFmtD(x.allot) : "Allotted: " + ipoFmtD(x.allot);
+  const statusPill = future ? '<span class="ipo-badge upcoming-blue">⏳ Allotment on ' + ipoShortD(x.allot) + "</span>" : '<span class="ipo-badge open">✅ Allotment Out</span>';
+  const boardPill = x.board === "SME" ? "NSE SME" : "Mainboard";
+  const price = x.high != null ? "₹" + Number(x.high).toLocaleString("en-IN") : "TBA";
+  const subs = x.subsT != null ? Number(x.subsT).toFixed(2).replace(/\.00$/, "") + "x" : "—";
+  return '<article class="ipo-card ipo-allot-card">' +
+    '<div class="ipo-card-top"><span class="ipo-logo" style="--hue:' + ipoHue(x) + '"><span class="ipo-logo-mono">' + ipoMono(x) + '</span></span><span class="ipo-title-wrap"><b class="ipo-title">' + esc(x.name) + '</b><small><span class="ipo-board-pill">' + boardPill + '</span></small></span><span class="ipo-top-r allot-r"><span class="ipo-allot-date">' + dateBadge + "</span>" + statusPill + "</span></div>" +
+    '<div class="ipo-allot-strip"><span>Issue Date: ' + ipoFmtD(x.open) + "</span><span>Issue Price: " + price + "</span><span>Sub: " + subs + "</span><span>Registrar: <b>" + esc(reg.name) + "</b></span></div>" +
+    '<a class="btn btn-gold ipo-allot-btn" href="' + reg.url + '" target="_blank" rel="noopener">🎯 Check Allotment on ' + esc(reg.name) + " ↗</a>" +
+    "</article>";
+}
 function renderIpoAllot() {
-  const sel = $("ipoAllotSel");
-  if (sel) { const cur = sel.value; sel.innerHTML = ipoAll().map(x => '<option value="' + esc(x.name) + '">' + esc(x.name) + "</option>").join(""); if (cur) sel.value = cur; }
-  const grid = $("ipoRegGrid");
-  if (grid && !grid.children.length) grid.innerHTML = REGISTRAR_CARDS.map((r, i) => '<button type="button" class="ipo-reg-card" data-reg="' + i + '"><b>' + r.name + " ↗</b><span>" + r.note + "</span></button>").join("") + '<button type="button" class="ipo-reg-card" data-reg="search"><b>Purva · Skyline · Cameo · Maashitla ↗</b><span>Smaller registrars — search with the IPO name</span></button>';
-  renderIpoApps();
+  const box = $("ipoViewAllot"); if (!box) return;
+  const today = istTodayStr();
+  let list = ipoAll().filter(x => x.allot);
+  if (ipoAllotQuery) { const q = ipoAllotQuery.toLowerCase(); list = list.filter(x => x.name.toLowerCase().includes(q)); }
+  const upcoming = list.filter(x => x.allot >= today).sort((a, b) => a.allot.localeCompare(b.allot));
+  const past = list.filter(x => x.allot < today).sort((a, b) => b.allot.localeCompare(a.allot));
+  const ordered = upcoming.concat(past);
+  box.innerHTML = '<div class="panel ipo-allot-head"><h2>IPO Allotment Status</h2><p class="ipo-allot-sub">Sorted by allotment date · Tap "Check Allotment" to open the official registrar portal for that IPO.</p>' +
+    '<input id="ipoAllotSearch" class="ipo-allot-search" type="search" placeholder="Search company name..." value="' + esc(ipoAllotQuery) + '"></div>' +
+    '<div class="ipo-cards-wrap">' + (ordered.length ? ordered.map(ipoAllotCard).join("") : '<p class="empty-note">No IPOs match your search.</p>') + "</div>";
+  const s = $("ipoAllotSearch");
+  if (s) s.addEventListener("input", () => { ipoAllotQuery = s.value; const pos = s.selectionStart; renderIpoAllot(); const s2 = $("ipoAllotSearch"); if (s2) { s2.focus(); try { s2.setSelectionRange(pos, pos); } catch (e) {} } });
 }
 function renderIpoFaqs() {
   const f = $("ipoFaqList");

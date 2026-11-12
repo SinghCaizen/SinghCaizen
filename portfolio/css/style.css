@@ -1344,3 +1344,15 @@ body.ipo-world-active #mktBar{display: none !important;}
 .ipo-card-top{display: grid !important; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: start;}
 .ipo-title{white-space: normal !important; overflow: visible !important; text-overflow: clip !important;}
 .ipo-top-r{position: static !important; align-self: start;}
+
+/* v51 — clean Allotment tab: date-sorted cards with direct registrar buttons */
+.ipo-allot-head h2{margin: 0 0 4px;}
+.ipo-allot-sub{color: var(--muted); font-size: 12.5px; margin: 0 0 12px;}
+.ipo-allot-search{width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; font-size: 14px;}
+.ipo-allot-card .ipo-card-top{grid-template-columns: 64px minmax(0, 1fr) auto;}
+.ipo-board-pill{display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .04em; padding: 2.5px 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); margin-top: 4px;}
+.allot-r{flex-direction: column; align-items: flex-end; gap: 5px;}
+.ipo-allot-date{font-size: 11.5px; font-weight: 700; color: var(--muted); white-space: nowrap;}
+.ipo-allot-strip{display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; padding: 9px 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12px; color: var(--muted);}
+.ipo-allot-strip b{color: var(--text);}
+.ipo-allot-btn{display: flex !important; width: 100%; justify-content: center; margin-top: 12px; padding: 12px !important; font-size: 14px !important; border-radius: 14px !important; text-decoration: none;}
