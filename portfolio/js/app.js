@@ -970,23 +970,53 @@ function loadXlsxLib() {
   });
   return xlsxLibPromise;
 }
+function impStatus(msg, pct) {
+  const box = $("importStatus"); if (!box) return;
+  box.classList.remove("hidden");
+  if ($("impText")) $("impText").textContent = msg;
+  if ($("impBarFill") && typeof pct === "number") $("impBarFill").style.width = pct + "%";
+}
+function impFinish(res, fileName) {
+  const fromModal = !!window.__importFromModal;
+  window.__importFromModal = false;
+  if (!res || res.error) {
+    const msg = (res && res.error) || "That file could not be read.";
+    if (fromModal) impStatus("⚠️ " + msg, 100);
+    toast(msg);
+    return;
+  }
+  const msg = "Imported " + res.n + " entries" + (res.skipped ? " · " + res.skipped + " rows skipped" : "") + (res.holdingsMode ? " · holdings format — buy dates set to today (the file has none)" : res.mapped ? " · broker format detected" : "") + ".";
+  if (fromModal) {
+    impStatus("✅ Done — " + res.n + " stocks added from " + (fileName || "your file") + ". Opening your Holdings…", 100);
+    setTimeout(() => {
+      const m = $("txnModal"); if (m) m.classList.add("hidden");
+      const box = $("importStatus"); if (box) box.classList.add("hidden");
+      switchView("holdings");
+    }, 1000);
+  }
+  toast(msg);
+}
 function importFile(file) {
+  if (window.__importFromModal) impStatus("📄 " + (file ? file.name : "file") + " — reading…", 25);
   const name = (file && file.name || "").toLowerCase();
   if (name.endsWith(".xlsx") || name.endsWith(".xls")) { importExcel(file); return; }
   importCsv(file);
 }
 function importExcel(file) {
   loadXlsxLib().then(ok => {
-    if (!ok || !window.XLSX) { toast("The Excel reader could not load — please try a CSV export instead."); return; }
+    if (!ok || !window.XLSX) { impFinish({ error: "The Excel reader could not load — please try a CSV export instead." }, file && file.name); return; }
+    if (window.__importFromModal) impStatus("📄 " + file.name + " — reading the Excel file…", 55);
     const rd = new FileReader();
     rd.onload = () => {
       try {
         const wb = XLSX.read(new Uint8Array(rd.result), { type: "array", cellDates: true });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
-        importRows(rows);
-      } catch (e) { toast("That Excel file could not be read."); }
+        if (window.__importFromModal) impStatus("⚙️ Importing your stocks…", 80);
+        impFinish(importRows(rows), file.name);
+      } catch (e) { impFinish({ error: "That Excel file could not be read." }, file.name); }
     };
+    rd.onerror = () => impFinish({ error: "That file could not be read." }, file.name);
     rd.readAsArrayBuffer(file);
   });
 }
@@ -997,15 +1027,16 @@ function importCsv(file) {
       const lines = String(rd.result).split(/\r?\n/).filter(r => r.trim());
       if (lines.length < 2) { toast("That file looks empty."); return; }
       const splitRow = r => r.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(x => x.replace(/^"|"$/g, "").trim());
-      importRows(lines.map(splitRow));
-    } catch (e) { toast("That CSV could not be read."); }
+      impFinish(importRows(lines.map(splitRow)), file.name);
+    } catch (e) { impFinish({ error: "That CSV could not be read." }, file.name); }
   };
+  rd.onerror = () => impFinish({ error: "That file could not be read." }, file.name);
   rd.readAsText(file);
 }
 function importRows(allRows) {
     try {
       const rows = (allRows || []).filter(r => r && r.some(c => String(c).trim() !== ""));
-      if (rows.length < 2) { toast("That file looks empty."); return; }
+      if (rows.length < 2) return { n: 0, skipped: 0, error: "That file looks empty." };
       const ALIAS_WORDS = ["symbol", "instrument", "trading symbol", "scrip", "date", "trade date", "quantity", "qty", "price", "trade type", "type"];
       let hIdx = rows.findIndex(r => { const cells = r.map(c => String(c).toLowerCase().trim()); return cells.filter(c => ALIAS_WORDS.some(w => c === w || c.includes(w))).length >= 3; });
       if (hIdx < 0) hIdx = 0;
@@ -1063,8 +1094,8 @@ function importRows(allRows) {
         n++;
       }
       persist(); renderAll(); refreshPrices();
-      toast("Imported " + n + " entries" + (skipped ? " · " + skipped + " rows skipped" : "") + (holdingsMode ? " · holdings format — buy dates set to today (the file has none)" : mapped ? " · broker format detected" : "") + ".");
-    } catch (e) { toast("That file could not be read."); }
+      return { n: n, skipped: skipped, holdingsMode: holdingsMode, mapped: mapped };
+    } catch (e) { return { n: 0, skipped: 0, error: "That file could not be read." }; }
 }
 
 function buildDatalist() {
@@ -1124,7 +1155,9 @@ document.addEventListener("DOMContentLoaded", () => {
   $("txnReset").addEventListener("click", () => openTxn("BUY", "", ""));
   $("entryManual").addEventListener("click", () => setEntryTab(false));
   $("entryFile").addEventListener("click", () => setEntryTab(true));
-  $("filePickBtn").addEventListener("click", () => $("importFile").click());
+  const fpBtn = $("filePickBtn");
+  if (fpBtn && fpBtn.tagName === "BUTTON") fpBtn.addEventListener("click", () => $("importFile").click());
+  if (fpBtn) fpBtn.addEventListener("click", () => { window.__importFromModal = true; });
   $("watchForm").addEventListener("submit", addWatch);
   attachSuggest($("watchInput"));
   $("exportBtn").addEventListener("click", exportCsv);

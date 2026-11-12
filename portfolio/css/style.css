@@ -1649,3 +1649,11 @@ input,select,textarea{border-radius:var(--r-sm)}
 .skl{position:relative;overflow:hidden;background:var(--panel-2);border-radius:8px;min-height:14px}
 .skl::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--text) 7%,transparent),transparent);animation:sklmove 1.3s infinite}
 @keyframes sklmove{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/* ===== v77: compact txn popup + visible import progress ===== */
+#txnModal .modal-card{max-width:620px}
+.file-pick-label{display:inline-flex;align-items:center;justify-content:center;min-height:44px;cursor:pointer;padding:.55rem 1rem}
+.import-status{margin-top:12px}
+.imp-row{font-size:13px;margin-bottom:6px;color:var(--text)}
+.imp-bar{height:6px;background:var(--panel-2);border-radius:99px;overflow:hidden}
+.imp-bar i{display:block;height:100%;width:0;background:var(--gold);border-radius:99px;transition:width .35s ease}
