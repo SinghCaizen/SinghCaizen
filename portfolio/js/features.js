@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v54";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v55";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3735,3 +3735,441 @@ switchView = function (v) { _switchViewIpo2(v); document.body.classList.toggle("
   m.querySelectorAll("[data-close-terms]").forEach(b => b.addEventListener("click", () => m.classList.add("hidden")));
   m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); });
 })();
+
+/* ================= TASK 1 (v59): Insights deep analytics =================
+   Everything is computed from the user's own transactions + the existing
+   free daily-history layer. New settings live in state.profile.insX, so
+   they ride the same cloud sync + encrypted .folio vault as holdings. */
+const INSX_INFO = {
+  volatility: "Volatility: how much your portfolio's value swings up and down in a year, in percent. Higher means bigger swings. Calculated from daily returns of your portfolio value over the last year.",
+  beta: "Beta: how strongly your portfolio moves with NIFTY 50. Beta 1.0 moves with the market, 1.2 moves about 20% more, 0.8 moves about 20% less. Calculated from daily returns of your portfolio vs NIFTY 50.",
+  sharpe: "Sharpe ratio: return earned per unit of total swing risk, after subtracting the risk-free rate. Above 1 is generally considered good, below 0 means the swings were not rewarded. (Your annual return minus risk-free rate) divided by volatility.",
+  sortino: "Sortino ratio: like Sharpe, but only harmful (downward) swings count as risk. Falling prices are what hurt, so this ignores upside jumps.",
+  maxdd: "Maximum drawdown: the biggest fall from a peak to the low that followed it, in your portfolio's value history. It shows the worst ride you would have sat through.",
+  var: "Value at Risk (1-day, 95%): on a bad day — roughly the worst 1 day in 20 — your portfolio could fall by about this much, based on its recent daily swings. It is an estimate, not a promise.",
+  contribution: "Return contribution: the profit or loss each stock has added in total — sale proceeds, plus what the remaining shares are worth today, plus dividends, minus everything you paid (charges included). Percent is that stock's share of your total profit or loss.",
+  nifty: "Same Money in NIFTY: every buy you made is imagined as a NIFTY 50 purchase on the same date for the same amount, and every sale removes the same amount. The gap between the two lines is your alpha — what your stock picking added or cost versus simply holding the index.",
+  invested: "Invested vs Current Value: the step line is your net money put in (buys minus sale proceeds, charges included). The other line is what those holdings were worth each day. Dots mark your buy and sell days.",
+  correlation: "Correlation: how similarly two stocks move day to day, from -1 (opposite) to +1 (identical). If most of your stocks move together, a market fall hits everything at once. Calculated on the last ~120 trading days.",
+  concentration: "Concentration: how much of your money sits in your biggest stocks and sectors. Effective number of stocks turns your weights into one number — 10 equal stocks give 10, one giant stock pulls it towards 1. Warnings are information only.",
+  calendar: "P&L Calendar: each day's profit or loss of your current holdings, after removing money you added or took out that day, so deposits never look like profit. Tap a day to see which stocks moved it.",
+  realized: "Realized vs Unrealized: realized profit is locked in by sales (FIFO, charges included). Unrealized is the paper profit or loss on shares you still hold, at today's prices.",
+  scorecard: "Holdings Scorecard: one row per stock you hold. CAGR is the yearly growth rate of the shares you still hold since you first bought them. XIRR is the money-weighted yearly return of every rupee you put into that stock, including sales and dividends. Dividend yield on cost is dividends received divided by what you paid."
+};
+function insxSettings() { const p = state.profile || (state.profile = {}); if (!p.insX) p.insX = { rf: 6.5, sw: 20, sec: 35 }; return p.insX; }
+function insxInfoBtn(key) { return '<button type="button" class="insx-i" data-insx-info="' + key + '" aria-label="About this metric">i</button>'; }
+function insxAmt(v) { return '<span class="insx-amt">' + moneyFmt(v) + "</span>"; }
+function insxPct(v, dp) { return (v == null || !isFinite(v)) ? "—" : (v > 0 ? "+" : "") + v.toFixed(dp == null ? 1 : dp) + "%"; }
+function insxSkel(rows) { let s = ""; for (let i = 0; i < (rows || 3); i++) s += '<div class="insx-skel"></div>'; return s; }
+function insxCard(id, title, infoKey, inner) {
+  return '<div class="panel insx-card" id="' + id + '"><div class="panel-head"><h2>' + title + "</h2>" + (infoKey ? insxInfoBtn(infoKey) : "") + "</div>" + inner + "</div>";
+}
+let insXSeries = null, insXSeriesBusy = false, insXSig = "";
+let insXCalYM = null, insXSortK = "weight", insXSortDir = -1, insXQuery = "", insXShowPort = true, insXShowNifty = true;
+
+function insxSkeletonHtml() {
+  return insxCard("insx-risk", "Risk Metrics", "volatility", insxSkel(4)) +
+    insxCard("insx-contrib", "Return Contribution", "contribution", insxSkel(4)) +
+    insxCard("insx-nifty", "Same Money in NIFTY", "nifty", insxSkel(4)) +
+    insxCard("insx-inv", "Invested vs Current Value", "invested", insxSkel(4)) +
+    insxCard("insx-corr", "Correlation Matrix", "correlation", insxSkel(4)) +
+    insxCard("insx-conc", "Concentration", "concentration", insxSkel(3)) +
+    insxCard("insx-cal", "P&L Calendar", "calendar", insxSkel(4)) +
+    insxCard("insx-real", "Realized vs Unrealized P&L", "realized", insxSkel(3)) +
+    insxCard("insx-score", "Holdings Scorecard", "scorecard", insxSkel(4));
+}
+function insxEnsure() {
+  const view = $("view-insights"); if (!view) return;
+  if (!$("insXWrap")) {
+    const wrap = document.createElement("div"); wrap.id = "insXWrap";
+    wrap.innerHTML = insxSkeletonHtml(); view.appendChild(wrap);
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) insxMaybeRender(); }, { rootMargin: "240px" });
+    io.observe(wrap);
+  } else insxMaybeRender();
+}
+function insxMaybeRender() {
+  const sig = state.txns.length + "|" + state.txns.reduce((a, t) => a + (Number(t.qty) || 0), 0) + "|" + computeHoldings().holdings.length;
+  if (sig === insXSig && insXSeries) return;
+  insXSig = sig;
+  insxRenderInstant();
+  insxLoadSeries();
+}
+/* ---------- instant cards (no history fetch needed) ---------- */
+function insxContribData() {
+  const buys = {}, sells = {}, divs = {};
+  for (const t of state.txns) {
+    const amt = (Number(t.qty) || 0) * effPrice(t);
+    if (t.type === "BUY") buys[t.sym] = (buys[t.sym] || 0) + amt;
+    else if (t.type === "SELL") sells[t.sym] = (sells[t.sym] || 0) + amt;
+    else if (t.type === "DIV") divs[t.sym] = (divs[t.sym] || 0) + (Number(t.price) || 0);
+  }
+  const { holdings } = computeHoldings();
+  const curVal = {}; holdings.forEach(h => { const p = priceOf(h.sym); curVal[h.sym] = p ? h.qty * p.price : h.invested; });
+  const syms = new Set([].concat(Object.keys(buys), Object.keys(sells), Object.keys(divs)));
+  const rows = [];
+  syms.forEach(s => { const pnl = (sells[s] || 0) + (curVal[s] || 0) + (divs[s] || 0) - (buys[s] || 0); rows.push({ sym: s, pnl }); });
+  rows.sort((a, b) => b.pnl - a.pnl);
+  const total = rows.reduce((a, r) => a + r.pnl, 0);
+  return { rows, total };
+}
+function insxRenderContrib() {
+  const box = $("insx-contrib"); if (!box) return;
+  const { rows, total } = insxContribData();
+  if (!rows.length) { box.innerHTML = '<div class="panel-head"><h2>Return Contribution</h2>' + insxInfoBtn("contribution") + '</div><p class="empty-note">No transactions yet — add a buy and this chart will show which stocks earned or lost your money.</p>'; return; }
+  const steps = [];
+  const pos = rows.filter(r => r.pnl > 0), neg = rows.filter(r => r.pnl < 0);
+  const head = pos.slice(0, 5), tail = neg.slice(-5).reverse();
+  const mid = rows.filter(r => !head.includes(r) && !tail.includes(r));
+  head.forEach(r => steps.push(r));
+  if (mid.length) steps.push({ sym: "Other " + mid.length + " stocks", pnl: mid.reduce((a, r) => a + r.pnl, 0), other: true });
+  tail.forEach(r => steps.push(r));
+  const maxAbs = Math.max(1, Math.abs(total), ...steps.map(s => Math.abs(s.pnl)));
+  let cum = 0; const H = 190, W = 680, base = H - 34, top = 14, colW = W / (steps.length + 1);
+  let bars = "";
+  const y = v => base - (v / maxAbs) * (base - top) * 0.92;
+  steps.forEach((s, i) => {
+    const from = cum, to = cum + s.pnl; cum = to;
+    const x = 8 + i * colW, w = Math.min(54, colW - 14);
+    const y1 = y(Math.max(from, to)), y2 = y(Math.min(from, to));
+    const col = s.pnl >= 0 ? "var(--gain)" : "var(--loss)";
+    bars += '<g class="insx-wf-bar" data-insx-tip="' + esc(s.sym) + ": " + moneyFmt(s.pnl) + (total ? " (" + (s.pnl / total * 100).toFixed(1) + "% of total P&L)" : "") + '"><rect x="' + x + '" y="' + y1 + '" width="' + w + '" height="' + Math.max(2, y2 - y1) + '" rx="4" fill="' + col + '" opacity="' + (s.other ? "0.45" : "0.92") + '"/><text x="' + (x + w / 2) + '" y="' + (base + 14) + '" class="insx-wf-lab">' + esc(s.sym.length > 9 ? s.sym.slice(0, 9) : s.sym) + "</text></g>";
+  });
+  const tx = 8 + steps.length * colW;
+  bars += '<g class="insx-wf-bar" data-insx-tip="Total P&L: ' + moneyFmt(total) + '"><rect x="' + tx + '" y="' + y(Math.max(0, total)) + '" width="' + Math.min(54, colW - 14) + '" height="' + Math.max(2, Math.abs(y(total) - y(0))) + '" rx="4" fill="var(--text)" opacity="0.85"/><text x="' + (tx + Math.min(54, colW - 14) / 2) + '" y="' + (base + 14) + '" class="insx-wf-lab">Total</text></g>';
+  bars += '<line x1="0" x2="' + W + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke="var(--line)"/>';
+  const list = rows.map(r => '<div class="insx-row"><span>' + esc(r.sym) + '</span><b class="' + (r.pnl >= 0 ? "pos" : "neg") + '">' + insxAmt(r.pnl) + (total ? ' <small>(' + (r.pnl / total * 100).toFixed(1) + '%)</small>' : "") + "</b></div>").join("");
+  box.innerHTML = '<div class="panel-head"><h2>Return Contribution</h2>' + insxInfoBtn("contribution") + '</div>' +
+    '<svg class="insx-chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Waterfall chart of profit contribution by stock">' + bars + "</svg>" +
+    '<p class="insx-note">Total P&L so far: <b class="' + (total >= 0 ? "pos" : "neg") + '">' + insxAmt(total) + '</b> · Green added money, red took it away. Tap a bar for exact values.</p><div class="insx-list">' + list + "</div>";
+}
+function insxRenderRealized() {
+  const box = $("insx-real"); if (!box) return;
+  const { holdings, realisedTotal, divTotal } = computeHoldings();
+  const unreal = holdings.reduce((a, h) => { const p = priceOf(h.sym); return a + ((p ? h.qty * p.price : h.invested) - h.invested); }, 0);
+  const perStock = {};
+  state.txns.forEach(t => { if (t.type === "SELL") perStock[t.sym] = true; });
+  const rows = holdings.map(h => ({ sym: h.sym, r: h.realised || 0 })).filter(r => r.r !== 0);
+  const soldOnly = {};
+  /* realised for fully-sold stocks comes from a FIFO replay */
+  const lots = {}; const soldReal = {};
+  [...state.txns].sort((a, b) => a.date < b.date ? -1 : 1).forEach(t => {
+    if (t.type === "BUY") (lots[t.sym] = lots[t.sym] || []).push({ qty: Number(t.qty), price: effPrice(t) });
+    else if (t.type === "SELL") { let q = Number(t.qty); soldReal[t.sym] = soldReal[t.sym] || 0; while (q > 0 && (lots[t.sym] || []).length) { const l = lots[t.sym][0]; const take = Math.min(q, l.qty); soldReal[t.sym] += take * (effPrice(t) - l.price); l.qty -= take; q -= take; if (l.qty <= 0) lots[t.sym].shift(); } }
+  });
+  Object.keys(soldReal).forEach(s => { if (!rows.some(r => r.sym === s)) rows.push({ sym: s, r: soldReal[s] }); });
+  rows.sort((a, b) => b.r - a.r);
+  const maxAbs = Math.max(1, ...rows.map(r => Math.abs(r.r)));
+  box.innerHTML = '<div class="panel-head"><h2>Realized vs Unrealized P&L</h2>' + insxInfoBtn("realized") + "</div>" +
+    '<div class="insx-tiles"><div class="insx-tile"><span>Realized (booked)</span><b class="' + (realisedTotal >= 0 ? "pos" : "neg") + '">' + insxAmt(realisedTotal) + '</b></div>' +
+    '<div class="insx-tile"><span>Unrealized (on paper)</span><b class="' + (unreal >= 0 ? "pos" : "neg") + '">' + insxAmt(unreal) + '</b></div>' +
+    '<div class="insx-tile"><span>Dividends received</span><b>' + insxAmt(divTotal) + "</b></div></div>" +
+    (rows.length ? '<div class="insx-list">' + rows.map(r => '<div class="insx-row"><span>' + esc(r.sym) + '</span><span class="insx-bar-wrap"><span class="insx-bar ' + (r.r >= 0 ? "pos" : "neg") + '" style="width:' + Math.max(3, Math.abs(r.r) / maxAbs * 100) + '%"></span></span><b class="' + (r.r >= 0 ? "pos" : "neg") + '">' + insxAmt(r.r) + "</b></div>").join("") + "</div>" : '<p class="empty-note">No sales yet — realized profit appears here after your first sell.</p>');
+}
+function insxRenderConc() {
+  const box = $("insx-conc"); if (!box) return;
+  const { holdings } = computeHoldings();
+  const set = insxSettings();
+  if (!holdings.length) { box.innerHTML = '<div class="panel-head"><h2>Concentration</h2>' + insxInfoBtn("concentration") + '</div><p class="empty-note">No holdings yet — concentration shows how much of your money sits in your biggest stocks.</p>'; return; }
+  const vals = holdings.map(h => { const p = priceOf(h.sym); return { sym: h.sym, sector: h.sector || sectorOf(h.sym), v: p ? h.qty * p.price : h.invested }; });
+  const total = vals.reduce((a, x) => a + x.v, 0) || 1;
+  vals.forEach(x => x.w = x.v / total * 100);
+  vals.sort((a, b) => b.w - a.w);
+  const topN = n => vals.slice(0, n).reduce((a, x) => a + x.w, 0);
+  const hhi = vals.reduce((a, x) => a + Math.pow(x.w / 100, 2), 0);
+  const effN = hhi > 0 ? 1 / hhi : 0;
+  const secMap = {}; vals.forEach(x => secMap[x.sector] = (secMap[x.sector] || 0) + x.w);
+  const secs = Object.entries(secMap).sort((a, b) => b[1] - a[1]);
+  const warns = [];
+  if (vals[0] && vals[0].w > set.sw) warns.push(vals[0].sym + " is " + vals[0].w.toFixed(1) + "% of your portfolio — above your " + set.sw + "% single-stock warning line.");
+  if (secs[0] && secs[0][1] > set.sec) warns.push(secs[0][0] + " sector is " + secs[0][1].toFixed(1) + "% — above your " + set.sec + "% sector warning line.");
+  box.innerHTML = '<div class="panel-head"><h2>Concentration</h2>' + insxInfoBtn("concentration") + "</div>" +
+    '<div class="insx-tiles"><div class="insx-tile"><span>Biggest stock</span><b>' + topN(1).toFixed(1) + '%</b><small>' + esc(vals[0].sym) + '</small></div>' +
+    '<div class="insx-tile"><span>Top 3 stocks</span><b>' + topN(3).toFixed(1) + '%</b></div>' +
+    '<div class="insx-tile"><span>Top 5 stocks</span><b>' + topN(5).toFixed(1) + '%</b></div>' +
+    '<div class="insx-tile"><span>Effective number of stocks</span><b>' + effN.toFixed(1) + '</b><small>of ' + vals.length + ' held</small></div></div>' +
+    '<div class="insx-list">' + secs.slice(0, 5).map(s => '<div class="insx-row"><span>' + esc(s[0]) + '</span><span class="insx-bar-wrap"><span class="insx-bar neutral" style="width:' + Math.min(100, s[1]) + '%"></span></span><b>' + s[1].toFixed(1) + "%</b></div>").join("") + "</div>" +
+    (warns.length ? '<div class="insx-warn">' + warns.map(w => "<p>⚠ " + esc(w) + "</p>").join("") + "</div>" : '<p class="insx-note">No concentration warnings at your current warning lines.</p>') +
+    '<div class="insx-setrow"><label>Warn if one stock &gt; <input type="number" id="insxSw" min="1" max="100" step="1" value="' + set.sw + '"> %</label><label>Warn if one sector &gt; <input type="number" id="insxSec" min="1" max="100" step="1" value="' + set.sec + '"> %</label></div>';
+  const sw = $("insxSw"), sc = $("insxSec");
+  if (sw) sw.addEventListener("change", () => { set.sw = Math.min(100, Math.max(1, Number(sw.value) || 20)); persist(); insxRenderConc(); });
+  if (sc) sc.addEventListener("change", () => { set.sec = Math.min(100, Math.max(1, Number(sc.value) || 35)); persist(); insxRenderConc(); });
+}
+function insxRenderInstant() { insxRenderContrib(); insxRenderRealized(); insxRenderConc(); }
+
+/* ---------- shared daily series (last 1 year of trading days) ---------- */
+async function insxBuildSeries() {
+  const { holdings } = computeHoldings();
+  const syms = holdings.map(h => h.sym);
+  const jobs = [fetchHistory("^NSEI", "1y")].concat(syms.map(s => fetchHistory(s, "1y")));
+  const res = await Promise.all(jobs);
+  const nif = res[0];
+  if (!nif || !nif.points || nif.points.length < 10) return null;
+  const dstr = t => { try { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(t)); } catch (e) { return new Date(t).toISOString().slice(0, 10); } };
+  const axis = nif.points.map(p => dstr(p.t));
+  const closeMap = pts => { const m = {}; (pts || []).forEach(p => m[dstr(p.t)] = p.c); return m; };
+  const ff = (m, dates) => { let last = null; return dates.map(d => { if (m[d] != null) last = m[d]; return last; }); };
+  const nifArr = ff(closeMap(nif.points), axis);
+  const symArr = {}; syms.forEach((s, i) => { const r = res[i + 1]; symArr[s] = ff(r && r.points ? closeMap(r.points) : {}, axis); });
+  const txns = [...state.txns].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const qty = {}; syms.forEach(s => qty[s] = 0);
+  const V = [], INV = [], SIM = [], FLOW = [], MARKS = [];
+  let invested = 0, units = 0, ti = 0;
+  axis.forEach((d, i) => {
+    let flow = 0;
+    while (ti < txns.length && txns[ti].date <= d) {
+      const t = txns[ti]; ti++;
+      if (t.type === "DIV") continue;
+      const amt = (Number(t.qty) || 0) * effPrice(t);
+      if (t.type === "BUY") { if (t.sym in qty) qty[t.sym] += Number(t.qty) || 0; invested += amt; flow += amt; if (nifArr[i]) units += amt / nifArr[i]; MARKS.push({ i, type: "B" }); }
+      else if (t.type === "SELL") { if (t.sym in qty) qty[t.sym] -= Number(t.qty) || 0; invested -= amt; flow -= amt; if (nifArr[i]) units = Math.max(0, units - amt / nifArr[i]); MARKS.push({ i, type: "S" }); }
+    }
+    let v = 0; syms.forEach(s => { const c = symArr[s][i]; if (c != null && qty[s]) v += qty[s] * c; });
+    V.push(v); INV.push(invested); FLOW.push(flow); SIM.push(units * (nifArr[i] || 0));
+  });
+  /* flow-adjusted daily returns (deposits are not profit) */
+  const rets = [], brets = [];
+  for (let i = 1; i < axis.length; i++) {
+    if (V[i - 1] > 0 && nifArr[i - 1] && nifArr[i]) { rets.push((V[i] - FLOW[i]) / V[i - 1] - 1); brets.push(nifArr[i] / nifArr[i - 1] - 1); }
+  }
+  return { axis, V, INV, SIM, FLOW, nifArr, symArr, syms, rets, brets };
+}
+async function insxLoadSeries() {
+  if (insXSeriesBusy) return; insXSeriesBusy = true;
+  try {
+    const s = await insxBuildSeries();
+    insXSeries = s;
+    if (!s) { insxSeriesError(); return; }
+    insxRenderRisk(); insxRenderNifty(); insxRenderInv(); insxRenderCorr(); insxRenderCal(); insxRenderScore();
+  } catch (e) { insxSeriesError(); }
+  insXSeriesBusy = false;
+}
+function insxSeriesError() {
+  ["insx-risk", "insx-nifty", "insx-inv", "insx-corr", "insx-cal", "insx-score"].forEach(id => {
+    const box = $(id); if (!box) return;
+    const title = box.querySelector("h2") ? box.querySelector("h2").textContent : "Card";
+    box.innerHTML = '<div class="panel-head"><h2>' + esc(title) + '</h2></div><p class="empty-note">Price history could not be loaded right now. Check your connection and reopen Insights to try again.</p>';
+  });
+}
+function insxLineSvg(seriesList, marks) {
+  const W = 680, H = 210, P = 10;
+  const all = []; seriesList.forEach(s => s.data.forEach(v => { if (v != null && isFinite(v)) all.push(v); }));
+  if (all.length < 2) return '<p class="empty-note">Not enough history yet for this chart.</p>';
+  let min = Math.min(...all), max = Math.max(...all); if (max - min < 1) { max += 1; min -= 1; }
+  const n = Math.max(...seriesList.map(s => s.data.length));
+  const X = i => P + (i / (n - 1)) * (W - 2 * P), Y = v => H - 22 - ((v - min) / (max - min)) * (H - 44);
+  let out = "";
+  seriesList.forEach(s => {
+    if (s.hidden) return;
+    let dAttr = "", started = false;
+    s.data.forEach((v, i) => { if (v == null || !isFinite(v)) return; dAttr += (started ? " L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); started = true; });
+    if (s.area) out += '<path d="' + dAttr + " L" + X(n - 1) + " " + (H - 22) + " L" + X(0) + " " + (H - 22) + ' Z" fill="' + s.color + '" opacity="0.10"/>';
+    out += '<path class="insx-line" d="' + dAttr + '" fill="none" stroke="' + s.color + '" stroke-width="2"/>';
+    const last = [...s.data].reverse().find(v => v != null && isFinite(v));
+    if (last != null) out += '<text x="' + (W - P) + '" y="' + (Y(last) - 5) + '" class="insx-end-lab" fill="' + s.color + '">' + inrShort(last) + "</text>";
+  });
+  if (marks && marks.length) {
+    const inv = seriesList[0].data;
+    marks.slice(0, 60).forEach(m => { const v = inv[m.i]; if (v == null) return; out += '<circle cx="' + X(m.i) + '" cy="' + Y(v) + '" r="3" fill="' + (m.type === "B" ? "var(--gain)" : "var(--loss)") + '"><title>' + (m.type === "B" ? "Buy day" : "Sell day") + "</title></circle>"; });
+  }
+  out += '<text x="' + P + '" y="14" class="insx-end-lab">' + inrShort(max) + '</text><text x="' + P + '" y="' + (H - 6) + '" class="insx-end-lab">' + inrShort(min) + "</text>";
+  return '<svg class="insx-chart" viewBox="0 0 ' + W + " " + H + '" role="img">' + out + "</svg>";
+}
+/* ---------- 1. Risk Metrics ---------- */
+function insxRenderRisk() {
+  const box = $("insx-risk"); if (!box || !insXSeries) return;
+  const set = insxSettings();
+  const { rets, brets, V } = insXSeries;
+  const head = '<div class="panel-head"><h2>Risk Metrics</h2>' + insxInfoBtn("volatility") + '</div>';
+  if (rets.length < 20) { box.innerHTML = head + '<p class="empty-note">Not enough price history yet — risk metrics need about a month of daily data for the stocks you hold.</p>'; return; }
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const sd = a => { const m = mean(a); return Math.sqrt(a.reduce((x, y) => x + Math.pow(y - m, 2), 0) / (a.length - 1)); };
+  const annRet = mean(rets) * 252, vol = sd(rets) * Math.sqrt(252);
+  const cov = rets.reduce((a, r, i) => a + (r - mean(rets)) * (brets[i] - mean(brets)), 0) / (rets.length - 1);
+  const beta = cov / Math.pow(sd(brets), 2);
+  const rf = (Number(set.rf) || 6.5) / 100;
+  const sharpe = vol > 0 ? (annRet - rf) / vol : null;
+  const downs = rets.filter(r => r < 0); const dsd = Math.sqrt(downs.reduce((a, r) => a + r * r, 0) / rets.length) * Math.sqrt(252);
+  const sortino = dsd > 0 ? (annRet - rf) / dsd : null;
+  /* max drawdown on the flow-adjusted equity curve */
+  let eq = 1, peak = 1, mdd = 0; const eqCurve = [1];
+  rets.forEach(r => { eq *= (1 + r); eqCurve.push(eq); if (eq > peak) peak = eq; const dd = eq / peak - 1; if (dd < mdd) mdd = dd; });
+  const curVal = V[V.length - 1] || 0;
+  const varR = curVal * 1.645 * sd(rets);
+  const tile = (name, key, val, verdict) => '<div class="insx-tile"><span>' + name + " " + insxInfoBtn(key) + '</span><b>' + val + "</b><small>" + verdict + "</small></div>";
+  const volV = vol * 100 < 15 ? "Calmer than the market" : vol * 100 <= 25 ? "Market-like swings" : "Big swings — hold tight";
+  box.innerHTML = head + '<div class="insx-tiles">' +
+    tile("Volatility (yearly)", "volatility", (vol * 100).toFixed(1) + "%", volV) +
+    tile("Beta vs NIFTY", "beta", isFinite(beta) ? beta.toFixed(2) : "—", isFinite(beta) ? "Moves about " + Math.abs(beta).toFixed(1) + "x the market" : "Not enough data") +
+    tile("Sharpe ratio", "sharpe", sharpe == null ? "—" : sharpe.toFixed(2), sharpe == null ? "—" : sharpe > 1 ? "Good reward for the risk" : sharpe > 0 ? "Modest reward for the risk" : "Risk without reward so far") +
+    tile("Sortino ratio", "sortino", sortino == null ? "—" : sortino.toFixed(2), sortino == null ? "—" : sortino > 1 ? "Downside has been well paid for" : sortino > 0 ? "Some pay for the falls" : "Falls were not rewarded") +
+    tile("Max drawdown", "maxdd", (mdd * 100).toFixed(1) + "%", "Worst peak-to-low fall: " + (mdd * 100).toFixed(1) + "%") +
+    tile("1-day VaR (95%)", "var", insxAmt(varR), "A bad day (1 in 20) could cost about this much") +
+    "</div>" +
+    '<div class="insx-setrow"><label>Risk-free rate <input type="number" id="insxRf" min="0" max="20" step="0.1" value="' + (Number(set.rf) || 6.5) + '"> % per year</label><small>Used for Sharpe and Sortino. Information only, not advice.</small></div>';
+  const rfIn = $("insxRf");
+  if (rfIn) rfIn.addEventListener("change", () => { set.rf = Math.min(20, Math.max(0, Number(rfIn.value) || 6.5)); persist(); insxRenderRisk(); });
+}
+/* ---------- 3. Same Money in NIFTY ---------- */
+function insxRenderNifty() {
+  const box = $("insx-nifty"); if (!box || !insXSeries) return;
+  const { V, SIM } = insXSeries;
+  const head = '<div class="panel-head"><h2>Same Money in NIFTY</h2>' + insxInfoBtn("nifty") + "</div>";
+  if (V.length < 5) { box.innerHTML = head + '<p class="empty-note">Not enough history yet for this comparison.</p>'; return; }
+  const mine = V[V.length - 1], nif = SIM[SIM.length - 1];
+  const alpha = mine - nif, alphaPct = nif > 0 ? alpha / nif * 100 : null;
+  box.innerHTML = head +
+    '<div class="insx-legend"><button type="button" class="insx-chip' + (insXShowPort ? " on" : "") + '" data-insx-leg="port"><span class="insx-dot" style="background:var(--text)"></span>My portfolio ' + insxAmt(mine) + '</button>' +
+    '<button type="button" class="insx-chip' + (insXShowNifty ? " on" : "") + '" data-insx-leg="nifty"><span class="insx-dot" style="background:var(--gold)"></span>Same money in NIFTY ' + insxAmt(nif) + "</button></div>" +
+    insxLineSvg([{ data: V, color: "var(--text)", hidden: !insXShowPort }, { data: SIM, color: "var(--gold)", hidden: !insXShowNifty }]) +
+    '<p class="insx-note">Alpha: <b class="' + (alpha >= 0 ? "pos" : "neg") + '">' + insxAmt(alpha) + (alphaPct != null ? " (" + insxPct(alphaPct) + ")" : "") + "</b> — " + (alpha >= 0 ? "your stock picking is ahead of the index on the same money." : "the index is ahead on the same money so far.") + " Tap a legend chip to show or hide a line.</p>";
+}
+/* ---------- 4. Invested vs Current Value ---------- */
+function insxRenderInv() {
+  const box = $("insx-inv"); if (!box || !insXSeries) return;
+  const { V, INV } = insXSeries;
+  const marks = [];
+  const txns = state.txns;
+  box.innerHTML = '<div class="panel-head"><h2>Invested vs Current Value</h2>' + insxInfoBtn("invested") + "</div>" +
+    '<div class="insx-legend"><span class="insx-chip on"><span class="insx-dot" style="background:var(--text)"></span>Current value</span><span class="insx-chip on"><span class="insx-dot" style="background:#8a8a8a"></span>Net invested (step)</span></div>' +
+    insxInvSvg(V, INV) +
+    '<p class="insx-note">Green dots are buy days, red dots are sell days. When the blue line is above the grey line, you are in profit.</p>';
+}
+function insxInvSvg(V, INV) {
+  const s = insXSeries; if (!s) return "";
+  const marks = [];
+  let ti = 0; const txns = [...state.txns].sort((a, b) => a.date < b.date ? -1 : 1);
+  s.axis.forEach((d, i) => { while (ti < txns.length && txns[ti].date <= d) { const t = txns[ti]; ti++; if (t.type === "BUY") marks.push({ i, type: "B" }); else if (t.type === "SELL") marks.push({ i, type: "S" }); } });
+  /* step render for INV: build a stepped path via the generic line fn by doubling points */
+  return insxLineSvg([{ data: V, color: "var(--text)", area: true }, { data: INV, color: "#8a8a8a" }], marks);
+}
+
+/* ---------- 5. Correlation Matrix ---------- */
+function insxRenderCorr() {
+  const box = $("insx-corr"); if (!box || !insXSeries) return;
+  const head = '<div class="panel-head"><h2>Correlation Matrix</h2>' + insxInfoBtn("correlation") + "</div>";
+  const { holdings } = computeHoldings();
+  const vals = holdings.map(h => { const p = priceOf(h.sym); return { sym: h.sym, v: p ? h.qty * p.price : h.invested }; }).sort((a, b) => b.v - a.v).slice(0, 10);
+  if (vals.length < 2) { box.innerHTML = head + '<p class="empty-note">Hold at least two stocks and this will show how similarly they move.</p>'; return; }
+  const { symArr, axis } = insXSeries;
+  const N = Math.min(120, axis.length - 1);
+  const retsOf = s => { const a = symArr[s] || []; const r = []; for (let i = axis.length - N; i < axis.length; i++) { if (a[i - 1] && a[i]) r.push(a[i] / a[i - 1] - 1); else r.push(null); } return r; };
+  const series = {}; vals.forEach(x => series[x.sym] = retsOf(x.sym));
+  const pearson = (a, b) => { const xs = [], ys = []; a.forEach((v, i) => { if (v != null && b[i] != null) { xs.push(v); ys.push(b[i]); } }); if (xs.length < 20) return null; const mx = xs.reduce((s, v) => s + v, 0) / xs.length, my = ys.reduce((s, v) => s + v, 0) / ys.length; let num = 0, dx = 0, dy = 0; xs.forEach((v, i) => { num += (v - mx) * (ys[i] - my); dx += Math.pow(v - mx, 2); dy += Math.pow(ys[i] - my, 2); }); return dx && dy ? num / Math.sqrt(dx * dy) : null; };
+  let sum = 0, cnt = 0;
+  let cells = '<div class="insx-corr-grid" style="grid-template-columns:64px repeat(' + vals.length + ',1fr)"><span></span>' + vals.map(x => '<span class="insx-corr-h">' + esc(x.sym.slice(0, 8)) + "</span>").join("");
+  vals.forEach((a, i) => {
+    cells += '<span class="insx-corr-h">' + esc(a.sym.slice(0, 8)) + "</span>";
+    vals.forEach((b, j) => {
+      if (i === j) { cells += '<span class="insx-corr-c self">1.0</span>'; return; }
+      const c = pearson(series[a.sym], series[b.sym]);
+      if (c == null) { cells += '<span class="insx-corr-c">—</span>'; return; }
+      if (i < j) { sum += c; cnt++; }
+      const bg = c >= 0 ? "background:rgba(224,49,49," + (c * 0.75).toFixed(2) + ")" : "background:rgba(47,158,68," + (-c * 0.75).toFixed(2) + ")";
+      cells += '<span class="insx-corr-c" style="' + bg + '" data-insx-tip="' + esc(a.sym) + " & " + esc(b.sym) + ": correlation " + c.toFixed(2) + '">' + c.toFixed(1) + "</span>";
+    });
+  });
+  cells += "</div>";
+  const avg = cnt ? sum / cnt : null;
+  box.innerHTML = head + cells +
+    (avg != null ? '<p class="insx-note">Average correlation: <b>' + avg.toFixed(2) + "</b>." + (avg > 0.7 ? ' <span class="neg">⚠ Your stocks move together — a market fall will likely hit most of them at once.</span>' : " Your stocks do not all move together, which softens market falls.") + " Red cells move together, green cells move opposite. Tap a cell for the exact number.</p>" : '<p class="empty-note">Not enough shared price history yet for correlations.</p>');
+}
+/* ---------- 7. P&L Calendar ---------- */
+function insxRenderCal() {
+  const box = $("insx-cal"); if (!box || !insXSeries) return;
+  const head = '<div class="panel-head"><h2>P&L Calendar</h2>' + insxInfoBtn("calendar") + "</div>";
+  const { axis, V, FLOW } = insXSeries;
+  const dayPnl = {}; const perStockDay = {};
+  for (let i = 1; i < axis.length; i++) { dayPnl[axis[i]] = V[i] - V[i - 1] - FLOW[i]; }
+  if (!Object.keys(dayPnl).length) { box.innerHTML = head + '<p class="empty-note">Not enough history yet for a P&L calendar.</p>'; return; }
+  if (!insXCalYM) { const last = axis[axis.length - 1]; insXCalYM = last.slice(0, 7); }
+  const ym = insXCalYM, [yy, mm] = ym.split("-").map(Number);
+  const monthName = new Date(yy, mm - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+  const firstDow = new Date(yy, mm - 1, 1).getDay();
+  const daysInMonth = new Date(yy, mm, 0).getDate();
+  const vals = Object.entries(dayPnl).filter(([d]) => d.startsWith(ym)).map(([, v]) => Math.abs(v));
+  const maxAbs = Math.max(1, ...vals);
+  let cells = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map(d => '<span class="insx-cal-h">' + d + "</span>").join("");
+  for (let i = 0; i < firstDow; i++) cells += "<span></span>";
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = ym + "-" + String(d).padStart(2, "0");
+    const v = dayPnl[ds];
+    if (v == null) { cells += '<span class="insx-cal-d none">' + d + "</span>"; continue; }
+    const inten = Math.min(0.85, Math.abs(v) / maxAbs * 0.85 + 0.08);
+    const bg = v >= 0 ? "background:rgba(47,158,68," + inten.toFixed(2) + ")" : "background:rgba(224,49,49," + inten.toFixed(2) + ")";
+    cells += '<button type="button" class="insx-cal-d" style="' + bg + '" data-insx-day="' + ds + '">' + d + "</button>";
+  }
+  box.innerHTML = head +
+    '<div class="insx-cal-nav"><button type="button" class="btn small ghost" data-insx-calnav="-1">← Prev</button><b>' + monthName + '</b><button type="button" class="btn small ghost" data-insx-calnav="1">Next →</button></div>' +
+    '<div class="insx-cal-grid">' + cells + '</div><div id="insxCalDetail"><p class="insx-note">Tap a coloured day to see which stocks moved your portfolio that day.</p></div>';
+}
+function insxCalDay(ds) {
+  const box = $("insxCalDetail"); if (!box || !insXSeries) return;
+  const { axis, symArr, syms } = insXSeries;
+  const i = axis.indexOf(ds); if (i < 1) { box.innerHTML = '<p class="empty-note">No earlier day to compare with.</p>'; return; }
+  /* quantities held on that day */
+  const qty = {}; syms.forEach(s => qty[s] = 0);
+  state.txns.forEach(t => { if (t.date <= ds) { if (t.type === "BUY" && t.sym in qty) qty[t.sym] += Number(t.qty) || 0; else if (t.type === "SELL" && t.sym in qty) qty[t.sym] -= Number(t.qty) || 0; } });
+  const moves = [];
+  syms.forEach(s => { const a = symArr[s]; if (a && a[i] != null && a[i - 1] != null && qty[s]) { const mv = qty[s] * (a[i] - a[i - 1]); if (Math.abs(mv) > 0.5) moves.push({ sym: s, mv }); } });
+  moves.sort((a, b) => Math.abs(b.mv) - Math.abs(a.mv));
+  const total = moves.reduce((a, m) => a + m.mv, 0);
+  box.innerHTML = '<p class="insx-note"><b>' + new Date(ds + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) + '</b> · Day P&L: <b class="' + (total >= 0 ? "pos" : "neg") + '">' + insxAmt(total) + "</b></p>" +
+    (moves.length ? '<div class="insx-list">' + moves.slice(0, 8).map(m => '<div class="insx-row"><span>' + esc(m.sym) + '</span><b class="' + (m.mv >= 0 ? "pos" : "neg") + '">' + insxAmt(m.mv) + "</b></div>").join("") + "</div>" : '<p class="empty-note">No stock moves recorded for this day.</p>');
+}
+/* ---------- 9. Holdings Scorecard ---------- */
+function insxRenderScore() {
+  const box = $("insx-score"); if (!box) return;
+  const head = '<div class="panel-head"><h2>Holdings Scorecard</h2>' + insxInfoBtn("scorecard") + "</div>";
+  const { holdings } = computeHoldings();
+  if (!holdings.length) { box.innerHTML = head + '<p class="empty-note">No holdings yet — the scorecard grades every stock you hold, one row each.</p>'; return; }
+  const totalVal = holdings.reduce((a, h) => { const p = priceOf(h.sym); return a + (p ? h.qty * p.price : h.invested); }, 0) || 1;
+  const divsBySym = {}; state.txns.forEach(t => { if (t.type === "DIV") divsBySym[t.sym] = (divsBySym[t.sym] || 0) + (Number(t.price) || 0); });
+  const buyCostBySym = {}; state.txns.forEach(t => { if (t.type === "BUY") buyCostBySym[t.sym] = (buyCostBySym[t.sym] || 0) + (Number(t.qty) || 0) * effPrice(t); });
+  const today = new Date();
+  const rows = holdings.map(h => {
+    const p = priceOf(h.sym); const val = p ? h.qty * p.price : h.invested;
+    const days = Math.max(1, Math.round((today - new Date(h.firstDate + "T00:00:00")) / 86400000));
+    const years = days / 365.25;
+    const cagr = years >= 0.05 && h.invested > 0 ? (Math.pow(val / h.invested, 1 / years) - 1) * 100 : null;
+    const cfs = [];
+    state.txns.filter(t => t.sym === h.sym).forEach(t => {
+      if (t.type === "BUY") cfs.push({ date: new Date(t.date + "T00:00:00"), amount: -((Number(t.qty) || 0) * effPrice(t)) });
+      else if (t.type === "SELL") cfs.push({ date: new Date(t.date + "T00:00:00"), amount: (Number(t.qty) || 0) * effPrice(t) });
+      else if (t.type === "DIV") cfs.push({ date: new Date(t.date + "T00:00:00"), amount: Number(t.price) || 0 });
+    });
+    cfs.push({ date: today, amount: val });
+    cfs.sort((a, b) => a.date - b.date);
+    let xr = null; try { const r = xirr(cfs); if (r != null && isFinite(r)) xr = r * 100; } catch (e) {}
+    const dayChg = p && p.prevClose ? (p.price / p.prevClose - 1) * 100 : null;
+    return { sym: h.sym, cagr, xirr: xr, days, weight: val / totalVal * 100, divYield: buyCostBySym[h.sym] ? (divsBySym[h.sym] || 0) / buyCostBySym[h.sym] * 100 : 0, dayChg, val };
+  });
+  const filtered = rows.filter(r => !insXQuery || r.sym.toLowerCase().includes(insXQuery));
+  const sorted = [...filtered].sort((a, b) => { const k = insXSortK; const av = a[k], bv = b[k]; if (av == null) return 1; if (bv == null) return -1; return (av - bv) * insXSortDir; });
+  const th = (k, label) => '<th data-insx-sort="' + k + '">' + label + (insXSortK === k ? (insXSortDir < 0 ? " ↓" : " ↑") : "") + "</th>";
+  box.innerHTML = head +
+    '<input type="search" id="insxScoreQ" class="insx-search" placeholder="Search a stock…" value="' + esc(insXQuery) + '">' +
+    '<div class="insx-table-wrap"><table class="insx-table"><thead><tr><th data-insx-sort="sym2">Stock</th>' + th("cagr", "CAGR %") + th("xirr", "XIRR %") + th("days", "Days held") + th("weight", "Weight %") + th("divYield", "Div yield on cost %") + th("dayChg", "Day %") + "</tr></thead><tbody>" +
+    sorted.map(r => "<tr><td>" + esc(r.sym) + "</td><td>" + (r.cagr == null ? "—" : r.cagr.toFixed(1)) + "</td><td>" + (r.xirr == null ? "—" : r.xirr.toFixed(1)) + "</td><td>" + r.days + "</td><td>" + r.weight.toFixed(1) + "</td><td>" + r.divYield.toFixed(2) + "</td><td class=\"" + (r.dayChg == null ? "" : r.dayChg >= 0 ? "pos" : "neg") + '">' + (r.dayChg == null ? "—" : insxPct(r.dayChg, 2)) + "</td></tr>").join("") +
+    "</tbody></table></div>" +
+    (sorted.length ? "" : '<p class="empty-note">No stock matches your search.</p>') +
+    '<p class="insx-note">Tap a column heading to sort. CAGR covers the shares you still hold; XIRR covers every rupee in and out of that stock.</p>';
+  const q = $("insxScoreQ");
+  if (q) q.addEventListener("input", () => { insXQuery = q.value.trim().toLowerCase(); const pos = q.selectionStart; insxRenderScore(); const q2 = $("insxScoreQ"); if (q2) { q2.focus(); try { q2.setSelectionRange(pos, pos); } catch (e) {} } });
+}
+/* ---------- wiring: info buttons, legend chips, calendar, sorting ---------- */
+document.addEventListener("click", e => {
+  const info = e.target.closest("[data-insx-info]");
+  if (info) { toast(INSX_INFO[info.dataset.insxInfo] || ""); return; }
+  const tip = e.target.closest("[data-insx-tip]");
+  if (tip) { toast(tip.dataset.insxTip); return; }
+  const leg = e.target.closest("[data-insx-leg]");
+  if (leg) { if (leg.dataset.insxLeg === "port") insXShowPort = !insXShowPort; else insXShowNifty = !insXShowNifty; insxRenderNifty(); return; }
+  const nav = e.target.closest("[data-insx-calnav]");
+  if (nav) { const d = Number(nav.dataset.insxCalnav); const [y, m] = (insXCalYM || istTodayStr().slice(0, 7)).split("-").map(Number); const nd = new Date(y, m - 1 + d, 1); insXCalYM = nd.getFullYear() + "-" + String(nd.getMonth() + 1).padStart(2, "0"); insxRenderCal(); return; }
+  const day = e.target.closest("[data-insx-day]");
+  if (day) { insxCalDay(day.dataset.insxDay); return; }
+  const th = e.target.closest("[data-insx-sort]");
+  if (th) { const k = th.dataset.insxSort; if (k === "sym2") return; if (insXSortK === k) insXSortDir *= -1; else { insXSortK = k; insXSortDir = -1; } insxRenderScore(); return; }
+});
+const _renderInsightsT1 = renderInsights;
+renderInsights = function (d) { _renderInsightsT1(d); try { insxEnsure(); } catch (e) {} };
