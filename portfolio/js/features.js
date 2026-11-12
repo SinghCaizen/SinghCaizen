@@ -128,6 +128,11 @@ function lineChartSvg(values, height) {
 /* ---------- index ticker (animated header strip) ---------- */
 let tickerLoadedAt = 0;
 async function loadTicker() {
+  /* Scrolling ticker line in the header: OFF at LILA's instruction
+     (2026-11-12 — "header me ek line chal rahi hai use band karo").
+     The strip stays hidden and no ticker fetches run. */
+  const tw = $("tickerWrap"); if (tw) tw.classList.add("hidden");
+  return;
   const wrap = $("tickerWrap"), track = $("tickerTrack");
   if (!wrap || !track || !currentUser) return;
   if (Date.now() - tickerLoadedAt < 5 * 60 * 1000 && track.innerHTML) return;
@@ -526,8 +531,8 @@ async function doTick() {
   tickerLoadedAt = 0;
   try { loadTicker(); } catch (e) {}
 }
-setInterval(() => { updateMktPill(); if (marketOpenIST() && currentUser && !document.hidden) doTick(); }, 25000);
-setInterval(updateMktPill, 30000);
+setInterval(() => { updateMktPill(); if (marketOpenIST() && currentUser && !document.hidden) doTick(); }, 60000);
+setInterval(updateMktPill, 60000);
 
 /* ---------- Yahoo search top-up for autocomplete (beyond the built-in list) ---------- */
 window.__yahooSuggest = async function (q) {
@@ -2368,7 +2373,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v75";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v76";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
