@@ -2342,7 +2342,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v33";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v34";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2510,7 +2510,7 @@ async function renderInsPeriod() {
   const alpha = niftyRet !== null ? totPct - niftyRet : null;
   box.innerHTML = '<div class="stat-chips">' +
     '<span class="chip">' + tfName + ' Change <b class="' + (totChange >= 0 ? "gain" : "loss") + '">' + inr(totChange) + " (" + pct(totPct) + ')</b></span>' +
-    (maxFall ? '<span class="chip">Max Fall in Period <b class="loss">' + inr(maxFall.rs) + " (" + pct(maxFall.pct) + ')</b> from the period high</span>' : "") +
+    (maxFall && maxFall.rs < -1 ? '<span class="chip">Max Fall in Period <b class="loss">' + inr(maxFall.rs) + " (" + pct(maxFall.pct) + ')</b> from the period high</span>' : "") +
     (alpha !== null ? '<span class="chip">Alpha vs NIFTY 50 <b class="' + (alpha >= 0 ? "gain" : "loss") + '">' + pct(alpha) + '</b> (NIFTY ' + pct(niftyRet) + ' in the same window)</span>' : '<span class="chip">NIFTY comparison unavailable right now</span>') +
     '<span class="chip">Basis: your current quantities × free daily prices</span></div>';
   if (mov) {

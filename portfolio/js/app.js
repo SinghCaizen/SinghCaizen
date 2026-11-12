@@ -723,7 +723,16 @@ function renderWatch() {
   const rows = [...state.watch].sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0));
   $("watchEmpty").classList.toggle("hidden", rows.length > 0);
   el.innerHTML = rows.map(w => {
-    const p = priceOf(w.sym);
+    let p = priceOf(w.sym);
+    if (!p) {
+      try {
+        const hc = (typeof histCache !== "undefined" && histCache[w.sym + "|1y"]) || (typeof histLsGet === "function" && histLsGet(w.sym + "|1y"));
+        if (hc && hc.points && hc.points.length) {
+          const pts = hc.points, last = pts[pts.length - 1], prev = pts.length > 1 ? pts[pts.length - 2] : null;
+          p = { price: last.c, prevClose: prev ? prev.c : null, spark: pts.slice(-30).map(x => x.c) };
+        }
+      } catch (e) {}
+    }
     const chg = p && p.prevClose ? (p.price - p.prevClose) / p.prevClose * 100 : null;
     return `<div class="watchlist-row" data-wrow="${esc(w.sym)}">
       <button class="star-btn ${w.fav ? "fav" : ""}" data-star="${esc(w.sym)}" type="button" title="Favourite">${w.fav ? "★" : "☆"}</button>
