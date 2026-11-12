@@ -1657,3 +1657,17 @@ input,select,textarea{border-radius:var(--r-sm)}
 .imp-row{font-size:13px;margin-bottom:6px;color:var(--text)}
 .imp-bar{height:6px;background:var(--panel-2);border-radius:99px;overflow:hidden}
 .imp-bar i{display:block;height:100%;width:0;background:var(--gold);border-radius:99px;transition:width .35s ease}
+
+/* ===== v79: sparkline size + holdings view modes ===== */
+.hold-spark svg{width:84px;height:24px;flex:none}
+.hold-tools{flex-wrap:wrap}
+.hold-view-seg{margin-left:auto}
+#holdingsList.hold-compact{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:1024px){ #holdingsList.hold-compact{grid-template-columns:1fr 1fr} }
+#holdingsList.hold-compact .hold-card{padding:10px 12px}
+#holdingsList.hold-compact .hold-spark{display:none}
+#holdingsList.hold-compact .hold-stats{gap:6px}
+#holdingsList.hold-compact .hold-stat{padding:6px 8px}
+.hold-table td,.hold-table th{white-space:nowrap}
+.hold-table tbody tr{cursor:pointer}
+.tbl-scroll{overflow-x:auto}

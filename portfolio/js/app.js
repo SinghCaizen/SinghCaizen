@@ -205,6 +205,8 @@ async function doGoogleSignIn() {
 }
 
 function enterApp(user, initialState) {
+  if (__enteredEmail && user && user.email === __enteredEmail && uiBusy()) { __pendingEnter = { user: user, s: initialState }; return; }
+  __enteredEmail = user ? user.email : "";
   currentUser = user;
   state = normalizeState(initialState);
   syncFrozen = false;
@@ -474,7 +476,6 @@ async function refreshPrices() {
     const batch = list.slice(i, i + 4);
     const res = await Promise.all(batch.map(fetchOne));
     res.forEach((r, k) => { if (r) prices[batch[k]] = r; });
-    renderAll();
   }
   refreshing = false;
   savePricesLS();
@@ -512,6 +513,25 @@ function moneyFmt(v) {
 /* ================= rendering ================= */
 const PIE = ["#f2f2f2", "#bdbdbd", "#8a8a8a", "#5c5c5c", "#e03131", "#3d3d3d", "#d6d6d6", "#757575", "#a8a8a8", "#2b2b2b"];
 function renderAll() { renderDashboard(); renderHoldings(); renderWatch(); renderHistory(); }
+/* ---------- editing shield ----------
+   Background refreshes (price ticks, cloud echoes) must never rebuild
+   the screen while the user is editing: a rebuild kills open forms.
+   While a modal is open or a field has focus, renders are deferred
+   and applied once the user is free. */
+let __pendingEnter = null, __pendingRender = false, __enteredEmail = "";
+function uiBusy() {
+  if (document.querySelector(".modal:not(.hidden)")) return true;
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT") && ae.type !== "checkbox" && ae.type !== "radio" && ae.type !== "search") return true;
+  return false;
+}
+const _renderAllCore = renderAll;
+renderAll = function () { if (uiBusy()) { __pendingRender = true; return; } _renderAllCore(); };
+setInterval(() => {
+  if (uiBusy()) return;
+  if (__pendingEnter) { const p = __pendingEnter; __pendingEnter = null; enterApp(p.user, p.s); }
+  else if (__pendingRender) { __pendingRender = false; _renderAllCore(); }
+}, 1200);
 function enriched() {
   const { holdings, realisedTotal, divTotal, split } = computeHoldings();
   let invested = 0, value = 0, dayPnl = 0;

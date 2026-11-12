@@ -2368,7 +2368,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v74";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v75";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -4904,15 +4904,36 @@ function holdEnsure() {
   const bar = document.createElement("div"); bar.id = "holdTools"; bar.className = "hold-tools";
   bar.innerHTML = '<input type="search" id="holdQ" placeholder="Search holdings…" aria-label="Search holdings">' +
     '<select id="holdSortSel" aria-label="Sort holdings"><option value="value">Sort: Value</option><option value="pnl">Sort: P&amp;L %</option><option value="day">Sort: Day %</option><option value="name">Sort: Name</option><option value="weight">Sort: Weight</option></select>' +
-    '<label class="sx-cmp hold-group"><input type="checkbox" id="holdGroupTgl"> Group by sector</label>';
+    '<label class="sx-cmp hold-group"><input type="checkbox" id="holdGroupTgl"> Group by sector</label>' +
+    '<div class="seg seg-small hold-view-seg" role="group" aria-label="How holdings are shown"><button type="button" data-hview="cards">▦ Cards</button><button type="button" data-hview="compact">☰ Compact</button><button type="button" data-hview="table">▤ Table</button></div>';
   const list = $("holdingsList");
-  if (list) panel.insertBefore(bar, list);
+  if (list) { panel.insertBefore(bar, list); const tw = document.createElement("div"); tw.id = "holdTableWrap"; tw.className = "hidden"; list.after(tw); }
+  bar.querySelectorAll("[data-hview]").forEach(b => b.addEventListener("click", () => { state.profile.holdView = b.dataset.hview; persist(); holdApply(); }));
   $("holdQ").addEventListener("input", e => { holdQuery = e.target.value.trim().toLowerCase(); holdApply(); });
   $("holdSortSel").addEventListener("change", e => { holdSort = e.target.value; holdApply(); });
   $("holdGroupTgl").addEventListener("change", e => { holdGroup = e.target.checked; holdApply(); });
 }
+function holdRenderTable(tw) {
+  const { holdings } = computeHoldings();
+  const rows = holdings.map(h => { const p = priceOf(h.sym); const v = p ? h.qty * p.price : h.invested; const pnl = v - h.invested; return { h: h, p: p, v: v, pnl: pnl, pnlPct: h.invested ? pnl / h.invested * 100 : 0, day: p && p.prevClose ? (p.price / p.prevClose - 1) * 100 : null }; })
+    .filter(r => !holdQuery || r.h.sym.toLowerCase().includes(holdQuery) || (r.h.name || "").toLowerCase().includes(holdQuery))
+    .sort((a, b) => b.v - a.v);
+  if (!rows.length) { tw.innerHTML = '<p class="empty-note">No holdings match.</p>'; return; }
+  tw.innerHTML = '<div class="tbl-scroll"><table class="tbl hold-table"><thead><tr><th>Stock</th><th>Qty</th><th>Avg</th><th>LTP</th><th>Day %</th><th>Value</th><th>Overall P&amp;L</th></tr></thead><tbody>' +
+    rows.map(r => '<tr data-hrow="' + esc(r.h.sym) + '"><td><b>' + esc(r.h.sym) + '</b> <span class="muted">' + esc(r.h.name || "") + '</span></td><td>' + r.h.qty + '</td><td>' + inr2(r.h.avg) + '</td><td>' + (r.p ? inr2(r.p.price) : "—") + '</td><td class="' + (r.day == null ? "" : r.day >= 0 ? "pos" : "neg") + '">' + (r.day == null ? "—" : (r.day >= 0 ? "+" : "") + r.day.toFixed(2) + "%") + '</td><td>' + inr(r.v) + '</td><td class="' + (r.pnl >= 0 ? "pos" : "neg") + '">' + inr(r.pnl) + " (" + (r.pnl >= 0 ? "+" : "") + r.pnlPct.toFixed(2) + '%)</td></tr>').join("") +
+    "</tbody></table></div>";
+  tw.querySelectorAll("[data-hrow]").forEach(tr => tr.addEventListener("click", () => { const t = document.querySelector('[data-hold-toggle="' + tr.dataset.hrow + '"]'); if (t) t.click(); }));
+}
 function holdApply() {
   const list = $("holdingsList"); if (!list) return;
+  const hv = (state.profile && state.profile.holdView) || "cards";
+  document.querySelectorAll("[data-hview]").forEach(b => b.classList.toggle("active", b.dataset.hview === hv));
+  list.classList.toggle("hold-compact", hv === "compact");
+  const tw = $("holdTableWrap");
+  if (tw) {
+    if (hv === "table") { holdRenderTable(tw); tw.classList.remove("hidden"); list.classList.add("hidden"); }
+    else { tw.classList.add("hidden"); list.classList.remove("hidden"); }
+  }
   const { holdings } = computeHoldings();
   const info = {};
   const total = planHoldVals().total || 1;
