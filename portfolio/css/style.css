@@ -1052,196 +1052,14 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
 .ta-stack{position: relative; border-radius: 14px; overflow: hidden;}
 .ta-stack #taCanvas{display: block; border-radius: 14px;}
 #taOverlay{position: absolute; left: 0; top: 0; border-radius: 14px; touch-action: pan-y; cursor: crosshair; background: transparent; border: none;}
-.ipo-circle-btn{flex-direction: column; gap: 0; line-height: 1;}
-.ipo-circle-btn svg{width: 24px; height: 24px;}
-.ipo-circle-label{font-size: 10.5px; font-weight: 800; letter-spacing: .06em; margin-top: 1px;}
-.ipo-sub-seg{flex-wrap: wrap; margin-bottom: 10px;}
-.ipo-filter-row{display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;}
-.ipo-filter-row input[type="text"]{flex: 1; min-width: 150px; padding: 9px 12px; border-radius: 999px; border: 1px solid var(--liquid-border); background: var(--liquid-inner-card-bg); color: var(--liquid-text-primary, var(--text)); font-size: 13px;}
-.ipo-custom{display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; padding: 12px; border: 1px dashed var(--liquid-border); border-radius: 14px;}
-.ipo-custom input, .ipo-custom select{padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-size: 13px; width: 100%; box-sizing: border-box;}
-.ipo-custom label{font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px;}
-.ipo-card{background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 18px; padding: 12px 14px; margin-bottom: 10px;}
-.ipo-card-head{width: 100%; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; background: none; border: none; color: inherit; cursor: pointer; text-align: left; font: inherit; padding: 0;}
-.ipo-head-l{display: flex; flex-direction: column; gap: 2px; min-width: 0;}
-.ipo-head-l b{font-size: 15px;}
-.ipo-head-l small{color: var(--muted); font-size: 12px;}
-.ipo-head-r{display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0;}
-.ipo-board{font-size: 10px; font-weight: 800; letter-spacing: .06em; padding: 3px 8px; border-radius: 999px; background: rgba(37,99,235,.18); color: #7aa5ff;}
-.ipo-board.sme{background: rgba(147,51,234,.18); color: #c084fc;}
-.ipo-badge{font-size: 10.5px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line);}
-.ipo-badge.open{background: rgba(16,185,129,.16); color: #34d399;}
-.ipo-badge.upcoming{background: rgba(245,158,11,.16); color: #fbbf24;}
-.ipo-metrics{display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0;}
-@media (max-width: 560px){ .ipo-metrics{grid-template-columns: repeat(2, minmax(0, 1fr));} }
-.ipo-metrics > div{background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px;}
-.ipo-metrics span{font-size: 10.5px; color: var(--muted); font-weight: 600; letter-spacing: .02em;}
-.ipo-metrics b{font-size: 13.5px;}
-.ipo-metrics small{color: var(--muted); font-size: 11px;}
-.ipo-subbar{display: block; height: 5px; border-radius: 99px; background: var(--line); overflow: hidden; margin: 3px 0;}
-.ipo-subbar i{display: block; height: 100%; background: var(--gain, #10b981);}
-.ipo-timeline{display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 11px; color: var(--muted);}
-.ipo-timeline span{display: flex; flex-direction: column;}
-.ipo-timeline b{color: var(--text); font-size: 12px;}
-.ipo-timeline i{font-style: normal; opacity: .6;}
-.ipo-drawer{margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px;}
-.ipo-drawer h4{margin: 10px 0 6px; font-size: 13px;}
-.ipo-drawer p{font-size: 13px; line-height: 1.55;}
-.ipo-reg-row{display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;}
-.ipo-logform{display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px;}
-.ipo-logform input, .ipo-logform select{padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-size: 13px; width: 100%; box-sizing: border-box;}
-.ipo-app-row{display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px;}
-.ipo-app-main{display: flex; flex-direction: column; flex: 1; min-width: 160px;}
-.ipo-app-row select{padding: 7px 9px; border-radius: 9px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-size: 12.5px;}
-.ipo-news-item{display: flex; flex-direction: column; gap: 2px; padding: 9px 4px; border-bottom: 1px solid var(--line); color: inherit; text-decoration: none;}
-.ipo-news-item span{color: var(--muted); font-size: 11.5px;}
 
 /* v41 — IPO Master hub: hero, KPIs, patti views, sidebar, desktop table, allotment vault */
 .ipo-hero-line{font-size: 13.5px; line-height: 1.6; margin: 6px 0 12px;}
-.ipo-kpis{display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px;}
-@media (max-width: 760px){ .ipo-kpis{grid-template-columns: repeat(2, minmax(0, 1fr));} .ipo-kpis .ipo-kpi:last-child{grid-column: span 2;} }
-.ipo-kpi{background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;}
-.ipo-kpi span{font-size: 10.5px; color: var(--muted); font-weight: 700; letter-spacing: .03em; text-transform: uppercase;}
-.ipo-kpi b{font-size: 19px;}
-.ipo-kpi small{color: var(--muted); font-size: 11px;}
-.ipo-sync-row{display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;}
-.ipo-main-patti{margin: 0 0 12px; flex-wrap: wrap;}
-.ipo-sel{padding: 9px 10px; border-radius: 999px; border: 1px solid var(--liquid-border); background: var(--liquid-inner-card-bg); color: var(--liquid-text-primary, var(--text)); font-size: 12.5px;}
-.ipo-layout{display: block;}
-@media (min-width: 1024px){
-  .ipo-layout{display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; align-items: start;}
-  .ipo-aside{position: sticky; top: 12px;}
-}
-/* v43 — the IPO Master app cards ARE the list on every screen; the list-view table retires (tables remain in GMP/Subscription views and inside the deep-dive) */
-.ipo-main-col .ipo-table-wrap{display: none !important;}
-@media (max-width: 1023px){ .ipo-table-wrap{display: none;} .ipo-table-wrap.gmp, .ipo-table-wrap.subs{display: block; overflow-x: auto;} }
-.ipo-aside{display: flex; flex-direction: column; gap: 10px; margin-top: 12px;}
-@media (min-width: 1024px){ .ipo-aside{margin-top: 0;} }
-.ipo-widget{background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 16px; padding: 12px;}
-.ipo-widget h4{margin: 0 0 8px; font-size: 13px;}
-.ipo-widget p{font-size: 12.5px; color: var(--muted); margin: 0 0 8px;}
-.ipo-side-row{width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 9px 11px; margin-bottom: 6px; color: inherit; cursor: pointer; font: inherit; text-align: left; flex-wrap: wrap;}
-.ipo-side-row b{font-size: 13px;}
-.ipo-side-row span{font-size: 11.5px; color: var(--muted);}
-.ipo-gain-pill{background: rgba(16,185,129,.16); color: #34d399; font-weight: 800; font-size: 12px; padding: 3px 8px; border-radius: 999px;}
-.ipo-act-sub{font-size: 11px !important;}
-.ipo-bars{display: flex; align-items: flex-end; gap: 4px; height: 88px;}
-.ipo-bar-col{flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end;}
-.ipo-bar-stack{width: 100%; max-width: 18px; background: linear-gradient(180deg, #2563eb, #38bdf8); border-radius: 4px 4px 0 0; position: relative; overflow: hidden; min-height: 3px;}
-.ipo-bar-sme{position: absolute; left: 0; right: 0; bottom: 0; background: #a855f7; display: block;}
-.ipo-bar-col span{font-size: 9px; color: var(--muted);}
-.ipo-table-wrap{overflow-x: auto; margin-bottom: 12px;}
-.ipo-table{width: 100%; border-collapse: collapse; font-size: 13px;}
-.ipo-table th{text-align: left; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap;}
-.ipo-table td{padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top;}
-.ipo-table tbody tr{cursor: pointer;}
-.ipo-table tbody tr:hover{background: var(--panel-2);}
-.ipo-sub-grid{display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 6px 0 10px;}
-.ipo-sub-grid > div{background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px;}
-.ipo-sub-grid span{font-size: 10.5px; color: var(--muted); font-weight: 600;}
-.ipo-sub-grid b{font-size: 13.5px;}
-.ipo-mgr{font-size: 12px !important; font-weight: 600;}
-.ipo-expand-btn{width: 100%; margin-top: 10px;}
-.ipo-detail-card{margin-top: 4px;}
-.ipo-vault{display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-bottom: 12px;}
-.ipo-vault label{font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 5px; font-weight: 600;}
-.ipo-vault input, .ipo-vault select{padding: 9px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font-size: 13px;}
-.ipo-vault-row{display: flex; gap: 6px;}
-.ipo-vault-row input{flex: 1; min-width: 0;}
-.ipo-allot-sel{display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin-bottom: 10px; flex-wrap: wrap;}
-.ipo-allot-sel select{padding: 9px 10px; border-radius: 10px; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-size: 13px; flex: 1; min-width: 180px;}
-.ipo-reg-grid{display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin-bottom: 8px;}
-.ipo-reg-card{display: flex; flex-direction: column; gap: 2px; align-items: flex-start; background: var(--liquid-inner-card-bg); border: 1px solid var(--liquid-border); border-radius: 14px; padding: 11px 12px; color: inherit; cursor: pointer; font: inherit; text-align: left;}
-.ipo-reg-card b{font-size: 13.5px;}
-.ipo-reg-card span{font-size: 11.5px; color: var(--muted);}
-.ipo-faq{border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; background: var(--panel);}
-.ipo-faq summary{cursor: pointer; font-weight: 700; font-size: 13.5px;}
-.ipo-faq p{font-size: 13px; line-height: 1.6; margin: 8px 0 2px;}
-.ipo-mgr-row{display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line);}
-.ipo-mgr-rank{width: 24px; height: 24px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0;}
 
 /* v42 — IPO Master app cards, category patti, deep-dive view */
 :root{ --tint-open-bg: rgba(16,185,129,.14); --tint-open-br: rgba(16,185,129,.35); --tint-open-tx: #34d399; --tint-close-bg: rgba(245,158,11,.14); --tint-close-br: rgba(245,158,11,.35); --tint-close-tx: #fbbf24; }
 [data-theme="light"]{ --tint-open-bg: #ecfdf5; --tint-open-br: #a7f3d0; --tint-open-tx: #047857; --tint-close-bg: #fffbeb; --tint-close-br: #fde68a; --tint-close-tx: #b45309; }
-.ipo-cat-patti{margin-bottom: 8px; flex-wrap: wrap;}
-.ipo-card-top{display: flex; gap: 10px; align-items: flex-start;}
-.ipo-logo{width: 64px; height: 64px; border-radius: 16px; flex-shrink: 0; background: linear-gradient(145deg, hsl(var(--hue) 70% 92%), hsl(var(--hue) 65% 82%)); border: 1px solid var(--liquid-border); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; color: hsl(var(--hue) 60% 26%); overflow: hidden;}
-[data-theme="dark"] .ipo-logo, :root .ipo-logo{ }
-.ipo-logo-mono{font-size: 22px; font-weight: 800; letter-spacing: .02em;}
-.ipo-logo-emoji{font-size: 24px; line-height: 1;}
-.ipo-logo-word{font-size: 9px; font-weight: 800; letter-spacing: .08em; color: #dc2626;}
-.ipo-title-wrap{flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;}
-.ipo-title{font-size: 15.5px; line-height: 1.3;}
-.ipo-tent{font-size: 11.5px; color: var(--muted); font-weight: 600;}
-.ipo-title-wrap small{color: var(--muted); font-size: 12px;}
-.ipo-top-r{display: flex; align-items: center; gap: 6px; flex-shrink: 0;}
-.ipo-badge.upcoming-blue{background: rgba(37,99,235,.16); color: #60a5fa;}
-[data-theme="light"] .ipo-badge.upcoming-blue{color: #1d4ed8;}
-.ipo-star-btn{background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); width: 32px; height: 32px; border-radius: 50%; font-size: 16px; cursor: pointer; line-height: 1;}
-.ipo-star-btn.on{color: #f59e0b; border-color: rgba(245,158,11,.5);}
-.ipo-date-grid{display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 4px;}
-.ipo-date-box{border-radius: 14px; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px;}
-.ipo-date-box span{font-size: 10.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; opacity: .85;}
-.ipo-date-box b{font-size: 14.5px;}
-.ipo-date-box.open{background: var(--tint-open-bg); border: 1px solid var(--tint-open-br); color: var(--tint-open-tx);}
-.ipo-date-box.close{background: var(--tint-close-bg); border: 1px solid var(--tint-close-br); color: var(--tint-close-tx);}
-.ipo-mrow{display: grid; gap: 8px; padding: 9px 2px; border-bottom: 1px solid var(--line);}
-.ipo-mrow.r3{grid-template-columns: repeat(3, minmax(0, 1fr));}
-.ipo-mrow.r2{grid-template-columns: repeat(2, minmax(0, 1fr));}
-.ipo-mrow > div{display: flex; flex-direction: column; gap: 1px; min-width: 0;}
-.ipo-mrow span{font-size: 10.5px; color: var(--muted); font-weight: 600;}
-.ipo-mrow b{font-size: 13px;}
-.ipo-subs-orange{color: #f59e0b !important;}
-.ipo-tl-head{display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;}
-.ipo-tl-head i{flex: 1; height: 1px; background: var(--line);}
-.ipo-tl-row{display: grid; grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr; align-items: start; gap: 4px;}
-.ipo-tl-step{display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center;}
-.ipo-tl-step b{background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 5px 4px; font-size: 11px; width: 100%; box-sizing: border-box;}
-.ipo-tl-step span{font-size: 10px; color: var(--muted); font-weight: 600;}
-.ipo-tl-link{width: 10px; height: 1.5px; background: var(--line); margin-top: 14px;}
-.ipo-card-actions{display: flex; gap: 8px; margin-top: 12px;}
-.ipo-full-btn{flex: 1;}
-.ipo-share-btn{border-radius: 999px;}
-.ipo-empty{text-align: center; padding: 26px 16px;}
-.ipo-empty-ic{width: 52px; height: 52px; color: var(--muted); margin-bottom: 8px;}
-.ipo-empty h3{margin: 4px 0;}
-.ipo-deep{position: fixed; inset: 0; z-index: 1200; background: var(--bg-liquid-canvas); background-attachment: fixed; overflow-y: auto; padding: 12px 12px 40px; animation: gpuFastFade .15s cubic-bezier(.22,1,.36,1) forwards;}
-.ipo-deep-head{position: sticky; top: -12px; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 12px 4px; background: var(--liquid-bar-bg); backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%); border-bottom: 1px solid var(--liquid-border); border-radius: 0 0 16px 16px;}
-.ipo-deep-head b{flex: 1; font-size: 16px; min-width: 0;}
-.ipo-jump-patti{position: sticky; top: 52px; z-index: 5; margin: 10px 0 12px; overflow-x: auto; flex-wrap: nowrap;}
-.ipo-dd-card{margin-bottom: 12px;}
-.ipo-drhp-badge{background: rgba(37,99,235,.16); color: #60a5fa; font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; letter-spacing: .05em;}
-.ipo-kv{display: flex; justify-content: space-between; gap: 14px; padding: 8px 2px; border-bottom: 1px solid var(--line); font-size: 13px;}
-.ipo-kv span{color: var(--muted);}
-.ipo-kv b{text-align: right;}
-.ipo-tl-v{display: flex; gap: 12px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--line);}
-.ipo-tl-badge{background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; font-size: 11.5px; font-weight: 800; min-width: 58px; text-align: center;}
-.ipo-tl-txt{display: flex; flex-direction: column;}
-.ipo-tl-txt span{font-size: 12px; color: var(--muted);}
-.ipo-obj{margin: 4px 0 4px 18px; padding: 0; font-size: 13.5px; line-height: 1.65;}
-.ipo-obj li{margin-bottom: 8px;}
-.ipo-doc-tile{display: flex; gap: 12px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 8px; color: inherit; text-decoration: none;}
-.ipo-doc-ic{background: #2563eb; color: #fff; font-weight: 800; font-size: 12px; border-radius: 10px; padding: 10px 8px;}
-.ipo-doc-ic.alt{background: #0ea5e9;}
-.ipo-doc-tile small{display: block; color: var(--muted); font-size: 11.5px;}
-.ipo-fin-callout{display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;}
-.ipo-fin-callout b{font-size: 26px; color: #f59e0b;}
-.ipo-fin-callout span{color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;}
-.ipo-fin-chart{display: flex; align-items: flex-end; gap: 12px; height: 120px; padding: 0 4px; border-bottom: 1px solid var(--line);}
-.ipo-fin-col{flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; justify-content: flex-end;}
-.ipo-fin-bars{display: flex; align-items: flex-end; gap: 4px;}
-.ipo-fin-rev{width: 16px; background: linear-gradient(180deg, #38bdf8, #2563eb); border-radius: 5px 5px 0 0; display: block;}
-.ipo-fin-pat{width: 16px; background: linear-gradient(180deg, #fbbf24, #f59e0b); border-radius: 5px 5px 0 0; display: block;}
-.ipo-fin-col span{font-size: 10px; color: var(--muted); text-align: center;}
-.ipo-fin-legend{display: flex; gap: 14px; align-items: center; margin: 8px 0 10px; font-size: 12px; flex-wrap: wrap;}
-.ipo-fin-legend i{width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 5px;}
 .lg-rev{background: #2563eb;} .lg-pat{background: #f59e0b;}
-.ipo-table-wrap.always{display: block; overflow-x: auto;}
-.ipo-peer-self{background: rgba(37,99,235,.08);}
-.ipo-about-p{font-size: 13.5px; line-height: 1.65;}
-.ipo-mgr-line{margin: 4px 0; font-size: 13.5px;}
-.ipo-dd-sub{margin: 14px 0 6px; font-size: 13px;}
-.ipo-top-btn{position: fixed; right: 16px; bottom: 96px; z-index: 850; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--liquid-border); background: var(--liquid-bar-bg); backdrop-filter: blur(12px); color: var(--text); font-size: 18px; cursor: pointer; box-shadow: var(--liquid-shadow);}
 
 /* v44 — modal overflow lock, chart window controls, IPO mode, terms modal */
 /* Lock every modal to the viewport: zero horizontal scroll, ever */
@@ -1264,56 +1082,15 @@ body{background: var(--bg-liquid-canvas); background-attachment: fixed;}
 .ta-zoom{position: absolute; top: 8px; left: 8px; z-index: 3; display: flex; gap: 4px; background: var(--liquid-bar-bg); border: 1px solid var(--liquid-border); border-radius: 999px; padding: 3px;}
 .ta-zoom button{width: 26px; height: 26px; border-radius: 50%; border: none; background: transparent; color: var(--liquid-text-primary, var(--text)); font-size: 11px; cursor: pointer; line-height: 1;}
 .ta-zoom button:hover{background: var(--liquid-active-pill);}
-/* superseded by ipo-world rules in v46 */
-.terms-card{max-width: 760px !important;}
 .terms-body{max-height: 62vh; overflow-y: auto; padding-right: 4px;}
 .terms-body section{margin-bottom: 14px;}
 .terms-body h4{margin: 0 0 5px; font-size: 14px;}
 .terms-body p{font-size: 13px; line-height: 1.65; margin: 0;}
 .terms-foot{display: flex; justify-content: flex-end; margin-top: 12px;}
 .site-foot a[data-open-terms]{font-weight: 700;}
-
-/* v46 — Dual-World: Portfolio World ⇄ IPO World */
-body.ipo-world-active header.topbar,
-body.ipo-world-active .top-liquid-nav-strip,
-body.ipo-world-active #tickerWrap,
-body.ipo-world-active main > section:not(#view-ipo),
-body.ipo-world-active #bnav,
-body.ipo-world-active .samsung-bottom-dock-wrap:not(#ipo-bottom-dock){display: none !important;}
-#ipo-bottom-dock{display: none;}
-body.ipo-world-active #ipo-bottom-dock{display: flex !important; position: fixed; bottom: 14px; left: 12px; right: 12px; align-items: center; gap: 10px; z-index: 900; pointer-events: none;}
-body.ipo-world-active main{padding-bottom: 96px;}
-#ipo-bottom-dock .samsung-bottom-capsule{pointer-events: auto;}
-.ipo-nav-item{flex: 1; height: 52px; border-radius: 999px; border: none; background: transparent; color: var(--liquid-text-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; font: inherit;}
-.ipo-nav-item svg{width: 21px; height: 21px;}
-.ipo-nav-item span{font-size: 9.5px; font-weight: 700; letter-spacing: .01em;}
-.ipo-nav-item.active{background: var(--liquid-active-pill); color: var(--liquid-text-primary, var(--text)); box-shadow: var(--liquid-edge-glow);}
 .return-to-portfolio-btn{pointer-events: auto; flex-shrink: 0; width: 62px; height: 62px; border-radius: 50%; background: var(--liquid-bar-bg); backdrop-filter: blur(26px) saturate(195%); -webkit-backdrop-filter: blur(26px) saturate(195%); border: 1px solid var(--liquid-border); box-shadow: var(--liquid-shadow), var(--liquid-edge-glow); color: var(--liquid-text-primary, var(--text)); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; font: inherit; line-height: 1;}
-.ipo-appbar{display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 12px; background: var(--liquid-bar-bg); border: 1px solid var(--liquid-border); border-radius: 18px; box-shadow: var(--liquid-shadow), var(--liquid-edge-glow);}
-.ipo-appbar-title{flex: 1; display: flex; align-items: center; gap: 8px; min-width: 0;}
-.ipo-appbar-title b{font-size: 19px; letter-spacing: .01em;}
-.ipo-amber{color: #f59e0b;}
-.ipo-byfolio{font-size: 10px; font-weight: 700; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); padding: 2.5px 7px; border-radius: 999px;}
-.ipo-appbar-actions{display: flex; gap: 2px;}
-.ipo-appbar-ic{width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent; color: var(--liquid-text-primary, var(--text)); display: flex; align-items: center; justify-content: center; cursor: pointer;}
-.ipo-appbar-ic:hover{background: var(--liquid-active-pill);}
 /* status patti: 3 equal liquid pills, royal-blue active */
 #ipoSubSeg{display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 5px !important; padding: 5px !important;}
-#ipoSubSeg .ipo-status-pill{width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-#ipoSubSeg .ipo-status-pill.active{background: #2563eb !important; color: #fff !important; border-color: transparent;}
-/* IPO world trims the hub to the clean app layout */
-body.ipo-world-active .ipo-hero{display: none;}
-body.ipo-world-active #view-ipo.ipo-show-more .ipo-hero{display: block;}
-body.ipo-world-active #ipoCatSeg{display: none;}
-@media (max-width: 1023px){
-  body.ipo-world-active #ipoMainSeg{display: none;}
-  body.ipo-world-active .ipo-filter-row{display: none;}
-  body.ipo-world-active #view-ipo.ipo-filters-open .ipo-filter-row{display: flex;}
-}
-
-/* v47 — IPO dock is a bottom capsule at every width; board shows on every card */
-body.ipo-world-active #ipo-bottom-dock{left: 50%; right: auto; transform: translateX(-50%); width: min(680px, calc(100vw - 20px));}
-#ipo-bottom-dock .samsung-bottom-capsule{flex: 1; height: 62px; padding: 5px; border-radius: 999px; background: var(--liquid-bar-bg); backdrop-filter: blur(26px) saturate(195%); -webkit-backdrop-filter: blur(26px) saturate(195%); border: 1px solid var(--liquid-border); box-shadow: var(--liquid-shadow), var(--liquid-edge-glow); display: flex; flex-direction: row; align-items: center; justify-content: space-between;}
 
 /* v49 — desktop docks, IPO header cleanup, solid sticky deep-dive header, card/patti fixes */
 @media (min-width: 769px){
@@ -1326,51 +1103,8 @@ body.ipo-world-active #ipo-bottom-dock{left: 50%; right: auto; transform: transl
   .samsung-profile-circle-btn svg{width: 26px; height: 26px;}
   main{padding-bottom: 96px;}
 }
-body.ipo-world-active #ipo-bottom-dock{bottom: 16px; width: min(540px, calc(100vw - 20px));}
-body.ipo-world-active #mktBar{display: none !important;}
-#ipoSyncNote{display: none !important;}
-.ipo-appbar-ic .ic-sun{display: none;}
-[data-theme="light"] .ipo-appbar-ic .ic-sun{display: block;}
-[data-theme="light"] .ipo-appbar-ic .ic-moon{display: none;}
-.ipo-detail-sticky-top{position: sticky; top: 0; z-index: 100; background: var(--liquid-modal-bg, #0d1b2a); padding: 12px 12px 10px; margin: -12px -12px 14px; border-bottom: 1px solid var(--liquid-border); box-shadow: 0 8px 20px rgba(0,0,0,.18); border-radius: 0 0 16px 16px;}
-[data-theme="light"] .ipo-detail-sticky-top{background: #f4f8fd;}
-.ipo-detail-sticky-top .ipo-deep-head{position: static !important; background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; margin: 0 0 10px !important; padding: 0 !important; border: none !important; box-shadow: none !important;}
-.ipo-detail-sticky-top #ipoJumpSeg{position: static !important; margin: 0 !important;}
-#ipoJumpSeg{display: flex !important; flex-wrap: nowrap !important; overflow-x: auto; scrollbar-width: none;}
-#ipoJumpSeg::-webkit-scrollbar{display: none;}
-#ipoJumpSeg .seg-btn{white-space: nowrap; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px;}
-#ipoJumpSeg .seg-btn svg{flex-shrink: 0;}
-#ipoSubSeg .ipo-status-pill{padding: 9px 6px !important; font-size: 12.5px !important; white-space: nowrap !important; overflow: visible !important; text-overflow: clip !important;}
-.ipo-card-top{display: grid !important; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: start;}
-.ipo-title{white-space: normal !important; overflow: visible !important; text-overflow: clip !important;}
-.ipo-top-r{position: static !important; align-self: start;}
-
-/* v51 — clean Allotment tab: date-sorted cards with direct registrar buttons */
-.ipo-allot-head h2{margin: 0 0 4px;}
-.ipo-allot-sub{color: var(--muted); font-size: 12.5px; margin: 0 0 12px;}
-.ipo-allot-search{width: 100%; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); font: inherit; font-size: 14px;}
-.ipo-allot-card .ipo-card-top{grid-template-columns: 64px minmax(0, 1fr) auto;}
-.ipo-board-pill{display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: .04em; padding: 2.5px 8px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); margin-top: 4px;}
 .allot-r{flex-direction: column; align-items: flex-end; gap: 5px;}
-.ipo-allot-date{font-size: 11.5px; font-weight: 700; color: var(--muted); white-space: nowrap;}
-.ipo-allot-strip{display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; padding: 9px 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); font-size: 12px; color: var(--muted);}
-.ipo-allot-strip b{color: var(--text);}
-.ipo-allot-btn{display: flex !important; width: 100%; justify-content: center; margin-top: 12px; padding: 12px !important; font-size: 14px !important; border-radius: 14px !important; text-decoration: none;}
-
-/* v52 — allotment buttons are true gold in both themes; footer clears the fixed dock */
-.ipo-allot-btn{background: linear-gradient(135deg, #f7c948, #e8a100) !important; color: #1a1405 !important; border: 1px solid #e8a100 !important; font-weight: 800 !important;}
 .site-foot{padding-bottom: 118px !important;}
-
-/* v54 — ultra-clean IPO main screen + countdown badge */
-.ipo-count-badge{display: block; margin-top: 3px; font-size: 10.5px; font-weight: 800; letter-spacing: .02em; color: #f59e0b;}
-body.ipo-world-active #ipoAside{display: none !important;}
-body.ipo-world-active .ipo-layout{grid-template-columns: minmax(0, 1fr) !important;}
-body.ipo-world-active .ipo-filter-row{display: none !important;}
-body.ipo-world-active #view-ipo.ipo-filters-open .ipo-filter-row{display: flex !important;}
-
-/* v55 — IPO World main list: widgets and buzz stay out (aside is a class, not an id) */
-body.ipo-world-active .ipo-aside{display: none !important;}
-body.ipo-world-active .ipo-buzz-panel{display: none !important;}
 
 /* ===== TASK 1 (v59): Insights deep analytics ===== */
 .insx-card{margin-top:14px}
@@ -1540,7 +1274,6 @@ body.printing #printReport{display:block;background:#fff;color:#111;padding:24px
   .movers>*{flex:0 0 72%;scroll-snap-align:start}
 }
 #bnav{padding-bottom:env(safe-area-inset-bottom)}
-#ipo-bottom-dock{padding-bottom:env(safe-area-inset-bottom)}
 
 /* ===== Engineering pass (v65): TASK 1 mobile fixes ===== */
 .modal-head{flex-wrap:wrap;gap:8px 12px}
@@ -1639,10 +1372,6 @@ h1,h2,h3,h4,.panel-head h2,.logo-text,.sc-brand,.auth-title{font-family:inherit}
 .btn-gold{background:var(--gold);border-color:var(--gold);color:#fff}
 .btn-gold:hover{background:var(--gold-soft);border-color:var(--gold-soft)}
 .chip,.seg-btn,.dash-chip{border-radius:999px}
-.ipo-logo{background:var(--panel-2);border:1px solid var(--line);color:var(--text);box-shadow:none}
-.ipo-badge{box-shadow:none;border:1px solid var(--line);background:var(--panel-2);color:var(--text)}
-.ipo-badge.open{background:color-mix(in srgb,var(--gain) 14%,transparent);color:var(--gain);border-color:transparent}
-.ipo-badge.upcoming{background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn);border-color:transparent}
 .tbl tbody tr:nth-child(even){background:color-mix(in srgb,var(--text) 3%,transparent)}
 .hero,.dash-hero{background:var(--panel);box-shadow:none}
 input,select,textarea{border-radius:var(--r-sm)}
@@ -1690,7 +1419,6 @@ input,select,textarea{border-radius:var(--r-sm)}
 .samsung-bottom-dock-wrap{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 16px);bottom:calc(14px + env(safe-area-inset-bottom, 0px))}
 .samsung-bottom-capsule{flex:none;border-radius:999px;padding:6px;gap:2px;background:color-mix(in srgb, var(--panel) 88%, transparent);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);border:1px solid var(--line);box-shadow:0 12px 32px rgba(0,0,0,.38)}
 .samsung-bottom-capsule .mobile-nav-item{flex:1 1 0;min-width:60px;padding:0 6px}
-body.ipo-world-active #ipo-bottom-dock{left:50%;right:auto;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 16px);bottom:calc(14px + env(safe-area-inset-bottom, 0px))}
 @media (max-width:380px){ .samsung-bottom-capsule .mobile-nav-item{min-width:52px} .samsung-bottom-capsule .mobile-nav-item span{font-size:9.5px} }
 
 /* ===== v83: Samsung split dock (solid) + segmented pills + layer-safe ===== */
@@ -1727,7 +1455,6 @@ html[data-theme="light"] .samsung-bottom-capsule,html[data-theme="light"] .samsu
 }
 /* Fix 5 — the floating dock never covers the last card or the footer */
 main{padding-bottom:100px !important}
-section#view-ipo{padding-bottom:100px !important}
 /* Fix 2 — holdings view switcher as a segmented pill capsule */
 .hold-view-seg{display:inline-flex !important;align-items:center;gap:2px;background:var(--liquid-inner-card-bg);padding:4px;border:1px solid var(--liquid-border);border-radius:999px}
 .hold-view-seg button{border-radius:999px;border:none;background:transparent;color:var(--liquid-text-muted);padding:6px 14px;font-weight:600;font-size:12.5px;cursor:pointer;min-height:36px}
@@ -1745,9 +1472,47 @@ section#view-ipo{padding-bottom:100px !important}
 .dash-collapse{width:32px !important;height:32px !important;min-width:32px;border-radius:50% !important;display:inline-flex !important;align-items:center;justify-content:center;background:var(--liquid-inner-card-bg);border:1px solid var(--liquid-border);color:var(--liquid-text-primary);cursor:pointer;padding:0}
 .dash-collapse svg{transition:transform .2s ease;display:block}
 .dash-collapse.collapsed svg{transform:rotate(-90deg)}
-/* IPO status pills: one Samsung capsule track */
-.ipo-sub-seg{display:inline-flex !important;gap:2px;background:var(--liquid-inner-card-bg);padding:4px;border:1px solid var(--liquid-border);border-radius:999px;flex-wrap:nowrap;overflow-x:auto;max-width:100%}
-.ipo-sub-seg .ipo-status-pill{border-radius:999px !important;border:none;background:transparent;color:var(--liquid-text-muted);padding:6px 14px;font-weight:600;white-space:nowrap}
-.ipo-sub-seg .ipo-status-pill.active{background:var(--liquid-active-pill);color:var(--liquid-text-primary)}
-.ipo-search-row{margin:10px 0}
-.ipo-search-row input{width:100%}
+
+/* ===== v84: ONE Samsung dock (Profile circle) + mobile KPI grid + zero blur lag ===== */
+.dock-circle-label{font-size:9.5px;font-weight:700;line-height:1}
+#dockProfileImg{width:100%;height:100%;object-fit:cover;border-radius:50%}
+#dockProfileBtn{overflow:hidden;padding:0 !important}
+.samsung-bottom-dock-wrap{
+  position:fixed !important;bottom:14px !important;left:50% !important;right:auto !important;
+  transform:translateX(-50%) !important;width:min(480px, calc(100vw - 24px)) !important;
+  display:flex !important;align-items:center !important;justify-content:space-between !important;gap:10px !important;
+  background:transparent !important;border:none !important;box-shadow:none !important;padding:0 !important;
+  z-index:900 !important;pointer-events:none !important;
+}
+.samsung-bottom-capsule{
+  flex:1 1 auto !important;min-width:0 !important;height:60px !important;padding:5px !important;border-radius:999px !important;
+  background:var(--liquid-bar-solid, rgba(15,30,46,.97)) !important;border:1px solid var(--liquid-border) !important;
+  box-shadow:0 12px 30px rgba(0,0,0,.28), var(--liquid-edge-glow) !important;
+  display:flex !important;align-items:center !important;justify-content:space-between !important;pointer-events:auto !important;
+}
+.samsung-bottom-capsule .mobile-nav-item{
+  flex:1 1 0 !important;min-width:0 !important;height:50px !important;border-radius:999px !important;border:none !important;
+  background:transparent !important;color:var(--liquid-text-muted) !important;display:flex !important;flex-direction:column !important;
+  align-items:center !important;justify-content:center !important;gap:2px !important;font-size:11px !important;font-weight:600 !important;
+  cursor:pointer !important;transition:background .18s ease, color .18s ease !important;
+}
+.samsung-bottom-capsule .mobile-nav-item.active{background:var(--liquid-active-pill) !important;color:var(--liquid-text-primary) !important;font-weight:700 !important;box-shadow:0 4px 12px rgba(0,0,0,.10) !important}
+.samsung-profile-circle-btn{
+  flex:0 0 60px !important;width:60px !important;height:60px !important;border-radius:50% !important;
+  background:var(--liquid-bar-solid, rgba(15,30,46,.97)) !important;border:1px solid var(--liquid-border) !important;
+  box-shadow:0 12px 30px rgba(0,0,0,.28), var(--liquid-edge-glow) !important;color:var(--liquid-text-primary) !important;
+  display:flex !important;flex-direction:column !important;align-items:center !important;justify-content:center !important;gap:2px !important;
+  cursor:pointer !important;pointer-events:auto !important;overflow:hidden !important;padding:0 !important;
+}
+.samsung-profile-circle-btn.active{border:2px solid #3b82f6 !important;box-shadow:0 0 0 3px rgba(59,130,246,.25), 0 12px 30px rgba(0,0,0,.28) !important}
+html[data-theme="light"] .samsung-bottom-capsule,html[data-theme="light"] .samsung-profile-circle-btn{
+  background:rgba(255,255,255,.97) !important;box-shadow:0 10px 28px rgba(15,23,42,.14), inset 0 1px 1px #ffffff !important;
+}
+html[data-theme="light"] .samsung-bottom-capsule .mobile-nav-item.active{background:#eef4ff !important;color:#1d4ed8 !important}
+/* scrolling surfaces never blur (120fps scroll) */
+.hold-card,.watchlist-row,.watch-row,.panel,.stat-card,.hold-drawer,.profile-panel{backdrop-filter:none !important;-webkit-backdrop-filter:none !important}
+/* mobile KPI: clean 2x2 */
+@media (max-width:768px){
+  .stat-grid{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:10px;align-items:stretch}
+  .stat-grid .stat-card{height:100%;min-height:104px}
+}

@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="assets/folio-icon.svg?v=57">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://api.allorigins.win https://api.codetabs.com https://api.cors.lol https://corsproxy.io https://api.rss2json.com https://api.web3forms.com https://raw.githubusercontent.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://news.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/style.css?v=79">
+<link rel="stylesheet" href="css/style.css?v=80">
 <style>
 #splash{position:fixed;inset:0;z-index:2000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease}
 html[data-theme="light"] #splash{background:#f6f1e7}
@@ -414,55 +414,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
     </section>
 
     <!-- HISTORY -->
-    <section id="view-ipo" class="view hidden">
-      <div class="ipo-appbar">
-        <span class="ipo-appbar-title"><b>IPO</b><span class="ipo-byfolio">by Folio</span></span>
-        <span class="ipo-appbar-actions">
-          <button type="button" class="ipo-appbar-ic" data-appbar="search" aria-label="Search IPOs" title="Search IPOs"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.8-3.8"/></svg></button>
-          <button type="button" class="ipo-appbar-ic" data-appbar="theme" aria-label="Switch light / dark theme" title="Switch light / dark theme"><svg class="ic-sun" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5 5l1.7 1.7M17.3 17.3L19 19M19 5l-1.7 1.7M6.7 17.3L5 19"/></svg><svg class="ic-moon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13.2A8.2 8.2 0 1 1 10.8 4 6.6 6.6 0 0 0 20 13.2z"/></svg></button>
-        </span>
-      </div>
-      <div class="panel ipo-hero">
-        <div class="panel-head"><h2>Open &amp; Upcoming IPOs in India</h2><span class="price-meta" id="ipoSyncNote">IPO Master-style dashboard · market figures = IPO Master snapshot (Nov 2026) · Folio's list = curated catalog below — verify on NSE/BSE before applying</span></div>
-        <p class="ipo-hero-line" id="ipoHeroLine"></p>
-        <div class="ipo-kpis" id="ipoKpis"></div>
-        <div class="ipo-sync-row"><span class="price-meta" id="ipoSyncState">Built-in catalog (works offline) · statuses are computed from dates on every load · the live list arrives through the free data pipeline</span></div>
-      </div>
-      <div class="seg ipo-main-patti" id="ipoMainSeg"><button type="button" data-ipomain="all" class="seg-btn active">📊 All IPOs</button><button type="button" data-ipomain="subs" class="seg-btn">📈 Subscription</button><button type="button" data-ipomain="allot" class="seg-btn">🎯 Allotment</button><button type="button" data-ipomain="faqs" class="seg-btn">❓ FAQs</button></div>
 
-      <div id="ipoViewAll">
-        <div class="panel">
-          <div class="seg seg-small ipo-sub-seg" id="ipoSubSeg"></div>
-          <div class="ipo-search-row"><input type="text" id="ipoSearch" placeholder="Search IPO company..." autocomplete="off"></div>
-          <div class="ipo-layout">
-            <div class="ipo-main-col"><div id="ipoList"></div><div id="ipoDetail"></div></div>
-          </div>
-        </div>
-      </div>
-
-      </div>
-
-
-      <div id="ipoViewSubs" class="hidden"><div class="panel"><div class="panel-head"><h2>IPO SUBSCRIPTION STATUS</h2><span class="price-meta">Category-wise demand (times subscribed) · splits shown where the snapshot carries them</span></div><div id="ipoSubsList"></div></div></div>
-
-      <div id="ipoViewAllot" class="hidden"></div>
-
-      <div id="ipoDeep" class="ipo-deep hidden">
-        <div class="ipo-detail-sticky-top">
-        <div class="ipo-deep-head">
-          <button type="button" class="btn btn-small" id="ipoDeepBack">← Back to IPOs</button>
-          <b id="ipoDeepTitle">IPO</b>
-          <button type="button" class="ipo-star-btn" id="ipoDeepStar" title="Save to IPO Watchlist">☆</button>
-        </div>
-        <div class="seg seg-small ipo-jump-patti" id="ipoJumpSeg"></div>
-        </div>
-        <div id="ipoDeepBody"></div>
-        <button type="button" class="ipo-top-btn hidden" id="ipoDeepTop" title="Back to top">↑</button>
-      </div>
-      <div id="ipoViewFaqs" class="hidden">
-        <div class="panel"><div class="panel-head"><h2>IPO FAQs</h2><span class="price-meta">The questions every first-time applicant asks</span></div><div id="ipoFaqList"></div></div>
-      </div>
-    </section>
 
     <section id="view-history" class="view hidden">
       <div class="panel">
@@ -602,13 +554,13 @@ html[data-theme="light"] .splash-logo.dark{display:none}
   <div class="modal-card modal-wide terms-card">
     <div class="modal-head"><h3>🛡️ Terms, Conditions, Privacy &amp; Data Security</h3><button class="icon-btn modal-close-btn" data-close-terms="1" type="button" aria-label="Close">✕</button></div>
     <div class="terms-body">
-      <section><h4>1. Encryption — exactly what is and is not encrypted</h4><p><b>Your cloud records are end-to-end encrypted</b> once you complete the one-time encryption setup: a random 256-bit key (AES-256-GCM, a fresh IV on every save) encrypts your transactions, watchlists, profile fields, IPO applications, PAN/DP details, notes, alerts and settings <b>on your device, before anything is uploaded</b>. That key is itself locked by your password, your 12-word vault seed phrase and your recovery codes (PBKDF2-SHA256, 600,000 iterations). Google Firebase then stores <b>only ciphertext</b> — not even Google, a database administrator, or Folio can read your portfolio. If you skip or postpone the setup, your records are instead protected by sign-in plus Firestore rules that restrict them to your own account only, and Folio will keep offering the setup. Your exported <b>.folio vault backup</b> is separately encrypted with AES-256-GCM and keys derived via PBKDF2-SHA256 at 250,000 iterations.</p><p><b>What is not encrypted, honestly:</b> looking up a price necessarily reveals that <b>ticker symbol</b> to the data source (Yahoo Finance, reached directly or through free public proxies). Your quantities, buy prices, P&amp;L and amounts <b>never leave your device</b>. On-device caches hold only public price history, stored under hashed labels so your holdings and watchlist symbols are not readable in storage. The price feed is delayed ~15 minutes and is public market data.</p><p><b>The trade-off, in plain words:</b> if you lose both your password and your seed phrase (and all recovery codes), your encrypted data <b>cannot be recovered by anyone</b> — that is what end-to-end encryption means.</p></section>
+      <section><h4>1. Encryption — exactly what is and is not encrypted</h4><p><b>Your cloud records are end-to-end encrypted</b> once you complete the one-time encryption setup: a random 256-bit key (AES-256-GCM, a fresh IV on every save) encrypts your transactions, watchlists, profile fields, notes, alerts and settings <b>on your device, before anything is uploaded</b>. That key is itself locked by your password, your 12-word vault seed phrase and your recovery codes (PBKDF2-SHA256, 600,000 iterations). Google Firebase then stores <b>only ciphertext</b> — not even Google, a database administrator, or Folio can read your portfolio. If you skip or postpone the setup, your records are instead protected by sign-in plus Firestore rules that restrict them to your own account only, and Folio will keep offering the setup. Your exported <b>.folio vault backup</b> is separately encrypted with AES-256-GCM and keys derived via PBKDF2-SHA256 at 250,000 iterations.</p><p><b>What is not encrypted, honestly:</b> looking up a price necessarily reveals that <b>ticker symbol</b> to the data source (Yahoo Finance, reached directly or through free public proxies). Your quantities, buy prices, P&amp;L and amounts <b>never leave your device</b>. On-device caches hold only public price history, stored under hashed labels so your holdings and watchlist symbols are not readable in storage. The price feed is delayed ~15 minutes and is public market data.</p><p><b>The trade-off, in plain words:</b> if you lose both your password and your seed phrase (and all recovery codes), your encrypted data <b>cannot be recovered by anyone</b> — that is what end-to-end encryption means.</p></section>
       <section><h4>2. Multi-Layer Account Protection (2FA &amp; Seed Phrase)</h4><p>Optional Two-Factor Authentication (compatible with Google Authenticator, Microsoft Authenticator and Authy) locks your account behind a time-based 6-digit code. It is backed by a client-side encrypted <b>12-word seed phrase</b> and single-use recovery codes, plus an automatic <b>15-minute inactivity lock</b>. Enable it any time in My Profile → Security.</p></section>
       <section><h4>3. No Broker, No Bank, No Middlemen — Guaranteed</h4><p>Folio (A Singh Caizen Product) is an independent, privacy-first record-keeping and analytics terminal. It <b>never connects to your demat account, stockbroker, or bank account</b>, and it will never ask for your broker login credentials, MPIN, TPIN, bank account numbers, or UPI PINs. Every entry in Folio is typed in by you, manually.</p></section>
       <section><h4>4. Zero Data Selling, Zero Ad Tracking</h4><p>Your data is <b>never sold, rented, or shared with advertisers</b>, and Folio carries no external marketing trackers. Your personal portfolio stays 100% private to you.</p></section>
       <section><h4>5. Your Data, Your Ownership — Export &amp; Erasure</h4><p>You retain 100% control of your records at all times. Export your complete transaction history as a standard <b>.csv</b> file, or as an encrypted <b>.folio</b> vault backup, with one tap. You can permanently delete your cloud account and all associated records instantly from <b>My Profile → Danger Zone</b>, and clear all on-device data from your browser at any time.</p></section>
-      <section><h4>6. Market Data &amp; IPO Information Disclaimer</h4><p>Equity quotes, index levels, historical charts, corporate actions, news feeds and IPO tracker metrics (Mainboard &amp; SME schedules, subscription figures and market indicators) are aggregated from <b>free public sources</b> and may be delayed by approximately <b>15 minutes</b> or occasionally unavailable. They are provided strictly for personal portfolio tracking and educational study — not for real-time execution. Always verify IPO details on NSE/BSE and the registrar before applying.</p></section>
-      <section><h4>7. Terms of Use — No Financial or Tax Advice</h4><p>Folio — A Singh Caizen Product is a self-directed financial analytics and record-keeping software tool. Nothing displayed — including Portfolio Scores, technical indicators (RSI, EMA, SMA, Support/Resistance), tax estimates (STCG/LTCG calculations) or IPO metrics — constitutes investment, legal or tax advice. Always consult a <b>SEBI-registered investment adviser</b> or a qualified chartered accountant before making investment or tax decisions.</p></section>
+      <section><h4>6. Market Data Disclaimer</h4><p>Equity quotes, index levels, historical charts, corporate actions, news feeds are aggregated from <b>free public sources</b> and may be delayed by approximately <b>15 minutes</b> or occasionally unavailable. They are provided strictly for personal portfolio tracking and educational study — not for real-time execution.</p></section>
+      <section><h4>7. Terms of Use — No Financial or Tax Advice</h4><p>Folio — A Singh Caizen Product is a self-directed financial analytics and record-keeping software tool. Nothing displayed — including Portfolio Scores, technical indicators (RSI, EMA, SMA, Support/Resistance), tax estimates (STCG/LTCG calculations) — constitutes investment, legal or tax advice. Always consult a <b>SEBI-registered investment adviser</b> or a qualified chartered accountant before making investment or tax decisions.</p></section>
     </div>
     <div class="terms-foot"><button class="btn btn-gold" data-close-terms="1" type="button">Got It, Understood</button></div>
   </div>
@@ -856,8 +808,8 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <script src="js/stocks.js?v=23"></script>
 <script src="js/app.js?v=53"></script>
 <script src="js/profile.js?v=14"></script>
-<script src="js/e2ee.js?v=4"></script>
-<script src="js/features.js?v=79"></script>
+<script src="js/e2ee.js?v=5"></script>
+<script src="js/features.js?v=80"></script>
 <div class="samsung-bottom-dock-wrap" aria-label="Bottom Navigation">
   <nav class="samsung-bottom-capsule">
     <button type="button" class="mobile-nav-item" data-bnav="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/></svg><span>Home</span></button>
@@ -865,17 +817,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
     <button type="button" class="mobile-nav-item" data-bnav="watchlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.3 6.9 19l1.1-5.6L3.8 9.5l5.7-.7z"/></svg><span>Watchlist</span></button>
     <button type="button" class="mobile-nav-item" data-bnav="insights"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v15.5h16"/><path d="M7.5 15l3.8-4.6 3 2.7L18.5 8"/></svg><span>Insights</span></button>
   </nav>
-  <button type="button" class="samsung-profile-circle-btn ipo-circle-btn" id="bnavIpoBtn" data-bnav="ipo" aria-label="IPO Master" title="IPO Master"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15c5-3.5 7-8.5 7-12-3.5 0-8.5 2-12 7l-2 5 5-2z"/><path d="M5 15l-1.5 6L9 19.5M14 5.5c1 2 1 4.5-.5 7"/></svg><span class="ipo-circle-label">IPO</span></button>
-</div>
-<div class="samsung-bottom-dock-wrap ipo-bottom-dock" id="ipo-bottom-dock" aria-label="IPO Navigation" style="display:none">
-  <nav class="samsung-bottom-capsule">
-    <button type="button" class="ipo-nav-item active" data-ipo-nav="mainline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M7.5 15.5l3.2-4 2.8 2.6 3.5-4.6"/></svg><span>MainLine</span></button>
-    <button type="button" class="ipo-nav-item" data-ipo-nav="sme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8 14.5l2.6-3 2.2 2L16 9.5"/></svg><span>SME</span></button>
-    <button type="button" class="ipo-nav-item" data-ipo-nav="allotment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="2.6"/></svg><span>Allotment</span></button>
-    <button type="button" class="ipo-nav-item" data-ipo-nav="watchlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.5 6.8h6v10.4l-3-2.2-3 2.2z"/></svg><span>Watchlist</span></button>
-    <button type="button" class="ipo-nav-item" data-ipo-nav="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg><span>More</span></button>
-  </nav>
-  <button type="button" class="samsung-profile-circle-btn return-to-portfolio-btn" id="ipoExitBtn" aria-label="Back to Portfolio" title="Back to Portfolio"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"></path></svg><span style="font-size: 9.5px; font-weight: 700; margin-top: 2px;">Folio</span></button>
+  <button type="button" class="samsung-profile-circle-btn" id="dockProfileBtn" data-bnav="profile" aria-label="My Profile" title="My Profile"><img id="dockProfileImg" class="hidden" alt=""><svg id="dockProfileSvg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg><span class="dock-circle-label">Profile</span></button>
 </div>
 </body>
 </html>

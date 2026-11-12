@@ -174,7 +174,7 @@ function e2eeShowSetup(user) {
     '<div class="modal-card modal-wide">' +
     '<div class="modal-head"><h3>🔐 Encrypt your portfolio end-to-end</h3></div>' +
     '<div id="e2eeStep1">' +
-    '<p>From now on, your transactions, watchlists, profile, IPO applications, PAN and notes can be stored in the cloud as <b>ciphertext only</b>. Not even Google can read them.</p>' +
+    '<p>From now on, your transactions, watchlists, profile and notes can be stored in the cloud as <b>ciphertext only</b>. Not even Google can read them.</p>' +
     '<p class="muted">How it works: a random master key encrypts your data on this device. That key is locked separately by your password, by a 12-word seed phrase, and by 8 recovery codes — you will save the phrase and codes in the next step.</p>' +
     '<p class="form-error">⚠️ If you lose BOTH your password AND your seed phrase (and all recovery codes), your data can never be recovered. No one can reset encryption for you — that is the point of it.</p>' +
     (window.__pendingPass ? "" : '<label class="fld">Create a vault password (only for unlocking Folio on this device — separate from Google sign-in)<input type="password" id="e2eeNewPw" placeholder="6+ characters"></label>') +
