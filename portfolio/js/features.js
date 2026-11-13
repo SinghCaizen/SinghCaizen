@@ -1264,7 +1264,7 @@ async function fetchCompanyInfo(sym) {
 /* ---------- news (Yahoo search, Google News RSS fallback) ---------- */
 async function fetchNews(query, count) {
   const ck = "folio_news_" + query.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-  const cached = lsCacheGet(ck, 20 * 60 * 1000);
+  const cached = lsCacheGet(ck, 15 * 60 * 1000);  /* Task C: 15-min news cache */
   if (cached) return cached;
   let items = [];
   /* Fast route first: rss2json (native CORS, no proxy) over Google News RSS */
@@ -1337,7 +1337,9 @@ async function renderNews(d) {
     newsKey = "";
     return;
   }
+  window.__newsItems = merged;
   box.innerHTML = staleNote() + merged.map(n => newsRowHtml(n, n.sym)).join("");
+  try { folioNewsRender(); } catch (e) {}
 }
 
 /* ---------- results & announcements (dashboard + popup) ---------- */
@@ -2408,7 +2410,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v83";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v84";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -5126,3 +5128,520 @@ document.addEventListener("dblclick", e => {
   if (e.target.closest("#lwWrap")) { try { if (lwChart) lwChart.timeScale().fitContent(); } catch (x) {} }
   if (e.target.closest("#taOverlay")) { try { taResetView(); } catch (x) {} }
 });
+
+/* ================= TASK C: deals, news upgrade, events, gains, compare, watchlist ================= */
+const DATA_BASE = "https://raw.githubusercontent.com/SinghCaizen/SinghCaizen/data/portfolio/data/";
+async function folioDataJson(name) {
+  const ck = "folio_data_" + name;
+  const hit = lsCacheGet(ck, 30 * 60 * 1000);
+  if (hit) return hit;
+  try {
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 6000);
+    const r = await fetch(DATA_BASE + name, { signal: ctl.signal });
+    clearTimeout(to);
+    if (!r.ok) return null;
+    const j = await r.json();
+    lsCacheSet(ck, j);
+    return j;
+  } catch (e) { return null; }
+}
+function folioProf() { try { if (state && !state.profile) state.profile = {}; return (state && state.profile) || {}; } catch (e) { return {}; } }
+function folioDownload(name, text, type) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: type || "text/plain" }));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+function mySyms() { const s = new Set(); try { enriched().rows.forEach(r => s.add(r.sym)); } catch (e) {} (state.watch || []).forEach(w => s.add(w.sym)); return s; }
+function fmtCr(v) { return "₹" + (v / 1e7).toFixed(2) + " Cr"; }
+/* ---------- Big Deals ---------- */
+let folioDeals = null, folioDealsTried = false;
+async function folioLoadDeals() {
+  if (folioDeals || folioDealsTried) return folioDeals;
+  folioDealsTried = true;
+  const j = await folioDataJson("deals.json");
+  if (j && Array.isArray(j.data) && j.data.length) { folioDeals = j.data; try { folioOnDeals(); } catch (e) {} }
+  return folioDeals;
+}
+function dealThr() { const p = folioProf(); return Number(p.dealThresholdCr) > 0 ? Number(p.dealThresholdCr) : 1; }
+function folioSpotted() {
+  const names = folioProf().dealWatchNames || [];
+  if (!folioDeals || !names.length) return [];
+  const out = [];
+  folioDeals.forEach(r => { const cl = (r.client || "").toLowerCase(); names.forEach(n => { if (n && cl.includes(n.toLowerCase())) out.push({ name: n, r: r }); }); });
+  return out.slice(0, 8);
+}
+function dealRowHtml(r, big) {
+  return '<div class="deal-row' + (big ? " deal-big" : "") + '"><span class="news-chip">' + esc(r.sym) + '</span><span class="deal-main"><b>' + esc(r.client) + '</b> · <span class="' + (r.side === "BUY" ? "pos" : "neg") + '">' + r.side + "</span> " + Number(r.qty).toLocaleString("en-IN") + " @ " + inr2(r.price) + '</span><span class="deal-val">' + fmtCr(r.qty * r.price) + " · " + fmtDate(r.d) + "</span></div>";
+}
+function folioOnDeals() {
+  const card = document.querySelector(".more-sheet-card");
+  if (card && !card.querySelector('[data-more-view="deals"]')) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "more-row"; b.dataset.moreView = "deals";
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/><path d="M12 3v12"/><path d="M4 21h16"/></svg><span>Big Deals</span>';
+    const prof = card.querySelector('[data-more-view="profile"]');
+    if (prof) card.insertBefore(b, prof); else card.appendChild(b);
+  }
+  folioRenderDealsCard();
+  folioChanged();
+}
+function folioRenderDealsCard() {
+  if (!folioDeals) return;
+  const view = $("view-dashboard"); if (!view) return;
+  let panel = $("dealsCard");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "panel"; panel.id = "dealsCard";
+    panel.innerHTML = '<div class="panel-head"><h2>Big Deals on my stocks</h2><button type="button" class="mini-btn" data-deals-all="1">See all deals</button></div><div class="deal-spotted"></div><div class="deal-list"></div><p class="price-meta">Reported bulk/block deals only · highlight above ' + dealThr() + " Cr (editable in the Deals view)</p>";
+    const anchor = $("allocPanel") || view.querySelector(".panel");
+    if (anchor && anchor.after) anchor.after(panel); else view.appendChild(panel);
+  }
+  const mine = mySyms();
+  const rows = folioDeals.filter(r => mine.has(r.sym)).slice(0, 10);
+  const list = panel.querySelector(".deal-list");
+  list.innerHTML = rows.length ? rows.map(r => dealRowHtml(r, r.qty * r.price >= dealThr() * 1e7)).join("") : '<p class="empty-note">No reported bulk/block deals on your stocks in the saved window yet.</p>';
+  const spot = folioSpotted().filter(s => mine.has(s.r.sym) || true);
+  panel.querySelector(".deal-spotted").innerHTML = spot.map(s => '<p class="spot-line">Spotted: <b>' + esc(s.name) + "</b> " + (s.r.side === "BUY" ? "bought" : "sold") + " " + esc(s.r.sym) + " · " + fmtCr(s.r.qty * s.r.price) + " · " + fmtDate(s.r.d) + "</p>").join("");
+}
+function folioEnsureDealsView() {
+  if ($("view-deals")) return;
+  const sec = document.createElement("section");
+  sec.id = "view-deals"; sec.className = "view hidden";
+  sec.innerHTML = '<div class="panel"><div class="panel-head"><h2>Big Deals</h2><span class="price-meta">NSE reported bulk &amp; block deals · last 60 days</span></div>' +
+    '<div class="insx-setrow"><label>Search <input id="dealSearch" type="search" placeholder="Stock or client name"></label>' +
+    '<label>Highlight above (₹ Cr) <input id="dealThr" type="number" min="0" step="0.5" value="' + dealThr() + '"></label></div>' +
+    '<div class="insx-setrow"><label>Famous investors watch <input id="dealWatchIn" type="text" placeholder="Type a name, e.g. a fund or investor"></label><button type="button" class="btn" id="dealWatchAdd">Add name</button></div>' +
+    '<div id="dealWatchChips" class="stat-chips"></div><div id="dealSpotted"></div><div id="dealTable" style="margin-top:10px"></div>' +
+    '<p class="price-meta">These are reported deals only, as published by the exchange. A name in the watch list is matched against the client name printed in the deal.</p></div>';
+  document.querySelector("main").appendChild(sec);
+  $("dealSearch").addEventListener("input", folioRenderDeals);
+  $("dealThr").addEventListener("change", () => { const p = folioProf(); p.dealThresholdCr = Number($("dealThr").value) || 1; persist(); folioRenderDeals(); folioRenderDealsCard(); });
+  $("dealWatchAdd").addEventListener("click", () => {
+    const v = $("dealWatchIn").value.trim(); if (!v) return;
+    const p = folioProf(); p.dealWatchNames = p.dealWatchNames || [];
+    if (!p.dealWatchNames.some(n => n.toLowerCase() === v.toLowerCase())) p.dealWatchNames.push(v);
+    $("dealWatchIn").value = ""; persist(); folioRenderDeals(); folioRenderDealsCard();
+  });
+}
+function folioRenderDeals() {
+  folioEnsureDealsView();
+  const chips = $("dealWatchChips"), p = folioProf();
+  chips.innerHTML = (p.dealWatchNames || []).map(n => '<span class="chip">' + esc(n) + ' <button type="button" class="chip-x" data-unwatch-name="' + esc(n) + '" aria-label="Remove">×</button></span>').join("");
+  chips.querySelectorAll("[data-unwatch-name]").forEach(b => b.addEventListener("click", () => { p.dealWatchNames = (p.dealWatchNames || []).filter(n => n !== b.dataset.unwatchName); persist(); folioRenderDeals(); folioRenderDealsCard(); }));
+  const spot = folioSpotted();
+  $("dealSpotted").innerHTML = spot.map(s => '<p class="spot-line">Spotted: <b>' + esc(s.name) + "</b> " + (s.r.side === "BUY" ? "bought" : "sold") + " " + esc(s.r.sym) + " · " + Number(s.r.qty).toLocaleString("en-IN") + " @ " + inr2(s.r.price) + " · " + fmtCr(s.r.qty * s.r.price) + " · " + fmtDate(s.r.d) + "</p>").join("");
+  const box = $("dealTable");
+  if (!folioDeals) { box.innerHTML = '<p class="empty-note">Deal data has not arrived yet. Folio checks the exchange files every day; when the first file lands, deals will appear here — nothing is shown until real data exists.</p>'; return; }
+  const q = ($("dealSearch").value || "").trim().toLowerCase();
+  const rows = folioDeals.filter(r => !q || r.sym.toLowerCase().includes(q) || (r.client || "").toLowerCase().includes(q)).slice(0, 300);
+  if (!rows.length) { box.innerHTML = '<p class="empty-note">No deals match your search.</p>'; return; }
+  box.innerHTML = '<div class="table-scroll"><table class="folio-table"><thead><tr><th>Date</th><th>Stock</th><th>Client</th><th>B/S</th><th>Qty</th><th>Price</th><th>Value</th></tr></thead><tbody>' +
+    rows.map(r => '<tr class="' + (r.qty * r.price >= dealThr() * 1e7 ? "deal-big" : "") + '"><td>' + fmtDate(r.d) + "</td><td><b>" + esc(r.sym) + "</b></td><td>" + esc(r.client) + '</td><td class="' + (r.side === "BUY" ? "pos" : "neg") + '">' + r.side + "</td><td>" + Number(r.qty).toLocaleString("en-IN") + "</td><td>" + inr2(r.price) + "</td><td>" + fmtCr(r.qty * r.price) + "</td></tr>").join("") + "</tbody></table></div>";
+}
+document.addEventListener("click", e => { if (e.target.closest("[data-deals-all]")) switchView("deals"); });
+const _lcsC = loadCompanySheet;
+loadCompanySheet = async function (sym) {
+  const r = await _lcsC.apply(this, arguments);
+  try {
+    if (!folioDeals) { folioLoadDeals(); return r; }
+    const rows = folioDeals.filter(x => x.sym === baseTicker(sym)).slice(0, 6);
+    const ab = $("sxAbout");
+    if (rows.length && ab && !ab.querySelector(".sheet-deals")) {
+      const div = document.createElement("div");
+      div.className = "sheet-deals";
+      div.innerHTML = "<h3>Big Deals (reported)</h3>" + rows.map(x => dealRowHtml(x, x.qty * x.price >= dealThr() * 1e7)).join("") + '<p class="price-meta">Reported bulk/block deals only.</p>';
+      ab.appendChild(div);
+    }
+  } catch (e) {}
+  return r;
+};
+/* ---------- What Changed Today ---------- */
+function folioChanged() {
+  const view = $("view-dashboard"); if (!view || !currentUser) return;
+  let strip = $("changedStrip");
+  if (!strip) {
+    strip = document.createElement("div");
+    strip.id = "changedStrip"; strip.className = "panel changed-strip";
+    const sg = view.querySelector(".stat-grid");
+    if (sg) view.insertBefore(strip, sg); else view.appendChild(strip);
+  }
+  let d; try { d = enriched(); } catch (e) { return; }
+  if (!d || !d.rows || !d.rows.length) { strip.classList.add("hidden"); return; }
+  const lines = [];
+  let dayPnl = 0, dayBase = 0, drag = null, nearLow = 0;
+  d.rows.forEach(r => {
+    if (r.dayPct != null && r.ltp) { const pc = r.ltp / (1 + r.dayPct / 100); const dp = r.qty * (r.ltp - pc); dayPnl += dp; dayBase += r.qty * pc; if (!drag || dp < drag.dp) drag = { sym: r.sym, dp: dp }; }
+    const mc = (typeof masterCache !== "undefined" && masterCache[r.sym]) || null;
+    const lo = mc && mc.meta && mc.meta.fiftyTwoWeekLow;
+    if (lo && r.ltp && r.ltp <= lo * 1.05) nearLow++;
+  });
+  if (dayBase) { const pd = dayPnl / dayBase * 100; lines.push("Portfolio " + (pd >= 0 ? "+" : "") + pd.toFixed(1) + "% today"); }
+  if (drag && drag.dp < 0) lines.push("Biggest drag: " + drag.sym + " (" + inrShort(drag.dp) + ")");
+  if (nearLow) lines.push(nearLow + (nearLow === 1 ? " stock" : " stocks") + " near 52W low");
+  if (folioDeals) { const today = new Date().toISOString().slice(0, 10); const mine = mySyms(); const todays = folioDeals.filter(x => x.d === today && mine.has(x.sym)); if (todays.length) lines.push(todays.length + " big deal" + (todays.length > 1 ? "s" : "") + " on " + todays[0].sym + (todays.length > 1 ? " & others" : "") + " today"); }
+  if (!lines.length) { strip.classList.add("hidden"); return; }
+  strip.classList.remove("hidden");
+  strip.innerHTML = '<span class="cs-title">What changed today</span>' + lines.map(l => '<span class="cs-line">' + esc(l) + "</span>").join("");
+}
+/* ---------- News upgrade: tags, filters, Important, new-dot ---------- */
+const NEWS_TAG_LABELS = { results: "Results", orders: "Orders & Deals", mgmt: "Management", reg: "Regulatory", div: "Dividends" };
+let newsFilter = "all";
+function folioTagNews(t) {
+  const s = (t || "").toLowerCase();
+  if (/(sebi|penalt|show ?cause|regulat|probe|nse notice|bse notice)/.test(s)) return "reg";
+  if (/dividend/.test(s)) return "div";
+  if (/(ceo|managing director|chairman|resign|appoint|board appoint)/.test(s)) return "mgmt";
+  if (/(order win|wins order|bags order|order book|contract|order worth)/.test(s)) return "orders";
+  if (/(result|quarter|earnings|profit|revenue|q[1-4]\b)/.test(s)) return "results";
+  return "all";
+}
+function folioImportant(t) { return /(results?|quarter|earnings|order win|wins order|acqui|merger|block deal|bulk deal|sebi|rating|upgrade|downgrade|fraud|resign)/i.test(t || ""); }
+function folioNewsSetup() {
+  const nl = $("newsList"); if (!nl || $("newsChips")) return;
+  const parent = nl.parentElement; if (!parent) return;
+  const div = document.createElement("div");
+  div.className = "seg seg-small folio-tabs"; div.id = "newsChips";
+  div.innerHTML = [["all", "All"], ["results", "Results"], ["orders", "Orders & Deals"], ["mgmt", "Management"], ["reg", "Regulatory"], ["div", "Dividends"]].map(([id, lab], i) => '<button type="button" class="seg-btn' + (i === 0 ? " active" : "") + '" data-ntag="' + id + '">' + lab + "</button>").join("");
+  parent.insertBefore(div, nl);
+  div.querySelectorAll("[data-ntag]").forEach(b => b.addEventListener("click", () => { newsFilter = b.dataset.ntag; div.querySelectorAll("[data-ntag]").forEach(x => x.classList.toggle("active", x === b)); folioNewsRender(); }));
+}
+function folioNewsRender() {
+  const box = $("newsList"); const items = window.__newsItems;
+  if (!box || !items) return;
+  folioNewsSetup();
+  let seen = 0; try { seen = Number(localStorage.getItem("folio_news_seen") || 0); } catch (e) {}
+  const list = items.filter(n => newsFilter === "all" || folioTagNews(n.title) === newsFilter);
+  if (!list.length) { box.innerHTML = '<p class="empty-note">No news in this filter right now.</p>'; return; }
+  box.innerHTML = (typeof staleNote === "function" ? staleNote() : "") + list.map(n => {
+    const tag = folioTagNews(n.title);
+    return '<div class="news-row">' + (n.sym ? '<span class="news-chip">' + esc(n.sym) + "</span>" : "") +
+      (n.ts > seen ? '<span class="new-dot" title="New since your last visit"></span>' : "") +
+      '<a class="news-title" href="' + esc(n.link) + '" target="_blank" rel="noopener">' + esc(n.title) + "</a>" +
+      (folioImportant(n.title) ? '<span class="chip imp-chip">Important</span>' : "") +
+      '<span class="news-meta">' + esc(n.source) + " · " + relTime(n.ts) + (tag !== "all" ? ' · <span class="auto-tag">auto-tagged: ' + NEWS_TAG_LABELS[tag] + "</span>" : "") + "</span></div>";
+  }).join("");
+}
+const _svC = switchView;
+switchView = function (name) {
+  _svC(name);
+  if (name === "deals") { try { folioRenderDeals(); } catch (e) {} }
+  if (name === "news") setTimeout(() => { try { localStorage.setItem("folio_news_seen", String(Date.now())); } catch (e) {} }, 2500);
+};
+
+/* ---------- Events calendar ---------- */
+let evCalData = null, evCalKey = "", evCalMode = "list";
+async function folioCollectEvents() {
+  const out = [];
+  const syms = [...mySyms()].slice(0, 12);
+  const now = Date.now();
+  await Promise.all(syms.map(async sym => {
+    try { const info = await fetchCompanyInfo(sym); if (info && info.ok && info.nextEarnings) out.push({ sym: sym, date: info.nextEarnings, type: "Results", label: "Quarterly results expected" }); } catch (e) {}
+    try { const m = await fetchMaster(sym); if (m) {
+      Object.values(m.divs || {}).forEach(dv => { if (dv && dv.date) out.push({ sym: sym, date: dv.date * 1000, type: "Dividend", label: "Ex-dividend" + (dv.amount ? " · ₹" + dv.amount + "/share" : "") }); });
+      Object.values(m.splits || {}).forEach(sp => { if (sp && sp.date) out.push({ sym: sym, date: sp.date * 1000, type: "Split/Bonus", label: "Stock split / bonus" + (sp.splitRatio ? " · " + sp.splitRatio : "") }); });
+    } } catch (e) {}
+  }));
+  return out.filter(e => e.date > now - 7 * 86400000 && e.date < now + 62 * 86400000).sort((a, b) => a.date - b.date);
+}
+function folioEventsPanel() {
+  const view = $("view-dashboard"); if (!view || !currentUser) return;
+  const key = [...mySyms()].join(",");
+  if (!key) return;
+  let panel = $("evCalPanel");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "panel"; panel.id = "evCalPanel";
+    panel.innerHTML = '<div class="panel-head"><h2>Upcoming events for my stocks</h2><span class="seg seg-small"><button type="button" class="seg-btn active" data-evcal="list">List</button><button type="button" class="seg-btn" data-evcal="month">Month</button></span></div><div class="evcal-body"><div class="skel" style="height:54px"></div></div><div class="panel-foot"><button type="button" class="mini-btn" data-evcal-ics="1">Add to phone calendar (.ics)</button></div>';
+    const anchor = $("dealsCard") || $("allocPanel") || view.querySelector(".panel");
+    if (anchor && anchor.after) anchor.after(panel); else view.appendChild(panel);
+    panel.querySelectorAll("[data-evcal]").forEach(b => b.addEventListener("click", () => { evCalMode = b.dataset.evcal; panel.querySelectorAll("[data-evcal]").forEach(x => x.classList.toggle("active", x === b)); folioEventsRender(); }));
+    panel.querySelector("[data-evcal-ics]").addEventListener("click", folioEventsIcs);
+  }
+  if (key === evCalKey && evCalData) return;
+  evCalKey = key;
+  folioCollectEvents().then(rows => { evCalData = rows; folioEventsRender(); });
+}
+function folioEventsRender() {
+  const panel = $("evCalPanel"); if (!panel) return;
+  const body = panel.querySelector(".evcal-body");
+  if (!evCalData) { body.innerHTML = '<p class="empty-note">Loading events…</p>'; return; }
+  if (!evCalData.length) { body.innerHTML = '<p class="empty-note">No result dates, ex-dividend dates or splits found for your stocks in the free data right now.</p>'; return; }
+  if (evCalMode === "month") {
+    const now = new Date(); const y = now.getFullYear(), mo = now.getMonth();
+    const first = new Date(y, mo, 1); const startDay = (first.getDay() + 6) % 7; const days = new Date(y, mo + 1, 0).getDate();
+    const byDay = {};
+    evCalData.forEach(e => { const d = new Date(e.date); if (d.getFullYear() === y && d.getMonth() === mo) (byDay[d.getDate()] = byDay[d.getDate()] || []).push(e); });
+    let cells = "";
+    ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].forEach(d => { cells += '<span class="evcal-dow">' + d + "</span>"; });
+    for (let i = 0; i < startDay; i++) cells += "<span></span>";
+    for (let d = 1; d <= days; d++) cells += '<span class="evcal-day' + (byDay[d] ? " has" : "") + (d === now.getDate() ? " today" : "") + '" title="' + (byDay[d] ? esc(byDay[d].map(e => e.sym + " · " + e.type).join("; ")) : "") + '">' + d + (byDay[d] ? '<i class="evcal-dot"></i>' : "") + "</span>";
+    const monthRows = evCalData.filter(e => { const d = new Date(e.date); return d.getFullYear() === y && d.getMonth() === mo; });
+    body.innerHTML = '<p class="price-meta">' + first.toLocaleString("en-IN", { month: "long", year: "numeric" }) + '</p><div class="evcal-grid">' + cells + "</div>" + (monthRows.length ? monthRows.map(folioEventRow).join("") : '<p class="empty-note">No events this month.</p>');
+    return;
+  }
+  body.innerHTML = evCalData.slice(0, 14).map(folioEventRow).join("");
+}
+function folioEventRow(e) {
+  const days = Math.round((new Date(e.date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+  const when = days < 0 ? Math.abs(days) + "d ago" : days === 0 ? "TODAY" : days === 1 ? "tomorrow" : "in " + days + " days";
+  return '<div class="event-row"><span class="news-chip">' + esc(e.sym) + '</span><span class="event-text"><b>' + esc(e.type) + "</b> — " + esc(e.label) + " · " + fmtDate(e.date) + " (" + when + ")</span></div>";
+}
+function folioEventsIcs() {
+  if (!evCalData || !evCalData.length) { toast("No events to export yet"); return; }
+  const dt = d => new Date(d).toISOString().slice(0, 10).replace(/-/g, "");
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Folio//Events//EN"].concat(evCalData.map((e, i) =>
+    ["BEGIN:VEVENT", "UID:folio-ev-" + i + "-" + Math.round(e.date) + "@singhcaizen", "DTSTART;VALUE=DATE:" + dt(e.date), "SUMMARY:" + (e.sym + " · " + e.type + " — " + e.label).replace(/,/g, " "), "END:VEVENT"].join("\r\n"))).join("\r\n") + "\r\nEND:VCALENDAR";
+  folioDownload("folio-events.ics", ics, "text/calendar");
+  toast("Calendar file downloaded — open it to add the events");
+}
+/* ---------- Capital gains statement ---------- */
+let gainsFy = "";
+function folioFifo() {
+  const lots = {}; const sales = [];
+  const txns = [...(state.txns || [])].sort((a, b) => a.date < b.date ? -1 : 1);
+  txns.forEach(t => {
+    if (t.type === "BUY") (lots[t.sym] = lots[t.sym] || []).push({ date: t.date, qty: Number(t.qty) || 0, price: effPrice(t) });
+    else if (t.type === "SELL") {
+      let q = Number(t.qty) || 0; const sp = effPrice(t);
+      while (q > 0 && (lots[t.sym] || []).length) {
+        const l = lots[t.sym][0]; const take = Math.min(q, l.qty);
+        const days = Math.round((new Date(t.date) - new Date(l.date)) / 86400000);
+        sales.push({ sym: t.sym, buyDate: l.date, sellDate: t.date, qty: take, buyVal: take * l.price, sellVal: take * sp, days: days, term: days > 365 ? "Long" : "Short", gain: take * (sp - l.price) });
+        l.qty -= take; q -= take; if (l.qty <= 0) lots[t.sym].shift();
+      }
+    }
+  });
+  return sales;
+}
+function fyOf(ds) { const d = new Date(ds); const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1; return "FY " + y + "-" + String((y + 1) % 100).padStart(2, "0"); }
+function folioGainsPanel() {
+  const taxBox = $("taxBox"); if (!taxBox || !currentUser) return;
+  const taxPanel = taxBox.closest(".panel"); if (!taxPanel) return;
+  let panel = $("gainsPanel");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "panel"; panel.id = "gainsPanel";
+    panel.innerHTML = '<div class="panel-head"><h2>Capital Gains Statement</h2><select id="gainsFy" aria-label="Financial year"></select></div>' +
+      '<div class="insx-setrow gains-cfg"><label>Short-term rate % <input id="taxStcg" type="number" step="0.5" min="0"></label><label>Long-term rate % <input id="taxLtcg" type="number" step="0.5" min="0"></label><label>Long-term exemption ₹ <input id="taxExempt" type="number" step="1000" min="0"></label></div>' +
+      '<div class="gains-body"></div><div class="panel-foot"><button type="button" class="mini-btn" data-gains-csv="1">Download CSV</button></div>';
+    taxPanel.after(panel);
+    panel.querySelector("[data-gains-csv]").addEventListener("click", folioGainsCsv);
+    ["taxStcg", "taxLtcg", "taxExempt"].forEach(id => panel.querySelector("#" + id).addEventListener("change", () => {
+      const p = folioProf(); p.taxCfg = { stcg: Number(panel.querySelector("#taxStcg").value) || 0, ltcg: Number(panel.querySelector("#taxLtcg").value) || 0, exempt: Number(panel.querySelector("#taxExempt").value) || 0 };
+      persist(); folioGainsRender();
+    }));
+    panel.querySelector("#gainsFy").addEventListener("change", () => { gainsFy = panel.querySelector("#gainsFy").value; folioGainsRender(); });
+  }
+  const sales = folioFifo();
+  const fys = [...new Set(sales.map(s => fyOf(s.sellDate)))].sort().reverse();
+  const sel = panel.querySelector("#gainsFy");
+  if (!gainsFy || !fys.includes(gainsFy)) gainsFy = fys[0] || "";
+  sel.innerHTML = fys.length ? fys.map(f => '<option' + (f === gainsFy ? " selected" : "") + ">" + f + "</option>").join("") : "<option>No sales yet</option>";
+  const cfg = folioProf().taxCfg || { stcg: 20, ltcg: 12.5, exempt: 125000 };
+  panel.querySelector("#taxStcg").value = cfg.stcg; panel.querySelector("#taxLtcg").value = cfg.ltcg; panel.querySelector("#taxExempt").value = cfg.exempt;
+  folioGainsRender();
+}
+function folioGainsRows() { return folioFifo().filter(s => fyOf(s.sellDate) === gainsFy); }
+function folioGainsRender() {
+  const panel = $("gainsPanel"); if (!panel) return;
+  const body = panel.querySelector(".gains-body");
+  const rows = folioGainsRows();
+  if (!rows.length) { body.innerHTML = '<p class="empty-note">No sales in ' + esc(gainsFy || "any year") + " yet — when you sell shares, the FIFO statement will appear here.</p>"; return; }
+  const cfg = folioProf().taxCfg || { stcg: 20, ltcg: 12.5, exempt: 125000 };
+  const st = rows.filter(r => r.term === "Short").reduce((a, r) => a + r.gain, 0);
+  const lt = rows.filter(r => r.term === "Long").reduce((a, r) => a + r.gain, 0);
+  const estTax = Math.max(0, st) * (cfg.stcg || 0) / 100 + Math.max(0, lt - (cfg.exempt || 0)) * (cfg.ltcg || 0) / 100;
+  body.innerHTML = '<div class="table-scroll"><table class="folio-table"><thead><tr><th>Stock</th><th>Buy date</th><th>Sell date</th><th>Qty</th><th>Buy value</th><th>Sell value</th><th>Days</th><th>Term</th><th>Gain</th></tr></thead><tbody>' +
+    rows.map(r => "<tr><td><b>" + esc(r.sym) + "</b></td><td>" + fmtDate(r.buyDate) + "</td><td>" + fmtDate(r.sellDate) + "</td><td>" + r.qty + "</td><td>" + inr2(r.buyVal) + "</td><td>" + inr2(r.sellVal) + "</td><td>" + r.days + "</td><td>" + r.term + '</td><td class="' + (r.gain >= 0 ? "pos" : "neg") + '">' + inr2(r.gain) + "</td></tr>").join("") +
+    '</tbody></table></div><p class="price-meta">Short-term gains ' + inr2(st) + " · Long-term gains " + inr2(lt) + " · Estimated tax at your rates: " + inr2(estTax) + ". Estimate only — verify current rules before filing; tax rules change in Budgets and this is information, not tax advice.</p>";
+}
+function folioGainsCsv() {
+  const rows = folioGainsRows();
+  if (!rows.length) { toast("No sales in this year to export"); return; }
+  const lines = ["Stock,Buy Date,Sell Date,Qty,Buy Value,Sell Value,Holding Days,Term,Gain"];
+  rows.forEach(r => lines.push([r.sym, r.buyDate, r.sellDate, r.qty, r.buyVal.toFixed(2), r.sellVal.toFixed(2), r.days, r.term, r.gain.toFixed(2)].join(",")));
+  folioDownload("folio-capital-gains-" + (gainsFy || "all").replace(/\s+/g, "") + ".csv", lines.join("\n"), "text/csv");
+  toast("Capital gains CSV downloaded");
+}
+/* ---------- Compare stocks ---------- */
+let cmpRange = 182;
+function folioComparePanel() {
+  const view = $("view-insights"); if (!view || !currentUser) return;
+  let panel = $("cmpPanel");
+  if (!panel) {
+    panel = document.createElement("div");
+    panel.className = "panel"; panel.id = "cmpPanel";
+    panel.innerHTML = '<div class="panel-head"><h2>Compare Stocks</h2><span class="seg seg-small"><button type="button" class="seg-btn" data-cmp-range="30">1M</button><button type="button" class="seg-btn active" data-cmp-range="182">6M</button><button type="button" class="seg-btn" data-cmp-range="365">1Y</button></span></div><div class="stat-chips cmp-chips"></div><div class="cmp-body"><p class="empty-note">Pick 2–4 stocks above to compare their returns.</p></div>';
+    view.insertBefore(panel, view.firstElementChild);
+    panel.querySelectorAll("[data-cmp-range]").forEach(b => b.addEventListener("click", () => { cmpRange = Number(b.dataset.cmpRange); panel.querySelectorAll("[data-cmp-range]").forEach(x => x.classList.toggle("active", x === b)); folioCompareRender(); }));
+  }
+  const chips = panel.querySelector(".cmp-chips");
+  const sel = folioProf().cmpSel || [];
+  chips.innerHTML = [...mySyms()].map(s => '<button type="button" class="chip cmp-chip' + (sel.includes(s) ? " on" : "") + '" data-cmp="' + esc(s) + '">' + esc(s) + "</button>").join("");
+  chips.querySelectorAll("[data-cmp]").forEach(b => b.addEventListener("click", () => {
+    const p = folioProf(); p.cmpSel = p.cmpSel || [];
+    const s = b.dataset.cmp;
+    if (p.cmpSel.includes(s)) p.cmpSel = p.cmpSel.filter(x => x !== s);
+    else { if (p.cmpSel.length >= 4) { toast("Compare holds at most 4 stocks"); return; } p.cmpSel.push(s); }
+    persist(); folioComparePanel(); folioCompareRender();
+  }));
+  folioCompareRender();
+}
+async function folioCompareRender() {
+  const panel = $("cmpPanel"); if (!panel) return;
+  const body = panel.querySelector(".cmp-body");
+  const sel = (folioProf().cmpSel || []).filter(s => mySyms().has(s));
+  if (sel.length < 2) { body.innerHTML = '<p class="empty-note">Pick 2–4 stocks above to compare their returns.</p>'; return; }
+  const colors = ["#2962ff", "#ff6d00", "#089981", "#f23645"];
+  const series = [];
+  for (const sym of sel) {
+    const h = await fetchHistory(sym, "1y");
+    if (h && h.points && h.points.length > 20) series.push({ sym: sym, pts: h.points });
+  }
+  if (series.length < 2) { body.innerHTML = '<p class="empty-note">Price history could not load for these stocks right now.</p>'; return; }
+  const cutoff = Date.now() - cmpRange * 86400000;
+  const norm = series.map(s => { const seg = s.pts.filter(p => p.t >= cutoff); const base = seg.length ? seg[0].c : s.pts[0].c; return { sym: s.sym, vals: seg.map(p => ({ t: p.t, v: base ? (p.c / base - 1) * 100 : 0 })) }; });
+  const all = norm.flatMap(s => s.vals.map(x => x.v));
+  const mn = Math.min(...all, 0), mx = Math.max(...all, 0), W = 680, H = 200, P = 8;
+  const t0 = Math.min(...norm.map(s => s.vals.length ? s.vals[0].t : Date.now())), t1 = Date.now();
+  const X = t => P + (t - t0) / Math.max(1, t1 - t0) * (W - 2 * P), Y = v => H - P - (v - mn) / Math.max(0.01, mx - mn) * (H - 2 * P);
+  let svg = '<svg viewBox="0 0 ' + W + " " + H + '" class="cmp-svg" role="img" aria-label="Normalized return comparison">';
+  svg += '<line x1="' + P + '" y1="' + Y(0) + '" x2="' + (W - P) + '" y2="' + Y(0) + '" stroke="var(--line)" stroke-dasharray="3 3"/>';
+  norm.forEach((s, i) => { if (s.vals.length > 1) svg += '<path d="' + s.vals.map((p, j) => (j ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.v).toFixed(1)).join(" ") + '" fill="none" stroke="' + colors[i % 4] + '" stroke-width="1.8"/>'; });
+  svg += "</svg>";
+  const rows = await Promise.all(series.map(async (s, i) => {
+    const pts = s.pts, last = pts[pts.length - 1].c;
+    const ret = days => { const target = pts[pts.length - 1].t - days * 86400000; let prev = pts[0]; for (const p of pts) { if (p.t <= target) prev = p; else break; } return prev.c ? (last / prev.c - 1) * 100 : null; };
+    const rets = []; for (let j = 1; j < pts.length; j++) rets.push(pts[j].c / pts[j - 1].c - 1);
+    const mean = rets.reduce((a, b) => a + b, 0) / Math.max(1, rets.length);
+    const vol = Math.sqrt(rets.reduce((a, b) => a + (b - mean) * (b - mean), 0) / Math.max(1, rets.length)) * Math.sqrt(252) * 100;
+    let pos = null;
+    const mc = (typeof masterCache !== "undefined" && masterCache[s.sym]) || null;
+    if (mc && mc.meta && mc.meta.fiftyTwoWeekHigh && mc.meta.fiftyTwoWeekLow) pos = Math.max(0, Math.min(100, (last - mc.meta.fiftyTwoWeekLow) / (mc.meta.fiftyTwoWeekHigh - mc.meta.fiftyTwoWeekLow) * 100));
+    const f = v => v === null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+    return "<tr><td><b style=\"color:" + colors[i % 4] + "\">" + esc(s.sym) + "</b></td><td>" + f(ret(30)) + "</td><td>" + f(ret(182)) + "</td><td>" + f(ret(365)) + "</td><td>" + (isFinite(vol) ? vol.toFixed(1) + "%" : "—") + "</td><td>" + (pos === null ? "—" : pos.toFixed(0) + "% of range") + "</td></tr>";
+  }));
+  body.innerHTML = svg + '<div class="table-scroll"><table class="folio-table"><thead><tr><th>Stock</th><th>1M</th><th>6M</th><th>1Y</th><th>Volatility (1Y)</th><th>52W position</th></tr></thead><tbody>' + rows.join("") + '</tbody></table></div><p class="price-meta">Returns are price-only, normalised to 0% at the start of the chosen period. P/E is not shown — the free feed does not provide it reliably.</p>';
+}
+/* ---------- Watchlist upgrade ---------- */
+function folioDayPct(sym) { const p = priceOf(sym); if (!p || !p.price || !p.prevClose) return null; return (p.price - p.prevClose) / p.prevClose * 100; }
+const _wl52Kicked = {};
+function folio52Bar(sym, row) {
+  const mc = (typeof masterCache !== "undefined" && masterCache[sym]) || null;
+  const meta = mc && mc.meta;
+  const p = priceOf(sym);
+  if (!meta || !meta.fiftyTwoWeekHigh || !meta.fiftyTwoWeekLow || !p || !p.price) {
+    if (!_wl52Kicked[sym]) { _wl52Kicked[sym] = 1; fetchMaster(sym).then(() => { try { folioWatchDecorate(); } catch (e) {} }); }
+    return;
+  }
+  const pos = Math.max(0, Math.min(100, (p.price - meta.fiftyTwoWeekLow) / (meta.fiftyTwoWeekHigh - meta.fiftyTwoWeekLow) * 100));
+  const d = document.createElement("div");
+  d.className = "w52"; d.title = "52-week range: " + inr2(meta.fiftyTwoWeekLow) + " – " + inr2(meta.fiftyTwoWeekHigh);
+  d.innerHTML = '<span class="w52-track"><i style="left:' + pos.toFixed(0) + '%"></i></span>';
+  row.insertBefore(d, row.querySelector(".watch-x"));
+}
+function folioWatchControls(el) {
+  if ($("wlControls") || !el.parentElement) return;
+  const div = document.createElement("div");
+  div.id = "wlControls"; div.className = "wl-controls";
+  div.innerHTML = '<span class="wl-lab">Sort:</span><span class="seg seg-small">' + [["fav", "Favourites"], ["day", "Day %"], ["name", "Name"]].map(([id, lab]) => '<button type="button" class="seg-btn' + ((folioProf().wlSort || "fav") === id ? " active" : "") + '" data-wlsort="' + id + '">' + lab + "</button>").join("") + "</span>";
+  el.parentElement.insertBefore(div, el);
+  div.querySelectorAll("[data-wlsort]").forEach(b => b.addEventListener("click", () => { const p = folioProf(); p.wlSort = b.dataset.wlsort; persist(); div.querySelectorAll("[data-wlsort]").forEach(x => x.classList.toggle("active", x === b)); folioWatchDecorate(); }));
+}
+function folioWatchDecorate() {
+  const el = $("watchListEl"); if (!el || !currentUser) return;
+  folioWatchControls(el);
+  const bannerHost = el.parentElement;
+  const rows = [...el.querySelectorAll(".watchlist-row")];
+  const sort = folioProf().wlSort || "fav";
+  if (sort === "day") rows.sort((a, b) => (folioDayPct(b.dataset.wrow) ?? -999) - (folioDayPct(a.dataset.wrow) ?? -999)).forEach(r => el.appendChild(r));
+  if (sort === "name") rows.sort((a, b) => a.dataset.wrow.localeCompare(b.dataset.wrow)).forEach(r => el.appendChild(r));
+  rows.forEach(row => {
+    const sym = row.dataset.wrow;
+    if (!row.querySelector(".w52")) folio52Bar(sym, row);
+    if (!row.querySelector("[data-wadd]")) {
+      const bell = document.createElement("button");
+      bell.className = "watch-x w-bell"; bell.dataset.wbell = sym; bell.type = "button"; bell.title = "Price alert for " + sym;
+      bell.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg>';
+      row.insertBefore(bell, row.querySelector(".watch-x"));
+      const add = document.createElement("button");
+      add.className = "watch-x w-add"; add.dataset.wadd = sym; add.type = "button"; add.title = "Add " + sym + " to portfolio"; add.textContent = "+ Add";
+      row.insertBefore(add, row.querySelector(".watch-x"));
+    }
+  });
+  folioWatchAlertCheck(bannerHost);
+}
+document.addEventListener("click", e => {
+  const add = e.target.closest("[data-wadd]");
+  if (add) { e.stopPropagation(); const w = (state.watch || []).find(x => x.sym === add.dataset.wadd); openTxn("BUY", add.dataset.wadd, w ? w.name : add.dataset.wadd); return; }
+  const bell = e.target.closest("[data-wbell]");
+  if (bell) { e.stopPropagation(); folioWatchAlertEdit(bell.dataset.wbell, bell.closest(".watchlist-row")); }
+});
+function folioWatchAlertEdit(sym, row) {
+  if (!row) return;
+  const old = row.nextElementSibling;
+  if (old && old.classList.contains("wl-alert-edit")) { old.remove(); return; }
+  document.querySelectorAll(".wl-alert-edit").forEach(x => x.remove());
+  const cur = (folioProf().wlAlerts || {})[sym] || {};
+  const div = document.createElement("div");
+  div.className = "wl-alert-edit";
+  div.innerHTML = '<label>Alert above ₹ <input type="number" step="any" min="0" class="wa-above" value="' + (cur.above || "") + '"></label><label>Alert below ₹ <input type="number" step="any" min="0" class="wa-below" value="' + (cur.below || "") + '"></label><button type="button" class="mini-btn wa-save">Save</button><button type="button" class="mini-btn wa-clear">Clear</button><span class="price-meta">Fires once a day per level, while you use Folio.</span>';
+  row.after(div);
+  div.querySelector(".wa-save").addEventListener("click", () => {
+    const p = folioProf(); p.wlAlerts = p.wlAlerts || {};
+    const a = Number(div.querySelector(".wa-above").value) || null, b = Number(div.querySelector(".wa-below").value) || null;
+    if (a || b) p.wlAlerts[sym] = { above: a, below: b }; else delete p.wlAlerts[sym];
+    persist(); div.remove(); toast("Price alert saved for " + sym);
+  });
+  div.querySelector(".wa-clear").addEventListener("click", () => { const p = folioProf(); if (p.wlAlerts) delete p.wlAlerts[sym]; persist(); div.remove(); toast("Price alert removed for " + sym); });
+}
+function folioWatchAlertCheck(host) {
+  const alerts = folioProf().wlAlerts || {};
+  const syms = Object.keys(alerts);
+  if (!syms.length || !host) return;
+  let fired = {}; try { fired = JSON.parse(localStorage.getItem("folio_wl_fired") || "{}"); } catch (e) {}
+  const today = new Date().toISOString().slice(0, 10);
+  const hits = [];
+  syms.forEach(sym => {
+    const p = priceOf(sym); if (!p || !p.price) return;
+    const a = alerts[sym];
+    [["above", a.above, p.price >= (a.above || Infinity)], ["below", a.below, p.price <= (a.below || -Infinity)]].forEach(([kind, lvl, hit]) => {
+      if (!lvl || !hit) return;
+      const key = sym + "|" + kind + "|" + lvl + "|" + today;
+      if (fired[key]) return;
+      fired[key] = 1; hits.push(sym + " is " + kind + " " + inr2(lvl) + " (now " + inr2(p.price) + ")");
+    });
+  });
+  if (!hits.length) return;
+  try { localStorage.setItem("folio_wl_fired", JSON.stringify(fired)); } catch (e) {}
+  hits.forEach(h => toast("Price alert: " + h));
+  let banner = host.querySelector(".wl-banner");
+  if (!banner) { banner = document.createElement("div"); banner.className = "wl-banner"; host.insertBefore(banner, host.firstChild); }
+  banner.innerHTML = hits.map(h => "<span>🔔 " + esc(h) + "</span>").join("");
+  try { if (window.Notification && Notification.permission === "granted") hits.forEach(h => new Notification("Folio price alert", { body: h })); } catch (e) {}
+}
+if (typeof renderWatch === "function") { const _rwC2 = renderWatch; renderWatch = function () { const r = _rwC2.apply(this, arguments); try { folioWatchDecorate(); } catch (e) {} return r; }; }
+/* ---------- FII/DII in Market Mood ---------- */
+async function folioFiiLine() {
+  const box = $("moodBox"); if (!box || box.querySelector("#fiiLine")) return;
+  const j = await folioDataJson("fii.json");
+  if (!j || !Array.isArray(j.data) || !j.data.length) return;
+  const last = j.data[j.data.length - 1];
+  if (!box.querySelector("#fiiLine")) {
+    const p = document.createElement("p");
+    p.className = "price-meta"; p.id = "fiiLine";
+    p.textContent = "FII net " + (last.fiiNet != null ? (last.fiiNet >= 0 ? "+" : "−") + "₹" + Math.abs(last.fiiNet).toLocaleString("en-IN") + " Cr" : "—") + " · DII net " + (last.diiNet != null ? (last.diiNet >= 0 ? "+" : "−") + "₹" + Math.abs(last.diiNet).toLocaleString("en-IN") + " Cr" : "—") + " · " + fmtDate(last.date) + " (NSE)";
+    box.appendChild(p);
+  }
+}
+if (typeof renderMood === "function") { const _rmC2 = renderMood; renderMood = async function () { const r = await _rmC2.apply(this, arguments); try { await folioFiiLine(); } catch (e) {} return r; }; }
+/* ---------- setups ---------- */
+function folioSetupsC() {
+  folioLoadDeals();
+  folioChanged();
+  folioNewsSetup();
+  folioEventsPanel();
+  folioGainsPanel();
+  folioComparePanel();
+}
+if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }

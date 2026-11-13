@@ -6,9 +6,12 @@ Fetches, best-effort and independently:
     from Yahoo Finance's public chart API -> candles/<SYM>.json
   * basic fundamentals via Yahoo quoteSummary (cookie+crumb bootstrap)
     -> fundamentals.json   (only real fields; failures stay "unavailable")
-  * the current IPO list from NSE's public endpoints -> ipo.json
-    (on failure the previous file is left untouched by the publisher,
-    because this script simply does not write one)
+  * NSE bulk/block deals (official NSE files/API), accumulated over
+    runs into the last 60 days -> deals.json
+  * FII/DII daily net flow from NSE's official API -> fii.json
+  (On failure a family writes NO file, so the publisher leaves the
+   previous file untouched and the app hides that part. The IPO list
+   builder was removed: Folio no longer has an IPO section.)
 Every family writes health info to health.json. Nothing is invented:
 a source that fails produces NO data file for that family.
 """
@@ -114,26 +117,119 @@ def fundamentals(syms, health):
     health["fundamentals"] = f"{ok}/{len(syms)} symbols"
     return out
 
-def ipo_list(health):
-    """NSE public IPO endpoints; returns rows in the app's catalog shape or None."""
+
+DATA_BRANCH_DEALS = "https://raw.githubusercontent.com/SinghCaizen/SinghCaizen/data/portfolio/data/deals.json"
+
+def _nse_opener():
+    op = urllib.request.build_opener()
+    op.open(urllib.request.Request("https://www.nseindia.com", headers=UA), timeout=20).read()
+    return op
+
+def _parse_deals_csv(text, kind):
+    import csv, io as _io
+    rows = []
     try:
-        opener = urllib.request.build_opener()
-        opener.open(urllib.request.Request("https://www.nseindia.com", headers=UA), timeout=20).read()
-        req = urllib.request.Request("https://www.nseindia.com/api/ipo", headers={**UA, "Accept": "application/json"})
-        doc = json.loads(opener.open(req, timeout=25).read())
-        rows = doc if isinstance(doc, list) else doc.get("data", [])
-        out = []
-        for r in rows:
-            name = r.get("companyName") or r.get("symbol") or ""
-            if not name:
+        rdr = csv.DictReader(_io.StringIO(text))
+        for r in rdr:
+            def g(*names):
+                for n in names:
+                    if n in r and r[n]:
+                        return r[n]
+                return ""
+            sym = (g("Symbol", "SYMBOL") or "").strip().upper()
+            client = (g("Client Name", "ClientName", "CLIENT NAME") or "").strip()
+            side = (g("Buy / Sell", "Buy/Sell", "BUYSELL") or "").strip().upper()
+            date = (g("Date", "DATE") or "").strip()
+            try:
+                qty = int(float((g("Quantity Traded", "Quantity", "QTY") or "0").replace(",", "")))
+                price = float((g("Trade Price / Wght. Avg. Price", "Trade Price", "Price") or "0").replace(",", ""))
+            except Exception:
                 continue
-            out.append({"name": name, "symbol": r.get("symbol"), "status": "upcoming",
-                        "open": r.get("issueStartDate"), "close": r.get("issueEndDate"),
-                        "listing": r.get("listingDate"), "source": "NSE"})
-        health["ipo"] = f"{len(out)} rows from NSE"
-        return out or None
+            if not sym or not client or qty <= 0:
+                continue
+            d = None
+            for fmt in ("%d-%b-%Y", "%d-%m-%Y"):
+                try:
+                    d = time.strftime("%Y-%m-%d", time.strptime(date, fmt)); break
+                except Exception:
+                    pass
+            if not d:
+                continue
+            rows.append({"d": d, "sym": sym, "client": client, "side": "BUY" if side.startswith("B") else "SELL",
+                         "qty": qty, "price": price, "kind": kind})
+    except Exception:
+        pass
+    return rows
+
+def deals(health):
+    """Accumulate NSE bulk/block deals (today's official files + API),
+    merged with the deals.json already on the data branch, last 60 days."""
+    merged = {}
+    try:
+        prev = json.loads(fetch(DATA_BRANCH_DEALS, timeout=15))
+        for r in prev.get("data", []):
+            merged[(r["d"], r["sym"], r["client"], r["side"], r["qty"], r["price"])] = r
+    except Exception:
+        pass
+    got = 0
+    for kind, url in (("bulk", "https://archives.nseindia.com/content/equities/bulk.csv"),
+                      ("block", "https://archives.nseindia.com/content/equities/block.csv")):
+        try:
+            rows = _parse_deals_csv(fetch(url, timeout=20).decode("utf-8", "replace"), kind)
+            for r in rows:
+                merged[(r["d"], r["sym"], r["client"], r["side"], r["qty"], r["price"])] = r
+            got += len(rows)
+        except Exception as e:
+            print(f"deals {kind}: {e}", file=sys.stderr)
+    if not got:
+        try:
+            op = _nse_opener()
+            to = time.strftime("%d-%m-%Y"); frm = time.strftime("%d-%m-%Y", time.gmtime(time.time() - 7 * 86400))
+            req = urllib.request.Request(f"https://www.nseindia.com/api/historical/bulk-deals?from={frm}&to={to}",
+                                         headers={**UA, "Accept": "application/json"})
+            doc = json.loads(op.open(req, timeout=25).read())
+            for r in (doc if isinstance(doc, list) else doc.get("data", [])):
+                try:
+                    d = time.strftime("%Y-%m-%d", time.strptime((r.get("date") or "")[:11].strip(), "%d-%b-%Y"))
+                    row = {"d": d, "sym": (r.get("symbol") or "").upper(), "client": r.get("clientName") or "",
+                           "side": "BUY" if (r.get("buySell") or "").upper().startswith("B") else "SELL",
+                           "qty": int(r.get("quantity") or 0), "price": float(r.get("price") or 0), "kind": "bulk"}
+                    if row["sym"] and row["client"] and row["qty"]:
+                        merged[(row["d"], row["sym"], row["client"], row["side"], row["qty"], row["price"])] = row
+                        got += 1
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"deals api: {e}", file=sys.stderr)
+    cutoff = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 60 * 86400))
+    rows = sorted((r for r in merged.values() if r["d"] >= cutoff), key=lambda r: (r["d"], r["qty"] * r["price"]), reverse=True)
+    health["deals"] = f"{len(rows)} rows accumulated ({got} new this run)"
+    return rows or None
+
+def fii_dii(health):
+    """FII/DII daily net flow from NSE's official API; None on any failure."""
+    try:
+        op = _nse_opener()
+        req = urllib.request.Request("https://www.nseindia.com/api/fiidiiTradeReact", headers={**UA, "Accept": "application/json"})
+        doc = json.loads(op.open(req, timeout=25).read())
+        by_date = {}
+        for r in (doc if isinstance(doc, list) else []):
+            try:
+                d = time.strftime("%Y-%m-%d", time.strptime((r.get("date") or "").strip(), "%d-%b-%Y"))
+            except Exception:
+                continue
+            cat = (r.get("category") or "").upper()
+            net = r.get("netValue")
+            if net is None:
+                continue
+            slot = by_date.setdefault(d, {})
+            if "FII" in cat: slot["fiiNet"] = float(net)
+            elif "DII" in cat: slot["diiNet"] = float(net)
+        rows = [{"date": d, **v} for d, v in sorted(by_date.items()) if "fiiNet" in v or "diiNet" in v]
+        health["fii_dii"] = f"{len(rows)} days from NSE"
+        return rows or None
     except Exception as e:
-        health["ipo"] = f"NSE fetch failed ({e}); previous ipo.json kept"
+        health["fii_dii"] = f"NSE fetch failed ({e}); app hides FII/DII"
         return None
 
 def main():
@@ -156,10 +252,14 @@ def main():
     if fund:
         with open(os.path.join(args.out, "fundamentals.json"), "w", encoding="utf-8") as f:
             json.dump({"updatedAt": health["generatedAt"], "data": fund}, f, separators=(",", ":"))
-    rows = ipo_list(health)
-    if rows:
-        with open(os.path.join(args.out, "ipo.json"), "w", encoding="utf-8") as f:
-            json.dump({"updatedAt": health["generatedAt"], "data": rows}, f, separators=(",", ":"))
+    drows = deals(health)
+    if drows:
+        with open(os.path.join(args.out, "deals.json"), "w", encoding="utf-8") as f:
+            json.dump({"updatedAt": health["generatedAt"], "data": drows}, f, separators=(",", ":"))
+    frows = fii_dii(health)
+    if frows:
+        with open(os.path.join(args.out, "fii.json"), "w", encoding="utf-8") as f:
+            json.dump({"updatedAt": health["generatedAt"], "data": frows}, f, separators=(",", ":"))
     with open(os.path.join(args.out, "health.json"), "w", encoding="utf-8") as f:
         json.dump(health, f, indent=1)
     print(json.dumps(health, indent=1))

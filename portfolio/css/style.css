@@ -1577,3 +1577,45 @@ body.kb-open .samsung-bottom-dock-wrap{display:none !important}
 @keyframes lwFadeIn{from{opacity:.2}to{opacity:1}}
 @media (prefers-reduced-motion: reduce){.lw-fade{animation:none}}
 #taLivePill[data-stale="1"]{cursor:pointer;text-decoration:underline}
+
+/* ===== v88 (Task C): changed strip, deals, news tags, events, gains, compare, watchlist ===== */
+.changed-strip{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.cs-title{font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.cs-line{font-size:13.5px;font-weight:600}
+.new-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold,#c9a227);flex:none;align-self:center}
+.imp-chip{background:rgba(242,54,69,.14);color:#f23645;font-weight:700}
+.auto-tag{color:var(--muted);font-style:italic}
+.deal-row{display:flex;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.deal-row:last-child{border-bottom:none}
+.deal-main{flex:1;min-width:180px}
+.deal-val{font-weight:700;white-space:nowrap}
+.deal-big{background:rgba(201,162,39,.08)}
+tr.deal-big td{font-weight:600}
+.spot-line{font-size:13.5px;padding:6px 8px;border-left:3px solid var(--gold,#c9a227);background:rgba(201,162,39,.07);margin:6px 0}
+.sheet-deals{margin-top:14px}
+.sheet-deals h3{font-size:14px;margin:0 0 6px}
+.chip-x{background:none;border:none;color:inherit;font-size:14px;cursor:pointer;padding:0 2px}
+.table-scroll{overflow-x:auto;max-width:100%}
+.folio-table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+.folio-table th,.folio-table td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.folio-table th{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.03em}
+.evcal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0}
+.evcal-dow{font-size:11px;color:var(--muted);text-align:center;font-weight:700}
+.evcal-day{position:relative;text-align:center;padding:7px 0;font-size:13px;border-radius:8px;background:rgba(128,128,128,.06)}
+.evcal-day.has{font-weight:700;background:rgba(201,162,39,.13)}
+.evcal-day.today{outline:2px solid var(--gold,#c9a227)}
+.evcal-dot{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--gold,#c9a227)}
+.cmp-chip.on{background:var(--gold,#c9a227);color:#111;font-weight:700}
+.cmp-svg{width:100%;height:auto;display:block}
+.panel-foot{margin-top:10px}
+.wl-controls{display:flex;align-items:center;gap:10px;margin:0 0 10px;flex-wrap:wrap}
+.wl-lab{font-size:12.5px;color:var(--muted);font-weight:600}
+.w52{display:flex;align-items:center;min-width:64px}
+.w52-track{position:relative;display:block;width:64px;height:6px;border-radius:99px;background:rgba(128,128,128,.25)}
+.w52-track i{position:absolute;top:50%;width:9px;height:9px;border-radius:50%;background:var(--gold,#c9a227);transform:translate(-50%,-50%)}
+.w-add{font-size:12px;font-weight:700;white-space:nowrap}
+.wl-alert-edit{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px;border:1px solid var(--line);border-radius:10px;margin:6px 0}
+.wl-alert-edit label{display:flex;gap:6px;align-items:center;font-size:13px}
+.wl-alert-edit input{width:110px}
+.wl-banner{display:flex;flex-wrap:wrap;gap:8px;padding:9px 12px;border-radius:10px;background:rgba(201,162,39,.13);font-weight:600;font-size:13.5px;margin-bottom:10px}
+.gains-cfg label{flex:1}
