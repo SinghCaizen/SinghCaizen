@@ -166,6 +166,8 @@ const _origSwitchView = switchView;
 switchView = function (name) {
   folioView = name;
   _origSwitchView(name);
+  const ft = document.querySelector(".site-foot"); if (ft) ft.style.display = name === "dashboard" ? "" : "none";
+  const mb = $("dockMoreBtn"); if (mb) mb.classList.toggle("active", ["news", "history", "profile"].includes(name));
   if ((name === "insights" || name === "news") && currentUser) renderAll();
   if (name === "watchlist" && currentUser) {
     setTimeout(() => {
@@ -1678,6 +1680,7 @@ async function loadCompanySheet(sym) {
   const tok = ++sheetToken;
   const name = (STOCK_MAP[sym] && STOCK_MAP[sym].name) || sym;
   const wr = $("stockWatchRow"), ab = $("stockAbout"), rs = $("stockResults"), nw = $("stockNews"), lk = $("stockLinks");
+  window.__sheetSym = sym;
   if (!ab) return;
   const held = enriched().rows.find(r => r.sym === sym);
   const inWatch = state.watch.some(w => w.sym === sym);
@@ -1703,7 +1706,7 @@ async function loadCompanySheet(sym) {
     if (others.length) {
       const holder = document.createElement("span");
       holder.className = "wl-copy";
-      holder.innerHTML = '<select id="sheetWlSel" class="wl-sel">' + others.map(w => '<option value="' + w.id + '">' + esc(w.name) + '</option>').join("") + '</select><button class="mini-btn" id="sheetWlCopy" type="button">Copy to List</button>';
+      holder.innerHTML = '<span class="wl-copy-lab">Copy to list:</span><select id="sheetWlSel" class="wl-sel">' + others.map(w => '<option value="' + w.id + '">' + esc(w.name) + '</option>').join("") + '</select><button class="mini-btn" id="sheetWlCopy" type="button">Copy</button>';
       wr.appendChild(holder);
       $("sheetWlCopy").addEventListener("click", () => {
         const L = (state.watchlists || []).find(w => w.id === $("sheetWlSel").value);
@@ -1726,7 +1729,7 @@ async function loadCompanySheet(sym) {
     (ip ? '<span class="chip">Price <b>' + inr2(ip.price) + '</b>' + (iDay !== null ? ' <span class="' + (iDay >= 0 ? "gain" : "loss") + '">' + pct(iDay) + ' today</span>' : '') + '</span>' : '<span class="chip">Price loads with the chart below</span>') +
     (held ? '<span class="chip">You hold <b>' + held.qty + ' shares</b> · avg ' + inr2(held.avg) + ' · P&amp;L <b class="' + (held.pnl >= 0 ? "gain" : "loss") + '">' + inr(held.pnl) + '</b></span>' : '<span class="chip">Not in your portfolio</span>') +
     '</div>' + extButtonsHtml(sym) +
-    '<p class="price-meta">Full details (52-week range, technicals) replace this card the moment the free feed answers.</p>';
+    '<div class="skel" style="height:14px;width:55%;margin-top:10px"></div><div class="skel" style="height:14px;width:78%;margin-top:8px"></div>';
   rs.innerHTML = '<div class="skel" style="height:14px;width:60%"></div>';
   nw.innerHTML = '<div class="skel" style="height:14px;width:88%"></div><div class="skel" style="height:14px;width:70%;margin-top:8px"></div>';
   const cp = $("stockCorp"); if (cp) cp.innerHTML = '<div class="skel" style="height:14px;width:55%"></div>';
@@ -1734,7 +1737,8 @@ async function loadCompanySheet(sym) {
      unexpected error), no section may sit on a skeleton beyond ~9 seconds. */
   const sheetFallback = () => {
     const sec = sectorOf(sym);
-    if (!ab.dataset.instant) ab.innerHTML = '<p class="comp-line"><b>' + esc(name) + '</b> · NSE' + (sec ? ' · ' + esc(sec) : '') + '</p>' +
+    if (ab.querySelector(".skel")) ab.innerHTML = '<p class="comp-line"><b>' + esc(name) + '</b> · NSE' + (sec ? ' · ' + esc(sec) : '') + '</p>' + '<p class="empty-note">Couldn\'t load company details right now. <button type="button" class="mini-btn" data-sxretry="1">Retry</button></p>' + extButtonsHtml(sym);
+    else if (!ab.dataset.instant) ab.innerHTML = '<p class="comp-line"><b>' + esc(name) + '</b> · NSE' + (sec ? ' · ' + esc(sec) : '') + '</p>' +
       '<p class="empty-note">Live company data could not be fetched right now — the free sources are unreachable from this network. Everything about this company is one tap away:</p>' + extButtonsHtml(sym);
     if (cp) cp.innerHTML = '<p class="empty-note">No dividends or splits in the last 12 months — or the data could not be fetched right now.</p>';
     const fb = '<p class="empty-note">News is taking too long on this network right now. Read it directly from the source:</p>' + extButtonsHtml(sym);
@@ -2390,7 +2394,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v81";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v82";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3685,7 +3689,7 @@ function tgtPanelRender() {
   syms.forEach(s => { const st = tgtStatus(s); rows += '<div class="insx-row"><span>' + esc(s) + '</span><small>Target ' + (alerts[s].target ? inr2(alerts[s].target) : "—") + ' · SL ' + (alerts[s].sl ? inr2(alerts[s].sl) : "—") + (st ? ' · LTP ' + inr2(st.ltp) : "") + '</small><b>' + (st ? st.label : "Waiting for price") + "</b></div>"; });
   panel.innerHTML = '<div class="panel insx-card"><div class="panel-head"><h2>Targets &amp; Stop-loss</h2><button type="button" class="insx-i" data-insx-info="targets">i</button></div>' +
     (syms.length ? '<div class="insx-list">' + rows + "</div>" : '<p class="empty-note">No targets set yet — open any holding above and use its 🔔 Price Alerts box to set a target and a stop-loss. The bar then tracks the price between them.</p>') +
-    '<div class="insx-setrow"><button type="button" class="btn small" id="tgtNotifyBtn">' + (notifyOn ? "🔔 Browser notifications: ON" : "🔔 Browser notifications: OFF") + "</button><small>" + (supported ? "When on, Folio pops a notification if a target or stop-loss is crossed while the app is open. It is not a broker order." : "This browser does not support notifications.") + "</small></div></div>";
+    '<div class="insx-setrow"><button type="button" class="btn small" id="tgtNotifyBtn">' + (notifyOn ? "Browser notifications: ON" : "Browser notifications: OFF") + "</button><small>" + (supported ? "When on, Folio pops a notification if a target or stop-loss is crossed while the app is open. It is not a broker order." : "This browser does not support notifications.") + "</small></div></div>";
   const btn = $("tgtNotifyBtn");
   if (btn) btn.addEventListener("click", async () => {
     if (!supported) { toast("This browser does not support notifications."); return; }
@@ -3771,12 +3775,12 @@ function planRenderRebal() {
   items.forEach(it => { it.cur = it.v / total * 100; it.target = Number((planRebalMode === "stocks" ? store.stocks : store.sectors)[it.key]) || 0; it.drift = it.target - it.cur; it.action = it.drift / 100 * total; });
   const sumT = items.reduce((a, i) => a + i.target, 0);
   const maxScale = Math.max(25, ...items.map(i => Math.max(i.cur, i.target)));
-  const list = items.map(it => '<div class="insx-row plan-row"><div class="plan-line1"><span class="plan-sym">' + esc(it.label) + '</span><small>' + it.cur.toFixed(1) + '% now</small></div><span class="drift-wrap"><span class="drift-cur" style="width:' + (it.cur / maxScale * 100) + '%"></span><span class="drift-mark" style="left:' + Math.min(100, Math.max(0, it.target / maxScale * 100)) + '%"></span></span><div class="plan-line3"><label class="plan-lab">Target %<input type="number" class="plan-tgt" data-plan-key="' + esc(it.key) + '" min="0" max="100" step="0.5" inputmode="decimal" value="' + (it.target || "") + '" placeholder="e.g. 10"></label><b class="' + (Math.abs(it.action) < 1 ? "" : it.action > 0 ? "pos" : "neg") + '">' + (Math.abs(it.action) < 1 ? "In line" : (it.action > 0 ? "Buy " : "Sell ") + insxAmt(Math.abs(it.action))) + "</b></div></div>").join("");
+  const list = items.map(it => '<div class="insx-row plan-row"><div class="plan-line1"><span class="plan-sym">' + esc(it.label) + '</span><small>' + it.cur.toFixed(1) + '% now</small></div><span class="drift-wrap"><span class="drift-cur" style="width:' + (it.cur / maxScale * 100) + '%"></span><span class="drift-mark" style="left:' + Math.min(100, Math.max(0, it.target / maxScale * 100)) + '%"></span></span><div class="plan-line3"><label class="plan-lab">Target %<input type="number" class="plan-tgt" data-plan-key="' + esc(it.key) + '" min="0" max="100" step="0.5" inputmode="decimal" value="' + (it.target || "") + '" placeholder="Target %"></label><b class="' + (Math.abs(it.action) < 1 ? "" : it.action > 0 ? "pos" : "neg") + '">' + (Math.abs(it.action) < 1 ? "In line" : (it.action > 0 ? "Buy " : "Sell ") + insxAmt(Math.abs(it.action))) + "</b></div></div>").join("");
   box.innerHTML = head +
     '<div class="insx-legend"><button type="button" class="insx-chip' + (planRebalMode === "stocks" ? " on" : "") + '" data-plan-mode="stocks">By stock</button><button type="button" class="insx-chip' + (planRebalMode === "sectors" ? " on" : "") + '" data-plan-mode="sectors">By sector</button></div>' +
     '<div class="insx-list">' + list + "</div>" +
     '<p class="insx-note">Targets add up to <b>' + sumT.toFixed(1) + '%</b>' + (Math.abs(sumT - 100) > 0.5 && sumT > 0 ? " — for a full plan they should add up to 100%." : ".") + ' The white tick on each bar is your target; the fill is today\'s share.</p>' +
-    '<div class="insx-setrow"><label>Where to put new money ₹ <input type="number" id="planMoney" min="0" step="any" value="' + (planNewMoney || "") + '" placeholder="e.g. 25000"></label><button type="button" class="btn small" id="planMoneyBtn">Split it</button></div><div id="planMoneyOut"></div>';
+    '<div class="insx-setrow"><label>Where to put new money ₹ <input type="number" id="planMoney" min="0" step="any" value="' + (planNewMoney || "") + '" placeholder="₹ amount"></label><button type="button" class="btn small" id="planMoneyBtn">Split it</button></div><div id="planMoneyOut"></div>';
   box.querySelectorAll(".plan-tgt").forEach(inp => inp.addEventListener("change", () => {
     const v = Math.min(100, Math.max(0, Number(inp.value) || 0));
     (planRebalMode === "stocks" ? store.stocks : store.sectors)[inp.dataset.planKey] = v;
@@ -4794,7 +4798,7 @@ function legalLinkEnsure() {
   if (!pv || pv.querySelector(".profile-legal")) return;
   const row = document.createElement("div");
   row.className = "profile-legal";
-  row.innerHTML = '<a href="#" data-open-terms="1" class="mini-btn" style="display:inline-flex;align-items:center;text-decoration:none">🛡️ Terms, Privacy &amp; Security</a>';
+  row.innerHTML = '<a href="#" data-open-terms="1" class="mini-btn" style="display:inline-flex;align-items:center;text-decoration:none">Legal &amp; Privacy</a>';
   row.querySelector("[data-open-terms]").addEventListener("click", e => { e.preventDefault(); const m = $("termsModal"); if (m) m.classList.remove("hidden"); });
   pv.appendChild(row);
 }
@@ -4858,3 +4862,157 @@ async function p7EnhanceOverview() {
 const _sxRenderTabP7 = sxRenderTab;
 sxRenderTab = async function (tab) { await _sxRenderTabP7(tab); if (tab === "overview") { try { await p7EnhanceOverview(); } catch (e) {} } };
 
+
+/* ================= TASK A: card merges, More sheet, stale-data watchdog ================= */
+try { localStorage.removeItem("folio_ipo_vault"); localStorage.removeItem("folio_ipo_synced"); localStorage.removeItem("folio_ipo_watch"); } catch (e) {}
+let allocViewMode = "donut";
+function folioPanelByTitle(txt, exact) {
+  const hs = document.querySelectorAll(".panel .panel-head h2");
+  for (const h of hs) { const t = h.textContent.trim().toUpperCase(); if (exact ? t === txt : t.indexOf(txt) === 0) { const p = h.closest(".panel"); if (p) return p; } }
+  return null;
+}
+function folioPaneTabs(keeper, key, tabs) {
+  if (!keeper || keeper.dataset.merged === key) return;
+  keeper.dataset.merged = key;
+  const seg = document.createElement("div");
+  seg.className = "seg seg-small folio-tabs";
+  seg.innerHTML = tabs.map((t, i) => '<button type="button" class="seg-btn' + (i === 0 ? " active" : "") + '" data-ftab="' + t.id + '">' + t.label + "</button>").join("");
+  const head = keeper.querySelector(".panel-head");
+  if (head && head.nextSibling) keeper.insertBefore(seg, head.nextSibling); else keeper.appendChild(seg);
+  const panes = {};
+  tabs.forEach((t, i) => {
+    const p = document.createElement("div");
+    p.className = "folio-pane" + (i === 0 ? "" : " hidden");
+    p.dataset.fpane = t.id;
+    keeper.appendChild(p);
+    panes[t.id] = p;
+    (t.take || []).forEach(el => { if (el) p.appendChild(el); });
+  });
+  keeper._folioPanes = panes;
+  seg.querySelectorAll("[data-ftab]").forEach(b => b.addEventListener("click", () => {
+    seg.querySelectorAll("[data-ftab]").forEach(x => x.classList.toggle("active", x === b));
+    Object.keys(panes).forEach(id => panes[id].classList.toggle("hidden", id !== b.dataset.ftab));
+  }));
+}
+function folioSplitMovers() {
+  const per = $("insPeriodBox") ? $("insPeriodBox").closest(".panel") : null;
+  if (!per || !per._folioPanes) return;
+  const mov = $("insMoversBox"); if (!mov) return;
+  mov.querySelectorAll(".stat-chips .chip").forEach(ch => {
+    const t = ch.textContent, pane = /Top Contributor/.test(t) ? per._folioPanes.gainers : /Biggest Drag/.test(t) ? per._folioPanes.draggers : null;
+    if (pane) { const note = pane.querySelector(".empty-note"); if (note) note.remove(); pane.appendChild(ch); }
+  });
+  [["gainers", "No gainer stood out in this window."], ["draggers", "No dragger in this window."]].forEach(([id, msg]) => {
+    const p = per._folioPanes[id];
+    if (p && !p.children.length) p.innerHTML = '<p class="empty-note">' + msg + "</p>";
+  });
+}
+function folioMerges() {
+  const dSvg = $("donut");
+  if (dSvg && !$("allocPanel")) {
+    const hero = dSvg.closest(".panel"), dw = hero ? hero.querySelector(".donut-wrap") : null, dseg = $("donutSeg");
+    if (hero && dw && dseg) {
+      const np = document.createElement("div");
+      np.className = "panel chart-panel"; np.id = "allocPanel";
+      np.innerHTML = '<div class="panel-head"><h2>Allocation</h2><div class="seg seg-small"><button type="button" data-aview="donut" class="seg-btn active">Donut</button><button type="button" data-aview="bars" class="seg-btn">Bars</button></div></div>';
+      hero.after(np); np.appendChild(dseg); np.appendChild(dw);
+      np.querySelectorAll("[data-aview]").forEach(b => b.addEventListener("click", () => {
+        allocViewMode = b.dataset.aview;
+        np.querySelectorAll("[data-aview]").forEach(x => x.classList.toggle("active", x === b));
+        np.classList.toggle("alloc-bars", allocViewMode === "bars");
+      }));
+    }
+  }
+  const ap = $("allocPanel"); if (ap && allocViewMode === "bars") ap.classList.add("alloc-bars");
+  const sb = $("sectorBars"); if (sb) { const p = sb.closest(".panel"); if (p) p.classList.add("merged-away"); }
+  const pie = folioPanelByTitle("ALLOCATION — PIE CHARTS", true); if (pie) pie.classList.add("merged-away");
+  const cap = folioPanelByTitle("MARKET CAP CLASSIFICATION", true); if (cap) cap.classList.add("merged-away");
+  const pg = folioPanelByTitle("PORTFOLIO GRAPH", true); if (pg) pg.classList.add("merged-away");
+  const hm = folioPanelByTitle("HEATMAP", true); if (hm) hm.classList.add("merged-away");
+  const scorePanel = $("insScoreNum") ? $("insScoreNum").closest(".panel") : null;
+  if (scorePanel && scorePanel.dataset.merged !== "health") {
+    const h2 = scorePanel.querySelector(".panel-head h2");
+    if (h2 && h2.childNodes[0] && h2.childNodes[0].nodeType === 3) h2.childNodes[0].textContent = "Health & Signals ";
+    const own = [...scorePanel.children].filter(c => !c.classList.contains("panel-head"));
+    folioPaneTabs(scorePanel, "health", [
+      { id: "score", label: "Score", take: own },
+      { id: "insights", label: "Insights", take: [$("insDivBox"), $("insMomBox"), $("insRiskBox")] },
+      { id: "signals", label: "Signals", take: [$("insSignals")] },
+      { id: "win", label: "Win rate", take: [$("insHealthBox")] }
+    ]);
+    ["SCORE INSIGHTS", "SIGNALS", "PORTFOLIO HEALTH"].forEach(t => { const p = folioPanelByTitle(t, true); if (p) p.classList.add("merged-away"); });
+  }
+  const perPanel = $("insPeriodBox") ? $("insPeriodBox").closest(".panel") : null;
+  if (perPanel && perPanel.dataset.merged !== "period") {
+    folioPaneTabs(perPanel, "period", [
+      { id: "period", label: "Period", take: [$("insPeriodBox")] },
+      { id: "gainers", label: "Gainers", take: [] },
+      { id: "draggers", label: "Draggers", take: [] },
+      { id: "sectors", label: "Sectors", take: [$("insSectorBox")] }
+    ]);
+    const gd = folioPanelByTitle("PERIOD GAINERS VS DRAGGERS", true); if (gd) gd.classList.add("merged-away");
+    const sp = folioPanelByTitle("SECTOR PERFORMANCE (PERIOD)", true); if (sp) sp.classList.add("merged-away");
+  }
+  folioSplitMovers();
+  const evPanel = $("eventsBox") ? $("eventsBox").closest(".panel") : null;
+  if (evPanel && evPanel.dataset.merged !== "news") {
+    const h2 = evPanel.querySelector(".panel-head h2"); if (h2) h2.textContent = "News & Announcements";
+    folioPaneTabs(evPanel, "news", [
+      { id: "ann", label: "Announcements", take: [$("eventsBox")] },
+      { id: "news", label: "News", take: [$("newsList")] }
+    ]);
+    const np2 = folioPanelByTitle("PORTFOLIO NEWS", true); if (np2) np2.classList.add("merged-away");
+  }
+  document.querySelectorAll(".panel-head h2").forEach(h => {
+    if (h.dataset.stripped) return; h.dataset.stripped = "1";
+    const n = h.childNodes[0];
+    if (n && n.nodeType === 3) n.textContent = n.textContent.replace(/^[\s\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]+/u, "");
+  });
+}
+if (typeof dashDecoratePanels === "function") { const _dcpA = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpA.apply(this, arguments); try { folioMerges(); } catch (e) {} return r; }; }
+if (typeof renderInsPeriod === "function") { const _ripA = renderInsPeriod; renderInsPeriod = async function () { const r = await _ripA.apply(this, arguments); try { folioMerges(); } catch (e) {} return r; }; }
+try { folioMerges(); } catch (e) {}
+document.addEventListener("click", e => {
+  const sx = e.target.closest("[data-sxretry]");
+  if (sx && window.__sheetSym) { try { loadCompanySheet(window.__sheetSym); } catch (x) {} return; }
+  if (e.target.closest("#dockMoreBtn")) { const s = $("moreSheet"); if (s) s.classList.remove("hidden"); return; }
+  if (e.target.closest("[data-more-close]")) { const s = $("moreSheet"); if (s) s.classList.add("hidden"); return; }
+  const mv = e.target.closest("[data-more-view]");
+  if (mv) { const s = $("moreSheet"); if (s) s.classList.add("hidden"); switchView(mv.dataset.moreView); return; }
+  const ma = e.target.closest("[data-more-act]");
+  if (ma) {
+    const s = $("moreSheet"); if (s) s.classList.add("hidden");
+    if (ma.dataset.moreAct === "report") { const b = $("issueBtn"); if (b) b.click(); }
+    if (ma.dataset.moreAct === "legal") { const m = $("termsModal"); if (m) m.classList.remove("hidden"); }
+    return;
+  }
+  if (e.target.id === "moreSheet") { e.target.classList.add("hidden"); return; }
+  const pm = e.target.closest("[data-pmode]");
+  if (pm) {
+    perfBench = pm.dataset.pmode === "bench";
+    const cb = $("perfBench"); if (cb) cb.checked = perfBench;
+    document.querySelectorAll("#perfModeSeg .seg-btn").forEach(x => x.classList.toggle("active", x === pm));
+    perfKey = ""; try { renderPerf(enriched()); } catch (x) {}
+    return;
+  }
+  const ib = e.target.closest("#lwIndBtn");
+  if (ib) { const sh = $("lwIndSheet"); if (sh) { sh.classList.toggle("hidden"); ib.setAttribute("aria-expanded", sh.classList.contains("hidden") ? "false" : "true"); } return; }
+  if (e.target.closest("[data-unavail-retry]")) { try { renderAll(); } catch (x) {} }
+});
+document.addEventListener("focusin", e => { const t = e.target.tagName; if (t === "INPUT" || t === "TEXTAREA" || t === "SELECT") document.body.classList.add("kb-open"); });
+document.addEventListener("focusout", () => setTimeout(() => { const t = (document.activeElement || {}).tagName; if (t !== "INPUT" && t !== "TEXTAREA" && t !== "SELECT") document.body.classList.remove("kb-open"); }, 150));
+const _skelSeen = new WeakMap();
+setInterval(() => {
+  if (!currentUser) return;
+  document.querySelectorAll("#view-dashboard .skel, #view-insights .skel, #view-news .skel").forEach(sk => {
+    if (sk.offsetParent === null) return;
+    const host = sk.parentElement; if (!host) return;
+    const now = Date.now();
+    if (!_skelSeen.has(sk)) { _skelSeen.set(sk, now); return; }
+    if (now - _skelSeen.get(sk) > 8000 && !host.dataset.unavail) {
+      host.dataset.unavail = "1";
+      host.innerHTML = '<p class="empty-note">Data unavailable · <button type="button" class="mini-btn" data-unavail-retry="1">Retry</button></p>';
+      setTimeout(() => { try { delete host.dataset.unavail; } catch (x) {} }, 2000);
+    }
+  });
+}, 2500);

@@ -31,6 +31,8 @@ function normalizeState(s) {
     manualPrices: s.manualPrices || {},
     profile: Object.assign(base.profile, s.profile || {})
   };
+  /* IPO was removed from Folio: old backups may still carry IPO fields — drop them on load/restore so they never re-enter exports or the vault. */
+  if (out.profile) { delete out.profile.ipoApps; delete out.profile.ipoVault; }
   /* self-heal: a symbol typed free-hand that is not a real NSE symbol (e.g. TATACAPITAL)
      is re-resolved from its stored name to the real symbol (TATACAP) so prices/charts work */
   try {

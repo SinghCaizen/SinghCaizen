@@ -1516,3 +1516,56 @@ html[data-theme="light"] .samsung-bottom-capsule .mobile-nav-item.active{backgro
   .stat-grid{display:grid;grid-template-columns:repeat(2, minmax(0,1fr));gap:10px;align-items:stretch}
   .stat-grid .stat-card{height:100%;min-height:104px}
 }
+
+/* ===== v86 (Task A): merges, More sheet, phone layout pack ===== */
+html,body{overflow-x:hidden;overflow-x:clip}
+.panel :where(input,select,textarea){min-width:0}
+.panel :where(p,.price-meta,td,th,.chip){overflow-wrap:anywhere}
+main{padding-bottom:calc(76px + env(safe-area-inset-bottom, 0px) + 16px) !important}
+body.kb-open .samsung-bottom-dock-wrap{display:none !important}
+.merged-away{display:none !important}
+.folio-tabs{margin:10px 0 4px;flex-wrap:wrap}
+.folio-pane{padding-top:6px}
+/* Allocation bars mode: the legend rows become full-width bars */
+#allocPanel.alloc-bars #donut{display:none}
+#allocPanel.alloc-bars .donut-wrap{flex-direction:column;align-items:stretch}
+#allocPanel.alloc-bars .donut-legend{width:100%;max-width:none}
+#allocPanel.alloc-bars .lg-bar{height:10px;border-radius:99px}
+#allocPanel .donut-wrap{margin-top:8px}
+/* stock page chips + action rows wrap cleanly */
+.stat-chips{display:flex;flex-wrap:wrap;gap:8px}
+#stockWatchRow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.wl-copy{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.wl-copy-lab{font-size:12.5px;font-weight:600;color:var(--muted)}
+/* chart toolbar: scrollable chips + indicators sheet */
+#lwTypeSeg{overflow-x:auto;flex-wrap:nowrap;max-width:100%;scrollbar-width:none}
+#lwTypeSeg::-webkit-scrollbar{display:none}
+.lw-ind-sheet{flex-basis:100%;display:flex;gap:16px;flex-wrap:wrap;padding-top:8px}
+/* More bottom sheet */
+.sheet-modal{align-items:flex-end !important;padding:0 !important}
+.more-sheet-card{width:100%;max-width:520px;margin:0 auto;background:var(--panel);border-radius:18px 18px 0 0;padding:12px 14px calc(14px + env(safe-area-inset-bottom, 0px));box-shadow:0 -12px 34px rgba(0,0,0,.3)}
+.more-sheet-head{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 8px;font-size:16px}
+.more-row{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:10px 8px;background:none;border:none;border-bottom:1px solid var(--line);color:var(--text);font-size:15px;font-weight:600;cursor:pointer;text-align:left}
+.more-row:last-child{border-bottom:none}
+/* splash entrance */
+.splash-logo{animation:splashIn .6s ease both}
+.splash-tag{animation:splashIn .6s .15s ease both}
+@keyframes splashIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){.splash-logo,.splash-tag{animation-duration:.4s}}
+@media (hover:none) and (pointer:coarse){.scuts-hint{display:none !important}}
+@media (max-width:768px){
+  input,select,textarea{font-size:16px}
+  /* Rebalancing: 2-line grid rows */
+  .plan-row{display:grid !important;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center}
+  .plan-line1{grid-column:1;grid-row:1}
+  .plan-row .drift-wrap{grid-column:2;grid-row:1}
+  .plan-line3{grid-column:1 / -1;grid-row:2;display:flex;align-items:center;gap:10px}
+  .plan-lab{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+  .plan-tgt{flex:1;width:100%;min-width:0}
+  .plan-line3 b{margin-left:auto;text-align:right;white-space:nowrap}
+  /* stacked setting rows: label above, full-width input, button below */
+  .insx-setrow{flex-direction:column;align-items:stretch;gap:10px}
+  .insx-setrow label{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+  .insx-setrow input{width:100%}
+  .insx-setrow .btn{width:100%;min-height:44px}
+}
