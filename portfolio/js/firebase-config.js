@@ -16,4 +16,4 @@ window.FIREBASE_READY = window.FIREBASE_CONFIG.apiKey.indexOf("PASTE_") !== 0;
 /* Folio's own Cloudflare Worker proxy URL (Task B). Paste the Worker URL
    here after deploying tools/cloudflare-worker (see its README). While this
    is empty, Folio keeps using the public fallback proxies. */
-window.FOLIO_WORKER_URL = "";
+window.FOLIO_WORKER_URL = "https://folio-proxy.singhcaizen.workers.dev";
