@@ -1569,3 +1569,11 @@ body.kb-open .samsung-bottom-dock-wrap{display:none !important}
   .insx-setrow input{width:100%}
   .insx-setrow .btn{width:100%;min-height:44px}
 }
+
+/* ===== v87 (Task B): sticky chart bars, chart fade-in, stale pill ===== */
+.ta-bar{position:sticky;top:0;z-index:6;background:var(--panel)}
+#lwBar{position:sticky;top:0;z-index:6;background:var(--panel)}
+.lw-fade{animation:lwFadeIn .25s ease}
+@keyframes lwFadeIn{from{opacity:.2}to{opacity:1}}
+@media (prefers-reduced-motion: reduce){.lw-fade{animation:none}}
+#taLivePill[data-stale="1"]{cursor:pointer;text-decoration:underline}

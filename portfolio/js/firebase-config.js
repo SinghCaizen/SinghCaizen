@@ -12,3 +12,8 @@ window.FIREBASE_CONFIG = {
   appId: "1:540160355480:web:c5e512e45c47d05c6374ed"
 };
 window.FIREBASE_READY = window.FIREBASE_CONFIG.apiKey.indexOf("PASTE_") !== 0;
+
+/* Folio's own Cloudflare Worker proxy URL (Task B). Paste the Worker URL
+   here after deploying tools/cloudflare-worker (see its README). While this
+   is empty, Folio keeps using the public fallback proxies. */
+window.FOLIO_WORKER_URL = "";

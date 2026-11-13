@@ -734,14 +734,16 @@ async function renderLW() {
   (state.txns || []).filter(t => t.sym === stockSym && t.type !== "DIV").forEach(t => marks.push({ time: t.date, position: t.type === "BUY" ? "belowBar" : "aboveBar", color: t.type === "BUY" ? "#089981" : "#f23645", shape: t.type === "BUY" ? "arrowUp" : "arrowDown", text: t.type + " @ " + inr2(t.price) }));
   if (marks.length && lwSeries.setMarkers) { marks.sort((a, b) => a.time < b.time ? -1 : 1); try { lwSeries.setMarkers(marks); } catch (e) {} }
   lwChart.timeScale().fitContent();
-  const barByDay = {};
-  ubars.forEach(b => barByDay[dayStr(b.t)] = b);
+  try { let hi = -Infinity, lo = Infinity; ubars.forEach(b => { hi = Math.max(hi, b.h); lo = Math.min(lo, b.l); }); if (hi > lo && lwSeries.createPriceLine) { lwSeries.createPriceLine({ price: hi, color: "rgba(8,153,129,.55)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "52W H" }); lwSeries.createPriceLine({ price: lo, color: "rgba(242,54,69,.55)", lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: "52W L" }); } } catch (e) {}
+  const barByDay = {}, idxByDay = {};
+  ubars.forEach((b, i) => { barByDay[dayStr(b.t)] = b; idxByDay[dayStr(b.t)] = i; });
   lwChart.subscribeCrosshairMove(param => {
     const lg = $("lwLegend");
     if (!lg) return;
     if (!param || !param.time || !barByDay[param.time]) { lg.textContent = "TradingView chart · drag to pan · scroll / pinch to zoom"; return; }
     const b = barByDay[param.time];
-    lg.textContent = param.time + " · O " + inr2(b.o) + " · H " + inr2(b.h) + " · L " + inr2(b.l) + " · C " + inr2(b.c) + (b.v ? " · Vol " + b.v.toLocaleString("en-IN") : "");
+    const ix = idxByDay[param.time] || 0, pc = ix > 0 ? ubars[ix - 1].c : b.o, chg = pc ? (b.c - pc) / pc * 100 : 0;
+    lg.textContent = param.time + " · O " + inr2(b.o) + " · H " + inr2(b.h) + " · L " + inr2(b.l) + " · C " + inr2(b.c) + " · " + (chg >= 0 ? "+" : "") + chg.toFixed(2) + "%" + (b.v ? " · Vol " + b.v.toLocaleString("en-IN") : "");
   });
   } catch (e) { return off(); }
   if (legend) legend.textContent = "TradingView chart · drag to pan · scroll / pinch to zoom";
@@ -1143,6 +1145,17 @@ async function fetchViaProxies(url, asText) {
   /* Four diverse routes raced in parallel (4s cap each) — JSON-wrapped,
      raw and direct-proxy styles, so one blocked/busy route never stalls data. */
   const routes = [
+    async u => { /* Folio's own Cloudflare Worker (first choice when configured) */
+      if (!window.FOLIO_WORKER_URL) throw new Error("no worker");
+      const r = await fetch(window.FOLIO_WORKER_URL + "?url=" + encodeURIComponent(u), { signal: AbortSignal.timeout(6000) });
+      if (!r.ok) throw new Error("bad route");
+      const t = await r.text();
+      if (!t) throw new Error("empty");
+      if (asText) return t;
+      const head = t.trim().charAt(0);
+      if (head !== "{" && head !== "[") throw new Error("not json");
+      return JSON.parse(t);
+    },
     async u => { /* allorigins /get — JSON envelope with the body in .contents */
       const r = await fetch("https://api.allorigins.win/get?url=" + encodeURIComponent(u), { signal: AbortSignal.timeout(4000) });
       if (!r.ok) throw new Error("bad route");
@@ -1455,6 +1468,7 @@ function techHtml(master) {
 let sheetToken = 0;
 const _origOpenStock = openStock;
 openStock = function (sym) {
+  try { folioArm(sym); } catch (e) {}
   _origOpenStock(sym);
   loadCompanySheet(sym);
 };
@@ -2394,7 +2408,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v82";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v83";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2862,7 +2876,7 @@ async function renderTA() {
     if (tf.kind === "days") { const m = await fetchMaster(sym); if (m && m.ohlc && m.ohlc.length > 5) real = m.ohlc; }
     else real = await taFetchRange(sym, tf.range, tf.interval, tf.kind === "long");
     if (tok !== taToken || activeModalSymbol !== sym || baseTicker(stockSym) !== sym) return;
-    if (real && real.length) { taState.bars = real; taState.preview = false; taDraw(); return; }
+    if (real && real.length) { taState.bars = real; taState.preview = false; taDraw(); try { folioStalePill(sym); } catch (e) {} return; }
     throw new Error("empty");
   } catch (e) {
     if (tok !== taToken || activeModalSymbol !== sym) return;
@@ -4746,15 +4760,37 @@ const idbC = { db: null,
   async put(k, v) { const db = await idbC.open(); if (!db) return; try { db.transaction("candles", "readwrite").objectStore("candles").put(v, k); } catch (e) {} }
 };
 const _taFetchRange0 = taFetchRange;
+const _taInflight = {};
 taFetchRange = async function (sym, range, interval, byDay) {
   const key = sym + "|" + range + "|" + interval;
-  const ttl = byDay ? 12 * 3600 * 1000 : 5 * 60 * 1000;
+  /* TTLs (Task B): intraday 60s · daily 15 min · 5Y/MAX 24h */
+  const ttl = /^(5m|15m|60m)$/.test(interval) ? 60 * 1000 : (range === "5y" || range === "max" ? 24 * 3600 * 1000 : 15 * 60 * 1000);
   const hit = await idbC.get(key);
-  if (hit && hit.bars && hit.bars.length && Date.now() - hit.ts < ttl) return hit.bars;
+  if (hit && hit.bars && hit.bars.length) {
+    try { folioMark("data"); } catch (e) {}
+    if (Date.now() - hit.ts < ttl) return hit.bars;
+    /* Stale: paint the saved candles NOW, refresh silently in the background. */
+    window.__taCacheNote = { ts: hit.ts, sym: sym, key: key };
+    if (!_taInflight[key]) {
+      _taInflight[key] = _taFetchRange0(sym, range, interval, byDay).then(bars => {
+        if (bars && bars.length) { idbC.put(key, { ts: Date.now(), bars }); if (window.__taCacheNote && window.__taCacheNote.key === key) { delete window.__taCacheNote; if (typeof stockSym !== "undefined" && stockSym && baseTicker(stockSym) === sym) { try { renderTA(); } catch (e) {} } } }
+      }).catch(() => {}).finally(() => { delete _taInflight[key]; });
+    }
+    return hit.bars;
+  }
   const bars = await _taFetchRange0(sym, range, interval, byDay);
+  try { folioMark("data"); } catch (e) {}
   if (bars && bars.length) idbC.put(key, { ts: Date.now(), bars });
   return bars;
 };
+idbC.del = async function (k) { const db = await idbC.open(); if (!db) return; try { db.transaction("candles", "readwrite").objectStore("candles").delete(k); } catch (e) {} };
+function folioStalePill(sym) {
+  const n = window.__taCacheNote, p = $("taLivePill");
+  if (!n || n.sym !== sym || !p) return;
+  const d = new Date(n.ts);
+  p.textContent = "Showing saved data from " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + " · Retry";
+  p.className = "ta-live-pill preview"; p.dataset.stale = "1"; p.dataset.key = n.key;
+}
 /* Snapshot-first daily data (Task 3 pipeline JSON on the data branch).
    Until the pipeline runs, the fetch 404s and the live feed answers. */
 const _fetchMaster0 = fetchMaster;
@@ -5016,3 +5052,77 @@ setInterval(() => {
     }
   });
 }, 2500);
+
+/* ================= TASK B: stock-page speed — marks, prefetch, persistence ================= */
+window.__folioPerf = { tap: 0, data: 0, paint: 0, sym: "" };
+function folioArm(sym) { window.__folioPerf = { tap: performance.now(), data: 0, paint: 0, sym: sym }; try { performance.mark("folio_tap"); } catch (e) {} }
+function folioMark(what) {
+  const P = window.__folioPerf; if (!P || !P.tap) return;
+  if (what === "data" && !P.data) { P.data = performance.now(); try { performance.mark("folio_data"); } catch (e) {} }
+  if (what === "paint" && !P.paint) { P.paint = performance.now(); try { performance.mark("folio_paint"); } catch (e) {} }
+}
+const _fmPerfB = fetchMaster;
+fetchMaster = async function (sym) { const r = await _fmPerfB(sym); try { folioMark("data"); } catch (e) {} return r; };
+if (typeof drawStock === "function") { const _dsB = drawStock; drawStock = async function () { const r = await _dsB.apply(this, arguments); requestAnimationFrame(() => folioMark("paint")); return r; }; }
+if (typeof taDraw === "function") { const _tdB = taDraw; taDraw = function () { const r = _tdB.apply(this, arguments); const w = $("lwWrap"); if (w && !w.classList.contains("hidden")) { w.classList.remove("lw-fade"); void w.offsetWidth; w.classList.add("lw-fade"); } requestAnimationFrame(() => folioMark("paint")); return r; }; }
+if (window.FOLIO_WORKER_URL) { try { PROXIES.unshift(u => window.FOLIO_WORKER_URL + "?url=" + encodeURIComponent(u)); } catch (e) {} }
+/* System Health: last stock-open timings */
+(function sysPerfLine() {
+  const hi = $("healthInfo"); if (!hi || $("sysPerf")) return;
+  const d = document.createElement("div");
+  d.id = "sysPerf"; d.className = "price-meta"; d.style.marginTop = "4px";
+  hi.after(d);
+  setInterval(() => {
+    const P = window.__folioPerf; if (!P || !P.paint) { d.textContent = ""; return; }
+    const td = P.data ? Math.round(P.data - P.tap) : null, tp = Math.round(P.paint - P.tap);
+    d.textContent = "Last stock open (" + P.sym + "): " + (td !== null ? "data " + td + " ms · " : "") + "chart painted " + tp + " ms after tap" + (tp < 400 ? " · from cache" : "");
+  }, 2000);
+})();
+/* Prefetch: warm 1Y daily data for the first watchlist/holdings symbols, idle only */
+let _pfLast = 0;
+function folioPrefetch() {
+  if (!currentUser || typeof state === "undefined" || !state) return;
+  if (Date.now() - _pfLast < 10 * 60 * 1000) return;
+  _pfLast = Date.now();
+  const syms = [];
+  (state.watch || []).forEach(w => syms.push(w.sym));
+  try { enriched().rows.forEach(r => syms.push(r.sym)); } catch (e) {}
+  [...new Set(syms)].slice(0, 8).forEach((s, i) => setTimeout(() => {
+    try { fetchMaster(s); } catch (e) {}
+    try { taFetchRange(baseTicker(s), "1y", "1d", true); } catch (e) {}
+  }, 350 * i));
+}
+const _ricB = window.requestIdleCallback || (cb => setTimeout(cb, 900));
+if (typeof renderWatch === "function") { const _rwB = renderWatch; renderWatch = function () { const r = _rwB.apply(this, arguments); _ricB(() => { try { folioPrefetch(); } catch (e) {} }); return r; }; }
+if (typeof renderHoldings === "function") { const _rhB = renderHoldings; renderHoldings = function () { const r = _rhB.apply(this, arguments); _ricB(() => { try { folioPrefetch(); } catch (e) {} }); return r; }; }
+document.addEventListener("pointerdown", e => {
+  const t = e.target.closest("[data-heat],[data-heat2],[data-hold-toggle],[data-open]");
+  if (!t) return;
+  const s = t.dataset.heat || t.dataset.heat2 || t.dataset.holdToggle || t.dataset.open;
+  if (!s) return;
+  try { fetchMaster(s); } catch (x) {}
+  try { taFetchRange(baseTicker(s), "1y", "1d", true); } catch (x) {}
+}, { passive: true });
+/* Remember the TA range + chart type */
+try {
+  const sv = JSON.parse(localStorage.getItem("folio_ta_tf") || "null");
+  if (sv && sv.tf) { Object.assign(taState.tf, sv.tf); if (sv.mode) taState.mode = sv.mode; }
+} catch (e) {}
+document.addEventListener("click", e => {
+  if (e.target.closest("#taTfSeg") || e.target.closest("#taModeSeg")) {
+    try { localStorage.setItem("folio_ta_tf", JSON.stringify({ tf: taState.tf, mode: taState.mode })); } catch (x) {}
+  }
+  const pill = e.target.closest("#taLivePill[data-stale='1']");
+  if (pill) {
+    const key = pill.dataset.key;
+    delete window.__taCacheNote;
+    if (key) { try { idbC.del(key); } catch (x) {} try { localStorage.removeItem("folio_ta_" + key); } catch (x) {} }
+    pill.textContent = "◌ Loading chart…"; pill.className = "ta-live-pill loading"; delete pill.dataset.stale;
+    try { renderTA(); } catch (x) {}
+  }
+});
+/* Double-tap / double-click resets the chart view */
+document.addEventListener("dblclick", e => {
+  if (e.target.closest("#lwWrap")) { try { if (lwChart) lwChart.timeScale().fitContent(); } catch (x) {} }
+  if (e.target.closest("#taOverlay")) { try { taResetView(); } catch (x) {} }
+});
