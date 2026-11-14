@@ -2216,3 +2216,7 @@ html[data-theme="light"] #splash{background:#0b0e0c !important}
 body:has(#authView:not(.hidden), #gateView:not(.hidden)) .samsung-bottom-dock-wrap{display:none!important}
 .terms-body{padding-bottom:88px}
 .insx-corr-h{font-size:9.5px}
+body{background-image:none}
+::selection{background:var(--accent-soft);color:var(--text)}
+@media (min-width:821px){ .bt-head,.bt-main{grid-template-columns:88px minmax(0,1.6fr) 84px 138px 88px 108px 104px 60px} .bt-main>*{min-width:0} }
+.bt-row input,.bt-row select{min-width:0}
