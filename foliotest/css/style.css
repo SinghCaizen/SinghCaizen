@@ -1775,3 +1775,67 @@ body.folio-ready .bar-fill,body.folio-ready .pnl-fill{animation:none !important}
 .quick-lock-ico{font-size:30px;line-height:1}
 #e2eeUnlock .modal-card{max-width:420px}
 .mini-select{min-height:36px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);padding:4px 8px;font-size:13px}
+
+/* ===== v97: unified card system, button system, richer liquid nav ===== */
+/* --- Cards: one system on every page --- */
+#view-dashboard{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:stretch}
+#view-dashboard>.panel{margin-bottom:0;min-width:0;display:flex;flex-direction:column}
+#view-dashboard>:not(.panel){min-width:0}
+@media(min-width:768px){
+  #view-dashboard{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:dense}
+  #view-dashboard>:not(.panel){grid-column:1/-1}
+}
+@media(min-width:900px){
+  #view-insights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch;grid-auto-flow:dense}
+  #view-insights>.panel{margin-bottom:0;min-width:0;display:flex;flex-direction:column}
+  #view-insights>:not(.panel){grid-column:1/-1;min-width:0}
+  #view-insights>.panel:has(.matrix-wrap){grid-column:1/-1}
+}
+.view>.panel{padding:20px}
+@media(max-width:767px){ .view>.panel{padding:16px 14px} }
+.panel{min-width:0}
+.panel .panel-head{flex:none}
+.panel-head{flex-wrap:nowrap;align-items:flex-start}
+.panel-head h2{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panel-head>:first-child{min-width:0}
+.panel-head .dash-ctl,.panel-head .dash-collapse,.panel-head>select{flex:none}
+.panel-head .seg{max-width:58vw}
+.panel.collapsed .panel-head{margin-bottom:0}
+.panel :where(canvas,svg){max-width:100%}
+.panel .heat-scroll,.panel .matrix-wrap,.panel .tbl-wrap{overflow-x:auto;max-width:100%}
+.empty-note{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;padding:14px 12px;border:1px dashed var(--line);border-radius:12px;color:var(--muted);font-size:.9rem;background:var(--panel-2)}
+/* --- Buttons: one system --- */
+.btn,.btn-gold,.btn-ghost,.btn-danger,.btn-google{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border-radius:12px;font-weight:600;padding:.55rem 1.05rem}
+.btn-small{min-height:36px;padding:.32rem .75rem;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
+.mini-btn{min-height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px;padding:.32rem .7rem}
+.chip{min-height:40px;white-space:nowrap}
+.seg{display:inline-flex;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
+.seg::-webkit-scrollbar{display:none}
+.seg-btn{min-height:36px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center}
+.seg.seg-wrap{flex-wrap:wrap;overflow-x:visible}
+.cap-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
+.cap-chips::-webkit-scrollbar{display:none}
+.dash-chip{white-space:nowrap}
+:where(.btn,.btn-gold,.btn-ghost,.btn-danger,.btn-google,.btn-small,.mini-btn,.chip,.seg-btn,.icon-btn,.dash-collapse,.dash-chip):active{transform:scale(.97)}
+:where(button,a.btn,.chip,.seg-btn,[role="button"]):focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+button:disabled,.btn.disabled,[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+.btn.loading{pointer-events:none;opacity:.8}
+.btn.loading::after{content:"";width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;animation:folioSpin .7s linear infinite}
+@keyframes folioSpin{to{transform:rotate(360deg)}}
+/* --- Bottom nav: richer liquid glass + sliding pill --- */
+.samsung-bottom-capsule{-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(255,255,255,.05),0 18px 42px rgba(0,0,0,.38),var(--liquid-shadow),var(--liquid-edge-glow)}
+.samsung-dock-circle{-webkit-backdrop-filter:blur(26px) saturate(170%);backdrop-filter:blur(26px) saturate(170%);box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 18px 42px rgba(0,0,0,.38),var(--liquid-shadow),var(--liquid-edge-glow)}
+[data-theme="light"] .samsung-bottom-capsule,[data-theme="light"] .samsung-dock-circle{background:linear-gradient(180deg,rgba(255,255,255,.80),rgba(232,238,247,.66));border-color:rgba(15,23,42,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 16px 36px rgba(15,23,42,.22)}
+.samsung-bottom-capsule .mobile-nav-item{position:relative;z-index:1;transition:transform .15s ease}
+.samsung-bottom-capsule .mobile-nav-item.active{background:transparent;box-shadow:none}
+.samsung-bottom-capsule .mobile-nav-item:active{transform:scale(.96)}
+.samsung-bottom-capsule .mobile-nav-item.active span{font-weight:800}
+.dock-pill{position:absolute;left:0;top:0;border-radius:999px;background:var(--liquid-active-pill);box-shadow:0 0 0 1px var(--liquid-border),0 4px 16px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.40);transition:transform .25s ease,width .25s ease,height .25s ease,opacity .2s ease;pointer-events:none;z-index:0;opacity:0}
+[data-theme="light"] .dock-pill{background:rgba(255,255,255,.95);box-shadow:0 0 0 1px rgba(15,23,42,.10),0 6px 18px rgba(15,23,42,.18),inset 0 1px 0 #fff}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .samsung-bottom-capsule,.samsung-dock-circle{background:var(--panel)}
+}
+@media (prefers-reduced-motion: reduce){
+  .dock-pill{transition:none}
+  .samsung-bottom-capsule .mobile-nav-item{transition:none}
+}
