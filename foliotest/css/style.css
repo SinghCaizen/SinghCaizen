@@ -1901,3 +1901,24 @@ body{min-height:100dvh}
 [data-fade="r"]{-webkit-mask-image:linear-gradient(to right,#000 90%,transparent 100%);mask-image:linear-gradient(to right,#000 90%,transparent 100%)}
 [data-fade="l"]{-webkit-mask-image:linear-gradient(to left,#000 90%,transparent 100%);mask-image:linear-gradient(to left,#000 90%,transparent 100%)}
 [data-fade="lr"]{-webkit-mask-image:linear-gradient(to right,transparent 0,#000 6%,#000 94%,transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 6%,#000 94%,transparent 100%)}
+
+/* ===== v104 (2026-11-14, LILA): theme switch redesign + phone hiding fixes ===== */
+/* Dark/light toggle becomes a pill switch — ONLY this button; the privacy eye keeps its round style. */
+#themeBtn{width:62px;height:34px;border-radius:999px;position:relative;padding:0;flex:0 0 auto}
+#themeBtn::after{content:"";position:absolute;left:0;right:0;top:-5px;bottom:-5px}
+#themeBtn .th-ico{position:absolute;top:50%;transform:translateY(-50%);font-size:12px;line-height:1;opacity:.55;pointer-events:none}
+#themeBtn .th-sun{left:8px}
+#themeBtn .th-moon{right:8px}
+#themeBtn .th-knob{position:absolute;left:3px;top:50%;width:26px;height:26px;border-radius:50%;background:var(--text);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;transform:translate(0,-50%);transition:transform .25s cubic-bezier(.22,1,.36,1);pointer-events:none}
+[data-theme="dark"] #themeBtn .th-knob{transform:translate(30px,-50%)}
+/* Heatmap tile text ellipsizes inside its own tile instead of hard-clipping at the edge. */
+.tm-tile>span{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:640px){
+  #themeBtn{width:56px;height:32px}
+  #themeBtn .th-knob{width:24px;height:24px;font-size:12px}
+  [data-theme="dark"] #themeBtn .th-knob{transform:translate(26px,-50%)}
+  /* Card titles never cut with "..." on phones: the title wraps, the small subtitle takes its own line, control pills never compress. */
+  .panel-head h2{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
+  .panel-head .price-meta{flex:1 1 100%;order:6}
+  .panel-head .seg{flex:none}
+}

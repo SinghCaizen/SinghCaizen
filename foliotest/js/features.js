@@ -287,7 +287,7 @@ function perfChartSvg(vals, invVals, height) {
   const all = vals.concat(invVals);
   const min = Math.min(...all), max = Math.max(...all), rng = (max - min) || 1;
   const X = i => P + i * (W - 2 * P) / (vals.length - 1);
-  const Y = v => H - 22 - (v - min) / rng * (H - 40);
+  const Y = v => H - 22 - (v - min) / rng * (H - 62);
   const pts = vals.map((v, i) => X(i).toFixed(1) + "," + Y(v).toFixed(1));
   const area = "M" + pts[0].split(",")[0] + "," + (H - 22) + " L" + pts.join(" L") + " L" + pts[pts.length - 1].split(",")[0] + "," + (H - 22) + " Z";
   const inv = invVals.map((v, i) => X(i).toFixed(1) + "," + Y(v).toFixed(1)).join(" ");
@@ -343,18 +343,23 @@ function renderHeat(d) {
   }));
   const W = 1000, H = 300;
   const rects = tmLayout(rows, W, H);
+  const heatCw = el.clientWidth || 320, heatWh = (window.innerWidth <= 640 ? 260 : 300);
   el.innerHTML = '<div class="tm-wrap">' + rects.map(rc => {
     const v = heatMode === "pnl" ? rc.pnlPct : rc.dayPct;
     let bg, fg = "#ffffff";
     if (v === null || v === undefined || Math.abs(v) <= 0.01) { bg = "var(--panel-2)"; fg = "var(--text)"; }
     else if (v > 0) bg = "linear-gradient(135deg, #059669, #10b981)";
     else bg = "linear-gradient(135deg, #dc2626, #ef4444)";
-    const big = rc.w >= 120 && rc.h >= 56, mid = rc.w >= 78 && rc.h >= 40;
+    const pw = rc.w / W * heatCw, ph = rc.h / H * heatWh;
     const pctTxt = v === null || v === undefined ? "—" : pct(v) + (heatMode === "pnl" ? " overall" : " today");
-    return '<button type="button" class="tm-tile" data-heat="' + esc(rc.sym) + '" style="left:' + (rc.x / W * 100) + "%;top:" + (rc.y / H * 100) + "%;width:" + (rc.w / W * 100) + "%;height:" + (rc.h / H * 100) + "%;background:" + bg + ";color:" + fg + '">' +
-      '<span class="tm-sym" style="font-size:' + (big ? 14 : mid ? 12 : 10.5) + 'px">' + esc(rc.sym) + "</span>" +
-      (mid ? '<span class="tm-ltp">' + (rc.ltp !== null ? inr2(rc.ltp) : "—") + "</span>" : "") +
-      (big ? '<span class="tm-pct">' + pctTxt + "</span>" : "") + "</button>";
+    const symFont = pw >= 110 ? 14 : pw >= 72 ? 12 : 10.5;
+    const showSym = pw >= rc.sym.length * symFont * 0.62 + 16 && ph >= 20;
+    const showLtp = pw >= 64 && ph >= 38;
+    const showPct = pw >= pctTxt.length * 6.6 + 18 && ph >= 50;
+    return '<button type="button" class="tm-tile" data-heat="' + esc(rc.sym) + '" title="' + esc(rc.sym) + (v === null || v === undefined ? "" : " " + pctTxt) + '" style="left:' + (rc.x / W * 100) + "%;top:" + (rc.y / H * 100) + "%;width:" + (rc.w / W * 100) + "%;height:" + (rc.h / H * 100) + "%;background:" + bg + ";color:" + fg + '">' +
+      (showSym ? '<span class="tm-sym" style="font-size:' + symFont + 'px">' + esc(rc.sym) + "</span>" : "") +
+      (showLtp ? '<span class="tm-ltp">' + (rc.ltp !== null ? inr2(rc.ltp) : "—") + "</span>" : "") +
+      (showPct ? '<span class="tm-pct">' + pctTxt + "</span>" : "") + "</button>";
   }).join("") + "</div>";
   el.querySelectorAll("[data-heat]").forEach(b => b.addEventListener("click", () => openStock(b.dataset.heat)));
 }
@@ -5834,7 +5839,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v103";
+const FOLIO_VER = "Folio v104";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
