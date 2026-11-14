@@ -613,17 +613,31 @@ document.addEventListener("keydown", e => {
     if (pb) pb.click();
   }
 });
+function dockPillSync() {
+  try {
+    const cap = document.querySelector(".samsung-bottom-capsule"); if (!cap) return;
+    const act = cap.querySelector("[data-bnav].active");
+    let pill = cap.querySelector(".dock-pill");
+    if (!act) { if (pill) pill.style.opacity = "0"; return; }
+    if (!pill) { pill = document.createElement("span"); pill.className = "dock-pill"; pill.setAttribute("aria-hidden", "true"); cap.insertBefore(pill, cap.firstChild); }
+    pill.style.width = act.offsetWidth + "px"; pill.style.height = act.offsetHeight + "px";
+    pill.style.transform = "translate(" + act.offsetLeft + "px," + act.offsetTop + "px)";
+    pill.style.opacity = "1";
+  } catch (e) {}
+}
+window.addEventListener("resize", () => dockPillSync());
 setInterval(() => {
   if (!currentUser || document.hidden) return;
   if (window.__bnavSeen === folioView) return;
   window.__bnavSeen = folioView;
   document.querySelectorAll("[data-bnav]").forEach(b => b.classList.toggle("active", b.dataset.bnav === folioView));
+  dockPillSync();
 }, 1000);
 /* Bottom dock + top strip navigation: ONE delegated listener on the document,
    so the buttons work no matter where the dock HTML sits in the page. */
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-bnav]");
-  if (b) switchView(b.dataset.bnav);
+  if (b) { switchView(b.dataset.bnav); document.querySelectorAll("[data-bnav]").forEach(x => x.classList.toggle("active", x === b)); requestAnimationFrame(() => dockPillSync()); }
 });
 
 /* ---------- LW chart state (declared before the controls IIFE below) ---------- */
@@ -695,7 +709,9 @@ async function fetchOHLC(sym, range, interval) {
   const cached = lsCacheGet(key, 12 * 3600 * 1000);
   if (cached && cached.bars && cached.bars.length) return cached.bars;
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(normalizeTicker(sym)) + "?range=" + range + "&interval=" + interval + "&events=div,split";
-  const r0 = await fetchChartValidated(url, 7000);
+  let r0 = null;
+  try { r0 = await fetchChartValidated(url, 7000); } catch (e) { r0 = null; }
+  if (!r0 || !r0.indicators) return [];
   const q0 = (r0.indicators.quote && r0.indicators.quote[0]) || {};
   const bars = cleanOHLC(r0.timestamp || [], q0);
   lsCacheSet(key, { ts: Date.now(), bars: bars });
@@ -843,6 +859,7 @@ document.addEventListener("DOMContentLoaded", () => {
     catch (e) { toast("Copy is not available in this browser"); }
   });
   $("stockClose").addEventListener("click", () => $("stockModal").classList.add("hidden"));
+  const aboutCloseBtn = $("aboutClose"); if (aboutCloseBtn) aboutCloseBtn.addEventListener("click", () => { const am = $("aboutModal"); if (am) am.classList.add("hidden"); });
   $("stockModal").addEventListener("click", e => { if (e.target === $("stockModal")) $("stockModal").classList.add("hidden"); });
   document.querySelectorAll("#stockSeg .seg-btn").forEach(b => b.addEventListener("click", () => {
     stockRange = b.dataset.r;
@@ -2462,7 +2479,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v96";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v97";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2540,7 +2557,8 @@ window.closeCompanyModal = function () {
 document.addEventListener("click", e => {
   const t = e.target;
   if (!t || !t.closest) return;
-  if (t.closest("[data-close-modal]")) { e.stopPropagation(); window.closeCompanyModal(); }
+  const cmEl = t.closest("[data-close-modal]");
+  if (cmEl && cmEl.closest("#stockModal")) { e.stopPropagation(); window.closeCompanyModal(); }
 }, true);
 window.addEventListener("popstate", () => {
   const m = $("stockModal");
@@ -2883,7 +2901,9 @@ async function taFetchRange(sym, range, interval, byDay) {
   const cached = lsCacheGet(key, byDay ? 12 * 3600 * 1000 : 5 * 60 * 1000);
   if (cached && cached.bars && cached.bars.length) return cached.bars;
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(normalizeTicker(sym)) + "?range=" + range + "&interval=" + interval + "&events=div,split";
-  const r0 = await fetchChartValidated(url, 7000);
+  let r0 = null;
+  try { r0 = await fetchChartValidated(url, 7000); } catch (e) { r0 = null; }
+  if (!r0 || !r0.indicators) return [];
   const q0 = (r0.indicators.quote && r0.indicators.quote[0]) || {};
   const bars = cleanOHLC(r0.timestamp || [], q0, byDay);
   lsCacheSet(key, { ts: Date.now(), bars: bars });
@@ -4208,12 +4228,13 @@ dashPanels().forEach(p => {
   const head = p.querySelector(".panel-head"); if (!head || head.querySelector(".dash-collapse")) return;
   const key = dashKey(p);
   const btn = document.createElement("button");
-  btn.type = "button"; btn.className = "dash-collapse"; btn.setAttribute("aria-label", "Collapse or expand this card");
+  btn.type = "button"; btn.className = "dash-collapse"; btn.setAttribute("aria-label", "Collapse or expand this card"); btn.setAttribute("aria-expanded", saved[key] ? "false" : "true");
   btn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>'; btn.classList.toggle("collapsed", !!saved[key]);
   if (saved[key]) p.classList.add("collapsed");
   btn.addEventListener("click", () => {
     const now = p.classList.toggle("collapsed");
     btn.classList.toggle("collapsed", now);
+    btn.setAttribute("aria-expanded", now ? "false" : "true");
     let s2 = {}; try { s2 = JSON.parse(localStorage.getItem("folio_dash_collapse") || "{}"); } catch (e) {}
     s2[key] = now; try { localStorage.setItem("folio_dash_collapse", JSON.stringify(s2)); } catch (e) {}
   });
@@ -5779,7 +5800,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v96";
+const FOLIO_VER = "Folio v97";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -5905,8 +5926,11 @@ const FOLIO_VER = "Folio v96";
     }).join("");
   }
   const html = socialHTML();
-  document.querySelectorAll("[data-social-row]").forEach(el => { el.innerHTML = html; if (!html) el.style.display = "none"; });
-  document.querySelectorAll("[data-folio-ver]").forEach(el => { el.textContent = FOLIO_VER; });
+  const fillStatic = () => {
+    document.querySelectorAll("[data-social-row]").forEach(el => { el.innerHTML = html; if (!html) el.style.display = "none"; });
+    document.querySelectorAll("[data-folio-ver]").forEach(el => { el.textContent = FOLIO_VER; });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fillStatic); else fillStatic();
   document.addEventListener("click", e => { if (e.target.closest(".more-visit")) { const sh = $("moreSheet"); if (sh) sh.classList.add("hidden"); } });
 })();
 
