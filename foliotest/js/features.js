@@ -6053,7 +6053,7 @@ window.openShareSheet = function (opts) {
   if (!shareModLoading) {
     shareModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/share.js?v=1"; sc.async = true;
+      sc.src = "js/share.js?v=2"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("share module failed to load"));
       document.head.appendChild(sc);
     });

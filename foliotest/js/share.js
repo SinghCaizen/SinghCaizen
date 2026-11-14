@@ -262,7 +262,7 @@
      SHEET — DOM + CSS injected by this module only.
      ================================================================ */
   var CSS_TEXT = [
-    ".fsh-overlay{position:fixed;inset:0;z-index:1250;background:rgba(8,8,6,0.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box}",
+    ".fsh-overlay{position:fixed;inset:0;z-index:1450;background:rgba(8,8,6,0.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box}",
     ".fsh-overlay[hidden]{display:none!important}",
     ".fsh-sheet{background:var(--panel,#1b1a17);color:var(--text,#f2ead8);border:1px solid var(--line,#33302a);border-radius:18px;width:100%;max-width:520px;max-height:92dvh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,0,0,0.5);box-sizing:border-box;font-family:'Public Sans',system-ui,sans-serif;animation:fshIn .22s ease}",
     "@keyframes fshIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}",
@@ -298,7 +298,7 @@
     ".fsh-act.primary{grid-column:1/-1;background:var(--gold,#c9a227);border-color:var(--gold,#c9a227);color:#171408;font-weight:800;font-size:1rem}",
     ".fsh-act.primary:hover{background:var(--gold-soft,#e3c565)}",
     ".fsh-act[disabled]{opacity:.45;cursor:not-allowed}",
-    ".fsh-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--panel-2,#232019);color:var(--text,#f2ead8);border:1px solid var(--gold,#c9a227);border-radius:12px;padding:.7rem 1.1rem;z-index:1300;font-size:.92rem;box-shadow:0 12px 34px rgba(0,0,0,0.45);max-width:calc(100vw - 32px);text-align:center;font-family:'Public Sans',system-ui,sans-serif}",
+    ".fsh-toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--panel-2,#232019);color:var(--text,#f2ead8);border:1px solid var(--gold,#c9a227);border-radius:12px;padding:.7rem 1.1rem;z-index:1480;font-size:.92rem;box-shadow:0 12px 34px rgba(0,0,0,0.45);max-width:calc(100vw - 32px);text-align:center;font-family:'Public Sans',system-ui,sans-serif}",
     "@media (max-width:640px){",
     "  .fsh-overlay{align-items:flex-end;padding:0}",
     "  .fsh-sheet{max-width:none;border-radius:20px 20px 0 0;border-bottom:none;max-height:90dvh;animation:fshUp .24s ease}",
