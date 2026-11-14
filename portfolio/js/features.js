@@ -2444,7 +2444,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v91";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v92";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -5688,7 +5688,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v91";
+const FOLIO_VER = "Folio v92";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -5842,5 +5842,25 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
     const sym = b.dataset.sparkRetry;
     b.textContent = "Loading…";
     fetchOne(sym).then(r => { if (r) { prices[sym] = r; } try { renderWatch(); } catch (err) {} }).catch(() => { try { renderWatch(); } catch (err) {} });
+  });
+})();
+
+/* ================= v92: More button direct open + labeled social buttons ================= */
+(function () {
+  function openSheet(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    const sh = $("moreSheet");
+    if (!sh) return;
+    sh.classList.remove("hidden");
+    if (getComputedStyle(sh).display === "none") sh.style.display = "flex";
+  }
+  const b = $("dockMoreBtn");
+  if (b) b.addEventListener("click", openSheet);
+  document.querySelectorAll("[data-social-labeled]").forEach(el => {
+    el.innerHTML = SOCIAL_ORDER.map(k => {
+      const url = (SOCIAL_LINKS[k] || "").trim();
+      if (!url || url.indexOf("http") !== 0 || !SOCIAL_ICONS[k]) return "";
+      return '<a class="soc-pill" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" aria-label="Singh Caizen on ' + SOCIAL_NAMES[k] + '"><svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor" aria-hidden="true"><path d="' + SOCIAL_ICONS[k] + '"/></svg><span>' + SOCIAL_NAMES[k] + '</span></a>';
+    }).join("");
   });
 })();

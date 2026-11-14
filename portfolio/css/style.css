@@ -1710,3 +1710,14 @@ body.folio-ready .bar-fill,body.folio-ready .pnl-fill{animation:none !important}
 .hold-card{content-visibility:auto;contain-intrinsic-size:auto 150px}
 #watchListEl{padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
 @media (prefers-reduced-motion: reduce){.spark-skel{animation:none}}
+
+/* ===== v92: Singh Caizen block at the top of the More sheet ===== */
+.sc-block{text-align:center;padding:8px 0 4px}
+.sc-sheet-logo{height:46px;width:auto}
+.sc-visit-btn{display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:var(--gold,#c9a227);color:#171410;font-weight:800;font-size:15px;text-decoration:none;margin:10px 0 12px}
+.sc-visit-btn:active{transform:scale(.98)}
+.sc-social-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.soc-pill{display:flex;align-items:center;gap:9px;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;color:var(--text);text-decoration:none;font-weight:600;font-size:13.5px;background:var(--panel-2)}
+.soc-pill svg{flex-shrink:0}
+.soc-pill:active{transform:scale(.97)}
+@media (min-width:1024px){.more-sheet-card{width:380px;max-width:380px}}
