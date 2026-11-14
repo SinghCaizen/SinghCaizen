@@ -1888,3 +1888,16 @@ button:disabled,.btn.disabled,[aria-disabled="true"]{opacity:.55;cursor:not-allo
   .movers>*{flex:none}
   .mover-list{min-width:0}
 }
+
+/* ===== v101: safe-area hardening, strip scrollers, dvh (look unchanged) ===== */
+body{min-height:100dvh}
+.auth-wrap{min-height:100dvh}
+.topbar{padding-top:calc(.7rem + env(safe-area-inset-top, 0px))}
+.samsung-bottom-dock-wrap{bottom:calc(env(safe-area-inset-bottom, 0px) + 12px) !important}
+.tabs.top-liquid-nav-strip{scroll-snap-type:x proximity}
+.tabs.top-liquid-nav-strip .tab{scroll-snap-align:start}
+.dash-chips{scroll-snap-type:x proximity}
+.dash-chips>*{scroll-snap-align:start}
+[data-fade="r"]{-webkit-mask-image:linear-gradient(to right,#000 90%,transparent 100%);mask-image:linear-gradient(to right,#000 90%,transparent 100%)}
+[data-fade="l"]{-webkit-mask-image:linear-gradient(to left,#000 90%,transparent 100%);mask-image:linear-gradient(to left,#000 90%,transparent 100%)}
+[data-fade="lr"]{-webkit-mask-image:linear-gradient(to right,transparent 0,#000 6%,#000 94%,transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 6%,#000 94%,transparent 100%)}
