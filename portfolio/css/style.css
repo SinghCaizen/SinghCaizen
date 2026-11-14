@@ -772,14 +772,9 @@ body.privacy-on .stat-value,body.privacy-on .stat-sub,body.privacy-on #insAssets
 .wi-row{display:flex;gap:10px;flex-wrap:wrap}
 .wi-row label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);flex:1;min-width:110px}
 .wi-row input{padding:8px 10px}
-.bnav{display:none}
 .scuts-hint{font-size:12px;color:var(--muted)}
 @media (max-width:768px){
   body{padding-bottom:84px}
-  .bnav{display:flex;position:fixed;left:0;right:0;bottom:0;height:62px;z-index:30;background:color-mix(in srgb,var(--panel) 82%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid var(--line)}
-  .bnav button{flex:1;background:none;border:none;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:10.5px;cursor:pointer}
-  .bnav button.active{color:var(--text);font-weight:700}
-  .bnav-ic{font-size:19px;line-height:1}
   .modal{align-items:flex-end;padding:0}
   .modal-card{border-radius:22px 22px 0 0;max-height:92dvh;width:100%}
   #lwWrap{height:290px}
@@ -1959,3 +1954,10 @@ body{min-height:100dvh}
 @media (max-width:640px){
   #profileChip{padding:2px;border-radius:50%}
 }
+
+/* ===== v107 (2026-11-14): skip-boot (login never flashes when Skip password is ON) + password strength meter ===== */
+html.skipboot #authView{display:none!important}
+.pw-meter{margin:2px 0 6px}
+.pw-meter .pw-bar{display:block;height:5px;border-radius:99px;background:color-mix(in srgb,var(--text) 12%,transparent);overflow:hidden}
+.pw-meter .pw-fill{display:block;height:100%;width:0;border-radius:99px;background:#c9a227;transition:width .25s ease}
+.pw-meter .pw-note{display:block;font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.45}

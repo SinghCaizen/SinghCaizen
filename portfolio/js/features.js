@@ -622,6 +622,10 @@ window.__yahooSuggest = async function (q) {
   } catch (e) { return []; }
 };
 
+/* v107: href="#" links never navigate \u2014 no jump to top, no history entry,
+   Android Back stays sane. Their own click handlers still run as before. */
+document.addEventListener("click", e => { const a = e.target && e.target.closest ? e.target.closest('a[href="#"]') : null; if (a) e.preventDefault(); }, true);
+
 /* ---------- keyboard shortcuts + bottom nav (desktop & phone chrome) ---------- */
 document.addEventListener("keydown", e => {
   if (!currentUser) return;
@@ -635,14 +639,16 @@ document.addEventListener("keydown", e => {
   if (typing) return;
   const anyModal = document.querySelector(".modal:not(.hidden)");
   if (anyModal) return;
+  if (e.altKey) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() !== "k") return;
   if (e.key === "/" || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k")) {
     e.preventDefault();
     switchView("watchlist");
     setTimeout(() => { const i = $("watchInput"); if (i) i.focus(); }, 60);
   } else if (e.key.toLowerCase() === "n" || e.key.toLowerCase() === "a") {
     if (typeof openTxn === "function") openTxn("BUY");
-  } else if (["1", "2", "3", "4", "5", "6"].includes(e.key)) {
-    const views = ["dashboard", "holdings", "insights", "news", "watchlist", "profile"];
+  } else if (["1", "2", "3", "4", "5", "6", "7"].includes(e.key)) {
+    const views = ["dashboard", "holdings", "insights", "news", "watchlist", "profile", "history"];
     switchView(views[Number(e.key) - 1]);
   } else if (e.key.toLowerCase() === "m") {
     const pb = $("privacyBtn");
@@ -842,7 +848,8 @@ const WEB3_KEY = "94e01d94-8fae-4cdc-b9b9-716cf169d7dc";
 function renderIssueDiag() {
   const box = $("issueDiagList"); if (!box) return;
   const log = window.__folioErrLog || [];
-  box.textContent = log.length ? log.slice().reverse().map(en => String(en.t).slice(11, 19) + " \u00b7 " + en.kind + " \u00b7 " + en.message + (en.source ? " (" + en.source + ")" : "")).join("\n") : "No errors recorded this session.";
+  const info = "App version: " + FOLIO_VER + (FOLIO_BUILT ? " \u00b7 Built " + FOLIO_BUILT : "") + "\nBoot to dashboard: " + (window.__folioBootMs ? window.__folioBootMs + " ms (this open, this device)" : "\u2014") + "\n";
+  box.textContent = info + (log.length ? log.slice().reverse().map(en => String(en.t).slice(11, 19) + " \u00b7 " + en.kind + " \u00b7 " + en.message + (en.source ? " (" + en.source + ")" : "")).join("\n") : "No errors recorded this session.");
 }
 function openIssue() {
   $("issueModal").classList.remove("hidden");
@@ -2106,6 +2113,8 @@ async function vaultDerive(pass, saltBytes) {
 }
 function openVault(mode) {
   vaultMode = mode;
+  const vpm = $("vaultPwMeter"); if (vpm) vpm.classList.toggle("hidden", mode !== "export");
+  if (window.folioPwWire) window.folioPwWire("vaultPass", "vaultPwMeter");
   $("vaultTitle").textContent = mode === "export" ? "Download Encrypted Vault" : "Restore Encrypted Vault";
   $("vaultText").textContent = mode === "export"
     ? "Your complete Folio backup, encrypted with a passphrase only you know. Without the passphrase the file cannot be read by anyone — store both safely."
@@ -2136,6 +2145,7 @@ function wireVault() {
     e.preventDefault();
     const pass = $("vaultPass").value;
     const err = $("vaultError");
+    if (vaultMode === "export" && pass.length < 10) { err.textContent = "Passphrase must be at least 10 characters for a new vault \u2014 it is the only key to this backup."; return; }
     if (pass.length < 8) { err.textContent = "Passphrase must be at least 8 characters."; return; }
     err.textContent = "Working… (encryption takes a few seconds)";
     try {
@@ -2620,23 +2630,7 @@ openStock = function (sym) {
   return r;
 };
 
-/* ---------- liquid dock: profile circle shows her photo; top strip centres the active tab ---------- */
-let lastDpShown = "__init";
-const USER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg>';
-setInterval(() => {
-  const btn = $("bnavProfileBtn");
-  if (!btn || typeof state === "undefined" || !state) return;
-  const dp = (state.profile && state.profile.dp) || "";
-  if (dp === lastDpShown) return;
-  lastDpShown = dp;
-  btn.innerHTML = dp ? '<img src="' + dp + '" alt="Profile">' : USER_SVG;
-  const db = $("dockProfileBtn");
-  if (db) {
-    const im = $("dockProfileImg"), sv = $("dockProfileSvg"), lb = db.querySelector(".dock-circle-label");
-    if (dp) { if (im) { im.src = dp; im.classList.remove("hidden"); } if (sv) sv.classList.add("hidden"); if (lb) lb.classList.add("hidden"); }
-    else { if (im) im.classList.add("hidden"); if (sv) sv.classList.remove("hidden"); if (lb) lb.classList.remove("hidden"); }
-  }
-}, 2000);
+/* ---------- top strip: centre the active tab on select ---------- */
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => setTimeout(() => {
   const a = document.querySelector(".tab.active");
   if (a && a.scrollIntoView) a.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
@@ -5839,7 +5833,8 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v106";
+const FOLIO_VER = "Folio v" + (window.FOLIO_BUILD ? window.FOLIO_BUILD.version : "1.107.0");
+const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -5946,7 +5941,7 @@ const FOLIO_VER = "Folio v106";
         else if (act === "import") { const f = $("importFile"); if (f) f.click(); }
         else if (act === "backup") { switchView("profile"); setTimeout(() => { const b = $("vaultExportBtn"); if (b) b.scrollIntoView({ block: "center" }); }, 80); }
         else if (act === "help") { const h = $("helpModal"); if (h) h.classList.remove("hidden"); }
-        else if (act === "about") { const v = $("aboutVer"); if (v) v.textContent = "Version " + FOLIO_VER.replace("Folio ", ""); const a = $("aboutModal"); if (a) a.classList.remove("hidden"); }
+        else if (act === "about") { const v = $("aboutVer"); if (v) v.textContent = "Version " + FOLIO_VER.replace("Folio ", "") + (FOLIO_BUILT ? " \u00b7 Built " + FOLIO_BUILT : ""); const a = $("aboutModal"); if (a) a.classList.remove("hidden"); }
         else if (act === "logout" && typeof doLogout === "function") doLogout();
       }
     }
@@ -6289,7 +6284,8 @@ async function stockShareChipUpdate(sym) {
       ["header rect.top", tb ? Math.round(tb.getBoundingClientRect().top) + "px" : "n/a"],
       ["bottom nav rect.bottom", dock ? Math.round(dock.getBoundingClientRect().bottom) + "px (viewport " + window.innerHeight + ")" : "n/a"],
       ["theme-color meta", (document.querySelector('meta[name="theme-color"]') || {}).content || "n/a"],
-      ["app version", FOLIO_VER]
+      ["app version", FOLIO_VER + (FOLIO_BUILT ? " \u00b7 " + FOLIO_BUILT : "")],
+      ["boot to dashboard", window.__folioBootMs ? window.__folioBootMs + " ms (this open, this device)" : "\u2014"]
     ];
   }
   function openDiag() {
