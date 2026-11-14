@@ -407,7 +407,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const mo = new MutationObserver(() => {
       const u = $("e2eeUnlock"), s = $("e2eeSetup");
       if ((!u || u.classList.contains("hidden")) && (!s || s.classList.contains("hidden"))) {
-        if (typeof E2 !== "undefined" && E2.dek) setTimeout(maybeOfferQuick, 500);
+        if (typeof E2 !== "undefined" && E2.dek) {
+          if (window.e2eeSecRefresh) { try { e2eeSecRefresh(); } catch (e) {} }
+          setTimeout(maybeOfferQuick, 500);
+        }
       }
     });
     mo.observe(document.body, { attributes: true, attributeFilter: ["class"], subtree: true });
