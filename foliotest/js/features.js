@@ -5859,4 +5859,14 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
   }
   const b = $("dockMoreBtn");
   if (b) b.addEventListener("click", openSheet);
+  function fillSheetSocials() {
+    const el = document.querySelector("#moreSheet [data-social-row]");
+    if (!el || el.children.length) return;
+    el.innerHTML = SOCIAL_ORDER.map(k => {
+      const url = (SOCIAL_LINKS[k] || "").trim();
+      if (!url || url.indexOf("http") !== 0 || !SOCIAL_ICONS[k]) return "";
+      return '<a class="soc-btn" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" aria-label="Singh Caizen on ' + SOCIAL_NAMES[k] + '"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="' + SOCIAL_ICONS[k] + '"/></svg></a>';
+    }).join("");
+  }
+  document.addEventListener("click", e => { if (e.target.closest("#dockMoreBtn")) fillSheetSocials(); });
 })();
