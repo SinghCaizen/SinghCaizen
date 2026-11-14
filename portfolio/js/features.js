@@ -5834,7 +5834,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v101";
+const FOLIO_VER = "Folio v102";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -6116,6 +6116,7 @@ window.openShareSheet = function (opts) {
   shareModLoading.then(() => { if (window.FolioShare && window.FolioShare.open) window.FolioShare.open(opts); })
     .catch(() => { shareModLoading = null; toast("Share could not load — check your connection and try again."); });
 };
+
 document.addEventListener("click", e => {
   const b = e.target && e.target.closest ? e.target.closest("[data-fshare]") : null;
   if (b) { e.preventDefault(); window.openShareSheet({ type: "stock", symbol: b.getAttribute("data-fshare") }); }
