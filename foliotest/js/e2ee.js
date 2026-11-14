@@ -42,6 +42,7 @@ async function e2eeUnwrapFrom(wrap, secret) {
   try {
     const kek = await e2eeKek(secret, wrap.salt);
     const raw = await aesDec(kek, { iv: wrap.iv, data: wrap.data });
+    E2.dekRaw = raw; /* memory-only copy so Quick unlock can add a device-local wrap; cleared by e2eeLock/e2eeWipeForLock, never stored */
     E2.dek = await crypto.subtle.importKey("raw", raw, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
     return true;
   } catch (e) { return false; }
@@ -54,7 +55,7 @@ async function e2eeBuildPayload(stateObj) {
 }
 function e2eeActivate() { window.__e2eeActive = !!E2.dek; }
 function e2eeLock() {
-  E2.dek = null; E2.wraps = null; E2.pendingDoc = null; E2.pendingUser = null; E2.lastDoc = null; E2.setupFor = ""; E2.aadEmail = "";
+  E2.dek = null; E2.dekRaw = null; E2.wraps = null; E2.pendingDoc = null; E2.pendingUser = null; E2.lastDoc = null; E2.setupFor = ""; E2.aadEmail = "";
   window.__pendingPass = undefined; e2eeActivate();
   try { sessionStorage.removeItem("folio_e2ee_later"); } catch (e) {}
 }
@@ -65,7 +66,7 @@ window.e2eeWipeForLock = function () {
      until the gate is passed; the unlock that follows replaces it with
      a fresh decryption, and signing out wipes everything. */
   if (!window.__e2eeActive) return;
-  E2.dek = null; e2eeActivate();
+  E2.dek = null; E2.dekRaw = null; e2eeActivate();
   E2.pendingDoc = E2.lastDoc; E2.pendingUser = currentUser ? { email: currentUser.email, name: currentUser.name || "" } : null;
 };
 
@@ -80,7 +81,7 @@ async function e2eeHandleDoc(doc, user, mode) {
     if (await e2eeUnwrapFrom(E2.wraps.pw, window.__pendingPass)) { window.__pendingPass = undefined; await e2eeFinish(); return; }
   }
   const gateUp = $("gateView") && !$("gateView").classList.contains("hidden");
-  if (!gateUp) e2eeShowUnlock();
+  if (!gateUp) { if (window.quickGate) window.quickGate(); else e2eeShowUnlock(); }
 }
 window.e2eeHandleDoc = e2eeHandleDoc;
 async function e2eeFinish() {
@@ -149,6 +150,7 @@ function e2eeShowUnlock() {
     } catch (e) {}
     btn.disabled = false; btn.textContent = "Unlock";
     if (!ok) { if (!err.textContent) err.textContent = "That did not unlock your data. Check it and try again — nothing is deleted by trying."; return; }
+    if (document.activeElement && document.activeElement.blur) { try { document.activeElement.blur(); } catch (e) {} }
     m.classList.add("hidden");
     await e2eeFinish();
     e2eeSecRefresh();
@@ -232,6 +234,7 @@ async function e2eeCommitSetup(user, gen) {
     E2.aadEmail = user.email;
     try { localStorage.setItem("folio_pre_enc_backup", JSON.stringify({ email: user.email, state: state, ts: Date.now() })); } catch (e) {}
     E2.dek = await crypto.subtle.importKey("raw", gen.dekRaw, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    E2.dekRaw = gen.dekRaw;
     E2.wraps = gen.wraps; e2eeActivate();
     const payload = await e2eeBuildPayload(state);
     if (E2.mode === "demo") {
