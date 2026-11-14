@@ -138,6 +138,16 @@ function otpAuthUrl(secretBytes) {
   return "otpauth://totp/Folio:" + encodeURIComponent(currentUser.email) +
     "?secret=" + base32encode(secretBytes) + "&issuer=Folio&digits=6&period=30";
 }
+function ensureQrLib() {
+  return new Promise(res => {
+    if (typeof qrcode === "function") return res(true);
+    const sc = document.createElement("script");
+    sc.src = "assets/qrcode.min.js?v=1";
+    sc.onload = () => res(typeof qrcode === "function");
+    sc.onerror = () => res(false);
+    document.head.appendChild(sc);
+  });
+}
 function drawQr(canvas, text) {
   try {
     const qr = qrcode(0, "M"); qr.addData(text); qr.make();
@@ -309,7 +319,7 @@ function renderWz() {
     '<p id="wzError2" class="form-error"></p>' +
     '<button class="btn btn-gold btn-block" id="wzEnable" type="button">Turn ON 2FA</button>' +
     '<button class="mini-btn" id="wzCancel" type="button">Cancel setup</button>';
-  drawQr($("wzQr"), otpAuthUrl(wz.secret));
+  ensureQrLib().then(() => drawQr($("wzQr"), otpAuthUrl(wz.secret)));
   const keyText = base32encode(wz.secret);
   $("wzKey").textContent = keyText.replace(/(.{4})/g, "$1 ").trim();
   $("wzSeed").innerHTML = wz.phrase.split(" ").map((w, i) => '<span class="seed-word"><i>' + (i + 1) + '</i>' + esc(w) + '</span>').join("");
@@ -350,7 +360,7 @@ function totpShowQrAgain() {
       '<div class="dl-row"><button class="btn btn-small" id="mqCopy" type="button">Copy Key</button>' +
       '<button class="btn btn-small" id="mqDone" type="button">Done</button></div>' +
       '<p class="auth-note">Keep this key private — anyone with it can generate your codes.</p>';
-    drawQr($("mqQr"), otpAuthUrl(secret));
+    ensureQrLib().then(() => drawQr($("mqQr"), otpAuthUrl(secret)));
     $("mqCopy").addEventListener("click", () => copyText(keyText));
     $("mqDone").addEventListener("click", closeTotpModal);
   });

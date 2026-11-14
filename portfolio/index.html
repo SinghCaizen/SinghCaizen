@@ -3,6 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<script>
+/* Folio global error boundary: one failing widget must never take the app down silently. */
+window.__folioErrShown = false;
+function __folioShowErr() {
+  if (window.__folioErrShown) return; window.__folioErrShown = true;
+  var show = function () {
+    if (!document.body) return;
+    var b = document.createElement("div");
+    b.setAttribute("role", "alert");
+    b.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:3000;background:#1c1c22;color:#f2f2f2;border:1px solid #c9a227;border-radius:12px;padding:10px 14px;font:14px system-ui,sans-serif;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 10px 30px rgba(0,0,0,.45)";
+    var t = document.createElement("span"); t.textContent = "Something went wrong in a part of Folio. Your data is safe.";
+    var r = document.createElement("button"); r.type = "button"; r.textContent = "Reload";
+    r.style.cssText = "background:#c9a227;color:#171410;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer";
+    r.addEventListener("click", function () { location.reload(); });
+    var x = document.createElement("button"); x.type = "button"; x.textContent = "\u2715"; x.setAttribute("aria-label", "Dismiss");
+    x.style.cssText = "background:none;border:none;color:#f2f2f2;font-size:15px;cursor:pointer;padding:4px";
+    x.addEventListener("click", function () { b.remove(); window.__folioErrShown = false; });
+    b.appendChild(t); b.appendChild(r); b.appendChild(x); document.body.appendChild(b);
+  };
+  if (document.body) show(); else document.addEventListener("DOMContentLoaded", show);
+}
+window.addEventListener("error", function () { __folioShowErr(); });
+window.addEventListener("unhandledrejection", function () { __folioShowErr(); });
+</script>
 <meta name="referrer" content="no-referrer">
 <title>FOLIO — Portfolio Tracker | A Singh Caizen Product</title>
 <meta name="description" content="Folio — a private portfolio tracker for Indian stocks, by Singh Caizen. Add your stocks manually, see live profit and loss. No broker connection needed.">
@@ -16,7 +40,7 @@
 <link rel="apple-touch-icon" href="assets/folio-icon.svg?v=57">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://api.allorigins.win https://api.codetabs.com https://api.cors.lol https://corsproxy.io https://api.rss2json.com https://api.web3forms.com https://raw.githubusercontent.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://news.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/style.css?v=85">
+<link rel="stylesheet" href="css/style.css?v=86">
 <style>
 #splash{position:fixed;inset:0;z-index:2000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease}
 html[data-theme="light"] #splash{background:#f6f1e7}
@@ -816,13 +840,12 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <script src="assets/firebase-app-compat.js?v=1"></script>
 <script src="assets/firebase-auth-compat.js?v=1"></script>
 <script src="assets/firebase-firestore-compat.js?v=1"></script>
-<script src="assets/qrcode.min.js?v=1"></script>
 <script src="js/firebase-config.js?v=8"></script>
 <script src="js/stocks.js?v=23"></script>
-<script src="js/app.js?v=55"></script>
-<script src="js/profile.js?v=14"></script>
+<script src="js/app.js?v=56"></script>
+<script src="js/profile.js?v=15"></script>
 <script src="js/e2ee.js?v=5"></script>
-<script src="js/features.js?v=90"></script>
+<script src="js/features.js?v=91"></script>
 <div class="samsung-bottom-dock-wrap" aria-label="Bottom Navigation">
   <nav class="samsung-bottom-capsule">
     <button type="button" class="mobile-nav-item" data-bnav="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/></svg><span>Home</span></button>

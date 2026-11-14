@@ -1697,3 +1697,16 @@ tr.deal-big td{font-weight:600}
 .foot-social{justify-content:center}
 .foot-sc-disclaimer{font-size:12.5px;color:var(--muted,#8a8a8a);margin-top:8px}
 .view{padding-bottom:calc(124px + env(safe-area-inset-bottom, 0px)) !important}
+
+/* ===== v91: spark states, first-paint-only animations, list rendering, watchlist clearance ===== */
+.spark-skel{display:block;width:56px;height:20px;border-radius:6px;background:linear-gradient(100deg,var(--panel-2) 40%,var(--line) 50%,var(--panel-2) 60%);background-size:200% 100%;animation:folioShimmer 1.15s linear infinite}
+@keyframes folioShimmer{from{background-position:180% 0}to{background-position:-80% 0}}
+.spark-nodata{font-size:10.5px;color:var(--muted,#8a8a8a);white-space:nowrap}
+.spark-retry{font-size:10.5px;color:var(--muted,#8a8a8a);background:none;border:none;cursor:pointer;text-decoration:underline;padding:6px 2px;white-space:nowrap}
+body.folio-ready .hold-card{animation:none !important}
+body.folio-ready #donut{animation:none !important}
+body.folio-ready .bar-fill,body.folio-ready .pnl-fill{animation:none !important}
+.watchlist-row{content-visibility:auto;contain-intrinsic-size:auto 64px}
+.hold-card{content-visibility:auto;contain-intrinsic-size:auto 150px}
+#watchListEl{padding-bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
+@media (prefers-reduced-motion: reduce){.spark-skel{animation:none}}

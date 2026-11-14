@@ -12,14 +12,14 @@
    Only Instagram is filled in — that profile is live and verified.
    ================================================================ */
 const SOCIAL_LINKS = {
-  rumble: "",
+  rumble: "https://rumble.com/user/singhcaizen",
   instagram: "https://www.instagram.com/singhcaizen",
-  x: "",
-  facebook: "",
-  telegram: "",
+  x: "https://x.com/singhcaizen",
+  facebook: "https://www.facebook.com/singhcaizen",
+  telegram: "https://t.me/singhcaizen",
   whatsapp: "",
-  linkedin: "",
-  threads: ""
+  linkedin: "https://www.linkedin.com/company/singhcaizen",
+  threads: "https://www.threads.net/@singhcaizen"
 };
 const SOCIAL_NAMES = { rumble: "Rumble", instagram: "Instagram", x: "X", facebook: "Facebook", telegram: "Telegram", whatsapp: "WhatsApp Channel", linkedin: "LinkedIn", threads: "Threads" };
 const SOCIAL_ORDER = ["rumble", "instagram", "x", "facebook", "telegram", "whatsapp", "linkedin", "threads"];
@@ -612,7 +612,9 @@ document.addEventListener("keydown", e => {
   }
 });
 setInterval(() => {
-  if (!currentUser) return;
+  if (!currentUser || document.hidden) return;
+  if (window.__bnavSeen === folioView) return;
+  window.__bnavSeen = folioView;
   document.querySelectorAll("[data-bnav]").forEach(b => b.classList.toggle("active", b.dataset.bnav === folioView));
 }, 1000);
 /* Bottom dock + top strip navigation: ONE delegated listener on the document,
@@ -1279,7 +1281,7 @@ function fmtDate(ms) {
   return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 function crores(raw) {
-  if (typeof raw !== "number") return "—";
+  if (typeof raw !== "number" || !isFinite(raw)) return "—";
   return "₹" + Math.round(raw / 1e7).toLocaleString("en-IN") + " Cr";
 }
 
@@ -2442,7 +2444,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v90";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v91";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2743,9 +2745,9 @@ function renderWlBar() {
   }
   bar.innerHTML = state.watchlists.map(w =>
     '<button type="button" class="wl-pill' + (w.id === state.activeWatchlistId ? " active" : "") + '" data-wlswitch="' + w.id + '">' + esc(w.name) + ' <span class="wl-count">' + w.items.length + "</span></button>").join("") +
-    '<span class="wl-actions"><button type="button" class="wl-act" data-wlnew="1" title="Create a new watchlist">➕ New</button>' +
-    '<button type="button" class="wl-act" data-wlrename="1" title="Rename this watchlist">✏️</button>' +
-    '<button type="button" class="wl-act danger" data-wldel="1" title="Delete this watchlist">🗑️</button></span>';
+    '<span class="wl-actions"><button type="button" class="wl-act" data-wlnew="1" aria-label="Create a new watchlist">➕ New</button>' +
+    '<button type="button" class="wl-act" data-wlrename="1" aria-label="Rename this watchlist">✏️</button>' +
+    '<button type="button" class="wl-act danger" data-wldel="1" aria-label="Delete this watchlist">🗑️</button></span>';
   bar.querySelectorAll("[data-wlswitch]").forEach(b => b.addEventListener("click", () => switchWl(b.dataset.wlswitch)));
   const nb = bar.querySelector("[data-wlnew]"); if (nb) nb.addEventListener("click", newWl);
   const rb = bar.querySelector("[data-wlrename]"); if (rb) rb.addEventListener("click", renameWl);
@@ -3670,7 +3672,7 @@ function insxRenderScore() {
     (sorted.length ? "" : '<p class="empty-note">No stock matches your search.</p>') +
     '<p class="insx-note">Tap a column heading to sort. CAGR covers the shares you still hold; XIRR covers every rupee in and out of that stock.</p>';
   const q = $("insxScoreQ");
-  if (q) q.addEventListener("input", () => { insXQuery = q.value.trim().toLowerCase(); const pos = q.selectionStart; insxRenderScore(); const q2 = $("insxScoreQ"); if (q2) { q2.focus(); try { q2.setSelectionRange(pos, pos); } catch (e) {} } });
+  if (q) q.addEventListener("input", folioDeb(() => { insXQuery = q.value.trim().toLowerCase(); const pos = q.selectionStart; insxRenderScore(); const q2 = $("insxScoreQ"); if (q2) { q2.focus(); try { q2.setSelectionRange(pos, pos); } catch (e) {} } }, 250));
 }
 /* ---------- wiring: info buttons, legend chips, calendar, sorting ---------- */
 document.addEventListener("click", e => {
@@ -4314,7 +4316,7 @@ function dashHero() {
         const n = Math.min(...series.map(s => s.pts.length));
         const vals = []; for (let i = 0; i < n; i++) vals.push(series.reduce((a, s) => a + s.qty * s.pts[s.pts.length - n + i].c, 0));
         const min = Math.min(...vals), max = Math.max(...vals), W = 120, H = 26;
-        const pts = vals.map((v, i) => (i / (vals.length - 1) * W).toFixed(1) + "," + (H - 3 - (max > min ? (v - min) / (max - min) : 0.5) * (H - 6)).toFixed(1)).join(" ");
+        const pts = vals.map((v, i) => (1 + i / (vals.length - 1) * (W - 2)).toFixed(1) + "," + (H - 3 - (max > min ? (v - min) / (max - min) : 0.5) * (H - 6)).toFixed(1)).join(" ");
         const up = vals[vals.length - 1] >= vals[0];
         sp.innerHTML = '<svg class="hero-spark" viewBox="0 0 ' + W + " " + H + '"><polyline points="' + pts + '" fill="none" stroke="' + (up ? "var(--gain)" : "var(--loss)") + '" stroke-width="1.8"/></svg>';
       } else sp.innerHTML = "";
@@ -4344,7 +4346,7 @@ async function pulseLoad() {
     const last = pts[pts.length - 1].c, prev = pts[pts.length - 2].c;
     const day = prev ? (last / prev - 1) * 100 : 0;
     const sp = pts.slice(-22), min = Math.min(...sp.map(p => p.c)), max = Math.max(...sp.map(p => p.c));
-    const line = sp.map((p, j) => (j / (sp.length - 1) * 74).toFixed(1) + "," + (20 - (max > min ? (p.c - min) / (max - min) : 0.5) * 17).toFixed(1)).join(" ");
+    const line = sp.map((p, j) => (1 + j / (sp.length - 1) * 72).toFixed(1) + "," + (20 - (max > min ? (p.c - min) / (max - min) : 0.5) * 17).toFixed(1)).join(" ");
     html += '<div class="pulse-cell"><span class="pulse-name">' + IDX[i][1] + '</span><b>' + last.toLocaleString("en-IN", { maximumFractionDigits: 2 }) + '</b><span class="' + (day >= 0 ? "pos" : "neg") + '">' + (day >= 0 ? "▲ +" : "▼ ") + day.toFixed(2) + '%</span><svg class="pulse-spark" viewBox="0 0 74 22"><polyline points="' + line + '" fill="none" stroke="' + (day >= 0 ? "var(--gain)" : "var(--loss)") + '" stroke-width="1.6"/></svg></div>';
   });
   if (idxBox) idxBox.innerHTML = html || '<p class="empty-note">Index data could not be loaded right now.</p>';
@@ -4379,7 +4381,7 @@ function holdEnsure() {
   const list = $("holdingsList");
   if (list) { panel.insertBefore(bar, list); const tw = document.createElement("div"); tw.id = "holdTableWrap"; tw.className = "hidden"; list.after(tw); }
   bar.querySelectorAll("[data-hview]").forEach(b => b.addEventListener("click", () => { state.profile.holdView = b.dataset.hview; persist(); holdApply(); }));
-  $("holdQ").addEventListener("input", e => { holdQuery = e.target.value.trim().toLowerCase(); holdApply(); });
+  $("holdQ").addEventListener("input", folioDeb(e => { holdQuery = e.target.value.trim().toLowerCase(); holdApply(); }, 250));
   $("holdSortSel").addEventListener("change", e => { holdSort = e.target.value; holdApply(); });
   $("holdGroupTgl").addEventListener("change", e => { holdGroup = e.target.checked; holdApply(); });
 }
@@ -4421,7 +4423,7 @@ function holdApply() {
         const last30 = pts.slice(-30), min = Math.min(...pts.map(p => p.c)), max = Math.max(...pts.map(p => p.c));
         const cur = last30[last30.length - 1].c;
         const mn = Math.min(...last30.map(p => p.c)), mx = Math.max(...last30.map(p => p.c));
-        const line = last30.map((p, i) => (i / (last30.length - 1) * 84).toFixed(1) + "," + (22 - (mx > mn ? (p.c - mn) / (mx - mn) : 0.5) * 19).toFixed(1)).join(" ");
+        const line = last30.map((p, i) => (1 + i / (last30.length - 1) * 82).toFixed(1) + "," + (22 - (mx > mn ? (p.c - mn) / (mx - mn) : 0.5) * 19).toFixed(1)).join(" ");
         const pos = max > min ? (cur - min) / (max - min) * 100 : 50;
         const div = document.createElement("div"); div.className = "hold-spark";
         div.innerHTML = '<svg viewBox="0 0 84 24"><polyline points="' + line + '" fill="none" stroke="var(--muted)" stroke-width="1.6"/></svg>' +
@@ -4576,7 +4578,7 @@ function platPalette() {
   pop.innerHTML = '<div class="cmdk-card"><input id="cmdkInput" type="text" placeholder="Search a stock, or jump to a tab or card…" aria-label="Command palette"><div id="cmdkList" class="cmdk-list"></div></div>';
   document.body.appendChild(pop);
   pop.addEventListener("click", e => { if (e.target === pop) pop.classList.add("hidden"); });
-  $("cmdkInput").addEventListener("input", e => cmdkRender(e.target.value.trim().toLowerCase()));
+  $("cmdkInput").addEventListener("input", folioDeb(e => cmdkRender(e.target.value.trim().toLowerCase()), 200));
   $("cmdkInput").addEventListener("keydown", e => {
     if (e.key === "Escape") pop.classList.add("hidden");
     if (e.key === "Enter") { const first = pop.querySelector("[data-cmdk]"); if (first) first.click(); }
@@ -5077,7 +5079,7 @@ document.addEventListener("focusin", e => { const t = e.target.tagName; if (t ==
 document.addEventListener("focusout", () => setTimeout(() => { const t = (document.activeElement || {}).tagName; if (t !== "INPUT" && t !== "TEXTAREA" && t !== "SELECT") document.body.classList.remove("kb-open"); }, 150));
 const _skelSeen = new WeakMap();
 setInterval(() => {
-  if (!currentUser) return;
+  if (!currentUser || document.hidden) return;
   document.querySelectorAll("#view-dashboard .skel, #view-insights .skel, #view-news .skel, #view-insights .insx-skel").forEach(sk => {
     if (sk.offsetParent === null) return;
     const host = sk.parentElement; if (!host) return;
@@ -5111,6 +5113,7 @@ if (window.FOLIO_WORKER_URL) { try { PROXIES.unshift(u => window.FOLIO_WORKER_UR
   d.id = "sysPerf"; d.className = "price-meta"; d.style.marginTop = "4px";
   hi.after(d);
   setInterval(() => {
+    const pv = $("view-profile"); if (pv && pv.classList.contains("hidden")) return;
     const P = window.__folioPerf; if (!P || !P.paint) { d.textContent = ""; return; }
     const td = P.data ? Math.round(P.data - P.tap) : null, tp = Math.round(P.paint - P.tap);
     d.textContent = "Last stock open (" + P.sym + "): " + (td !== null ? "data " + td + " ms · " : "") + "chart painted " + tp + " ms after tap" + (tp < 400 ? " · from cache" : "");
@@ -5250,7 +5253,7 @@ function folioEnsureDealsView() {
     '<div id="dealWatchChips" class="stat-chips"></div><div id="dealSpotted"></div><div id="dealTable" style="margin-top:10px"></div>' +
     '<p class="price-meta">These are reported deals only, as published by the exchange. A name in the watch list is matched against the client name printed in the deal.</p></div>';
   document.querySelector("main").appendChild(sec);
-  $("dealSearch").addEventListener("input", folioRenderDeals);
+  $("dealSearch").addEventListener("input", folioDeb(folioRenderDeals, 250));
   $("dealThr").addEventListener("change", () => { const p = folioProf(); p.dealThresholdCr = Number($("dealThr").value) || 1; persist(); folioRenderDeals(); folioRenderDealsCard(); });
   $("dealWatchAdd").addEventListener("click", () => {
     const v = $("dealWatchIn").value.trim(); if (!v) return;
@@ -5568,7 +5571,7 @@ function folio52Bar(sym, row) {
   const meta = mc && mc.meta;
   const p = priceOf(sym);
   if (!meta || !meta.fiftyTwoWeekHigh || !meta.fiftyTwoWeekLow || meta.fiftyTwoWeekHigh <= meta.fiftyTwoWeekLow || !p || !p.price) {
-    if (!_wl52Kicked[sym]) { _wl52Kicked[sym] = 1; fetchMaster(sym).then(() => { try { folioWatchDecorate(); } catch (e) {} }); }
+    if (!_wl52Kicked[sym]) { _wl52Kicked[sym] = 1; fetchMaster(sym).then(() => { try { folioWatchDecorate(); } catch (e) {} }).catch(() => {}); }
     return;
   }
   const pos = Math.max(0, Math.min(100, (p.price - meta.fiftyTwoWeekLow) / (meta.fiftyTwoWeekHigh - meta.fiftyTwoWeekLow) * 100));
@@ -5598,11 +5601,11 @@ function folioWatchDecorate() {
     if (!row.querySelector(".w52")) folio52Bar(sym, row);
     if (!row.querySelector("[data-wadd]")) {
       const bell = document.createElement("button");
-      bell.className = "watch-x w-bell"; bell.dataset.wbell = sym; bell.type = "button"; bell.title = "Price alert for " + sym;
+      bell.className = "watch-x w-bell"; bell.dataset.wbell = sym; bell.type = "button"; bell.setAttribute("aria-label", "Price alert for " + sym);
       bell.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg>';
       row.insertBefore(bell, row.querySelector(".watch-x"));
       const add = document.createElement("button");
-      add.className = "watch-x w-add"; add.dataset.wadd = sym; add.type = "button"; add.title = "Add " + sym + " to portfolio"; add.textContent = "+ Add";
+      add.className = "watch-x w-add"; add.dataset.wadd = sym; add.type = "button"; add.setAttribute("aria-label", "Add " + sym + " to portfolio"); add.textContent = "+ Add";
       row.insertBefore(add, row.querySelector(".watch-x"));
     }
   });
@@ -5685,7 +5688,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v90";
+const FOLIO_VER = "Folio v91";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -5814,4 +5817,30 @@ const FOLIO_VER = "Folio v90";
   document.querySelectorAll("[data-social-row]").forEach(el => { el.innerHTML = html; if (!html) el.style.display = "none"; });
   document.querySelectorAll("[data-folio-ver]").forEach(el => { el.textContent = FOLIO_VER; });
   document.addEventListener("click", e => { if (e.target.closest(".more-visit")) { const sh = $("moreSheet"); if (sh) sh.classList.add("hidden"); } });
+})();
+
+/* ================= v91: debounce helper, first-paint flag, render-on-switch, spark retry ================= */
+function folioDeb(fn, ms) { let t = null; return function () { const a = arguments, self = this; clearTimeout(t); t = setTimeout(() => fn.apply(self, a), ms); }; }
+(function () {
+  const _ra91 = renderAll;
+  let painted = false;
+  renderAll = function () { const r = _ra91.apply(this, arguments); if (!painted) { painted = true; setTimeout(() => { try { document.body.classList.add("folio-ready"); } catch (e) {} }, 900); } return r; };
+  const _sv91 = switchView;
+  switchView = function (name) {
+    const r = _sv91.apply(this, arguments);
+    try {
+      if (name === "dashboard") renderDashboard();
+      else if (name === "holdings") renderHoldings();
+      else if (name === "watchlist") renderWatch();
+      else if (name === "history") renderHistory();
+    } catch (e) {}
+    return r;
+  };
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-spark-retry]");
+    if (!b) return;
+    const sym = b.dataset.sparkRetry;
+    b.textContent = "Loading…";
+    fetchOne(sym).then(r => { if (r) { prices[sym] = r; } try { renderWatch(); } catch (err) {} }).catch(() => { try { renderWatch(); } catch (err) {} });
+  });
 })();

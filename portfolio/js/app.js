@@ -154,7 +154,7 @@ function cloudSave() {
       if (syncFrozen || !currentUser || currentUser.email !== uid || fb.docRef !== ref) return; /* account changed mid-flight: drop the write */
       const ts = Date.now();
       const payload = (window.__e2eeActive && window.e2eeBuildPayload) ? await window.e2eeBuildPayload(state) : { state: state, updatedAt: ts };
-      ref.set(payload).then(() => { lastAppliedCloudTs = Math.max(lastAppliedCloudTs, ts); }).catch(e => { console.warn("save failed", e); if (!window.__saveFailAt || Date.now() - window.__saveFailAt > 30000) { window.__saveFailAt = Date.now(); toast("Couldn't save your last change to the cloud — please check your connection."); } });
+      ref.set(payload).then(() => { lastAppliedCloudTs = Math.max(lastAppliedCloudTs, ts); }).catch(e => { if (!window.__saveFailAt || Date.now() - window.__saveFailAt > 30000) { window.__saveFailAt = Date.now(); toast("Couldn't save your last change to the cloud — please check your connection."); } });
     }, 400);
   } else { localSave(); }
 }
@@ -370,7 +370,8 @@ function attachSuggest(input) {
     box.classList.remove("hidden");
     box.querySelectorAll(".suggest-item").forEach(b => b.addEventListener("mousedown", e => { e.preventDefault(); pick(Number(b.dataset.i)); }));
   }
-  input.addEventListener("input", render);
+  let sugT = null;
+  input.addEventListener("input", () => { clearTimeout(sugT); sugT = setTimeout(render, 250); });
   input.addEventListener("focus", render);
   input.addEventListener("blur", () => setTimeout(close, 150));
   input.addEventListener("keydown", e => {
@@ -530,7 +531,16 @@ async function refreshPrices() {
   savePricesLS();
   const any = Object.keys(prices).length;
   $("priceMeta").textContent = any ? "Prices updated " + new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) + " · free data, ~15 min delay" : "Prices could not load right now — check internet, or set a price manually from a holding's ⋯ menu.";
-  renderAll();
+  renderAfterPrices();
+}
+function renderAfterPrices() {
+  const v = document.querySelector(".view:not(.hidden)");
+  const name = v ? v.id.replace("view-", "") : "";
+  if (name === "dashboard") renderDashboard();
+  else if (name === "holdings") renderHoldings();
+  else if (name === "watchlist") renderWatch();
+  else if (name === "history") renderHistory();
+  else renderAll();
 }
 function priceOf(sym) { return prices[sym] || null; }
 /* Instant paint: last session's prices load from this device first (stale-
@@ -606,7 +616,7 @@ function animNum(el, val, fmt) {
 function sparkSvg(closes) {
   if (!closes || closes.length < 2) return "";
   const min = Math.min(...closes), max = Math.max(...closes), rng = (max - min) || 1;
-  const W = 100, H = 30, P = 2;
+  const W = 100, H = 30, P = 4;
   const pts = closes.map((v, i) => (P + i * (W - 2 * P) / (closes.length - 1)).toFixed(1) + "," + (H - P - (v - min) / rng * (H - 2 * P)).toFixed(1)).join(" ");
   const up = closes[closes.length - 1] >= closes[0];
   const col = up ? "var(--gain)" : "var(--loss)";
@@ -838,22 +848,22 @@ function renderWatch() {
   $("watchEmpty").classList.toggle("hidden", rows.length > 0);
   el.innerHTML = rows.map(w => {
     let p = priceOf(w.sym);
-    if (!p) {
-      try {
-        const hc = (typeof histCache !== "undefined" && histCache[w.sym + "|1y"]) || (typeof histLsGet === "function" && histLsGet(w.sym + "|1y"));
-        if (hc && hc.points && hc.points.length) {
-          const pts = hc.points, last = pts[pts.length - 1], prev = pts.length > 1 ? pts[pts.length - 2] : null;
-          p = { price: last.c, prevClose: prev ? prev.c : null, spark: pts.slice(-30).map(x => x.c) };
-        }
-      } catch (e) {}
-    }
+    try {
+      const hc = (typeof histCache !== "undefined" && histCache[w.sym + "|1y"]) || (typeof histLsGet === "function" && histLsGet(w.sym + "|1y"));
+      if (hc && hc.points && hc.points.length) {
+        if (typeof histCache !== "undefined" && !histCache[w.sym + "|1y"]) histCache[w.sym + "|1y"] = hc;
+        const pts = hc.points, last = pts[pts.length - 1], prev = pts.length > 1 ? pts[pts.length - 2] : null;
+        if (!p) p = { price: last.c, prevClose: prev ? prev.c : null, spark: pts.slice(-30).map(x => x.c) };
+        else if (!p.spark || p.spark.length < 2) p = Object.assign({}, p, { spark: pts.slice(-30).map(x => x.c) });
+      }
+    } catch (e) {}
     const chg = p && p.prevClose ? (p.price - p.prevClose) / p.prevClose * 100 : null;
     return `<div class="watchlist-row" data-wrow="${esc(w.sym)}">
-      <button class="star-btn ${w.fav ? "fav" : ""}" data-star="${esc(w.sym)}" type="button" title="Favourite">${w.fav ? "★" : "☆"}</button>
+      <button class="star-btn ${w.fav ? "fav" : ""}" data-star="${esc(w.sym)}" type="button" aria-label="Favourite">${w.fav ? "★" : "☆"}</button>
       <div class="w-id"><span class="w-sym">${esc(w.sym)}</span><span class="w-name">${esc(w.name)}</span></div>
-      <div class="watch-spark">${p && p.spark && p.spark.length > 1 ? sparkSvg(p.spark) : ""}</div>
+      <div class="watch-spark">${p && p.spark && p.spark.length > 1 ? sparkSvg(p.spark) : p ? '<span class="spark-nodata">No chart data</span>' : refreshing ? '<span class="spark-skel" aria-hidden="true"></span>' : '<button type="button" class="spark-retry" data-spark-retry="' + esc(w.sym) + '" aria-label="Retry chart for ' + esc(w.sym) + '">No chart data \u21BB</button>'}</div>
       <div class="w-price" data-pflash="${esc(w.sym)}"><span class="wp-price">${p ? inr2(p.price) : "—"}</span>${chg !== null ? `<span class="wp-pill ${chg >= 0 ? "gain" : "loss"}">${chg >= 0 ? "▲" : "▼"} ${pct(chg)}</span>` : `<span class="wp-pill flat">—</span>`}</div>
-      <button class="watch-x" data-unwatch="${esc(w.sym)}" type="button" title="Remove from watchlist">🗑️</button>
+      <button class="watch-x" data-unwatch="${esc(w.sym)}" type="button" aria-label="Remove from watchlist">🗑️</button>
     </div>`;
   }).join("");
   el.querySelectorAll("[data-star]").forEach(b => b.addEventListener("click", e => {
@@ -1272,7 +1282,6 @@ document.addEventListener("DOMContentLoaded", () => {
           if (data && data.v === 2 && window.e2eeHandleDoc) { window.e2eeHandleDoc(data, { email: user.email, name: user.displayName || "" }, "cloud"); return; }
           enterApp({ email: user.email, name: user.displayName || "" }, data && data.state ? data.state : emptyState());
         }, err => {
-          console.warn("snapshot error", err);
           try {
             authError("Couldn't load your data. Check your connection, then tap Retry.");
             let rb = $("authRetryBtn");
