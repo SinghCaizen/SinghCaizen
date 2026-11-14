@@ -2220,3 +2220,5 @@ body{background-image:none}
 ::selection{background:var(--accent-soft);color:var(--text)}
 @media (min-width:821px){ .bt-head,.bt-main{grid-template-columns:88px minmax(0,1.6fr) 84px 138px 88px 108px 104px 60px} .bt-main>*{min-width:0} }
 .bt-row input,.bt-row select{min-width:0}
+.topbar::after{display:none}
+@media (min-width:821px){ .bt-head,.bt-main{grid-template-columns:88px minmax(0,1.6fr) 84px 138px 88px 108px 96px 68px} }
