@@ -5987,7 +5987,10 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
 })();
 
 /* ================= v94: PWA update toast + Install App row ================= */
-(function () {
+/* v99 fix: this must run AFTER the DOM exists \u2014 the app scripts sit before the
+   More-sheet markup in index.html, so an immediate run found no #moreInstallRow
+   and returned early, leaving the Install row unwired since v94. */
+function folioV94Install() {
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
     let shown = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
@@ -6046,7 +6049,8 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
       m.classList.remove("hidden");
     }
   });
-})();
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", folioV94Install); else folioV94Install();
 
 /* ===== v95 Phase 4: Enter submits popups whose fields are not inside a <form>
    (security wizards, confirm/prompt dialogs). Guarded: plain text inputs only,
