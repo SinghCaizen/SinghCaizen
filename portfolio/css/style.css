@@ -1865,3 +1865,6 @@ button:disabled,.btn.disabled,[aria-disabled="true"]{opacity:.55;cursor:not-allo
 @media(min-width:900px){
   #view-insights>.panel:has(#mrBox){grid-column:1/-1}
 }
+
+/* ===== v98: outperformer share chip on the stock sheet ===== */
+#stockAlphaChip{margin:0 0 10px;border-color:rgba(212,175,55,.55)}

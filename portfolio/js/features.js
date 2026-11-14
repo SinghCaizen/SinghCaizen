@@ -2479,7 +2479,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v97";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v98";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2579,6 +2579,7 @@ openStock = function (sym) {
     const hd = $("taHud"); if (hd) hd.textContent = "Drag on the chart to inspect any day";
   } catch (e) {}
   const r = _openStockPrev(sym);
+  try { stockShareChipUpdate(sym); } catch (e) {}
   try { history.pushState({ folioStock: 1 }, ""); } catch (e) {}
   return r;
 };
@@ -2674,7 +2675,7 @@ async function renderInsPeriod() {
     const best = ok.length ? ok.reduce((a, b) => b.change > a.change ? b : a) : null;
     const worst = ok.length ? ok.reduce((a, b) => b.change < a.change ? b : a) : null;
     mov.innerHTML = '<div class="stat-chips">' +
-      (best ? '<span class="chip">Top Contributor <b>' + esc(best.row.sym) + '</b> <span class="' + (best.change >= 0 ? "gain" : "loss") + '">' + inr(best.change) + " (" + pct(best.pct) + ")</span></span>" : "") +
+      (best ? '<span class="chip">Top Contributor <b>' + esc(best.row.sym) + '</b> <span class="' + (best.change >= 0 ? "gain" : "loss") + '">' + inr(best.change) + " (" + pct(best.pct) + ')</span> <button type="button" class="mini-btn" data-fshare="' + esc(best.row.sym) + '" aria-label="Share ' + esc(best.row.sym) + ' card">↗ Share</button></span>' : "") +
       (worst && worst !== best ? '<span class="chip">Biggest Drag <b>' + esc(worst.row.sym) + '</b> <span class="' + (worst.change >= 0 ? "gain" : "loss") + '">' + inr(worst.change) + " (" + pct(worst.pct) + ")</span></span>" : "") +
       '</div><p class="price-meta">In the selected ' + tfName + ' window.</p>';
   }
@@ -4736,7 +4737,7 @@ function platEnsure() {
     wrap.innerHTML = '<button type="button" class="mini-btn" id="platReportBtn">📄 Report</button><button type="button" class="mini-btn" id="platShareBtn">🖼 Share Card</button>';
     rb.after(wrap);
     $("platReportBtn").addEventListener("click", platReport);
-    $("platShareBtn").addEventListener("click", platShareCard);
+    $("platShareBtn").addEventListener("click", () => window.openShareSheet({ type: "summary" }));
   }
   const tb = $("themeBtn"); if (tb && !tb.getAttribute("aria-label")) tb.setAttribute("aria-label", "Switch light or dark theme");
   const pb = $("privacyBtn"); if (pb && !pb.getAttribute("aria-label")) pb.setAttribute("aria-label", "Privacy mode — hide amounts");
@@ -5800,7 +5801,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v97";
+const FOLIO_VER = "Folio v98";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -6042,3 +6043,77 @@ document.addEventListener("keydown", e => {
   e.preventDefault();
   prim[0].click();
 });
+
+
+/* ================= SHARE CARDS (v98): lazy-loaded share.js + entry points ================= */
+let shareModLoading = null;
+window.openShareSheet = function (opts) {
+  opts = opts || {};
+  if (window.FolioShare && window.FolioShare.open) { window.FolioShare.open(opts); return; }
+  if (!shareModLoading) {
+    shareModLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = "js/share.js?v=2"; sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("share module failed to load"));
+      document.head.appendChild(sc);
+    });
+  }
+  shareModLoading.then(() => { if (window.FolioShare && window.FolioShare.open) window.FolioShare.open(opts); })
+    .catch(() => { shareModLoading = null; toast("Share could not load — check your connection and try again."); });
+};
+document.addEventListener("click", e => {
+  const b = e.target && e.target.closest ? e.target.closest("[data-fshare]") : null;
+  if (b) { e.preventDefault(); window.openShareSheet({ type: "stock", symbol: b.getAttribute("data-fshare") }); }
+});
+const stockShareBtnEl = $("stockShareBtn");
+if (stockShareBtnEl) stockShareBtnEl.addEventListener("click", () => window.openShareSheet({ type: "stock", symbol: activeModalSymbol || undefined }));
+const stockAlphaChipEl = $("stockAlphaChip");
+if (stockAlphaChipEl) stockAlphaChipEl.addEventListener("click", () => window.openShareSheet({ type: "stock", symbol: stockAlphaChipEl.dataset.sym || activeModalSymbol || undefined }));
+let stockChipTok = 0;
+async function stockShareChipUpdate(sym) {
+  const chip = $("stockAlphaChip"); if (!chip) return;
+  const tok = ++stockChipTok;
+  chip.classList.add("hidden");
+  try {
+    const base = baseTicker(sym);
+    const d = enriched();
+    const row = d.rows.find(r => baseTicker(r.sym) === base);
+    if (!row || row.ltp === null) return;
+    const tf = insTf || "ALL";
+    const niftyFor = async daysBack => {
+      try {
+        const h = await fetchHistory("^NSEI", "1y");
+        if (!h || !h.points.length) return null;
+        const pts = h.points;
+        if (daysBack === 1) { const a = pts[pts.length - 2], b = pts[pts.length - 1]; return a && b ? (b.c - a.c) / a.c * 100 : null; }
+        const since = Date.now() - daysBack * 86400000;
+        let sp = null;
+        for (const p of pts) { if (p.t <= since) sp = p.c; else break; }
+        if (sp === null) sp = pts[0].c;
+        return sp ? (pts[pts.length - 1].c - sp) / sp * 100 : null;
+      } catch (e) { return null; }
+    };
+    let sPct = null, nRet = null;
+    if (tf === "1D") { sPct = row.prevClose ? (row.ltp - row.prevClose) / row.prevClose * 100 : null; nRet = await niftyFor(1); }
+    else if (tf === "ALL") { sPct = row.pnlPct; nRet = await niftyFor(365); }
+    else {
+      const days = INS_DAYS[tf]; if (!days) return;
+      const since = Date.now() - days * 86400000;
+      const h = await fetchHistory(row.sym, "1y").catch(() => null);
+      if (!h || !h.points.length) return;
+      let sp = null;
+      for (const p of h.points) { if (p.t <= since) sp = p.c; else break; }
+      if (sp === null) sp = h.points[0].c;
+      sPct = sp ? (row.ltp - sp) / sp * 100 : null;
+      nRet = await niftyFor(days);
+    }
+    if (tok !== stockChipTok) return;
+    if (sPct === null || nRet === null || !isFinite(sPct) || !isFinite(nRet)) return;
+    const alpha = sPct - nRet;
+    if (alpha <= 0) return;
+    const tfName = { "1D": "today", "1W": "1 week", "1M": "1 month", "3M": "3 months", "6M": "6 months", "1Y": "1 year", "ALL": "all time" }[tf] || tf;
+    chip.textContent = "\u2605 Outperforming NIFTY 50 by " + pct(alpha) + " (" + tfName + ") \u2014 tap to share its card";
+    chip.dataset.sym = row.sym;
+    chip.classList.remove("hidden");
+  } catch (e) {}
+}
