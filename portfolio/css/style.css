@@ -1873,3 +1873,18 @@ button:disabled,.btn.disabled,[aria-disabled="true"]{opacity:.55;cursor:not-allo
 @media (min-width:1024px){
   .more-sheet-card{width:min(620px,94vw);max-width:620px;border-radius:18px}
 }
+
+/* ===== v100: Portfolio panel head on phone + movers stack + meta never vertical ===== */
+.head-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;min-width:0}
+#priceMeta,#updAgo{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.plat-btns{display:inline-flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+@media (max-width:760px){
+  .panel-head:has(.head-actions){flex-wrap:wrap}
+  .head-actions{flex:1 1 100%;margin-top:.45rem}
+  #priceMeta{flex:1 1 8rem}
+}
+@media (max-width:640px){
+  .movers{display:block;overflow:visible;scroll-snap-type:none;padding-bottom:0}
+  .movers>*{flex:none}
+  .mover-list{min-width:0}
+}
