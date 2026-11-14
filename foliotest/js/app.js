@@ -168,6 +168,7 @@ function setAuthMode(m) {
   $("tabSignup").classList.toggle("active", m === "signup");
   $("authSubmit").textContent = m === "login" ? "Login" : "Create Account";
   $("authName").closest("label").style.display = m === "signup" ? "block" : "none";
+  $("authPass").autocomplete = m === "signup" ? "new-password" : "current-password";
 }
 function authError(msg) {
   $("authError").textContent = msg || "";
@@ -272,6 +273,7 @@ function needsGate() {
 function showGate() {
   $("authView").classList.add("hidden"); $("appView").classList.add("hidden");
   $("gateView").classList.remove("hidden");
+  setTimeout(() => { const gp = $("gatePass"); if (gp) try { gp.focus(); } catch (e) {} }, 60);
   $("gateError").textContent = ""; $("gateCode").value = ""; $("gatePass").value = "";
   $("gateAltForm").classList.add("hidden");
 }

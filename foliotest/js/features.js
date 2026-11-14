@@ -787,8 +787,14 @@ drawStock = async function () { await _drawStockBase(); try { await renderTA(); 
 
 /* ---------- report issue ---------- */
 const WEB3_KEY = "94e01d94-8fae-4cdc-b9b9-716cf169d7dc";
+function renderIssueDiag() {
+  const box = $("issueDiagList"); if (!box) return;
+  const log = window.__folioErrLog || [];
+  box.textContent = log.length ? log.slice().reverse().map(en => String(en.t).slice(11, 19) + " \u00b7 " + en.kind + " \u00b7 " + en.message + (en.source ? " (" + en.source + ")" : "")).join("\n") : "No errors recorded this session.";
+}
 function openIssue() {
   $("issueModal").classList.remove("hidden");
+  renderIssueDiag();
   if (currentUser && !$("issueEmail").value) $("issueEmail").value = currentUser.email;
   if (currentUser && currentUser.name && !$("issueName").value) $("issueName").value = currentUser.name;
 }
@@ -807,6 +813,7 @@ async function submitIssue(e) {
         name: $("issueName").value.trim(),
         email: $("issueEmail").value.trim(),
         message: $("issueMsg").value.trim(),
+        diagnostics: JSON.stringify(window.__folioErrLog || []).slice(0, 3000),
         page: location.href
       })
     });
@@ -828,6 +835,13 @@ document.addEventListener("DOMContentLoaded", () => {
   $("issueClose").addEventListener("click", () => $("issueModal").classList.add("hidden"));
   $("issueModal").addEventListener("click", e => { if (e.target === $("issueModal")) $("issueModal").classList.add("hidden"); });
   $("issueForm").addEventListener("submit", submitIssue);
+  const dcBtn = $("issueDiagCopy");
+  if (dcBtn) dcBtn.addEventListener("click", async () => {
+    const log = window.__folioErrLog || [];
+    const txt = log.length ? JSON.stringify(log, null, 1) : "No errors recorded this session.";
+    try { await navigator.clipboard.writeText(txt); toast("Diagnostics copied"); }
+    catch (e) { toast("Copy is not available in this browser"); }
+  });
   $("stockClose").addEventListener("click", () => $("stockModal").classList.add("hidden"));
   $("stockModal").addEventListener("click", e => { if (e.target === $("stockModal")) $("stockModal").classList.add("hidden"); });
   document.querySelectorAll("#stockSeg .seg-btn").forEach(b => b.addEventListener("click", () => {
@@ -5988,3 +6002,19 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
     }
   });
 })();
+
+/* ===== v95 Phase 4: Enter submits popups whose fields are not inside a <form>
+   (security wizards, confirm/prompt dialogs). Guarded: plain text inputs only,
+   never the stock sheet, exactly one visible primary button in that popup. ===== */
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter" || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (!t || t.tagName !== "INPUT" || t.form) return;
+  if (["checkbox", "radio", "file", "hidden", "submit", "button"].includes(t.type)) return;
+  const m = t.closest(".modal");
+  if (!m || m.id === "stockModal" || m.classList.contains("hidden")) return;
+  const prim = [...m.querySelectorAll(".btn-gold")].filter(b => !b.disabled && b.offsetParent !== null);
+  if (prim.length !== 1) return;
+  e.preventDefault();
+  prim[0].click();
+});

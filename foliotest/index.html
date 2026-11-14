@@ -4,28 +4,71 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <script>
-/* Folio global error boundary: one failing widget must never take the app down silently. */
-window.__folioErrShown = false;
-function __folioShowErr() {
-  if (window.__folioErrShown) return; window.__folioErrShown = true;
+/* Folio error boundary (v95): log everything to an in-app diagnostics list (last 20,
+   Report Issue can show and copy it); show the banner ONLY for a real crash, once per
+   distinct error per session, never over sign-in / unlock / another popup. Benign
+   categories never trigger it: ResizeObserver warnings, cancelled requests (AbortError),
+   failed optional fetches (the section shows its own Retry), browser-extension errors,
+   detail-free "Script error.", and service-worker/cache errors. */
+window.__folioErrLog = [];
+window.__folioErrSeen = {};
+function __folioLogErr(kind, msg, src, stack) {
+  var entry = { t: new Date().toISOString(), kind: kind, message: String(msg || ""), source: String(src || ""), stack: stack ? String(stack).slice(0, 1200) : "" };
+  try { console.error("[Folio] " + kind + ": " + entry.message, entry.source || "", entry.stack || ""); } catch (e) {}
+  window.__folioErrLog.push(entry);
+  if (window.__folioErrLog.length > 20) window.__folioErrLog.splice(0, window.__folioErrLog.length - 20);
+}
+function __folioIgnorable(msg, src, name) {
+  var m = String(msg || ""), sc = String(src || "");
+  if (name === "AbortError" || /aborterror|the user aborted|signal is aborted/i.test(m)) return true;
+  if (/resizeobserver loop/i.test(m)) return true;
+  if (/chrome-extension:|moz-extension:/i.test(sc) || /chrome-extension:|moz-extension:/i.test(m)) return true;
+  if (m === "Script error." || m === "Script error") return true;
+  if (/service ?worker|cachestorage|cache storage/i.test(m)) return true;
+  if (/failed to fetch|networkerror|load failed|network request failed/i.test(m)) return true;
+  return false;
+}
+function __folioBlocked() {
+  var a = document.getElementById("authView"), g = document.getElementById("gateView");
+  if (a && !a.classList.contains("hidden")) return true;
+  if (g && !g.classList.contains("hidden")) return true;
+  return !!document.querySelector(".modal:not(.hidden)");
+}
+function __folioShowErr(key) {
+  if (window.__folioErrSeen[key]) return; window.__folioErrSeen[key] = true;
+  if (__folioBlocked()) return;
   var show = function () {
-    if (!document.body) return;
+    if (!document.body || document.getElementById("folioErrBanner")) return;
     var b = document.createElement("div");
-    b.setAttribute("role", "alert");
-    b.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:3000;background:#1c1c22;color:#f2f2f2;border:1px solid #c9a227;border-radius:12px;padding:10px 14px;font:14px system-ui,sans-serif;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 10px 30px rgba(0,0,0,.45)";
+    b.id = "folioErrBanner"; b.setAttribute("role", "alert");
+    b.style.cssText = "position:fixed;top:calc(env(safe-area-inset-top, 0px) + 10px);left:50%;transform:translateX(-50%);z-index:1240;background:#1c1c22;color:#f2f2f2;border:1px solid #c9a227;border-radius:12px;padding:10px 14px;font:14px system-ui,sans-serif;display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:min(92vw, 420px);box-sizing:border-box;box-shadow:0 10px 30px rgba(0,0,0,.45)";
     var t = document.createElement("span"); t.textContent = "Something went wrong in a part of Folio. Your data is safe.";
+    t.style.cssText = "flex:1 1 180px;white-space:normal;word-break:break-word;line-height:1.35";
     var r = document.createElement("button"); r.type = "button"; r.textContent = "Reload";
-    r.style.cssText = "background:#c9a227;color:#171410;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer";
+    r.style.cssText = "background:#c9a227;color:#171410;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;min-height:40px";
     r.addEventListener("click", function () { location.reload(); });
     var x = document.createElement("button"); x.type = "button"; x.textContent = "\u2715"; x.setAttribute("aria-label", "Dismiss");
-    x.style.cssText = "background:none;border:none;color:#f2f2f2;font-size:15px;cursor:pointer;padding:4px";
-    x.addEventListener("click", function () { b.remove(); window.__folioErrShown = false; });
+    x.style.cssText = "background:none;border:none;color:#f2f2f2;font-size:15px;cursor:pointer;padding:8px;min-width:40px;min-height:40px";
+    x.addEventListener("click", function () { b.remove(); });
     b.appendChild(t); b.appendChild(r); b.appendChild(x); document.body.appendChild(b);
+    setTimeout(function () { if (b.parentNode) b.remove(); }, 8000);
   };
   if (document.body) show(); else document.addEventListener("DOMContentLoaded", show);
 }
-window.addEventListener("error", function () { __folioShowErr(); });
-window.addEventListener("unhandledrejection", function () { __folioShowErr(); });
+window.addEventListener("error", function (e) {
+  var msg = (e && e.message) || "";
+  var src = e && e.filename ? e.filename + ":" + (e.lineno || "") : "";
+  __folioLogErr("error", msg, src, e && e.error && e.error.stack);
+  if (__folioIgnorable(msg, src, e && e.error && e.error.name)) return;
+  __folioShowErr(msg + "@" + src);
+});
+window.addEventListener("unhandledrejection", function (e) {
+  var r = e && e.reason;
+  var msg = (r && (r.message || String(r))) || "Unhandled rejection";
+  __folioLogErr("rejection", msg, "", r && r.stack);
+  if (__folioIgnorable(msg, "", r && r.name)) return;
+  __folioShowErr("rej:" + msg);
+});
 </script>
 <meta name="referrer" content="no-referrer">
 <title>FOLIO — Portfolio Tracker | A Singh Caizen Product</title>
@@ -92,14 +135,14 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 
     <form id="authForm" autocomplete="off">
       <label>Your name <span class="opt">(only for sign up)</span>
-        <input type="text" id="authName" placeholder="e.g. Lila">
+        <input type="text" id="authName" placeholder="e.g. Lila" autocomplete="name" enterkeyhint="next">
       </label>
       <label>Email
-        <input type="email" id="authEmail" placeholder="you@example.com" required>
+        <input type="email" id="authEmail" placeholder="you@example.com" required autocomplete="email" inputmode="email" enterkeyhint="next">
       </label>
       <label>Password
         <span class="pass-wrap">
-          <input type="password" id="authPass" placeholder="Minimum 6 characters" required minlength="6">
+          <input type="password" id="authPass" placeholder="Minimum 6 characters" required minlength="6" autocomplete="current-password" enterkeyhint="go">
           <button type="button" id="passEye" class="eye-btn" title="Show or hide password">👁</button>
         </span>
       </label>
@@ -131,10 +174,10 @@ html[data-theme="light"] .splash-logo.dark{display:none}
     </div>
     <form id="gateForm" autocomplete="off">
       <label>Your password (only to unlock your secret key on this device)
-        <input type="password" id="gatePass" autocomplete="current-password">
+        <input type="password" id="gatePass" autocomplete="current-password" enterkeyhint="go">
       </label>
       <label>6-digit code from your authenticator app
-        <input type="text" id="gateCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+        <input type="text" id="gateCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" enterkeyhint="go">
       </label>
       <button type="submit" class="btn btn-gold btn-block">Verify &amp; Enter</button>
       <p id="gateError" class="form-error"></p>
@@ -146,7 +189,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
     </div>
     <form id="gateAltForm" class="hidden" autocomplete="off">
       <label><span id="gateAltLabel">Recovery code</span>
-        <input type="text" id="gateAltInput" placeholder="">
+        <input type="text" id="gateAltInput" placeholder="" enterkeyhint="go">
       </label>
       <button type="submit" class="btn btn-block">Verify</button>
       <p id="gateAltError" class="form-error"></p>
@@ -707,6 +750,10 @@ html[data-theme="light"] .splash-logo.dark{display:none}
       <button type="submit" class="btn btn-gold btn-block">Send Report</button>
       <p class="auth-note">Your report goes straight to the Singh Caizen inbox. You can also write to <a href="mailto:singhcaizen@outlook.in">singhcaizen@outlook.in</a>.</p>
     </form>
+    <div class="issue-diag">
+      <div class="issue-diag-head"><span>Diagnostics — recent errors on this device</span><button type="button" id="issueDiagCopy" class="mini-btn">Copy</button></div>
+      <div id="issueDiagList" class="issue-diag-list">No errors recorded this session.</div>
+    </div>
   </div>
 </div>
 
