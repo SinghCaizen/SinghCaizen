@@ -1,0 +1,13 @@
+{
+  "name": "Folio — Portfolio Tracker",
+  "short_name": "Folio",
+  "description": "A private portfolio tracker for Indian stocks. A Singh Caizen Product.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0f2234",
+  "theme_color": "#0f2234",
+  "icons": [
+    { "src": "assets/folio-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
