@@ -6322,8 +6322,7 @@ async function stockShareChipUpdate(sym) {
 
 /* ---------- v108: header search + alerts bell (dot = a real target/SL hit right now) ---------- */
 (function () {
-  const sb = $("folioSearchBtn"), bb = $("folioBellBtn"), dot = $("folioBellDot");
-  if (sb) sb.addEventListener("click", () => { switchView("watchlist"); setTimeout(() => { const i = $("watchInput"); if (i) i.focus(); }, 60); });
+  const bb = $("folioBellBtn"), dot = $("folioBellDot");
   function bellSync() {
     if (!dot) return;
     let hit = false;
@@ -6336,3 +6335,472 @@ async function stockShareChipUpdate(sym) {
   if (bb) bb.addEventListener("click", () => { switchView("insights"); [150, 500, 1000, 1800].forEach(ms => setTimeout(() => { const el = $("insSignals"); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); } }, ms)); });
   setInterval(() => { if (currentUser && !document.hidden) bellSync(); }, 4000);
 })();
+
+/* ================= v109: PROFESSIONAL ANALYTICS (additive) =================
+   Engine: js/analytics.js (pure maths) in a Web Worker, fallback main thread.
+   Basis: the SAME aligned series as Period Performance (insxBuildSeries). */
+INSX_INFO.reportcard = "Report Card: five rule-based grades for your portfolio — Returns, Risk control, Diversification, Consistency and Momentum. Each grade comes from fixed, published rules applied to your own numbers (the rules are in the PDF methodology). It is a mirror of shape and behaviour, never buy or sell advice.";
+INSX_INFO.rolling = "Rolling returns: your portfolio's time-weighted return over the last 1, 3, 6 and 12 months, built by chaining daily returns. Time-weighted means deposits and withdrawals do not inflate or deflate it — it measures the portfolio itself, not your timing.";
+INSX_INFO.calendar = "Calendar-year returns: the time-weighted return earned inside each calendar year, chained from daily returns. A part-year is labelled with the number of trading days it covers.";
+INSX_INFO.distribution = "Return distribution: how your daily returns are spread out. The histogram counts days in each return band. Skew tells the shape: positive skew means occasional big up days dominate; negative skew means occasional big down days dominate.";
+INSX_INFO.sharpe = "Sharpe ratio: return earned per unit of total swing. (Average daily return − daily risk-free rate) divided by the daily standard deviation, annualised with √252. Above 1 is generally considered efficient; below 0 means the swings were not rewarded.";
+INSX_INFO.sortino = "Sortino ratio: like Sharpe, but only DOWNWARD swings count as risk. Upside jumps do not punish the score. (Average daily return − daily risk-free rate) divided by downside deviation, annualised.";
+INSX_INFO.calmar = "Calmar ratio: annualised return divided by the worst peak-to-trough fall (maximum drawdown). It answers: how much return do I get for the deepest pain I had to sit through?";
+INSX_INFO.beta = "Beta: how much your portfolio moves when the benchmark moves. Beta 1 = moves with the benchmark; 1.2 = about 20% more; 0.7 = about 30% less. From the covariance of your daily returns with the benchmark's, divided by the benchmark's variance.";
+INSX_INFO.alpha = "Jensen's alpha: the return left over after allowing for the benchmark's move and your beta — annualised. Positive alpha means the portfolio did better than its market exposure alone would explain. It is an estimate from past data, not a skill certificate.";
+INSX_INFO.capture = "Capture ratios: on days the benchmark rose, what share of that rise did you capture (up-capture)? On days it fell, what share of the fall did you take (down-capture)? Up above 100 with down below 100 is the classic defensive-offensive shape.";
+INSX_INFO.varhist = "Historical VaR and CVaR (95%): from your ACTUAL daily returns of the last year — no curve fitting. VaR is the loss level that was exceeded on only 5% of days. CVaR is the average loss on those worst 5% of days. The rupee figures use today's portfolio value. This differs from the Risk Metrics card above, which uses a formula-based (parametric) estimate.";
+INSX_INFO.drawdowns = "Drawdown: the fall from a previous peak value. Maximum = the deepest fall in the window; Current = how far below the latest peak you sit today; Longest = the most trading days spent below a peak before recovering it.";
+INSX_INFO.hhi = "Herfindahl index (HHI): the sum of squared weights of your holdings (each weight as a fraction). 1.0 means everything in one stock. Effective number of stocks = 1 ÷ HHI — the number of equal-sized holdings your spread behaves like.";
+INSX_INFO.riskcontrib = "Risk contribution: how much of the portfolio's total swing comes from each stock — weight alone does not decide it; a small but wild stock can contribute more risk than a large calm one. The contributions add up to 100%.";
+INSX_INFO.deepdive = "Stock deep-dive: one row per holding from free daily price data — momentum, RSI, volatility, beta, position in the 52-week range, distance from the 20/50/200-day averages and from your own average cost. PE, PB, ROE, debt and margins are NOT shown: Yahoo's fundamentals feed is locked for browser apps, so they are not available in free data. Average volume uses the same daily data as the chart terminal.";
+INSX_INFO.flags = "Worth reviewing flags are neutral, rule-based observations — never buy or sell advice. Rules: Below 200-day average · More than 30% below your average cost · Near 52-week low (bottom 10% of the range) · Unusually high volatility (above 60% a year) · Thin volume (average under 1,00,000 shares a day).";
+INSX_INFO.trades2 = "Trades: statistics of your CLOSED trades, matched first-in-first-out (the same matching as the Tax section). Win rate = winning trades out of all closed trades. Profit factor = total gains divided by total losses. Average-down count = buys made below your then average cost in that stock.";
+INSX_INFO.stress = "Stress test (estimate): if the benchmark fell 10% or 20%, each stock is assumed to move by its own beta times the fall, and the results are added by weight. It is a ruler, not a forecast — real crashes do not move in straight lines, and betas change.";
+INSX_INFO.montecarlo = "Monte Carlo simulation: thousands of possible futures are built by reshuffling YOUR OWN past daily returns (bootstrap), starting from today's value. The bands show the middle ranges of those futures. A simulation, not a prediction — the future is not obliged to resemble the shuffled past.";
+INSX_INFO.benchmark = "Benchmark: the index your beta, alpha, correlation and capture ratios are measured against. Only indices whose free data actually loads are offered; if one does not load, it is removed from this list rather than faked.";
+GLOSSARY.push(
+  ["twr", "Time-Weighted Return (TWR)", "The return of the portfolio itself, with the effect of your deposits and withdrawals removed by chaining daily returns. Use it to judge the portfolio; use XIRR to judge your personal money experience, which includes your timing."],
+  ["sharpe", "Sharpe, Sortino & Calmar", "Three return-per-unit-of-risk ratios. Sharpe divides excess return by ALL swings; Sortino only by downward swings; Calmar divides annualised return by the worst peak-to-trough fall. Higher is smoother for the return earned — from past data only."],
+  ["betaalpha", "Beta & Alpha", "Beta measures how strongly your portfolio follows the benchmark index (1 = in step). Alpha is the extra return left after allowing for that following. Both are estimates from the last year of daily data and they drift over time."],
+  ["var", "VaR & CVaR (95%)", "Value at Risk: on 95% of past days, the one-day loss was smaller than this. CVaR: on the worst 5% of days, this was the AVERAGE one-day loss. Historical VaR reads your real past returns; parametric VaR assumes a bell curve."],
+  ["hhi", "HHI & Effective Number of Stocks", "The Herfindahl index adds up the squared weights of your holdings — nearer 1 means concentrated. 1 ÷ HHI gives the effective number of stocks: how many equal holdings your spread behaves like."],
+  ["capture", "Up-Capture & Down-Capture", "Up-capture: of the benchmark's average rise on its up days, how much you captured. Down-capture: of its average fall on down days, how much you took. Above-100 up with below-100 down is the shape most investors hope for."],
+  ["montecarlo", "Monte Carlo Simulation", "A computer reshuffles your own past daily returns thousands of times to sketch possible futures. The fan shows percentile bands of those futures. It is a simulation, not a prediction."]
+);
+
+const ANA_BENCHES = [ { sym: "^NSEI", name: "NIFTY 50" }, { sym: "^NSEBANK", name: "NIFTY BANK" }, { sym: "^NSEMDCP50", name: "NIFTY MIDCAP 50" }, { sym: "^BSESN", name: "SENSEX" } ];
+let anaBenchSym = "^NSEI", anaBenchAvail = null, anaResult = null, anaHash = "", anaBusy = false, anaSelf = null, anaMcYears = "1", anaSortK = "weight", anaSortDir = -1, anaVolMap = null;
+
+function anaDstr(t) { try { return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(t)); } catch (e) { return new Date(t).toISOString().slice(0, 10); } }
+function anaSymValues(S) {
+  const { axis, symArr, syms } = S;
+  const txns = [...state.txns].sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const qty = {}; syms.forEach(s => qty[s] = 0);
+  const vals = {}; syms.forEach(s => vals[s] = []);
+  let ti = 0;
+  axis.forEach((d, i) => {
+    while (ti < txns.length && txns[ti].date <= d) { const t = txns[ti++]; if (t.type === "DIV") continue; if (!(t.sym in qty)) continue; const q = Number(t.qty) || 0; if (t.type === "BUY") qty[t.sym] += q; else if (t.type === "SELL") qty[t.sym] -= q; }
+    syms.forEach(s => { const c = symArr[s][i]; vals[s].push(c != null && qty[s] ? qty[s] * c : 0); });
+  });
+  return vals;
+}
+async function anaBuildInput() {
+  const S = insXSeries; if (!S) return null;
+  const d = enriched(); if (!d || !d.rows.length) return null;
+  const total = d.rows.reduce((a, r) => a + (r.cur || 0), 0); if (!(total > 0)) return null;
+  const weights = {}; d.rows.forEach(r => weights[r.sym] = (r.cur || 0) / total);
+  let bench = S.nifArr, rets = S.rets, brets = S.brets, bname = "NIFTY 50";
+  if (anaBenchSym !== "^NSEI") {
+    const h = await fetchHistory(anaBenchSym, "1y").catch(() => null);
+    if (!h || !h.points || h.points.length < 60) return { benchFailed: true };
+    const m = {}; h.points.forEach(p => m[anaDstr(p.t)] = p.c);
+    let last = null; bench = S.axis.map(ds => { if (m[ds] != null) last = m[ds]; return last; });
+    rets = []; brets = [];
+    for (let i = 1; i < S.axis.length; i++) {
+      if (S.V[i - 1] > 0 && bench[i - 1] && bench[i]) {
+        const r = (S.V[i] - S.FLOW[i]) / S.V[i - 1] - 1, b = bench[i] / bench[i - 1] - 1;
+        if (r > -0.95 && r < 5 && b > -0.5 && b < 0.5) { rets.push(r); brets.push(b); }
+      }
+    }
+    bname = (ANA_BENCHES.find(x => x.sym === anaBenchSym) || {}).name || anaBenchSym;
+  }
+  const rf = (Number(insxSettings().rf) || 6.5) / 100;
+  return { dates: S.axis, V: S.V, FLOW: S.FLOW, bench, symCloses: S.symArr, symValues: anaSymValues(S), weights, rf, benchName: bname, rets, brets, paths: 1000, seed: 42 };
+}
+function anaLoadScript() {
+  return new Promise((res, rej) => {
+    if (window.FolioAnalytics) return res();
+    const sc = document.createElement("script"); sc.src = "js/analytics.js?v=1"; sc.async = true;
+    sc.onload = () => res(); sc.onerror = () => rej(new Error("analytics load failed"));
+    document.head.appendChild(sc);
+  });
+}
+function anaComputeViaWorker(input) {
+  return new Promise((resolve, reject) => {
+    let w, done = false;
+    try { w = new Worker("js/analytics-worker.js?v=1"); } catch (e) { reject(e); return; }
+    const to = setTimeout(() => { if (!done) { done = true; try { w.terminate(); } catch (e) {} reject(new Error("worker timeout")); } }, 25000);
+    w.onmessage = e => { if (done) return; done = true; clearTimeout(to); try { w.terminate(); } catch (err) {} if (e.data && e.data.error) reject(new Error(e.data.error)); else resolve(e.data); };
+    w.onerror = () => { if (!done) { done = true; clearTimeout(to); reject(new Error("worker error")); } };
+    w.postMessage(input);
+  });
+}
+async function anaRunSelfTest() {
+  try {
+    const r = await anaComputeViaWorker({ cmd: "selfTest" });
+    if (r && r.selfTest) { anaSelf = { pass: r.selfTest.filter(t => t.pass).length, total: r.selfTest.length }; return; }
+    throw new Error("no selftest via worker");
+  } catch (e) {
+    try { await anaLoadScript(); const st = window.FolioAnalytics.selfTest(); anaSelf = { pass: st.filter(t => t.pass).length, total: st.length }; } catch (e2) { anaSelf = null; }
+  }
+}
+function anaPanel(id, title, infoKey, skelRows) {
+  return '<div class="panel ana-panel" id="' + id + '"><div class="panel-head"><h2>' + title + '</h2><span class="ana-head-r">' + (infoKey ? insxInfoBtn(infoKey) : "") + '<button type="button" class="insx-i ana-collapse" data-ana-collapse="' + id + '" aria-label="Collapse or expand">▾</button></span></div><div class="ana-body">' + insxSkel(skelRows || 3) + '</div></div>';
+}
+function anaMount() {
+  const view = $("view-insights"); if (!view || $("anaWrap")) return;
+  const jump = document.createElement("div"); jump.className = "ana-jump"; jump.id = "anaJump";
+  jump.innerHTML = [["Report Card", "ana-grade"], ["Returns", "ana-returns"], ["Risk", "ana-risk"], ["Allocation", "ana-alloc"], ["Stocks", "ana-stocks"], ["Income", "ana-income"], ["Trades", "ana-trades"], ["Scenarios", "ana-scen"], ["Overview", "ana-ov"], ["Score", "ana-scorejump"], ["Snowball", "ana-snow"]].map(x => '<button type="button" class="chip ana-jump-chip" data-ana-jump="' + x[1] + '">' + x[0] + "</button>").join("");
+  view.insertBefore(jump, view.firstChild);
+  const wrap = document.createElement("div"); wrap.id = "anaWrap";
+  wrap.innerHTML = anaPanel("ana-grade", "Report Card", "reportcard", 3) + anaPanel("ana-returns", "Returns", "rolling", 4) + anaPanel("ana-risk", "Risk — Advanced", "sharpe", 4) + anaPanel("ana-alloc", "Allocation & Concentration", "hhi", 4) + anaPanel("ana-stocks", "Stock Deep-Dive", "deepdive", 4) + anaPanel("ana-income", "Income", null, 3) + anaPanel("ana-trades", "Trades", "trades2", 3) + anaPanel("ana-scen", "Scenarios", "montecarlo", 4);
+  const ix = $("insXWrap"); if (ix) view.insertBefore(wrap, ix); else view.appendChild(wrap);
+  try { const c = JSON.parse(localStorage.getItem("folio_ana_collapsed") || "[]"); c.forEach(id => { const p = $(id); if (p) p.querySelector(".ana-body").classList.add("hidden"); }); } catch (e) {}
+}
+function anaSetBody(id, html) { const p = $(id); if (!p) return; const b = p.querySelector(".ana-body"); if (b) b.innerHTML = html; }
+function anaBasisLine(points) { const r = anaResult; return '<p class="insx-note">Data as of ' + esc(r.asOf || "") + " · " + (points != null ? points : r.points) + " trading days · Benchmark: " + esc(r.benchName || anaBenchSym) + " · Risk-free rate " + (Number(insxSettings().rf) || 6.5) + "% · Basis: the same daily series as Period Performance (1 year, flow-adjusted)." + (insXSeries && insXSeries.excluded && insXSeries.excluded.length ? " " + esc(insXSeries.excluded.join(", ")) + " left out — price history unavailable." : "") + "</p>"; }
+function anaNotEnough() { return '<p class="empty-note">Needs at least 60 days of data — this analysis runs on your portfolio\'s daily history, and there is not enough of it yet. Weights and concentration below still work.</p>'; }
+async function anaEnsure() {
+  anaMount();
+  if (anaBusy) return;
+  if (!insXSeries) { insxLoadSeries(); setTimeout(anaEnsure, 900); return; }
+  const input = await anaBuildInput();
+  if (!input) { anaSetBody("ana-grade", '<p class="empty-note">Add holdings with price history and this section will light up.</p>'); return; }
+  if (input.benchFailed) { toast("That benchmark is not available in free data — back to NIFTY 50."); anaBenchSym = "^NSEI"; anaEnsure(); return; }
+  const hash = [input.dates[input.dates.length - 1], input.dates.length, Math.round(input.V[input.V.length - 1] || 0), input.rf, anaBenchSym].join("|");
+  if (hash === anaHash && anaResult) return;
+  anaBusy = true;
+  try {
+    let res;
+    try { res = await anaComputeViaWorker(input); }
+    catch (e) { await anaLoadScript(); res = window.FolioAnalytics.compute(input); }
+    anaResult = res; anaHash = hash;
+    if (!anaSelf) anaRunSelfTest();
+    anaRenderAll();
+  } catch (e) {
+    anaSetBody("ana-grade", '<p class="empty-note">The analysis could not be computed right now. Your data is safe — try opening Insights again.</p>');
+  }
+  anaBusy = false;
+}
+function anaRenderAll() { anaRenderGrade(); anaRenderReturns(); anaRenderRisk(); anaRenderAlloc(); anaRenderStocks(); anaRenderIncome(); anaRenderTrades(); anaRenderScen(); }
+function anaGradeChip(g) { const col = g === "A" ? "var(--pos)" : g === "B" ? "#7fb069" : g === "C" ? "var(--warn)" : "var(--neg)"; return '<b class="ana-grade-chip" style="background:' + col + '">' + g + "</b>"; }
+function anaRenderGrade() {
+  const r = anaResult; if (!r) return;
+  const rc = r.reportCard || {};
+  const order = [["Returns", "returns"], ["RiskControl", "risk control"], ["Diversification", "diversification"], ["Consistency", "consistency"], ["Momentum", "momentum"]];
+  const rows = order.map(([k]) => { const g = rc[k]; if (!g) return ""; return '<div class="ana-grade-row"><span class="ana-grade-name">' + k.replace(/([A-Z])/g, " $1").trim() + "</span>" + anaGradeChip(g.grade) + '<span class="ana-grade-score">' + Math.round(g.score) + '</span><span class="ana-grade-reason">' + esc(g.reason) + "</span></div>"; }).join("");
+  const benchOpts = ANA_BENCHES.map(b => {
+    const un = anaBenchAvail && anaBenchAvail[b.sym] === false;
+    return '<option value="' + b.sym + '"' + (b.sym === anaBenchSym ? " selected" : "") + (un ? " disabled" : "") + ">" + b.name + (un ? " (not available in free data)" : "") + "</option>";
+  }).join("");
+  const cc = r.crossChecks || {};
+  const checks = [];
+  if (anaSelf) checks.push("Engine self-check " + anaSelf.pass + "/" + anaSelf.total + " passed");
+  if (cc.weightsSum != null) checks.push("Weights sum " + (Math.abs(cc.weightsSum - 1) < 0.01 ? "100% ✓" : (cc.weightsSum * 100).toFixed(1) + "%"));
+  if (cc.riskContribSum != null) checks.push("Risk contributions sum " + (Math.abs(cc.riskContribSum - 100) < 0.6 ? "100% ✓" : cc.riskContribSum.toFixed(1) + "%"));
+  if (cc.twrVsGiven) checks.push("Return matches Period Performance basis " + (cc.twrVsGiven.ok ? "✓" : "— check"));
+  anaSetBody("ana-grade", '<div class="ana-bench-row"><label>Benchmark <select id="anaBenchSel" class="mini-select">' + benchOpts + "</select></label>" + insxInfoBtn("benchmark") + "</div>" + rows + (checks.length ? '<p class="insx-note">' + checks.join(" · ") + "</p>" : "") + anaBasisLine());
+  const sel = $("anaBenchSel");
+  if (sel) sel.addEventListener("change", () => { anaBenchSym = sel.value; anaHash = ""; anaEnsure(); });
+}
+function anaTile(name, key, val, small) { return '<div class="insx-tile"><span>' + name + (key ? " " + insxInfoBtn(key) : "") + "</span><b>" + val + "</b>" + (small ? "<small>" + small + "</small>" : "") + "</div>"; }
+function anaRenderReturns() {
+  const r = anaResult; if (!r) return;
+  if (!r.enough || !r.returns) { anaSetBody("ana-returns", anaNotEnough() + anaBasisLine()); return; }
+  const R = r.returns, roll = R.rolling || {};
+  const xirr = (() => { try { const x = portfolioXirr(); return x == null || !isFinite(x) ? null : x; } catch (e) { return null; } })();
+  let h = '<div class="insx-tiles">' +
+    anaTile("Time-weighted (window)", "rolling", insxPct(R.twrTotal * 100), "the portfolio itself") +
+    anaTile("Time-weighted (per year)", "rolling", insxPct(R.twrAnnualized * 100), "annualised") +
+    anaTile("XIRR (your money)", null, xirr == null ? "—" : insxPct(xirr * 100), "money-weighted, existing") +
+    anaTile("Rolling 1M", "rolling", roll["1M"] == null ? "—" : insxPct(roll["1M"] * 100)) +
+    anaTile("Rolling 3M", "rolling", roll["3M"] == null ? "—" : insxPct(roll["3M"] * 100)) +
+    anaTile("Rolling 6M", "rolling", roll["6M"] == null ? "—" : insxPct(roll["6M"] * 100)) +
+    anaTile("Rolling 1Y", "rolling", roll["1Y"] == null ? "—" : insxPct(roll["1Y"] * 100)) + "</div>";
+  if (R.calendarYears && R.calendarYears.length) {
+    h += '<h4 class="ana-sub">Calendar years ' + insxInfoBtn("calendar") + '</h4><div class="tbl-wrap"><table class="insx-table"><thead><tr><th>Year</th><th>Return</th><th>Trading days</th></tr></thead><tbody>' + R.calendarYears.map(y => "<tr><td>" + y.year + "</td><td class=\"" + (y.ret >= 0 ? "pos" : "neg") + "\">" + insxPct(y.ret * 100) + "</td><td>" + y.days + "</td></tr>").join("") + "</tbody></table></div>";
+  }
+  const bw = R.bestWorst || {};
+  const bwRow = (lab, o) => o ? "<tr><td>" + lab + '</td><td class="' + (o.ret >= 0 ? "pos" : "neg") + '">' + insxPct(o.ret * 100) + "</td><td>" + esc(o.date || o.endDate || "") + "</td></tr>" : "";
+  h += '<h4 class="ana-sub">Best &amp; worst</h4><div class="tbl-wrap"><table class="insx-table"><tbody>' + bwRow("Best day", bw.day) + bwRow("Worst day", bw.worstDay) + bwRow("Best week (5 days)", bw.week) + bwRow("Worst week", bw.worstWeek) + bwRow("Best month (21 days)", bw.month) + bwRow("Worst month", bw.worstMonth) + "</tbody></table></div>";
+  const pm = R.positiveMonths || {};
+  h += '<div class="insx-tiles">' + anaTile("Positive months", "calendar", pm.ratio == null ? "—" : pm.ratio.toFixed(0) + "%", (pm.monthsCounted || 0) + " months counted") + anaTile("Green days", null, (pm.greenDays || 0) + " / " + (pm.totalDays || 0)) + anaTile("Best up streak", null, (pm.bestStreak || 0) + " days") + anaTile("Current streak", null, ((pm.curStreak || 0) > 0 ? "+" : "") + (pm.curStreak || 0) + " days") + "</div>";
+  const hist = R.histogram;
+  if (hist && hist.bins) {
+    const maxC = Math.max.apply(null, hist.bins.map(b => b.count).concat([1]));
+    const W = 320, H = 90, bw2 = W / hist.bins.length;
+    let bars = "";
+    hist.bins.forEach((b, i) => { const bh = Math.max(2, b.count / maxC * (H - 18)); const mid = (b.from + b.to) / 2; bars += '<rect x="' + (i * bw2 + 1).toFixed(1) + '" y="' + (H - 6 - bh).toFixed(1) + '" width="' + (bw2 - 2).toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="2" fill="' + (mid >= 0 ? "var(--pos)" : "var(--neg)") + '" opacity="0.75"><title>' + (b.from * 100).toFixed(1) + "% to " + (b.to * 100).toFixed(1) + "%: " + b.count + " days</title></rect>"; });
+    h += '<h4 class="ana-sub">Daily return distribution ' + insxInfoBtn("distribution") + '</h4><svg class="ana-hist" viewBox="0 0 ' + W + " " + H + '" role="img">' + bars + "</svg>" +
+      '<p class="insx-note">Worst day ' + insxPct(hist.min * 100) + " · Best day " + insxPct(hist.max * 100) + " · Median day " + insxPct(hist.median * 100) + " · Skew " + (hist.skew == null ? "—" : hist.skew.toFixed(2)) + "</p>";
+  }
+  anaSetBody("ana-returns", h + anaBasisLine());
+}
+function anaDdSvg(rets) {
+  let eq = 1, peak = 1; const dd = [0];
+  rets.forEach(r => { eq *= (1 + r); if (eq > peak) peak = eq; dd.push(eq / peak - 1); });
+  const min = Math.min.apply(null, dd.concat([-0.01])), W = 320, H = 84, P = 4;
+  const X = i => P + i / (dd.length - 1) * (W - 2 * P), Y = v => P + (0 - v) / (0 - min) * (H - 2 * P);
+  let d = "M" + X(0).toFixed(1) + " " + Y(0).toFixed(1);
+  dd.forEach((v, i) => { if (i) d += " L" + X(i).toFixed(1) + " " + Y(v).toFixed(1); });
+  return '<svg class="ana-dd" viewBox="0 0 ' + W + " " + H + '" role="img"><path d="' + d + " L" + X(dd.length - 1).toFixed(1) + " " + Y(0).toFixed(1) + ' Z" fill="var(--neg)" opacity="0.18"/><path d="' + d + '" fill="none" stroke="var(--neg)" stroke-width="1.6"/></svg>';
+}
+function anaRenderRisk() {
+  const r = anaResult; if (!r) return;
+  if (!r.enough || !r.risk) { anaSetBody("ana-risk", anaNotEnough() + anaBasisLine()); return; }
+  const K = r.risk, cur = (() => { try { const d = enriched(); return d ? d.rows.reduce((a, x) => a + (x.cur || 0), 0) : 0; } catch (e) { return 0; } })();
+  const priv = document.body.classList.contains("privacy-on");
+  const varTxt = K.var95 == null ? "—" : K.var95.toFixed(2) + "%" + (!priv && cur ? " · " + inr(cur * K.var95 / 100) : "");
+  const cvarTxt = K.cvar95 == null ? "—" : K.cvar95.toFixed(2) + "%" + (!priv && cur ? " · " + inr(cur * K.cvar95 / 100) : "");
+  const h = '<div class="insx-tiles">' +
+    anaTile("Volatility (per year)", "sharpe", K.vol == null ? "—" : (K.vol * 100).toFixed(1) + "%") +
+    anaTile("Downside deviation", "sortino", K.downsideDev == null ? "—" : (K.downsideDev * 100).toFixed(1) + "%") +
+    anaTile("Sharpe ratio", "sharpe", K.sharpe == null ? "—" : K.sharpe.toFixed(2)) +
+    anaTile("Sortino ratio", "sortino", K.sortino == null ? "—" : K.sortino.toFixed(2)) +
+    anaTile("Calmar ratio", "calmar", K.calmar == null ? "—" : K.calmar.toFixed(2)) +
+    anaTile("Beta vs " + esc(r.benchName || "benchmark"), "beta", K.beta == null ? "—" : K.beta.toFixed(2)) +
+    anaTile("Alpha (per year)", "alpha", K.alpha == null ? "—" : insxPct(K.alpha * 100)) +
+    anaTile("Correlation", "beta", K.corr == null ? "—" : K.corr.toFixed(2)) +
+    anaTile("R-squared", "beta", K.r2 == null ? "—" : K.r2.toFixed(2)) +
+    anaTile("Tracking error", "capture", K.trackingError == null ? "—" : (K.trackingError * 100).toFixed(1) + "%") +
+    anaTile("Up-capture", "capture", K.upCapture == null ? "—" : K.upCapture.toFixed(0) + "%") +
+    anaTile("Down-capture", "capture", K.downCapture == null ? "—" : K.downCapture.toFixed(0) + "%") +
+    anaTile("VaR 95% (1 day, historical)", "varhist", varTxt) +
+    anaTile("CVaR 95% (worst 5% days)", "varhist", cvarTxt) +
+    anaTile("Max drawdown", "drawdowns", K.maxDD ? insxPct(K.maxDD.pct) : "—", K.maxDD ? esc(K.maxDD.peakDate + " → " + K.maxDD.troughDate) : "") +
+    anaTile("Current drawdown", "drawdowns", K.currentDD ? insxPct(K.currentDD.pct) : "—", K.currentDD ? K.currentDD.days + " days below peak" : "") +
+    anaTile("Longest drawdown", "drawdowns", K.longestDD ? K.longestDD.days + " days" : "—", K.longestDD ? (K.longestDD.recovered ? "recovered in " + (K.longestDD.recoveryDays != null ? K.longestDD.recoveryDays + " days" : "—") : "not yet recovered") : "") +
+    "</div>" + (insXSeries ? anaDdSvg(insXSeries.rets) : "") + '<p class="insx-note">Drawdown chart: fall from the running peak of the flow-adjusted equity curve. Historical VaR reads your actual past returns; the Risk Metrics card above uses a formula-based estimate, so the two can differ.</p>' + anaBasisLine();
+  anaSetBody("ana-risk", h);
+}
+
+function anaRenderAlloc() {
+  const r = anaResult; if (!r) return;
+  const A = r.allocation || {};
+  let h = '<div class="insx-tiles">' +
+    anaTile("Top 1 holding", "hhi", A.top1 == null ? "—" : (A.top1 * 100).toFixed(1) + "%") +
+    anaTile("Top 3 holdings", "hhi", A.top3 == null ? "—" : (A.top3 * 100).toFixed(1) + "%") +
+    anaTile("Top 5 holdings", "hhi", A.top5 == null ? "—" : (A.top5 * 100).toFixed(1) + "%") +
+    anaTile("Herfindahl (HHI)", "hhi", A.hhi == null ? "—" : A.hhi.toFixed(3)) +
+    anaTile("Effective number of stocks", "hhi", A.effN == null ? "—" : A.effN.toFixed(1)) +
+    anaTile("Diversification ratio", "riskcontrib", A.divRatio == null ? "—" : A.divRatio.toFixed(2), "above 1 = diversification is working") + "</div>";
+  /* sector + single-stock concentration warnings (rule-based, stated thresholds) */
+  try {
+    const d = enriched(); const sec = {}; let topSym = "", topW = 0;
+    const tot = d.rows.reduce((a, x) => a + (x.cur || 0), 0) || 1;
+    d.rows.forEach(x => { const w = (x.cur || 0) / tot; sec[x.sector || "Other"] = (sec[x.sector || "Other"] || 0) + w; if (w > topW) { topW = w; topSym = x.sym; } });
+    const warns = [];
+    Object.keys(sec).forEach(s => { if (sec[s] > 0.4) warns.push("Sector concentration: " + s + " is " + (sec[s] * 100).toFixed(0) + "% of the portfolio (warning line: 40%)."); });
+    if (topW > 0.35) warns.push("Single-stock concentration: " + topSym + " is " + (topW * 100).toFixed(0) + "% of the portfolio (warning line: 35%).");
+    if (warns.length) h += warns.map(w => '<p class="ana-warn">⚠ ' + esc(w) + "</p>").join("");
+    else h += '<p class="insx-note">No concentration warning: no sector above 40% and no single stock above 35%.</p>';
+  } catch (e) {}
+  const rc = A.riskContrib;
+  if (rc) {
+    const d2 = enriched(); const wmap = {}; const tot2 = d2.rows.reduce((a, x) => a + (x.cur || 0), 0) || 1; d2.rows.forEach(x => wmap[x.sym] = (x.cur || 0) / tot2 * 100);
+    const syms = Object.keys(rc).sort((a, b) => rc[b] - rc[a]);
+    h += '<h4 class="ana-sub">Weight vs risk contribution ' + insxInfoBtn("riskcontrib") + "</h4>" + syms.map(s => {
+      const w = wmap[s] || 0, rp = rc[s];
+      return '<div class="ana-rc-row"><span class="ana-rc-sym">' + esc(s) + '</span><span class="ana-rc-bars"><i class="ana-rc-w" style="width:' + Math.min(100, w).toFixed(1) + '%"></i><i class="ana-rc-r" style="width:' + Math.min(100, rp).toFixed(1) + '%"></i></span><span class="ana-rc-val">' + w.toFixed(0) + "% w · " + rp.toFixed(0) + "% risk</span></div>";
+    }).join("") + '<p class="insx-note">Grey bar = weight, green bar = share of total risk.</p>';
+  } else if (!r.enough) h += anaNotEnough();
+  const cm = A.corrMatrix;
+  if (cm && cm.syms && cm.syms.length > 1) {
+    const d3 = enriched(); const wmap3 = {}; d3.rows.forEach(x => wmap3[x.sym] = x.cur || 0);
+    const syms = cm.syms.slice().sort((a, b) => (wmap3[b] || 0) - (wmap3[a] || 0)).slice(0, 10);
+    const idx = {}; cm.syms.forEach((s, i) => idx[s] = i);
+    let cells = '<div class="insx-corr-grid" style="grid-template-columns:64px repeat(' + syms.length + ',1fr)"><span></span>' + syms.map(s => '<span class="insx-corr-h">' + esc(s.slice(0, 8)) + "</span>").join("");
+    syms.forEach(a => {
+      cells += '<span class="insx-corr-h">' + esc(a.slice(0, 8)) + "</span>";
+      syms.forEach(b => {
+        if (a === b) { cells += '<span class="insx-corr-c self">1.0</span>'; return; }
+        const v = cm.matrix[idx[a]] ? cm.matrix[idx[a]][idx[b]] : null;
+        if (v == null) { cells += '<span class="insx-corr-c">—</span>'; return; }
+        const bg = v >= 0 ? "color-mix(in srgb, var(--pos) " + Math.round(Math.abs(v) * 55) + "%, transparent)" : "color-mix(in srgb, var(--neg) " + Math.round(Math.abs(v) * 55) + "%, transparent)";
+        cells += '<span class="insx-corr-c" style="background:' + bg + '">' + v.toFixed(1) + "</span>";
+      });
+    });
+    h += '<h4 class="ana-sub">Correlation heatmap (top ' + syms.length + ' by weight)</h4>' + cells + "</div>" + '<p class="insx-note">How similarly two stocks moved day to day over the last year. Near 1 = they move together; near 0 = independent; below 0 = opposite.</p>';
+  }
+  anaSetBody("ana-alloc", h + anaBasisLine());
+}
+function anaFlagsFor(row, st) {
+  const f = [];
+  if (st) {
+    if (row.vs200 != null && row.vs200 < 0) f.push("Below 200-DMA");
+    if (row.rangePos != null && row.rangePos < 10) f.push("Near 52-week low");
+    if (st.vol != null && st.vol > 0.60) f.push("High volatility");
+  }
+  if (row.ddCost != null && row.ddCost < -0.30) f.push("30%+ below your cost");
+  if (anaVolMap && anaVolMap[row.sym] != null && anaVolMap[row.sym] < 100000) f.push("Thin volume");
+  return f;
+}
+function anaStockRows() {
+  const { holdings } = computeHoldings();
+  const d = enriched(); const tot = d.rows.reduce((a, x) => a + (x.cur || 0), 0) || 1;
+  const wmap = {}; d.rows.forEach(x => wmap[x.sym] = (x.cur || 0) / tot * 100);
+  return holdings.map(h => {
+    const p = priceOf(h.sym); const price = p ? p.price : null;
+    const ddCost = (price != null && h.avg) ? price / h.avg - 1 : null;
+    const st = (anaResult && anaResult.stocks && anaResult.stocks[h.sym]) || null;
+    return { sym: h.sym, price, weight: wmap[h.sym] || 0, ddCost, st, vs50: st && st.ma ? st.ma.vs50 : null, vs200: st && st.ma ? st.ma.vs200 : null, rangePos: st ? st.rangePosPct : null };
+  });
+}
+function anaRenderStocks() {
+  const r = anaResult; if (!r) return;
+  const rows = anaStockRows();
+  const key = anaSortK, dir = anaSortDir;
+  const val = row => key === "weight" ? row.weight : key === "sym" ? row.sym : key === "mom3" ? (row.st && row.st.mom ? row.st.mom["3M"] : null) : key === "rsi" ? (row.st ? row.st.rsi14 : null) : key === "vol" ? (row.st ? row.st.vol : null) : key === "beta" ? (row.st ? row.st.beta : null) : key === "range" ? row.rangePos : key === "vs50" ? row.vs50 : key === "vs200" ? row.vs200 : key === "cost" ? row.ddCost : row.weight;
+  rows.sort((a, b) => { const x = val(a), y = val(b); if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return (x < y ? -1 : x > y ? 1 : 0) * dir; });
+  const th = (k, lab) => '<th data-ana-sort="' + k + '" class="ana-th">' + lab + (anaSortK === k ? (anaSortDir < 0 ? " ↓" : " ↑") : "") + "</th>";
+  const cell = v => v == null ? "—" : v;
+  const body = rows.map(row => {
+    const st = row.st || {};
+    const flags = anaFlagsFor(row, st);
+    return '<tr data-ana-stock="' + esc(row.sym) + '"><td><b>' + esc(row.sym) + "</b></td><td>" + (row.price != null ? inr2(row.price) : "—") + "</td><td>" + row.weight.toFixed(1) + "%</td><td>" + (st.mom && st.mom["3M"] != null ? insxPct(st.mom["3M"] * 100) : "—") + "</td><td>" + cell(st.rsi14 != null ? st.rsi14.toFixed(0) : null) + "</td><td>" + cell(st.vol != null ? (st.vol * 100).toFixed(0) + "%" : null) + "</td><td>" + cell(st.beta != null ? st.beta.toFixed(2) : null) + "</td><td>" + cell(row.rangePos != null ? row.rangePos.toFixed(0) + "%" : null) + "</td><td>" + cell(row.vs50 != null ? insxPct(row.vs50) : null) + "</td><td>" + cell(row.vs200 != null ? insxPct(row.vs200) : null) + "</td><td>" + (row.ddCost != null ? insxPct(row.ddCost * 100) : "—") + '</td><td>' + (flags.length ? flags.map(f => '<span class="ana-flag">' + esc(f) + "</span>").join(" ") : '<span class="insx-note">—</span>') + "</td></tr>";
+  }).join("");
+  anaSetBody("ana-stocks", '<div class="tbl-wrap"><table class="insx-table ana-table"><thead><tr>' + th("sym", "Stock") + th("weight", "Price") + th("weight", "Wt") + th("mom3", "Mom 3M") + th("rsi", "RSI") + th("vol", "Vol") + th("beta", "Beta") + th("range", "52W pos") + th("vs50", "vs 50DMA") + th("vs200", "vs 200DMA") + th("cost", "From cost") + '<th>Flags ' + insxInfoBtn("flags") + "</th></tr></thead><tbody>" + body + "</tbody></table></div>" +
+    '<p class="insx-note">Tap a row to open the stock. Price column header sorts by weight. PE, PB, ROE, market cap, debt, margins and dividend yield are not available in free data (Yahoo\'s fundamentals feed is locked for browser apps). Sector-index relative strength is also not freely available, so relative strength is shown against ' + esc(r.benchName || "the benchmark") + ' via beta/correlation in the Risk section.</p>' + anaBasisLine());
+  if (!anaVolMap) anaLoadVolumes();
+}
+async function anaLoadVolumes() {
+  anaVolMap = {};
+  try {
+    const { holdings } = computeHoldings();
+    await Promise.all(holdings.map(async h => {
+      try { const bars = await fetchOHLC(h.sym, "6mo", "1d"); if (bars && bars.length > 10) { const vs = bars.slice(-60).map(b => b.v || 0); anaVolMap[h.sym] = vs.reduce((a, x) => a + x, 0) / vs.length; } } catch (e) {}
+    }));
+  } catch (e) {}
+  if (anaResult) anaRenderStocksSoft();
+}
+function anaRenderStocksSoft() { /* refresh flags only, keep sort + scroll */
+  const p = $("ana-stocks"); if (!p || !anaResult) return; anaRenderStocks();
+}
+function anaRenderIncome() {
+  const divTxns = (state.txns || []).filter(t => t.type === "DIV");
+  const totalDiv = divTxns.reduce((a, t) => a + (Number(t.price) || 0), 0);
+  const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+  const t12 = divTxns.filter(t => new Date(t.date) >= cutoff).reduce((a, t) => a + (Number(t.price) || 0), 0);
+  const d = enriched(); const invested = d.rows.reduce((a, x) => a + (x.inv || 0), 0);
+  let h = '<div class="insx-tiles">' + anaTile("Dividends received (all time)", null, insxAmt(totalDiv)) + anaTile("Received in last 12 months", null, insxAmt(t12)) + anaTile("Yield on cost (trailing)", null, invested > 0 ? (t12 / invested * 100).toFixed(2) + "%" : "—", "on " + inr(invested) + " invested") + anaTile("Estimated next 12 months", null, '<span id="anaDivEst">…</span>', "from each stock's last-12-month payouts × your shares") + "</div>";
+  h += '<p class="insx-note">The month-by-month projection and snowball live in the Dividend Snowball card below. Exact upcoming ex-dates are not published in any free open feed, so they are not guessed here. Dividend growth history appears in the Snowball\'s yearly bars.</p>';
+  anaSetBody("ana-income", h);
+  (async () => {
+    try {
+      const { holdings } = computeHoldings(); let est = 0, any = false;
+      const since = Date.now() - 365 * 86400000;
+      await Promise.all(holdings.map(async hh => { const ca = await fetchCorpActions(hh.sym); if (ca && ca.divs) { const dps = ca.divs.filter(x => x.ts >= since).reduce((a, x) => a + (x.amount || 0), 0); if (dps > 0) { est += dps * hh.qty; any = true; } } }));
+      const el = $("anaDivEst"); if (el) el.innerHTML = any ? insxAmt(est) : "—";
+    } catch (e) { const el = $("anaDivEst"); if (el) el.textContent = "—"; }
+  })();
+}
+function anaRenderTrades() {
+  const sales = folioFifo().filter(s => s.gain != null);
+  if (!sales.length) { anaSetBody("ana-trades", '<p class="empty-note">No closed trades yet — sell something (fully or partly) and its statistics will appear here, matched first-in-first-out like the Tax section.</p>'); return; }
+  const wins = sales.filter(s => s.gain > 0), losses = sales.filter(s => s.gain < 0);
+  const sum = a => a.reduce((x, s) => x + s.gain, 0);
+  const gw = sum(wins), gl = Math.abs(sum(losses));
+  const realised = sum(sales);
+  const daysArr = sales.map(s => s.days).filter(x => typeof x === "number");
+  const avgDays = daysArr.length ? Math.round(daysArr.reduce((a, x) => a + x, 0) / daysArr.length) : null;
+  const best = sales.slice().sort((a, b) => b.gain - a.gain)[0], worst = sales.slice().sort((a, b) => a.gain - b.gain)[0];
+  const dates = sales.map(s => s.sellDate).filter(Boolean).sort();
+  let perMonth = "—";
+  if (dates.length > 1) { const months = Math.max(1, (new Date(dates[dates.length - 1]) - new Date(dates[0])) / (30.4 * 86400000)); perMonth = (sales.length / months).toFixed(1) + " / month"; }
+  /* average-down count */
+  let avgDown = 0;
+  try {
+    const pos = {}; const tx = [...(state.txns || [])].sort((a, b) => a.date < b.date ? -1 : 1);
+    tx.forEach(t => {
+      if (t.type === "BUY") { const p = pos[t.sym] || { q: 0, c: 0 }; const price = effPrice(t); if (p.q > 0 && price < p.c / p.q) avgDown++; const q = Number(t.qty) || 0; pos[t.sym] = { q: p.q + q, c: p.c + q * price }; }
+      else if (t.type === "SELL") { const p = pos[t.sym]; if (p && p.q > 0) { const q = Math.min(p.q, Number(t.qty) || 0); const avg = p.c / p.q; pos[t.sym] = { q: p.q - q, c: p.c - q * avg }; } }
+    });
+  } catch (e) {}
+  const h = '<div class="insx-tiles">' +
+    anaTile("Realised P&L (closed trades)", "trades2", insxAmt(realised)) +
+    anaTile("Win rate", "trades2", (wins.length / sales.length * 100).toFixed(0) + "%", wins.length + " of " + sales.length + " trades") +
+    anaTile("Average win", null, wins.length ? insxAmt(gw / wins.length) : "—") +
+    anaTile("Average loss", null, losses.length ? insxAmt(-gl / losses.length) : "—") +
+    anaTile("Profit factor", "trades2", gl > 0 ? (gw / gl).toFixed(2) : (gw > 0 ? "No losses yet" : "—")) +
+    anaTile("Average holding period", null, avgDays != null ? avgDays + " days" : "—") +
+    anaTile("Trade frequency", null, perMonth, sales.length + " closed trades") +
+    anaTile("Average-down buys", "trades2", String(avgDown), "buys below your then average cost") +
+    anaTile("Best trade", null, insxAmt(best.gain), esc(best.sym) + " · " + esc(best.sellDate || "")) +
+    anaTile("Worst trade", null, insxAmt(worst.gain), esc(worst.sym) + " · " + esc(worst.sellDate || "")) + "</div>" +
+    '<p class="insx-note">Same first-in-first-out matching as the Tax section, so the realised total agrees with it. Dividends are income, counted in the Income section — not here.</p>';
+  anaSetBody("ana-trades", h);
+}
+function anaRenderScen() {
+  const r = anaResult; if (!r) return;
+  if (!r.enough || !r.scenarios) { anaSetBody("ana-scen", anaNotEnough() + anaBasisLine()); return; }
+  const S = r.scenarios, cur = (() => { try { const d = enriched(); return d ? d.rows.reduce((a, x) => a + (x.cur || 0), 0) : 0; } catch (e) { return 0; } })();
+  const priv = document.body.classList.contains("privacy-on");
+  let h = '<h4 class="ana-sub">Stress test — estimate ' + insxInfoBtn("stress") + "</h4>";
+  if (S.stress) {
+    h += '<div class="tbl-wrap"><table class="insx-table"><thead><tr><th>If ' + esc(r.benchName || "the benchmark") + ' falls</th><th>Estimated portfolio impact</th>' + (priv ? "" : "<th>On today's value</th>") + "</tr></thead><tbody>" + S.stress.map(s => "<tr><td>" + (s.shock * 100).toFixed(0) + '%</td><td class="neg">' + insxPct(s.impact * 100) + "</td>" + (priv ? "" : "<td>" + inr(cur * (1 + s.impact)) + "</td>") + "</tr>").join("") + "</tbody></table></div>" + '<p class="insx-note">Built from each stock\'s beta. Coverage: ' + (S.stressCoverage != null ? (S.stressCoverage * 100).toFixed(0) + "% of portfolio weight has a measurable beta." : "—") + " An estimate, not a forecast.</p>";
+  }
+  const mc = S.monteCarlo;
+  if (mc && mc.bands) {
+    const yrs = mc.years || [1, 3, 5]; if (!yrs.map(String).includes(anaMcYears)) anaMcYears = String(yrs[0]);
+    h += '<h4 class="ana-sub">Monte Carlo projection <span class="ana-sim-chip">A simulation, not a prediction</span> ' + insxInfoBtn("montecarlo") + '</h4><div class="seg seg-small ana-mc-seg">' + yrs.map(y => '<button type="button" class="seg-btn' + (String(y) === anaMcYears ? " active" : "") + '" data-ana-mc="' + y + '">' + y + "Y</button>").join("") + "</div>";
+    const band = mc.bands[anaMcYears] || [];
+    if (band.length > 1) {
+      const all = []; band.forEach(p => { all.push(p.p5, p.p95); });
+      let lo = Math.min.apply(null, all), hi = Math.max.apply(null, all); const pad = (hi - lo) * 0.08 || 0.1; lo -= pad; hi += pad;
+      const W = 320, H = 150, P = 6;
+      const X = i => P + i / (band.length - 1) * (W - 2 * P), Y = v => P + (hi - v) / (hi - lo) * (H - 2 * P);
+      const poly = (a, b) => { let d = band.map((p, i) => (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(p[a]).toFixed(1)).join(" "); for (let i = band.length - 1; i >= 0; i--) d += " L" + X(i).toFixed(1) + " " + Y(band[i][b]).toFixed(1); return d + " Z"; };
+      const line = k => band.map((p, i) => (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(p[k]).toFixed(1)).join(" ");
+      h += '<svg class="ana-fan" viewBox="0 0 ' + W + " " + H + '" role="img"><path d="' + poly("p95", "p5") + '" fill="var(--accent)" opacity="0.13"/><path d="' + poly("p75", "p25") + '" fill="var(--accent)" opacity="0.22"/><path d="' + line("p50") + '" fill="none" stroke="var(--accent)" stroke-width="2"/></svg>';
+      const end = band[band.length - 1];
+      const fmtM = m => priv ? m.toFixed(2) + "×" : inr(cur * m);
+      h += '<p class="insx-note">After ' + anaMcYears + " year(s), across " + (mc.paths || 1000) + ' simulated futures: middle half lands between ' + fmtM(end.p25) + " and " + fmtM(end.p75) + " · median " + fmtM(end.p50) + " · 90% range " + fmtM(end.p5) + " to " + fmtM(end.p95) + (priv ? " (multiples of today's value)" : " (from " + inr(cur) + " today)") + ". Bootstrapped from your own daily returns of the last year.</p>";
+    }
+  }
+  anaSetBody("ana-scen", h + anaBasisLine());
+}
+
+/* v109 hooks: jump bar, collapse, MC seg, table sort, row tap, rf setting */
+document.addEventListener("click", e => {
+  const j = e.target.closest("[data-ana-jump]");
+  if (j) {
+    const k = j.getAttribute("data-ana-jump"); let el = null;
+    if (k === "ana-ov") el = document.querySelector("#view-insights .ins-tf-panel");
+    else if (k === "ana-scorejump") { const n = $("insScoreNum"); el = n ? n.closest(".panel") : null; }
+    else if (k === "ana-snow") { const n = $("insDivBox"); el = n ? n.closest(".panel") : null; }
+    else el = $(k);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  const c = e.target.closest("[data-ana-collapse]");
+  if (c) {
+    const p = $(c.getAttribute("data-ana-collapse")); if (!p) return;
+    const b = p.querySelector(".ana-body"); if (!b) return;
+    b.classList.toggle("hidden"); c.textContent = b.classList.contains("hidden") ? "▸" : "▾";
+    try { const set = new Set(JSON.parse(localStorage.getItem("folio_ana_collapsed") || "[]")); if (b.classList.contains("hidden")) set.add(p.id); else set.delete(p.id); localStorage.setItem("folio_ana_collapsed", JSON.stringify([...set])); } catch (err) {}
+    return;
+  }
+  const mc = e.target.closest("[data-ana-mc]");
+  if (mc) { anaMcYears = mc.getAttribute("data-ana-mc"); anaRenderScen(); return; }
+  const th = e.target.closest("[data-ana-sort]");
+  if (th) { const k = th.getAttribute("data-ana-sort"); if (anaSortK === k) anaSortDir *= -1; else { anaSortK = k; anaSortDir = k === "sym" ? 1 : -1; } anaRenderStocks(); return; }
+  const row = e.target.closest("[data-ana-stock]");
+  if (row) { openStock(row.getAttribute("data-ana-stock")); return; }
+});
+const _switchViewAna = switchView;
+switchView = function (v) { _switchViewAna(v); if (v === "insights") setTimeout(() => { anaMount(); anaEnsure(); }, 80); };
+/* risk-free rate in Personal Info (same store as Insights settings: state.profile.insX.rf) */
+const _renderProfileAna = renderProfile;
+renderProfile = function () {
+  _renderProfileAna();
+  const inp = $("profRfRate");
+  if (inp && document.activeElement !== inp) inp.value = (Number(insxSettings().rf) || 6.5);
+};
+document.addEventListener("change", e => {
+  if (e.target && e.target.id === "profRfRate") {
+    let v = parseFloat(e.target.value); if (!isFinite(v) || v < 0) v = 6.5; if (v > 30) v = 30;
+    insxSettings().rf = v; e.target.value = v; persist(); anaHash = ""; toast("Risk-free rate saved: " + v + "%");
+  }
+});
+/* probe benchmark availability once (free data only; failures drop out of the picker) */
+async function anaProbeBenches() {
+  if (anaBenchAvail) return; anaBenchAvail = { "^NSEI": true };
+  for (const b of ANA_BENCHES) {
+    if (b.sym === "^NSEI") continue;
+    try { const h = await fetchHistory(b.sym, "1y"); anaBenchAvail[b.sym] = !!(h && h.points && h.points.length >= 60); } catch (e) { anaBenchAvail[b.sym] = false; }
+  }
+  if (anaResult) anaRenderGrade();
+}
+const _anaEnsure0 = anaEnsure;
+anaEnsure = async function () { await anaProbeBenches(); return _anaEnsure0(); };

@@ -2222,3 +2222,31 @@ body{background-image:none}
 .bt-row input,.bt-row select{min-width:0}
 .topbar::after{display:none}
 @media (min-width:821px){ .bt-head,.bt-main{grid-template-columns:88px minmax(0,1.6fr) 84px 138px 88px 108px 96px 68px} }
+
+/* ---------- v109 analytics ---------- */
+.ana-jump{position:sticky;top:calc(64px + env(safe-area-inset-top, 0px));z-index:4;display:flex;gap:.45rem;overflow-x:auto;padding:.5rem .1rem;scrollbar-width:none;background:var(--bg)}
+.ana-jump::-webkit-scrollbar{display:none}
+.ana-jump-chip{flex:0 0 auto}
+.ana-head-r{display:flex;gap:.4rem;align-items:center}
+.ana-grade-row{display:flex;align-items:center;gap:.7rem;padding:.55rem 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.ana-grade-row:first-of-type{border-top:none}
+.ana-grade-name{font-weight:700;min-width:128px}
+.ana-grade-chip{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;color:#fff;font-weight:800}
+.ana-grade-score{font-weight:700;color:var(--muted);min-width:30px}
+.ana-grade-reason{flex:1;min-width:200px;color:var(--muted);font-size:.9rem}
+.ana-sub{margin:1rem 0 .5rem;font-size:.98rem}
+.ana-bench-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem}
+.ana-hist,.ana-dd,.ana-fan{width:100%;height:auto;display:block}
+.ana-warn{background:color-mix(in srgb,var(--warn) 12%,transparent);border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn);border-radius:var(--r-sm);padding:.55rem .7rem;font-weight:600}
+.ana-rc-row{display:flex;align-items:center;gap:.6rem;margin:.35rem 0}
+.ana-rc-sym{font-weight:700;min-width:86px}
+.ana-rc-bars{flex:1;display:flex;flex-direction:column;gap:3px}
+.ana-rc-bars i{display:block;height:7px;border-radius:99px}
+.ana-rc-w{background:var(--muted);opacity:.55}
+.ana-rc-r{background:var(--accent)}
+.ana-rc-val{font-size:.82rem;color:var(--muted);min-width:118px;text-align:right}
+.ana-flag{display:inline-block;background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);border-radius:99px;padding:.08rem .5rem;font-size:.74rem;font-weight:700;margin:.1rem .15rem .1rem 0}
+.ana-th{cursor:pointer;white-space:nowrap}
+.ana-table tbody tr{cursor:pointer}
+.ana-sim-chip{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:99px;padding:.1rem .55rem;font-size:.74rem;font-weight:700;vertical-align:middle}
+.ana-mc-seg{margin:.3rem 0 .6rem}
