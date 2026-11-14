@@ -300,6 +300,7 @@
         cols.forEach(function (c) {
           var tx = c.align === "right" ? x + c.w - 1.2 : x + 1.2;
           doc.text(c.h, tx, y, { align: c.align === "right" ? "right" : "left" });
+          x += c.w;
         });
         y += 5.4;
       }
@@ -307,7 +308,7 @@
       doc.setFillColor(247, 243, 234);
       rows.forEach(function (r, ri) {
         if (y + rowH > BOT) { newPage(false); drawHead(); }
-        if (ri % 2 === 0) doc.rect(ML, y - 3.4, CW, rowH, "F");
+        if (ri % 2 === 0) { doc.setFillColor(247, 243, 234); doc.rect(ML, y - 3.4, CW, rowH, "F"); }
         var x = ML;
         cols.forEach(function (c) {
           var col = c.color ? c.color(r) : INK;
@@ -343,9 +344,9 @@
       var W = c.w, H = c.h;
       g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H);
       var max = Math.max.apply(null, items.map(function (i) { return Math.abs(i.value); }).concat([1]));
-      var labelW = 118, valW = 150, barX = labelW, barW = W - labelW - valW;
-      var bh = Math.min(30, (H - 8) / items.length), gap = (H - 8 - bh * items.length) / Math.max(1, items.length - 1 || 1);
-      g.font = "600 17px 'Public Sans', system-ui, sans-serif";
+      var labelW = 100, valW = 88, barX = labelW, barW = W - labelW - valW;
+      var bh = Math.min(11, (H - 8) / items.length), gap = (H - 8 - bh * items.length) / Math.max(1, items.length - 1 || 1);
+      g.font = "600 11px 'Public Sans', system-ui, sans-serif";
       items.forEach(function (it, i) {
         var yy = 4 + i * (bh + gap);
         g.fillStyle = "#1a1a1a"; g.textAlign = "right"; g.textBaseline = "middle";
@@ -371,7 +372,7 @@
       var Y = function (v) { return padT + (1 - (v - min) / (max - min)) * (H - padT - padB); };
       g.strokeStyle = "rgba(0,0,0,0.10)"; g.lineWidth = 1;
       for (var k = 0; k <= 3; k++) { var yy = padT + k * (H - padT - padB) / 3; g.beginPath(); g.moveTo(padL, yy); g.lineTo(W - padR, yy); g.stroke(); }
-      g.font = "500 15px 'Public Sans', system-ui, sans-serif"; g.fillStyle = "#6b6b6b";
+      g.font = "500 11px 'Public Sans', system-ui, sans-serif"; g.fillStyle = "#6b6b6b";
       if (!hideAmt) {
         g.textAlign = "left"; g.fillText(inrShort(max), padL, 12);
         g.fillText(inrShort(min), padL, H - padB - 4);
@@ -384,12 +385,15 @@
       }
       drawLine(INV, "#9a9a9a", [7, 5]);
       drawLine(V, "#b8912a", null);
-      g.fillStyle = "#9a9a9a"; g.fillRect(W - 268, 2, 22, 4);
-      g.fillStyle = "#6b6b6b"; g.textAlign = "left"; g.fillText("Invested", W - 240, 8);
-      g.fillStyle = "#b8912a"; g.fillRect(W - 148, 2, 22, 4);
-      g.fillStyle = "#6b6b6b"; g.fillText("Value", W - 120, 8);
-      g.textAlign = "center"; g.fillStyle = "#6b6b6b";
-      [0, Math.floor((axis.length - 1) / 2), axis.length - 1].forEach(function (i) { g.fillText(axis[i] || "", X(i), H - 6); });
+      g.fillStyle = "#9a9a9a"; g.fillRect(W - 178, 2, 16, 3.4);
+      g.fillStyle = "#6b6b6b"; g.textAlign = "left"; g.fillText("Invested", W - 158, 8);
+      g.fillStyle = "#b8912a"; g.fillRect(W - 92, 2, 16, 3.4);
+      g.fillStyle = "#6b6b6b"; g.fillText("Value", W - 72, 8);
+      g.fillStyle = "#6b6b6b";
+      [0, Math.floor((axis.length - 1) / 2), axis.length - 1].forEach(function (i) {
+        g.textAlign = i === 0 ? "left" : (i === axis.length - 1 ? "right" : "center");
+        g.fillText(axis[i] || "", X(i), H - 6);
+      });
       return c.cv;
     }
 

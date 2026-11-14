@@ -6124,7 +6124,7 @@ window.openReportSheet = function () {
   if (!reportModLoading) {
     reportModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/report.js?v=1"; sc.async = true;
+      sc.src = "js/report.js?v=2"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("report module failed to load"));
       document.head.appendChild(sc);
     });
