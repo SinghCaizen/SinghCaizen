@@ -1860,3 +1860,8 @@ button:disabled,.btn.disabled,[aria-disabled="true"]{opacity:.55;cursor:not-allo
 @media(min-width:900px){
   #view-insights>#insXWrap>.panel:last-child:nth-child(odd),#view-insights>#planWrap>.panel:last-child:nth-child(odd){grid-column:1/-1}
 }
+
+/* ===== v97 fix round 3: Monthly Returns is a wide matrix — span it full width (its natural row partner is merged away) ===== */
+@media(min-width:900px){
+  #view-insights>.panel:has(#mrBox){grid-column:1/-1}
+}
