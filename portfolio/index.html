@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <title>FOLIO — Portfolio Tracker | A Singh Caizen Product</title>
 <meta name="description" content="Folio — a private portfolio tracker for Indian stocks, by Singh Caizen. Add your stocks manually, see live profit and loss. No broker connection needed.">
@@ -16,7 +16,7 @@
 <link rel="apple-touch-icon" href="assets/folio-icon.svg?v=57">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://api.allorigins.win https://api.codetabs.com https://api.cors.lol https://corsproxy.io https://api.rss2json.com https://api.web3forms.com https://raw.githubusercontent.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://news.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/style.css?v=83">
+<link rel="stylesheet" href="css/style.css?v=84">
 <style>
 #splash{position:fixed;inset:0;z-index:2000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease}
 html[data-theme="light"] #splash{background:#f6f1e7}
@@ -79,6 +79,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
           <button type="button" id="passEye" class="eye-btn" title="Show or hide password">👁</button>
         </span>
       </label>
+      <label class="remember-row"><input type="checkbox" id="rememberMe" checked> Remember me on this device</label>
       <button type="submit" id="authSubmit" class="btn btn-gold btn-block">Login</button>
       <p id="authError" class="form-error"></p>
       <p class="auth-links">
@@ -571,7 +572,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <!-- ============ ADD TRANSACTION PANEL (MoneyControl-style) ============ -->
 <div id="txnModal" class="modal hidden">
   <div class="modal-card modal-wide">
-    <div class="modal-head"><h3>ADD TRANSACTION</h3><button id="txnClose" class="icon-btn" type="button">✕</button></div>
+    <div class="modal-head"><h3>ADD TRANSACTION</h3><button id="txnClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
     <div class="txn-types">
       <span class="txn-type-chip">Stocks / ETF</span>
       <span class="price-meta">Manual entry for your shares — no broker connection.</span>
@@ -659,7 +660,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <!-- ============ REPORT ISSUE MODAL ============ -->
 <div id="issueModal" class="modal hidden">
   <div class="modal-card">
-    <div class="modal-head"><h3>Report an Issue</h3><button id="issueClose" class="icon-btn" type="button">✕</button></div>
+    <div class="modal-head"><h3>Report an Issue</h3><button id="issueClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
     <form id="issueForm" autocomplete="off">
       <label>Your name
         <input type="text" id="issueName" placeholder="Your name">
@@ -680,7 +681,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <!-- ============ DELETE ACCOUNT MODAL ============ -->
 <div id="delModal" class="modal hidden">
   <div class="modal-card">
-    <div class="modal-head"><h3>Delete Account</h3><button id="delClose" class="icon-btn" type="button">✕</button></div>
+    <div class="modal-head"><h3>Delete Account</h3><button id="delClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
     <p class="auth-note">This permanently deletes your account and <b>all</b> your portfolio data from the cloud. It cannot be undone. If you want a backup first, take a CSV export from Settings, then come back.</p>
     <form id="delForm" autocomplete="off">
       <label>Your password (to confirm it is really you)
@@ -695,7 +696,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <!-- ============ CHANGE EMAIL MODAL ============ -->
 <div id="emailModal" class="modal hidden">
   <div class="modal-card">
-    <div class="modal-head"><h3>Change Email</h3><button id="emailClose" class="icon-btn" type="button">✕</button></div>
+    <div class="modal-head"><h3>Change Email</h3><button id="emailClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
     <form id="emailForm" autocomplete="off">
       <label>New email
         <input type="email" id="newEmail" placeholder="new@example.com">
@@ -712,7 +713,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <!-- ============ CHANGE PASSWORD MODAL ============ -->
 <div id="passModal" class="modal hidden">
   <div class="modal-card">
-    <div class="modal-head"><h3>Change Password</h3><button id="passClose" class="icon-btn" type="button">✕</button></div>
+    <div class="modal-head"><h3>Change Password</h3><button id="passClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
     <form id="passForm" autocomplete="off">
       <label>Current password
         <input type="password" id="passCur">
@@ -729,7 +730,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <!-- ============ 2FA MODAL (setup / QR / codes / disable) ============ -->
 <div id="totpModal" class="modal hidden">
   <div class="modal-card">
-    <div class="modal-head"><h3 id="totpModalTitle">Two-Factor Authentication</h3><button id="totpClose" class="icon-btn" type="button">✕</button></div>
+    <div class="modal-head"><h3 id="totpModalTitle">Two-Factor Authentication</h3><button id="totpClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
     <div id="totpModalBody"></div>
   </div>
 </div>
@@ -763,7 +764,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <!-- ============ VAULT PASSPHRASE MODAL ============ -->
 <div id="vaultModal" class="modal hidden">
   <div class="modal-card">
-    <div class="modal-head"><h3 id="vaultTitle">Encrypted Vault</h3><button id="vaultClose" class="icon-btn" type="button">✕</button></div>
+    <div class="modal-head"><h3 id="vaultTitle">Encrypted Vault</h3><button id="vaultClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
     <p class="auth-note" id="vaultText"></p>
     <form id="vaultForm" autocomplete="off">
       <label>Vault passphrase (8+ characters — there is no recovery if you forget it)
@@ -810,10 +811,10 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <script src="assets/qrcode.min.js?v=1"></script>
 <script src="js/firebase-config.js?v=8"></script>
 <script src="js/stocks.js?v=23"></script>
-<script src="js/app.js?v=54"></script>
+<script src="js/app.js?v=55"></script>
 <script src="js/profile.js?v=14"></script>
 <script src="js/e2ee.js?v=5"></script>
-<script src="js/features.js?v=84"></script>
+<script src="js/features.js?v=89"></script>
 <div class="samsung-bottom-dock-wrap" aria-label="Bottom Navigation">
   <nav class="samsung-bottom-capsule">
     <button type="button" class="mobile-nav-item" data-bnav="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/></svg><span>Home</span></button>
@@ -827,11 +828,27 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <div id="moreSheet" class="modal sheet-modal hidden" role="dialog" aria-label="More">
   <div class="sheet-card more-sheet-card">
     <div class="more-sheet-head"><b>More</b><button type="button" class="mini-btn" data-more-close="1">Close</button></div>
+    <button type="button" class="more-row" data-more-act="search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg><span>Search stock</span></button>
     <button type="button" class="more-row" data-more-view="news"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 5h13v14H6a2 2 0 0 1-2-2V5z"/><path d="M17 8h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2"/><path d="M7 9h7M7 13h7"/></svg><span>News</span></button>
     <button type="button" class="more-row" data-more-view="history"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg><span>History</span></button>
     <button type="button" class="more-row" data-more-view="profile"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg><span>My Profile</span></button>
+    <button type="button" class="more-row" data-more-act="settings"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg><span>Settings</span></button>
+    <button type="button" class="more-row" data-more-act="export"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10"/><path d="M8 10.5L12 14.5l4-4"/><path d="M4 19h16"/></svg><span>Export data (CSV)</span></button>
+    <button type="button" class="more-row" data-more-act="import"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 14V4"/><path d="M8 7.5L12 3.5l4 4"/><path d="M4 19h16"/></svg><span>Import data</span></button>
+    <button type="button" class="more-row" data-more-act="backup"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4.5" width="16" height="5" rx="1"/><path d="M6 9.5V19a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 18 19V9.5"/><path d="M10 14.5h4"/></svg><span>Backup and Restore</span></button>
+    <button type="button" class="more-row" data-more-view="watchlist"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg><span>Notifications / Price alerts</span></button>
     <button type="button" class="more-row" data-more-act="report"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 4 2.8 20h18.4L12 4z"/><path d="M12 10v4.5M12 17.4v.1"/></svg><span>Report Issue</span></button>
+    <button type="button" class="more-row" data-more-act="help"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4A2.6 2.6 0 1 1 12 12.4v1.4"/><path d="M12 17.2v.1"/></svg><span>Help and Feedback</span></button>
     <button type="button" class="more-row" data-more-act="legal"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg><span>Legal &amp; Privacy</span></button>
+    <button type="button" class="more-row" data-more-act="about"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 7.8v.1"/></svg><span>About and Version</span></button>
+    <button type="button" class="more-row" data-more-act="logout"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3"/><path d="M15.5 8L19.5 12l-4 4"/><path d="M19.5 12h-10"/></svg><span>Logout</span></button>
+  </div>
+</div>
+<div id="aboutModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="About Folio">
+  <div class="modal-card">
+    <div class="modal-head"><h3>About Folio</h3><button id="aboutClose" class="icon-btn" type="button" aria-label="Close" data-close-modal="1">✕</button></div>
+    <p><b>Folio</b> — <span id="aboutVer">Version</span></p>
+    <p class="auth-note">A Singh Caizen Product. Your personal portfolio tracker: manual entries, free delayed prices (~15 min, via Yahoo Finance), cloud sync with optional end-to-end encryption. Made for tracking and study — not investment advice.</p>
   </div>
 </div>
 </body>

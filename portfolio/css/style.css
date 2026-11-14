@@ -1587,7 +1587,7 @@ body.kb-open .samsung-bottom-dock-wrap{display:none !important}
 .auto-tag{color:var(--muted);font-style:italic}
 .deal-row{display:flex;gap:10px;align-items:center;padding:8px 4px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .deal-row:last-child{border-bottom:none}
-.deal-main{flex:1;min-width:180px}
+.deal-main{flex:1;min-width:120px}
 .deal-val{font-weight:700;white-space:nowrap}
 .deal-big{background:rgba(201,162,39,.08)}
 tr.deal-big td{font-weight:600}
@@ -1619,3 +1619,65 @@ tr.deal-big td{font-weight:600}
 .wl-alert-edit input{width:110px}
 .wl-banner{display:flex;flex-wrap:wrap;gap:8px;padding:9px 12px;border-radius:10px;background:rgba(201,162,39,.13);font-weight:600;font-size:13.5px;margin-bottom:10px}
 .gains-cfg label{flex:1}
+
+/* ===== v89: modal system, sheets, tap targets, safe-area, toast, focus ===== */
+.modal-card{width:100% !important;max-width:460px !important;max-height:92vh;max-height:calc(100dvh - 28px)}
+.modal-card.modal-wide{max-width:min(980px,100%) !important}
+#txnModal .modal-card{max-width:min(680px,100%) !important}
+.modal:not(.hidden){animation:folioFade .2s ease}
+.modal:not(.hidden) .modal-card,.modal:not(.hidden) .sheet-card{animation:folioUp .22s ease}
+@keyframes folioFade{from{opacity:0}}
+@keyframes folioUp{from{opacity:0;transform:translateY(14px)}}
+@keyframes folioShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.auth-card.shake{animation:folioShake .3s ease}
+@media (prefers-reduced-motion: reduce){.modal:not(.hidden),.modal:not(.hidden) .modal-card,.modal:not(.hidden) .sheet-card,.auth-card.shake{animation:none}}
+@media (max-width:768px){
+  .modal{align-items:flex-end;padding:0}
+  .modal-card{max-width:100% !important;border-radius:18px 18px 0 0;max-height:85vh;max-height:85dvh}
+  .modal-card::before,.sheet-card::before{content:"";display:block;width:44px;height:4px;border-radius:99px;background:rgba(140,140,140,.5);margin:2px auto 10px}
+  .toast{bottom:calc(96px + env(safe-area-inset-bottom, 0px))}
+}
+@media (min-width:1024px){
+  .sheet-modal{align-items:flex-end;justify-content:center;padding-bottom:94px}
+  .more-sheet-card{width:340px;max-width:340px;border-radius:16px}
+  .tabs.top-liquid-nav-strip{max-width:1380px;margin-inline:auto}
+}
+.topbar{padding-top:calc(.7rem + env(safe-area-inset-top, 0px))}
+.samsung-bottom-dock-wrap{bottom:calc(14px + env(safe-area-inset-bottom, 0px)) !important}
+#stockResults{overflow-x:auto;max-width:100%}
+.res-table{min-width:520px}
+.news-meta{white-space:normal}
+.toast{display:flex;align-items:center;gap:14px}
+.toast-undo{background:none;border:none;color:var(--gold,#c9a227);font-weight:700;font-size:.95rem;cursor:pointer;padding:6px 4px;text-decoration:underline}
+.confirm-msg{font-size:15px;line-height:1.55;margin:2px 0 4px}
+.confirm-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+.confirm-btns .btn{min-height:44px}
+.remember-row{display:flex;align-items:center;gap:9px;font-size:13.5px;margin:10px 0 2px;cursor:pointer}
+.remember-row input{width:19px;height:19px;accent-color:var(--gold,#c9a227)}
+:focus-visible{outline:2px solid var(--gold,#c9a227);outline-offset:2px}
+/* 44px tap targets (visual design unchanged — hit areas only) */
+.icon-btn{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+#stockClose{width:44px;height:44px}
+.dash-collapse{width:44px !important;height:44px !important}
+.theme-btn{width:44px;height:44px}
+.mini-btn{min-height:44px}
+.seg-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.chip{min-height:44px;display:inline-flex;align-items:center}
+.hold-view-seg button{min-height:44px}
+.insx-chip{min-height:44px}
+.wl-pill{min-height:44px;display:inline-flex;align-items:center}
+.wl-act{min-height:44px;display:inline-flex;align-items:center}
+.top-liquid-nav-strip .tab{min-height:44px}
+.auth-tab{min-height:44px}
+.entry-tab{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.suggest-item{min-height:44px;display:flex;align-items:center}
+.watch-x{width:44px;height:44px}
+.star-btn{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.eye-btn{min-width:44px;min-height:44px}
+.cam-btn{width:44px;height:44px}
+.btn-small{min-height:44px;display:inline-flex;align-items:center}
+.switch{width:26px;height:26px}
+.ta-zoom button{min-width:40px;min-height:40px}
+.insx-cal-d{min-height:40px}
+.info-btn,.insx-i{position:relative}
+.info-btn::after,.insx-i::after{content:"";position:absolute;inset:-12px}

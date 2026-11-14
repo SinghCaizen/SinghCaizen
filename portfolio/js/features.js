@@ -535,7 +535,6 @@ async function doTick() {
   try { loadTicker(); } catch (e) {}
 }
 setInterval(() => { updateMktPill(); if (marketOpenIST() && currentUser && !document.hidden) doTick(); }, 60000);
-setInterval(updateMktPill, 60000);
 
 /* ---------- Yahoo search top-up for autocomplete (beyond the built-in list) ---------- */
 window.__yahooSuggest = async function (q) {
@@ -583,6 +582,7 @@ document.addEventListener("keydown", e => {
   }
 });
 setInterval(() => {
+  if (!currentUser) return;
   document.querySelectorAll("[data-bnav]").forEach(b => b.classList.toggle("active", b.dataset.bnav === folioView));
 }, 1000);
 /* Bottom dock + top strip navigation: ONE delegated listener on the document,
@@ -956,9 +956,9 @@ async function loadInsScores(d) {
     let ret = null, vol = null, hi = null, lo = null;
     if (h && h.points.length > 5) {
       const cs = h.points.map(x => x.c);
-      ret = (cs[cs.length - 1] / cs[0] - 1) * 100;
+      ret = cs[0] > 0 && cs[cs.length - 1] > 0 ? (cs[cs.length - 1] / cs[0] - 1) * 100 : null;
       const rets = [];
-      for (let k = 1; k < cs.length; k++) if (cs[k - 1] > 0) rets.push(Math.log(cs[k] / cs[k - 1]));
+      for (let k = 1; k < cs.length; k++) if (cs[k - 1] > 0 && cs[k] > 0) rets.push(Math.log(cs[k] / cs[k - 1]));
       if (rets.length > 5) {
         const m = rets.reduce((a, b) => a + b, 0) / rets.length;
         vol = Math.sqrt(rets.reduce((a, b) => a + (b - m) * (b - m), 0) / rets.length) * Math.sqrt(252) * 100;
@@ -1244,7 +1244,9 @@ function relTime(tsMs) {
   return new Date(tsMs).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 function fmtDate(ms) {
-  return new Date(ms).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  if (ms == null || ms === "") return "—";
+  const d = new Date(ms);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 function crores(raw) {
   if (typeof raw !== "number") return "—";
@@ -1598,7 +1600,7 @@ function quantStats(points) {
   const mom6 = cs.length > 20 ? (last / cs[i6] - 1) * 100 : null;
   let vol = null;
   const rets = [];
-  for (let k = 1; k < cs.length; k++) if (cs[k - 1] > 0) rets.push(Math.log(cs[k] / cs[k - 1]));
+  for (let k = 1; k < cs.length; k++) if (cs[k - 1] > 0 && cs[k] > 0) rets.push(Math.log(cs[k] / cs[k - 1]));
   if (rets.length > 20) {
     const m = rets.reduce((a, b) => a + b, 0) / rets.length;
     vol = Math.sqrt(rets.reduce((a, b) => a + (b - m) * (b - m), 0) / rets.length) * Math.sqrt(252) * 100;
@@ -1954,7 +1956,7 @@ async function fillSheetCorp(sym, tok) {
   if (h1 && h1.points.length > 20) {
     const cs = h1.points.map(x => x.c);
     const rets = [];
-    for (let k = 1; k < cs.length; k++) if (cs[k - 1] > 0) rets.push(Math.log(cs[k] / cs[k - 1]));
+    for (let k = 1; k < cs.length; k++) if (cs[k - 1] > 0 && cs[k] > 0) rets.push(Math.log(cs[k] / cs[k - 1]));
     if (rets.length > 20) {
       const m = rets.reduce((a, b) => a + b, 0) / rets.length;
       vol = Math.sqrt(rets.reduce((a, b) => a + (b - m) * (b - m), 0) / rets.length) * Math.sqrt(252) * 100;
@@ -2410,7 +2412,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v84";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v89";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -2882,7 +2884,11 @@ async function renderTA() {
     throw new Error("empty");
   } catch (e) {
     if (tok !== taToken || activeModalSymbol !== sym) return;
-    if (preview) taPill("preview");
+    if (preview) {
+      if (taState.trySym !== sym + tf.range + "p") { taState.trySym = sym + tf.range + "p"; taState.tries = 0; }
+      if (taState.tries < 3) { taState.tries++; taPill("preview"); setTimeout(() => { if (baseTicker(stockSym) === sym) { try { renderTA(); } catch (e2) {} } }, 3000); }
+      else { taPill("preview"); const vd = $("taVerdict"); if (vd) vd.innerHTML = '<p class="empty-note">Live chart data could not load, so no analysis is shown — the bars above are only an estimated preview. <button type="button" class="mini-btn" data-ta-retry="1">Retry</button></p>'; }
+    }
     else if (!taState.bars.length) {
       if (taState.trySym !== sym + tf.range) { taState.trySym = sym + tf.range; taState.tries = 0; }
       if (taState.tries < 3) { taState.tries++; setTimeout(() => { if (baseTicker(stockSym) === sym) { try { renderTA(); } catch (e2) {} } }, 3000); }
@@ -3412,7 +3418,7 @@ function insxSeriesError() {
   ["insx-risk", "insx-nifty", "insx-inv", "insx-corr", "insx-cal", "insx-score"].forEach(id => {
     const box = $(id); if (!box) return;
     const title = box.querySelector("h2") ? box.querySelector("h2").textContent : "Card";
-    box.innerHTML = '<div class="panel-head"><h2>' + esc(title) + '</h2></div><p class="empty-note">Price history could not be loaded right now. Check your connection and reopen Insights to try again.</p>';
+    box.innerHTML = '<div class="panel-head"><h2>' + esc(title) + '</h2></div><p class="empty-note">Price history could not be loaded right now. Check your connection and try again.</p><button type="button" class="mini-btn" data-insx-retry="1">Retry</button>';
   });
 }
 function insxShowInfo(text) {
@@ -5042,7 +5048,7 @@ document.addEventListener("focusout", () => setTimeout(() => { const t = (docume
 const _skelSeen = new WeakMap();
 setInterval(() => {
   if (!currentUser) return;
-  document.querySelectorAll("#view-dashboard .skel, #view-insights .skel, #view-news .skel").forEach(sk => {
+  document.querySelectorAll("#view-dashboard .skel, #view-insights .skel, #view-news .skel, #view-insights .insx-skel").forEach(sk => {
     if (sk.offsetParent === null) return;
     const host = sk.parentElement; if (!host) return;
     const now = Date.now();
@@ -5152,14 +5158,14 @@ function folioDownload(name, text, type) {
   a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 function mySyms() { const s = new Set(); try { enriched().rows.forEach(r => s.add(r.sym)); } catch (e) {} (state.watch || []).forEach(w => s.add(w.sym)); return s; }
-function fmtCr(v) { return "₹" + (v / 1e7).toFixed(2) + " Cr"; }
+function fmtCr(v) { return Number.isFinite(v) ? "₹" + (v / 1e7).toFixed(2) + " Cr" : "—"; }
 /* ---------- Big Deals ---------- */
 let folioDeals = null, folioDealsTried = false;
 async function folioLoadDeals() {
   if (folioDeals || folioDealsTried) return folioDeals;
   folioDealsTried = true;
   const j = await folioDataJson("deals.json");
-  if (j && Array.isArray(j.data) && j.data.length) { folioDeals = j.data; try { folioOnDeals(); } catch (e) {} }
+  if (j && Array.isArray(j.data) && j.data.length) { folioDeals = j.data.filter(r => r && r.sym && isFinite(Number(r.qty)) && isFinite(Number(r.price))); if (folioDeals.length) { try { folioOnDeals(); } catch (e) {} } else folioDeals = null; }
   return folioDeals;
 }
 function dealThr() { const p = folioProf(); return Number(p.dealThresholdCr) > 0 ? Number(p.dealThresholdCr) : 1; }
@@ -5200,7 +5206,7 @@ function folioRenderDealsCard() {
   const rows = folioDeals.filter(r => mine.has(r.sym)).slice(0, 10);
   const list = panel.querySelector(".deal-list");
   list.innerHTML = rows.length ? rows.map(r => dealRowHtml(r, r.qty * r.price >= dealThr() * 1e7)).join("") : '<p class="empty-note">No reported bulk/block deals on your stocks in the saved window yet.</p>';
-  const spot = folioSpotted().filter(s => mine.has(s.r.sym) || true);
+  const spot = folioSpotted().filter(s => mine.has(s.r.sym));
   panel.querySelector(".deal-spotted").innerHTML = spot.map(s => '<p class="spot-line">Spotted: <b>' + esc(s.name) + "</b> " + (s.r.side === "BUY" ? "bought" : "sold") + " " + esc(s.r.sym) + " · " + fmtCr(s.r.qty * s.r.price) + " · " + fmtDate(s.r.d) + "</p>").join("");
 }
 function folioEnsureDealsView() {
@@ -5409,6 +5415,7 @@ function folioFifo() {
         sales.push({ sym: t.sym, buyDate: l.date, sellDate: t.date, qty: take, buyVal: take * l.price, sellVal: take * sp, days: days, term: days > 365 ? "Long" : "Short", gain: take * (sp - l.price) });
         l.qty -= take; q -= take; if (l.qty <= 0) lots[t.sym].shift();
       }
+      if (q > 0) sales.push({ sym: t.sym, buyDate: "", sellDate: t.date, qty: q, buyVal: null, sellVal: q * sp, days: "—", term: "No buy record", gain: null });
     }
   });
   return sales;
@@ -5453,13 +5460,13 @@ function folioGainsRender() {
   const estTax = Math.max(0, st) * (cfg.stcg || 0) / 100 + Math.max(0, lt - (cfg.exempt || 0)) * (cfg.ltcg || 0) / 100;
   body.innerHTML = '<div class="table-scroll"><table class="folio-table"><thead><tr><th>Stock</th><th>Buy date</th><th>Sell date</th><th>Qty</th><th>Buy value</th><th>Sell value</th><th>Days</th><th>Term</th><th>Gain</th></tr></thead><tbody>' +
     rows.map(r => "<tr><td><b>" + esc(r.sym) + "</b></td><td>" + fmtDate(r.buyDate) + "</td><td>" + fmtDate(r.sellDate) + "</td><td>" + r.qty + "</td><td>" + inr2(r.buyVal) + "</td><td>" + inr2(r.sellVal) + "</td><td>" + r.days + "</td><td>" + r.term + '</td><td class="' + (r.gain >= 0 ? "pos" : "neg") + '">' + inr2(r.gain) + "</td></tr>").join("") +
-    '</tbody></table></div><p class="price-meta">Short-term gains ' + inr2(st) + " · Long-term gains " + inr2(lt) + " · Estimated tax at your rates: " + inr2(estTax) + ". Estimate only — verify current rules before filing; tax rules change in Budgets and this is information, not tax advice.</p>";
+    '</tbody></table></div><p class="price-meta">Short-term gains ' + inr2(st) + " · Long-term gains " + inr2(lt) + " · Estimated tax at your rates: " + inr2(estTax) + ". Estimate only — verify current rules before filing; tax rules change in Budgets and this is information, not tax advice.</p>" + (rows.some(r => r.gain === null) ? '<p class="price-meta">Rows marked "No buy record" are sales whose buy entry is not in Folio (for example, shares that arrived as imported holdings). They are listed so nothing is hidden, but they are not counted in the totals because their buy price is unknown.</p>' : "");
 }
 function folioGainsCsv() {
   const rows = folioGainsRows();
   if (!rows.length) { toast("No sales in this year to export"); return; }
   const lines = ["Stock,Buy Date,Sell Date,Qty,Buy Value,Sell Value,Holding Days,Term,Gain"];
-  rows.forEach(r => lines.push([r.sym, r.buyDate, r.sellDate, r.qty, r.buyVal.toFixed(2), r.sellVal.toFixed(2), r.days, r.term, r.gain.toFixed(2)].join(",")));
+  rows.forEach(r => lines.push([r.sym, r.buyDate, r.sellDate, r.qty, r.buyVal == null ? "" : r.buyVal.toFixed(2), r.sellVal.toFixed(2), r.days, r.term, r.gain == null ? "" : r.gain.toFixed(2)].join(",")));
   folioDownload("folio-capital-gains-" + (gainsFy || "all").replace(/\s+/g, "") + ".csv", lines.join("\n"), "text/csv");
   toast("Capital gains CSV downloaded");
 }
@@ -5517,7 +5524,7 @@ async function folioCompareRender() {
     const vol = Math.sqrt(rets.reduce((a, b) => a + (b - mean) * (b - mean), 0) / Math.max(1, rets.length)) * Math.sqrt(252) * 100;
     let pos = null;
     const mc = (typeof masterCache !== "undefined" && masterCache[s.sym]) || null;
-    if (mc && mc.meta && mc.meta.fiftyTwoWeekHigh && mc.meta.fiftyTwoWeekLow) pos = Math.max(0, Math.min(100, (last - mc.meta.fiftyTwoWeekLow) / (mc.meta.fiftyTwoWeekHigh - mc.meta.fiftyTwoWeekLow) * 100));
+    if (mc && mc.meta && mc.meta.fiftyTwoWeekHigh > mc.meta.fiftyTwoWeekLow) pos = Math.max(0, Math.min(100, (last - mc.meta.fiftyTwoWeekLow) / (mc.meta.fiftyTwoWeekHigh - mc.meta.fiftyTwoWeekLow) * 100));
     const f = v => v === null || !isFinite(v) ? "—" : (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
     return "<tr><td><b style=\"color:" + colors[i % 4] + "\">" + esc(s.sym) + "</b></td><td>" + f(ret(30)) + "</td><td>" + f(ret(182)) + "</td><td>" + f(ret(365)) + "</td><td>" + (isFinite(vol) ? vol.toFixed(1) + "%" : "—") + "</td><td>" + (pos === null ? "—" : pos.toFixed(0) + "% of range") + "</td></tr>";
   }));
@@ -5530,7 +5537,7 @@ function folio52Bar(sym, row) {
   const mc = (typeof masterCache !== "undefined" && masterCache[sym]) || null;
   const meta = mc && mc.meta;
   const p = priceOf(sym);
-  if (!meta || !meta.fiftyTwoWeekHigh || !meta.fiftyTwoWeekLow || !p || !p.price) {
+  if (!meta || !meta.fiftyTwoWeekHigh || !meta.fiftyTwoWeekLow || meta.fiftyTwoWeekHigh <= meta.fiftyTwoWeekLow || !p || !p.price) {
     if (!_wl52Kicked[sym]) { _wl52Kicked[sym] = 1; fetchMaster(sym).then(() => { try { folioWatchDecorate(); } catch (e) {} }); }
     return;
   }
@@ -5604,6 +5611,7 @@ function folioWatchAlertCheck(host) {
   const hits = [];
   syms.forEach(sym => {
     const p = priceOf(sym); if (!p || !p.price) return;
+    if (!p.ts || Date.now() - p.ts > 20 * 60 * 1000) return; /* stale cached price: never alert on it */
     const a = alerts[sym];
     [["above", a.above, p.price >= (a.above || Infinity)], ["below", a.below, p.price <= (a.below || -Infinity)]].forEach(([kind, lvl, hit]) => {
       if (!lvl || !hit) return;
@@ -5645,3 +5653,120 @@ function folioSetupsC() {
   folioComparePanel();
 }
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
+
+/* ================= v89: central modal manager, Android back, More actions ================= */
+const FOLIO_VER = "Folio v89";
+(function () {
+  const stack = [];
+  const STATIC = { e2eeUnlock: 1, e2eeSetup: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
+  const isOpen = m => m && !m.classList.contains("hidden");
+  function prune() { for (let i = stack.length - 1; i >= 0; i--) if (!isOpen(stack[i])) stack.splice(i, 1); }
+  function top() { prune(); return stack.length ? stack[stack.length - 1] : null; }
+  function syncLock() { document.body.style.overflow = stack.some(isOpen) ? "hidden" : ""; }
+  function noteOpen(m) {
+    if (!stack.includes(m)) {
+      stack.push(m);
+      if (!STATIC[m.id] && m.id !== "stockModal") { try { history.pushState({ folioModal: m.id || "m" }, ""); } catch (e) {} }
+    }
+    syncLock();
+  }
+  function noteClosed(m) { const i = stack.indexOf(m); if (i >= 0) stack.splice(i, 1); syncLock(); }
+  function observe(m) {
+    if (!m || m.__folioObs) return; m.__folioObs = 1;
+    new MutationObserver(() => { if (isOpen(m)) noteOpen(m); else noteClosed(m); }).observe(m, { attributes: true, attributeFilter: ["class"] });
+    if (isOpen(m)) noteOpen(m);
+  }
+  document.querySelectorAll(".modal").forEach(observe);
+  new MutationObserver(ms => ms.forEach(rec => rec.addedNodes.forEach(n => {
+    if (n.nodeType !== 1) return;
+    if (n.classList && n.classList.contains("modal")) observe(n);
+    if (n.querySelectorAll) n.querySelectorAll(".modal").forEach(observe);
+  }))).observe(document.body, { childList: true });
+
+  function closeModal(m) {
+    if (!m || STATIC[m.id]) return;
+    if (m.id === "stockModal" && typeof window.closeCompanyModal === "function") { window.closeCompanyModal(); return; }
+    const c = m.querySelector("[data-more-close], [data-close-terms], [data-close-modal], .modal-close-btn");
+    if (c) { c.click(); setTimeout(() => { if (isOpen(m)) m.classList.add("hidden"); }, 60); return; }
+    m.classList.add("hidden");
+  }
+  window.folioCloseTopModal = function () { const m = top(); if (m) closeModal(m); return !!m; };
+
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") { const m = top(); if (m && !STATIC[m.id]) { e.preventDefault(); closeModal(m); } return; }
+    if (e.key === "Tab") {
+      const m = top(); if (!m || STATIC[m.id]) return;
+      const f = [...m.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(el => el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+  document.addEventListener("mousedown", e => {
+    const m = e.target;
+    if (m && m.classList && m.classList.contains("modal") && isOpen(m) && !STATIC[m.id] && top() === m) closeModal(m);
+  });
+
+  let viewArmed = false;
+  const _sv89 = switchView;
+  switchView = function (name) {
+    const r = _sv89.apply(this, arguments);
+    if (name && name !== "dashboard" && !viewArmed && !top()) { try { history.pushState({ folioView: name }, ""); viewArmed = true; } catch (e) {} }
+    return r;
+  };
+  window.addEventListener("popstate", () => {
+    const before = stack.length;
+    prune();
+    if (stack.length < before) { syncLock(); return; }
+    const m = top();
+    if (m) { closeModal(m); return; }
+    viewArmed = false;
+    const cur = document.querySelector(".view:not(.hidden)");
+    if (cur && cur.id !== "view-dashboard") {
+      switchView("dashboard");
+      try { history.pushState({ folioView: "dashboard" }, ""); viewArmed = true; } catch (e) {}
+    }
+  });
+
+  let swipe = null;
+  document.addEventListener("touchstart", e => {
+    const card = e.target.closest(".modal-card, .sheet-card");
+    if (!card) return;
+    const m = card.closest(".modal");
+    if (!m || !isOpen(m) || STATIC[m.id]) return;
+    if (card.scrollTop > 0) return;
+    swipe = { m: m, card: card, y: e.touches[0].clientY, dy: 0 };
+  }, { passive: true });
+  document.addEventListener("touchmove", e => {
+    if (!swipe) return;
+    swipe.dy = e.touches[0].clientY - swipe.y;
+    if (swipe.dy > 0) swipe.card.style.transform = "translateY(" + swipe.dy + "px)";
+  }, { passive: true });
+  document.addEventListener("touchend", () => {
+    if (!swipe) return;
+    const sw = swipe; swipe = null;
+    sw.card.style.transform = "";
+    if (sw.dy > 90) closeModal(sw.m);
+  });
+
+  document.addEventListener("click", e => {
+    const row = e.target.closest("[data-more-act]");
+    if (row) {
+      const act = row.dataset.moreAct;
+      if (act !== "report" && act !== "legal") {
+        const sheet = $("moreSheet"); if (sheet) sheet.classList.add("hidden");
+        if (act === "search" && typeof platPalette === "function") platPalette();
+        else if (act === "settings") { switchView("profile"); setTimeout(() => { const el = document.querySelector("#view-profile .panel"); if (el) el.scrollIntoView({ block: "start" }); }, 80); }
+        else if (act === "export") { const b = $("exportBtn"); if (b) b.click(); }
+        else if (act === "import") { const f = $("importFile"); if (f) f.click(); }
+        else if (act === "backup") { switchView("profile"); setTimeout(() => { const b = $("vaultExportBtn"); if (b) b.scrollIntoView({ block: "center" }); }, 80); }
+        else if (act === "help") { const h = $("helpModal"); if (h) h.classList.remove("hidden"); }
+        else if (act === "about") { const v = $("aboutVer"); if (v) v.textContent = "Version " + FOLIO_VER.replace("Folio ", ""); const a = $("aboutModal"); if (a) a.classList.remove("hidden"); }
+        else if (act === "logout" && typeof doLogout === "function") doLogout();
+      }
+    }
+    if (e.target.closest("[data-insx-retry]")) { try { insXSeries = null; insXSig = ""; insxLoadSeries(); } catch (err) {} }
+    if (e.target.closest("[data-ta-retry]")) { try { taState.tries = 0; taState.trySym = ""; renderTA(); } catch (err) {} }
+  });
+})();

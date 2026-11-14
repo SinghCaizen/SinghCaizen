@@ -6,7 +6,48 @@ const inr2 = n => Number.isFinite(n) ? "₹" + Number(n).toLocaleString("en-IN",
 const pct = n => Number.isFinite(n) ? (n >= 0 ? "+" : "") + n.toFixed(2) + "%" : "—";
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.remove("hidden"); setTimeout(() => t.classList.add("hidden"), 2600); }
+let __toastTimer = null;
+function toast(msg, undoFn) {
+  const t = $("toast"); if (!t) return;
+  t.innerHTML = "";
+  t.appendChild(document.createTextNode(msg));
+  if (typeof undoFn === "function") {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "toast-undo"; b.textContent = "Undo";
+    b.addEventListener("click", () => { clearTimeout(__toastTimer); t.classList.add("hidden"); undoFn(); });
+    t.appendChild(b);
+  }
+  t.classList.remove("hidden");
+  clearTimeout(__toastTimer);
+  __toastTimer = setTimeout(() => t.classList.add("hidden"), typeof undoFn === "function" ? 6000 : 2600);
+}
+/* In-app confirm dialog (replaces the browser's native confirm) */
+function folioConfirm(msg, okLabel) {
+  return new Promise(res => {
+    let m = $("confirmModal");
+    if (!m) {
+      m = document.createElement("div");
+      m.id = "confirmModal"; m.className = "modal hidden"; m.setAttribute("role", "alertdialog"); m.setAttribute("aria-modal", "true");
+      m.innerHTML = '<div class="modal-card confirm-card"><p class="confirm-msg"></p><div class="confirm-btns"><button type="button" class="btn" data-cf="0">Cancel</button><button type="button" class="btn btn-gold" data-cf="1"></button></div></div>';
+      document.body.appendChild(m);
+    }
+    m.querySelector(".confirm-msg").textContent = msg;
+    m.querySelector('[data-cf="1"]').textContent = okLabel || "Delete";
+    m.classList.remove("hidden");
+    const cancel = m.querySelector('[data-cf="0"]'); if (cancel) cancel.focus();
+    const done = v => { m.classList.add("hidden"); m.removeEventListener("click", onClick); res(v); };
+    const onClick = e => { const b = e.target.closest("[data-cf]"); if (b) done(b.dataset.cf === "1"); else if (e.target === m) done(false); };
+    m.addEventListener("click", onClick);
+  });
+}
+async function deleteTxnWithConfirm(id) {
+  if (!await folioConfirm("Delete this entry?")) return;
+  const idx = state.txns.findIndex(t => t.id === id);
+  if (idx < 0) return;
+  const removed = state.txns[idx];
+  state.txns.splice(idx, 1); persist(); renderAll();
+  toast("Entry deleted", () => { state.txns.splice(Math.min(idx, state.txns.length), 0, removed); persist(); renderAll(); toast("Entry restored"); });
+}
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
 /* ================= state ================= */
@@ -113,7 +154,7 @@ function cloudSave() {
       if (syncFrozen || !currentUser || currentUser.email !== uid || fb.docRef !== ref) return; /* account changed mid-flight: drop the write */
       const ts = Date.now();
       const payload = (window.__e2eeActive && window.e2eeBuildPayload) ? await window.e2eeBuildPayload(state) : { state: state, updatedAt: ts };
-      ref.set(payload).then(() => { lastAppliedCloudTs = Math.max(lastAppliedCloudTs, ts); }).catch(e => console.warn("save failed", e));
+      ref.set(payload).then(() => { lastAppliedCloudTs = Math.max(lastAppliedCloudTs, ts); }).catch(e => { console.warn("save failed", e); if (!window.__saveFailAt || Date.now() - window.__saveFailAt > 30000) { window.__saveFailAt = Date.now(); toast("Couldn't save your last change to the cloud — please check your connection."); } });
     }, 400);
   } else { localSave(); }
 }
@@ -128,7 +169,11 @@ function setAuthMode(m) {
   $("authSubmit").textContent = m === "login" ? "Login" : "Create Account";
   $("authName").closest("label").style.display = m === "signup" ? "block" : "none";
 }
-function authError(msg) { $("authError").textContent = msg || ""; }
+function authError(msg) {
+  $("authError").textContent = msg || "";
+  const b = $("authSubmit"); if (b) { b.disabled = false; b.textContent = b.dataset.txt || b.textContent; }
+  if (msg) { const card = document.querySelector(".auth-card"); if (card) { card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake"); } }
+}
 
 async function doAuth(ev) {
   ev.preventDefault(); authError("");
@@ -137,7 +182,9 @@ async function doAuth(ev) {
   window.__pendingPass = pass;
   const name = $("authName").value.trim();
   if (!email || pass.length < 6) { authError("Email and a 6+ character password are needed."); return; }
+  const __sb = $("authSubmit"); if (__sb) { __sb.dataset.txt = __sb.textContent; __sb.disabled = true; __sb.textContent = "Please wait…"; }
   if (FIREBASE_ON) {
+    try { const P = firebase.auth.Auth.Persistence; await fb.auth.setPersistence($("rememberMe") && $("rememberMe").checked ? P.LOCAL : P.SESSION); } catch (e) {}
     try {
       if (authMode === "signup") {
         const cred = await fb.auth.createUserWithEmailAndPassword(email, pass);
@@ -182,7 +229,7 @@ async function doLogout() {
   localStorage.removeItem(LS_SESSION);
   currentUser = null; state = emptyState(); prices = {};
   if (fb.unsub) { fb.unsub(); fb.unsub = null; }
-  $("appView").classList.add("hidden"); $("gateView").classList.add("hidden"); $("authView").classList.remove("hidden");
+  $("appView").classList.add("hidden"); $("gateView").classList.add("hidden"); $("authView").classList.remove("hidden"); authError("");
 }
 async function doForgot(ev) {
   ev.preventDefault();
@@ -699,11 +746,11 @@ function renderHoldings() {
         <div class="dr-block"><h4>Purchase History — Your Buy Lots</h4>${lotsHtml}<p class="dr-tax">${taxLine}</p></div>
         <div class="dr-block"><h4>All Entries</h4>${txnHtml || '<p class="muted small">No entries.</p>'}</div>
         <div class="dr-block alerts"><h4>🔔 Price Alerts</h4>
-          <div class="wi-row"><label>Target Price<input type="number" class="al-target" min="0" step="any" placeholder="₹ target" value="${alertCfg && alertCfg.target ? alertCfg.target : ""}"></label><label>Stop-Loss Price<input type="number" class="al-sl" min="0" step="any" placeholder="₹ stop-loss" value="${alertCfg && alertCfg.sl ? alertCfg.sl : ""}"></label></div>
+          <div class="wi-row"><label>Target Price<input type="number" inputmode="decimal" class="al-target" min="0" step="any" placeholder="₹ target" value="${alertCfg && alertCfg.target ? alertCfg.target : ""}"></label><label>Stop-Loss Price<input type="number" inputmode="decimal" class="al-sl" min="0" step="any" placeholder="₹ stop-loss" value="${alertCfg && alertCfg.sl ? alertCfg.sl : ""}"></label></div>
           <div class="al-btns"><button class="mini-btn" data-alertsave="${esc(h.sym)}" type="button">Save Alert</button><button class="mini-btn danger" data-alertclear="${esc(h.sym)}" type="button">Clear</button><span class="price-meta">Alerts show on this card when the live price crosses them (checked on every refresh — not a broker order).</span></div>
         </div>
         <div class="dr-block whatif" data-qty="${h.qty}" data-avg="${h.avg}" data-inv="${h.invested}"><h4>What-If Average Calculator</h4>
-          <div class="wi-row"><label>New Qty<input type="number" class="wi-qty" min="0" step="any" placeholder="0"></label><label>Buy Price<input type="number" class="wi-price" min="0" step="any" value="${h.ltp === null ? "" : h.ltp.toFixed(2)}"></label></div>
+          <div class="wi-row"><label>New Qty<input type="number" inputmode="decimal" class="wi-qty" min="0" step="any" placeholder="0"></label><label>Buy Price<input type="number" inputmode="decimal" class="wi-price" min="0" step="any" value="${h.ltp === null ? "" : h.ltp.toFixed(2)}"></label></div>
           <p class="wi-out price-meta">Add a quantity to see your new average price.</p>
         </div>
         <div class="hold-actions">
@@ -722,8 +769,7 @@ function renderHoldings() {
   el.querySelectorAll("[data-edittxn]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); openEditTxn(b.dataset.edittxn); }));
   el.querySelectorAll("[data-deltxn]").forEach(b => b.addEventListener("click", e => {
     e.stopPropagation();
-    if (!confirm("Delete this entry?")) return;
-    state.txns = state.txns.filter(t => t.id !== b.dataset.deltxn); persist(); renderAll(); toast("Entry deleted");
+    deleteTxnWithConfirm(b.dataset.deltxn);
   }));
   el.querySelectorAll("[data-hold-toggle]").forEach(b => b.addEventListener("click", () => {
     const card = b.closest(".hold-card");
@@ -769,8 +815,12 @@ function renderHoldings() {
 function holdingAction(ds) {
   if (ds.act === "chart") { if (typeof openStock === "function") openStock(ds.sym); return; }
   if (ds.act === "del") {
-    if (!confirm("Remove ALL entries of " + ds.sym + " (buys, sells, dividends)? This cannot be undone.")) return;
-    state.txns = state.txns.filter(t => t.sym !== ds.sym); persist(); renderAll(); toast(ds.sym + " removed");
+    folioConfirm("Remove ALL entries of " + ds.sym + " (buys, sells, dividends)?", "Remove all").then(ok => {
+      if (!ok) return;
+      const removed = state.txns.filter(t => t.sym === ds.sym);
+      state.txns = state.txns.filter(t => t.sym !== ds.sym); persist(); renderAll();
+      toast(ds.sym + " removed", () => { state.txns.push(...removed); persist(); renderAll(); toast(ds.sym + " restored"); });
+    });
     return;
   }
   if (ds.act === "price") {
@@ -815,7 +865,7 @@ function renderWatch() {
     state.watch = state.watch.filter(x => x.sym !== b.dataset.unwatch); persist(); renderWatch(); toast("Removed from watchlist");
   }));
   el.querySelectorAll(".watchlist-row").forEach(row => {
-    row.addEventListener("click", () => openStock(row.dataset.wrow));
+    row.addEventListener("click", () => { if (typeof openStock === "function") openStock(row.dataset.wrow); });
   });
 }
 function renderHistory() {
@@ -827,8 +877,7 @@ function renderHistory() {
     <div>${t.type === "DIV" ? inr(t.price) + " received" : t.qty + " × " + inr2(t.price)} · ${esc(t.date)}
     <button class="mini-btn danger" data-deltxn="${t.id}">Delete</button></div></div>`).join("");
   el.querySelectorAll("[data-deltxn]").forEach(b => b.addEventListener("click", () => {
-    if (!confirm("Delete this entry?")) return;
-    state.txns = state.txns.filter(t => t.id !== b.dataset.deltxn); persist(); renderAll(); toast("Entry deleted");
+    deleteTxnWithConfirm(b.dataset.deltxn);
   }));
 }
 
@@ -842,15 +891,15 @@ function batchRow(prefill) {
     '<input class="bt-stock" placeholder="Stock name or symbol">' +
     '<select class="bt-exch"><option>NSE</option><option>BSE</option></select>' +
     '<input type="date" class="bt-date">' +
-    '<input type="number" class="bt-qty" min="0" step="any" placeholder="Qty">' +
-    '<input type="number" class="bt-price" min="0" step="any" placeholder="Price">' +
+    '<input type="number" inputmode="decimal" class="bt-qty" min="0" step="any" placeholder="Qty">' +
+    '<input type="number" inputmode="decimal" class="bt-price" min="0" step="any" placeholder="Price">' +
     '<input class="bt-amount" readonly placeholder="Amount">' +
     '<span class="bt-btns"><button type="button" class="icon-btn bt-optbtn" title="Optional: broker, charges, notes">＋</button>' +
     '<button type="button" class="icon-btn bt-del" title="Remove this row">🗑</button></span>' +
     '</div>' +
     '<div class="bt-optbox hidden">' +
     '<label>Select Broker<select class="bt-broker"><option>Zerodha</option><option>Dhan</option><option>Groww</option><option>Upstox</option><option>Other</option></select></label>' +
-    '<label>Total Charges (₹)<input type="number" class="bt-charges" min="0" step="any" placeholder="0"></label>' +
+    '<label>Total Charges (₹)<input type="number" inputmode="decimal" class="bt-charges" min="0" step="any" placeholder="0"></label>' +
     '<label>Net Amount<input class="bt-net" readonly placeholder="—"></label>' +
     '<label>Notes<input type="text" class="bt-note" placeholder="Note for future reference"></label>' +
     '<label>Tags<input type="text" class="bt-tags" placeholder="e.g. breakout, long-term, tip"></label>' +
@@ -925,6 +974,11 @@ function saveTxn(ev) {
   const rows = [...document.querySelectorAll(".bt-row")];
   const sellsQueued = {};
   const buysQueued = {};
+  const editSellBack = {};
+  if (window.__editTxnId && document.querySelectorAll(".bt-row").length === 1) {
+    const orig = state.txns.find(t => t.id === window.__editTxnId);
+    if (orig && orig.type === "SELL") editSellBack[orig.sym] = Number(orig.qty) || 0;
+  }
   const adds = [];
   for (const row of rows) {
     const q = s => row.querySelector(s);
@@ -937,11 +991,12 @@ function saveTxn(ev) {
     const price = Number(q(".bt-price").value);
     const qty = type === "DIV" ? 0 : Number(q(".bt-qty").value);
     if (!date || !(price >= 0) || (type !== "DIV" && !(price > 0))) { $("txnError").textContent = st.sym + ": please enter a valid date and price."; return; }
+    if (type === "DIV" && !(price > 0)) { $("txnError").textContent = st.sym + ": please enter the dividend amount received."; return; }
     if (type !== "DIV" && !(qty > 0)) { $("txnError").textContent = st.sym + ": quantity must be more than 0."; return; }
     if (type === "BUY") buysQueued[st.sym] = (buysQueued[st.sym] || 0) + qty;
     if (type === "SELL") {
       const h = computeHoldings().holdings.find(x => x.sym === st.sym);
-      const have = (h ? h.qty : 0) + (buysQueued[st.sym] || 0) - (sellsQueued[st.sym] || 0);
+      const have = (h ? h.qty : 0) + (buysQueued[st.sym] || 0) + (editSellBack[st.sym] || 0) - (sellsQueued[st.sym] || 0);
       if (qty > have) { $("txnError").textContent = "You hold only " + have + " shares of " + st.sym + "."; return; }
       sellsQueued[st.sym] = (sellsQueued[st.sym] || 0) + qty;
     }
@@ -1146,6 +1201,7 @@ document.addEventListener("DOMContentLoaded", () => {
   $("tabLogin").addEventListener("click", () => setAuthMode("login"));
   $("tabSignup").addEventListener("click", () => setAuthMode("signup"));
   $("authForm").addEventListener("submit", doAuth);
+  setTimeout(() => { try { if (!$("authView").classList.contains("hidden")) $("authEmail").focus(); } catch (e) {} }, 350);
   $("forgotLink").addEventListener("click", doForgot);
   $("googleBtn").addEventListener("click", doGoogleSignIn);
   $("passEye").addEventListener("click", () => {
@@ -1185,8 +1241,12 @@ document.addEventListener("DOMContentLoaded", () => {
   $("exportBtn").addEventListener("click", exportCsv);
   $("importFile").addEventListener("change", e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = ""; });
   $("wipeBtn").addEventListener("click", () => {
-    if (!confirm("Delete ALL your entries? Take a CSV export first if unsure.")) return;
-    state = emptyState(); persist(); renderAll(); toast("All entries deleted");
+    folioConfirm("Delete ALL your entries? Take a CSV export first if unsure.", "Delete all").then(ok => {
+      if (!ok) return;
+      const old = state;
+      state = emptyState(); persist(); renderAll();
+      toast("All entries deleted", () => { state = old; persist(); renderAll(); toast("Entries restored"); });
+    });
   });
   $("resetPassBtn").addEventListener("click", async () => {
     if (FIREBASE_ON && currentUser) {
@@ -1211,9 +1271,17 @@ document.addEventListener("DOMContentLoaded", () => {
           if (ts) lastAppliedCloudTs = ts;
           if (data && data.v === 2 && window.e2eeHandleDoc) { window.e2eeHandleDoc(data, { email: user.email, name: user.displayName || "" }, "cloud"); return; }
           enterApp({ email: user.email, name: user.displayName || "" }, data && data.state ? data.state : emptyState());
-        }, err => console.warn("snapshot error", err));
+        }, err => {
+          console.warn("snapshot error", err);
+          try {
+            authError("Couldn't load your data. Check your connection, then tap Retry.");
+            let rb = $("authRetryBtn");
+            if (!rb) { rb = document.createElement("button"); rb.id = "authRetryBtn"; rb.type = "button"; rb.className = "btn btn-gold btn-block"; rb.textContent = "Retry"; rb.addEventListener("click", () => location.reload()); $("authForm").after(rb); }
+            rb.classList.remove("hidden");
+          } catch (e2) {}
+        });
       } else {
-        $("appView").classList.add("hidden"); $("authView").classList.remove("hidden");
+        $("appView").classList.add("hidden"); $("authView").classList.remove("hidden"); authError("");
       }
     });
   } else {
