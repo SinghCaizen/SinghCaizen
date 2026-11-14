@@ -787,8 +787,14 @@ drawStock = async function () { await _drawStockBase(); try { await renderTA(); 
 
 /* ---------- report issue ---------- */
 const WEB3_KEY = "94e01d94-8fae-4cdc-b9b9-716cf169d7dc";
+function renderIssueDiag() {
+  const box = $("issueDiagList"); if (!box) return;
+  const log = window.__folioErrLog || [];
+  box.textContent = log.length ? log.slice().reverse().map(en => String(en.t).slice(11, 19) + " \u00b7 " + en.kind + " \u00b7 " + en.message + (en.source ? " (" + en.source + ")" : "")).join("\n") : "No errors recorded this session.";
+}
 function openIssue() {
   $("issueModal").classList.remove("hidden");
+  renderIssueDiag();
   if (currentUser && !$("issueEmail").value) $("issueEmail").value = currentUser.email;
   if (currentUser && currentUser.name && !$("issueName").value) $("issueName").value = currentUser.name;
 }
@@ -807,6 +813,7 @@ async function submitIssue(e) {
         name: $("issueName").value.trim(),
         email: $("issueEmail").value.trim(),
         message: $("issueMsg").value.trim(),
+        diagnostics: JSON.stringify(window.__folioErrLog || []).slice(0, 3000),
         page: location.href
       })
     });
@@ -828,6 +835,13 @@ document.addEventListener("DOMContentLoaded", () => {
   $("issueClose").addEventListener("click", () => $("issueModal").classList.add("hidden"));
   $("issueModal").addEventListener("click", e => { if (e.target === $("issueModal")) $("issueModal").classList.add("hidden"); });
   $("issueForm").addEventListener("submit", submitIssue);
+  const dcBtn = $("issueDiagCopy");
+  if (dcBtn) dcBtn.addEventListener("click", async () => {
+    const log = window.__folioErrLog || [];
+    const txt = log.length ? JSON.stringify(log, null, 1) : "No errors recorded this session.";
+    try { await navigator.clipboard.writeText(txt); toast("Diagnostics copied"); }
+    catch (e) { toast("Copy is not available in this browser"); }
+  });
   $("stockClose").addEventListener("click", () => $("stockModal").classList.add("hidden"));
   $("stockModal").addEventListener("click", e => { if (e.target === $("stockModal")) $("stockModal").classList.add("hidden"); });
   document.querySelectorAll("#stockSeg .seg-btn").forEach(b => b.addEventListener("click", () => {
@@ -2448,7 +2462,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v94";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v95";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -4225,19 +4239,27 @@ dashPanels().forEach(p => {
 function dashEnsure() {
   const view = $("view-dashboard"); if (!view || $("dashChips")) return;
   const bar = document.createElement("div"); bar.id = "dashChips"; bar.className = "dash-chips";
-  bar.innerHTML = ["Overview", "Performance", "Risk", "Income", "Tax", "Market", "News"].map(n => '<button type="button" class="insx-chip" data-dash-chip="' + n + '">' + n + "</button>").join("") +
+  bar.setAttribute("role", "tablist");
+  bar.innerHTML = ["Overview", "Performance", "Risk", "Income", "Tax", "Market", "News"].map(n => '<button type="button" class="insx-chip" role="tab" aria-selected="false" data-dash-chip="' + n + '">' + n + "</button>").join("") +
+    '<span class="dash-div" aria-hidden="true"></span>' +
     '<button type="button" class="insx-chip" id="dashCustomBtn">⚙ Customize</button>' +
-    '<button type="button" class="insx-chip" id="dashCompactBtn">Compact</button>';
+    '<button type="button" class="insx-chip" id="dashCompactBtn" aria-pressed="false">Compact</button>';
   const grid = view.querySelector(".stat-grid");
   if (grid) view.insertBefore(bar, grid); else view.prepend(bar);
   try { platInstallBtn(); } catch (e) {}
   bar.addEventListener("click", e => {
     const chip = e.target.closest("[data-dash-chip]");
-    if (chip) { dashGo(chip.dataset.dashChip); return; }
-    if (e.target.closest("#dashCustomBtn")) { document.body.classList.toggle("dash-customizing"); toast(document.body.classList.contains("dash-customizing") ? "Customize mode: use the ↑ ↓ 👁 buttons on each card. Tap Customize again to finish." : "Dashboard layout saved."); return; }
+    if (chip) {
+      const n = chip.dataset.dashChip;
+      if (n === "Risk" || n === "News") { dashGo(n); return; }
+      dashSetTab(n);
+      return;
+    }
+    if (e.target.closest("#dashCustomBtn")) { dashOpenCustomize(); return; }
     if (e.target.closest("#dashCompactBtn")) {
       const on = document.body.classList.toggle("compact-dash");
-      e.target.closest("#dashCompactBtn").classList.toggle("on", on);
+      const b = e.target.closest("#dashCompactBtn");
+      b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false");
       const L = dashLayout(); L.compact = on; state.profile.dashLayout = L; persist();
     }
   });
@@ -4253,17 +4275,75 @@ function dashEnsure() {
   /* hero sparkline holder */
   const valCard = $("stValue") && $("stValue").closest(".stat-card");
   if (valCard && !$("heroSpark")) { const s = document.createElement("span"); s.id = "heroSpark"; valCard.appendChild(s); }
-  /* active-chip highlighting */
-  const io = new IntersectionObserver(es => {
-    es.forEach(en => {
-      if (!en.isIntersecting) return;
-      const map = [["portfolio", "Overview"], ["performance", "Performance"], ["dividend snowball", "Income"], ["tax", "Tax"], ["market mood", "Market"]];
-      const h = en.target.querySelector("h2"); if (!h) return;
-      const m = map.find(([t]) => h.textContent.toLowerCase().includes(t));
-      document.querySelectorAll("[data-dash-chip]").forEach(c => c.classList.toggle("on", !!m && c.dataset.dashChip === m[1]));
+  /* real tabs: restore the last selected tab (default Overview) */
+  dashSetTab(dashSavedTab(), true);
+}
+const DASH_TABS = ["Overview", "Performance", "Income", "Tax", "Market"];
+function dashSavedTab() {
+  try { const t = localStorage.getItem("folio_dash_tab"); if (DASH_TABS.includes(t)) return t; } catch (e) {}
+  return "Overview";
+}
+function dashTabOf(p) {
+  const h = p.querySelector("h2"); const t = h ? h.textContent.toLowerCase() : "";
+  if (t.includes("market mood") || t.includes("market pulse")) return "Market";
+  if (t.includes("tax") || t.includes("capital gains")) return "Tax";
+  if (t.includes("dividend") || t.includes("corporate actions")) return "Income";
+  if (t.includes("performance") || t.includes("p/l by stock")) return "Performance";
+  return "Overview";
+}
+function dashApplyTabFilter() {
+  const name = dashSavedTab();
+  dashPanels().forEach(p => p.classList.toggle("dash-tab-hide", dashTabOf(p) !== name));
+  const strip = $("dashHiddenStrip"); if (strip) strip.style.display = name === "Overview" ? "" : "none";
+  document.querySelectorAll("[data-dash-chip]").forEach(c => {
+    const on = c.dataset.dashChip === name;
+    c.classList.toggle("on", on); c.setAttribute("aria-selected", on ? "true" : "false");
+  });
+}
+function dashSetTab(name, silent) {
+  if (!DASH_TABS.includes(name)) name = "Overview";
+  try { localStorage.setItem("folio_dash_tab", name); } catch (e) {}
+  dashApplyTabFilter();
+  const chip = document.querySelector('[data-dash-chip="' + name + '"]');
+  if (chip) { try { chip.scrollIntoView({ inline: "center", block: "nearest" }); } catch (e) {} }
+  if (!silent) { try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (e) { window.scrollTo(0, 0); } }
+}
+function dashOpenCustomize() {
+  let m = $("dashCustomModal");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "dashCustomModal"; m.className = "modal hidden"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Customize Dashboard");
+    m.innerHTML = '<div class="modal-card"><div class="modal-head"><h3>Customize Dashboard</h3><button type="button" class="icon-btn" data-dc-close="1" aria-label="Close">✕</button></div><p class="auth-note">Move cards up or down, or hide them. Changes save automatically.</p><div id="dashCustomList"></div></div>';
+    document.body.appendChild(m);
+    m.addEventListener("click", e => {
+      if (e.target === m || e.target.closest("[data-dc-close]")) { m.classList.add("hidden"); return; }
+      const b = e.target.closest("[data-dc]"); if (!b) return;
+      const L = dashLayout(); const k = b.dataset.k; const act = b.dataset.dc;
+      if (act === "hide") { if (!L.hidden.includes(k)) L.hidden.push(k); }
+      else if (act === "show") { L.hidden = L.hidden.filter(x => x !== k); }
+      else {
+        const order = dashPanels().map(dashKey);
+        const i = order.indexOf(k); const j = act === "up" ? i - 1 : i + 1;
+        if (i < 0 || j < 0 || j >= order.length) return;
+        [order[i], order[j]] = [order[j], order[i]]; L.order = order;
+      }
+      state.profile.dashLayout = L; persist(); dashApplyLayout(); dashRenderCustomList();
     });
-  }, { rootMargin: "-30% 0px -55% 0px" });
-  dashPanels().forEach(p => io.observe(p));
+  }
+  dashRenderCustomList();
+  m.classList.remove("hidden");
+}
+function dashRenderCustomList() {
+  const box = $("dashCustomList"); if (!box) return;
+  const L = dashLayout();
+  box.innerHTML = dashPanels().map(p => {
+    const k = dashKey(p); const h = p.querySelector("h2"); const t = h ? h.textContent.trim() : k;
+    const hid = L.hidden.includes(k);
+    return '<div class="dc-row"><span class="dc-name">' + esc(t) + '</span><span class="dc-btns">' +
+      '<button type="button" class="mini-btn" data-dc="up" data-k="' + esc(k) + '" aria-label="Move up">↑</button>' +
+      '<button type="button" class="mini-btn" data-dc="down" data-k="' + esc(k) + '" aria-label="Move down">↓</button>' +
+      '<button type="button" class="mini-btn" data-dc="' + (hid ? "show" : "hide") + '" data-k="' + esc(k) + '">' + (hid ? "Show" : "Hide") + '</button></span></div>';
+  }).join("");
 }
 function dashGo(name) {
   const scrollTo = p => { if (p) p.scrollIntoView({ behavior: "smooth", block: "start" }); };
@@ -4339,6 +4419,7 @@ async function pulseLoad() {
     panel.innerHTML = '<div class="panel-head"><h2>Market Pulse</h2><span class="price-meta" id="pulseMeta"></span></div><div id="pulseIdx" class="pulse-row"></div><div id="pulseHeat"></div>';
     const mood = $("moodPanel");
     if (mood && mood.nextSibling) view.insertBefore(panel, mood.nextSibling); else view.appendChild(panel);
+    try { dashApplyTabFilter(); } catch (e) {}
   }
   const idxBox = $("pulseIdx");
   const IDX = [["^NSEI", "NIFTY 50"], ["^BSESN", "SENSEX"], ["^NSEBANK", "BANK NIFTY"], ["^CNXIT", "NIFTY IT"], ["^CNXPHARMA", "NIFTY PHARMA"], ["^CNXAUTO", "NIFTY AUTO"], ["^CNXMETAL", "NIFTY METAL"], ["^CNXFMCG", "NIFTY FMCG"]];
@@ -4469,8 +4550,11 @@ renderHoldings = function () { _renderHoldingsT4(); try { holdEnsure(); holdAppl
 if ("serviceWorker" in navigator) { try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {} }
 let deferredInstall = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredInstall = e; platInstallBtn(); });
+window.addEventListener("appinstalled", () => { const x = $("installBtn"); if (x) x.remove(); });
 function platInstallBtn() {
-  const bar = $("dashChips"); if (!bar || $("installBtn")) return;
+  const bar = $("dashChips"); if (!bar) return;
+  if (window.matchMedia("(display-mode: standalone)").matches) { const x = $("installBtn"); if (x) x.remove(); return; }
+  if ($("installBtn")) return;
   const b = document.createElement("button");
   b.type = "button"; b.className = "insx-chip"; b.id = "installBtn"; b.textContent = "📲 Install Folio";
   b.addEventListener("click", async () => {
@@ -5695,7 +5779,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v94";
+const FOLIO_VER = "Folio v95";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -5918,3 +6002,19 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
     }
   });
 })();
+
+/* ===== v95 Phase 4: Enter submits popups whose fields are not inside a <form>
+   (security wizards, confirm/prompt dialogs). Guarded: plain text inputs only,
+   never the stock sheet, exactly one visible primary button in that popup. ===== */
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter" || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t = e.target;
+  if (!t || t.tagName !== "INPUT" || t.form) return;
+  if (["checkbox", "radio", "file", "hidden", "submit", "button"].includes(t.type)) return;
+  const m = t.closest(".modal");
+  if (!m || m.id === "stockModal" || m.classList.contains("hidden")) return;
+  const prim = [...m.querySelectorAll(".btn-gold")].filter(b => !b.disabled && b.offsetParent !== null);
+  if (prim.length !== 1) return;
+  e.preventDefault();
+  prim[0].click();
+});

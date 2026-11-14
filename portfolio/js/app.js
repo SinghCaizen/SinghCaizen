@@ -168,6 +168,7 @@ function setAuthMode(m) {
   $("tabSignup").classList.toggle("active", m === "signup");
   $("authSubmit").textContent = m === "login" ? "Login" : "Create Account";
   $("authName").closest("label").style.display = m === "signup" ? "block" : "none";
+  $("authPass").autocomplete = m === "signup" ? "new-password" : "current-password";
 }
 function authError(msg) {
   $("authError").textContent = msg || "";
@@ -272,6 +273,7 @@ function needsGate() {
 function showGate() {
   $("authView").classList.add("hidden"); $("appView").classList.add("hidden");
   $("gateView").classList.remove("hidden");
+  setTimeout(() => { const gp = $("gatePass"); if (gp) try { gp.focus(); } catch (e) {} }, 60);
   $("gateError").textContent = ""; $("gateCode").value = ""; $("gatePass").value = "";
   $("gateAltForm").classList.add("hidden");
 }
@@ -584,6 +586,10 @@ let __pendingEnter = null, __pendingRender = false, __enteredEmail = "";
 function uiBusy() {
   if (document.querySelector(".modal:not(.hidden)")) return true;
   const ae = document.activeElement;
+  /* Fields on the sign-in / gate screens are the entry flow itself, never
+     "editing": counting them deferred app entry forever when the login was
+     submitted with Enter/Go, because focus stays in the password field. */
+  if (ae && ae.closest && (ae.closest("#authView") || ae.closest("#gateView"))) return false;
   if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT") && ae.type !== "checkbox" && ae.type !== "radio" && ae.type !== "search") return true;
   return false;
 }

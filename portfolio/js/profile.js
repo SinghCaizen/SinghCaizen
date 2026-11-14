@@ -444,15 +444,31 @@ function unlockSession() {
   if (window.e2eeNeedsUnlock && window.e2eeNeedsUnlock()) { window.e2eeShowUnlock(); return; }
   showApp();
 }
+function gateShakeCard() {
+  const card = document.querySelector("#gateView .auth-card");
+  if (!card) return;
+  card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake");
+}
 function wireGate() {
   $("gateForm").addEventListener("submit", async e => {
     e.preventDefault();
+    const form = e.target;
+    if (form.dataset.busy) return;
+    form.dataset.busy = "1";
+    const btn = form.querySelector('[type="submit"]');
+    if (btn) btn.disabled = true;
     const err = $("gateError");
     err.textContent = "Checking...";
+    const finish = ok => {
+      delete form.dataset.busy;
+      if (btn) btn.disabled = false;
+      if (!ok) { const card = form.closest(".auth-card") || form; card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake"); }
+    };
     const secret = await unlockSecret($("gatePass").value);
-    if (!secret) { err.textContent = "Incorrect password, or the key could not be unlocked."; return; }
-    if (!(await totpVerify(secret, $("gateCode").value))) { err.textContent = "That code did not match. Wait for a fresh code, then try again."; return; }
+    if (!secret) { err.textContent = "Incorrect password, or the key could not be unlocked."; finish(false); return; }
+    if (!(await totpVerify(secret, $("gateCode").value))) { err.textContent = "That code did not match. Wait for a fresh code, then try again."; finish(false); return; }
     err.textContent = "";
+    finish(true);
     toast("Welcome back");
     unlockSession();
   });
@@ -474,15 +490,21 @@ function wireGate() {
   });
   $("gateAltForm").addEventListener("submit", async e => {
     e.preventDefault();
+    if (e.target.dataset.busy) return;
+    e.target.dataset.busy = "1";
+    const altBtn = e.target.querySelector('[type="submit"]');
+    if (altBtn) altBtn.disabled = true;
+    const altDone = () => { delete e.target.dataset.busy; if (altBtn) altBtn.disabled = false; };
     const err = $("gateAltError");
     const val = $("gateAltInput").value;
     err.textContent = "Checking...";
     if (gateAltMode === "recovery") {
       const h = await sha256hex(val.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
       const idx = (state.profile.recovery || []).indexOf(h);
-      if (idx < 0) { err.textContent = "This recovery code is not valid, or it has already been used."; return; }
+      if (idx < 0) { err.textContent = "This recovery code is not valid, or it has already been used."; altDone(); gateShakeCard(); return; }
       state.profile.recovery.splice(idx, 1);
       persist();
+      altDone();
       err.textContent = "";
       toast("Recovery code accepted");
       unlockSession();
@@ -490,12 +512,13 @@ function wireGate() {
     }
     if (gateAltMode === "seed") {
       const bytes = phraseToBytes(val);
-      if (!bytes) { err.textContent = "Enter all 12 words, in the same order as you received them."; return; }
+      if (!bytes) { err.textContent = "Enter all 12 words, in the same order as you received them."; altDone(); gateShakeCard(); return; }
       const phrase = seedPhrase(bytes);
       try {
         const key = await deriveAesKey("seed:" + phrase, keySalt());
         await aesDec(key, state.profile.totp.encSeed);
-      } catch (ex) { err.textContent = "The seed phrase could not unlock your key. Check the words and their order."; return; }
+      } catch (ex) { err.textContent = "The seed phrase could not unlock your key. Check the words and their order."; altDone(); gateShakeCard(); return; }
+      altDone();
       err.textContent = "";
       toast("Seed phrase accepted. You can re-add the app any time from My Profile.");
       unlockSession();
