@@ -449,7 +449,7 @@ async function refreshQuickRow() {
   if (!hasVault) { if (row) row.style.display = "none"; return; }
   if (row) row.style.display = "";
   const rec = await quickRecord();
-  const mine = rec && currentUser && rec.email === currentUser.email;
+  const mine = !!(rec && currentUser && rec.email === currentUser.email && (rec.bio || rec.pin));
   ctl.innerHTML = "";
   if (!window.__e2eeActive) {
     st.textContent = mine ? "Quick unlock: ON on this device (vault is locked)" : "Quick unlock: unlock your vault to manage";

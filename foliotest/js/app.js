@@ -228,7 +228,7 @@ function friendlyFbError(e) {
 async function doLogout() {
   syncFrozen = true; clearTimeout(saveTimer);
   if (window.e2eeLock) window.e2eeLock();
-  if (window.quickWipe) { try { window.quickWipe(); } catch (e) {} }
+  if (window.quickWipe) { try { await window.quickWipe(); } catch (e) {} }
   const em = currentUser ? currentUser.email : null;
   if (em) sessionStorage.removeItem("pf_gate_" + em);
   if (FIREBASE_ON) { try { await fb.auth.signOut(); } catch (e) {} }
