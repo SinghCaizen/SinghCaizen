@@ -2204,8 +2204,6 @@ html[data-theme="light"] #splash{background:#0b0e0c !important}
 }
 
 /* v108 header alerts bell dot (dot shows only on a real target/stop-loss hit) */
-#folioBellBtn{position:relative}
-.bell-dot{position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--neg);border:2px solid var(--panel)}
 
 /* ---------- v108 QA fixes ---------- */
 .topbar{box-shadow:none!important}

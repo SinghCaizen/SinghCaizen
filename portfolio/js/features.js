@@ -6320,22 +6320,6 @@ async function stockShareChipUpdate(sym) {
   });
 })();
 
-/* ---------- v108: header search + alerts bell (dot = a real target/SL hit right now) ---------- */
-(function () {
-  const bb = $("folioBellBtn"), dot = $("folioBellDot");
-  function bellSync() {
-    if (!dot) return;
-    let hit = false;
-    try {
-      const alerts = (typeof state !== "undefined" && state && state.profile && state.profile.alerts) || {};
-      for (const sym of Object.keys(alerts)) { const st = tgtStatus(sym); if (st && (st.st === "target" || st.st === "sl")) { hit = true; break; } }
-    } catch (e) {}
-    dot.classList.toggle("hidden", !hit);
-  }
-  if (bb) bb.addEventListener("click", () => { switchView("insights"); [150, 500, 1000, 1800].forEach(ms => setTimeout(() => { const el = $("insSignals"); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); } }, ms)); });
-  setInterval(() => { if (currentUser && !document.hidden) bellSync(); }, 4000);
-})();
-
 /* ================= v109: PROFESSIONAL ANALYTICS (additive) =================
    Engine: js/analytics.js (pure maths) in a Web Worker, fallback main thread.
    Basis: the SAME aligned series as Period Performance (insxBuildSeries). */
@@ -6808,3 +6792,15 @@ async function anaProbeBenches() {
 }
 const _anaEnsure0 = anaEnsure;
 anaEnsure = async function () { await anaProbeBenches(); return _anaEnsure0(); };
+
+/* v110: report hook — the PDF reads the SAME computed analytics as Insights
+   (computing on demand if Insights was never opened), so PDF == screen. */
+window.folioAnalyticsForReport = async function () {
+  try {
+    if (!anaResult) {
+      anaMount(); await anaEnsure();
+      for (let i = 0; i < 24 && !anaResult; i++) { await new Promise(r => setTimeout(r, 700)); if (!anaBusy && insXSeries && !anaResult) await anaEnsure(); }
+    }
+    return anaResult ? { result: anaResult, benchName: anaBenchNameCur, rf: Number(insxSettings().rf) || 6.5 } : null;
+  } catch (e) { return null; }
+};

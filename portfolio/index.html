@@ -85,7 +85,7 @@ window.addEventListener("unhandledrejection", function (e) {
 <link rel="apple-touch-icon" href="assets/folio-icon.svg?v=57">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://api.allorigins.win https://api.codetabs.com https://api.cors.lol https://corsproxy.io https://api.rss2json.com https://api.web3forms.com https://raw.githubusercontent.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://news.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/style.css?v=104">
+<link rel="stylesheet" href="css/style.css?v=105">
 <style>
 #splash{position:fixed;inset:0;z-index:2000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease}
 html[data-theme="light"] #splash{background:#f6f1e7}
@@ -210,7 +210,6 @@ html[data-theme="light"] .splash-logo.dark{display:none}
       <img decoding="async" class="folio-logo-top logo-on-light" src="assets/folio-dark.svg" alt="Folio">
     </div>
     <div class="topbar-right">
-      <button id="folioBellBtn" class="icon-btn" type="button" aria-label="Price alerts"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg><span class="bell-dot hidden" id="folioBellDot"></span></button>
       <button id="privacyBtn" class="theme-btn" type="button" aria-label="Hide or show amounts (privacy mode)"><span id="privacyIcon">👁</span></button>
       <button id="profileChip" class="user-chip" type="button">
         <img id="topAvatar" class="avatar-sm hidden" alt="">
@@ -898,7 +897,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <script src="js/profile.js?v=18"></script>
 <script src="js/e2ee.js?v=7"></script>
 <script src="js/quickunlock.js?v=5"></script>
-<script src="js/features.js?v=112"></script>
+<script src="js/features.js?v=113"></script>
 <div class="samsung-bottom-dock-wrap" aria-label="Bottom Navigation">
   <nav class="samsung-bottom-capsule">
     <button type="button" class="mobile-nav-item" data-bnav="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/></svg><span>Home</span></button>
