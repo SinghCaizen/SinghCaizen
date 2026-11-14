@@ -2525,7 +2525,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v99";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio " + (typeof FOLIO_BUILD !== "undefined" ? "v" + FOLIO_BUILD.version : "");
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -6108,7 +6108,7 @@ window.openShareSheet = function (opts) {
   if (!shareModLoading) {
     shareModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/share.js?v=2"; sc.async = true;
+      sc.src = "js/share.js?v=3"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("share module failed to load"));
       document.head.appendChild(sc);
     });
@@ -6318,4 +6318,21 @@ async function stockShareChipUpdate(sym) {
     diagTapT = now;
     if (diagTaps >= 5) { diagTaps = 0; openDiag(); }
   });
+})();
+
+/* ---------- v108: header search + alerts bell (dot = a real target/SL hit right now) ---------- */
+(function () {
+  const sb = $("folioSearchBtn"), bb = $("folioBellBtn"), dot = $("folioBellDot");
+  if (sb) sb.addEventListener("click", () => { switchView("watchlist"); setTimeout(() => { const i = $("watchInput"); if (i) i.focus(); }, 60); });
+  function bellSync() {
+    if (!dot) return;
+    let hit = false;
+    try {
+      const alerts = (typeof state !== "undefined" && state && state.profile && state.profile.alerts) || {};
+      for (const sym of Object.keys(alerts)) { const st = tgtStatus(sym); if (st && (st.st === "target" || st.st === "sl")) { hit = true; break; } }
+    } catch (e) {}
+    dot.classList.toggle("hidden", !hit);
+  }
+  if (bb) bb.addEventListener("click", () => { switchView("insights"); [150, 500, 1000, 1800].forEach(ms => setTimeout(() => { const el = $("insSignals"); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); } }, ms)); });
+  setInterval(() => { if (currentUser && !document.hidden) bellSync(); }, 4000);
 })();
