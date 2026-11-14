@@ -13,7 +13,7 @@ function __folioShowErr() {
     var b = document.createElement("div");
     b.setAttribute("role", "alert");
     b.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:3000;background:#1c1c22;color:#f2f2f2;border:1px solid #c9a227;border-radius:12px;padding:10px 14px;font:14px system-ui,sans-serif;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 10px 30px rgba(0,0,0,.45)";
-    var t = document.createElement("span"); t.textContent = "Something went wrong in a part of Folio. Your data is safe.";
+    var t = document.createElement("span"); t.textContent = window.__folioErrDetail || "Something went wrong in a part of Folio. Your data is safe.";
     var r = document.createElement("button"); r.type = "button"; r.textContent = "Reload";
     r.style.cssText = "background:#c9a227;color:#171410;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer";
     r.addEventListener("click", function () { location.reload(); });
@@ -24,8 +24,9 @@ function __folioShowErr() {
   };
   if (document.body) show(); else document.addEventListener("DOMContentLoaded", show);
 }
-window.addEventListener("error", function () { __folioShowErr(); });
-window.addEventListener("unhandledrejection", function () { __folioShowErr(); });
+window.__folioErrDetail = "";
+window.addEventListener("error", function (e) { window.__folioErrDetail = "ERR: " + (e.message || "unknown") + " @ " + (e.filename || "") + ":" + (e.lineno || ""); __folioShowErr(); });
+window.addEventListener("unhandledrejection", function (e) { window.__folioErrDetail = "REJ: " + (e.reason && (e.reason.message || e.reason) || "unknown"); __folioShowErr(); });
 </script>
 <meta name="referrer" content="no-referrer">
 <title>FOLIO — Portfolio Tracker | A Singh Caizen Product</title>
