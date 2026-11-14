@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<script>
+/* Folio global error boundary: one failing widget must never take the app down silently. */
+window.__folioErrShown = false;
+function __folioShowErr() {
+  if (window.__folioErrShown) return; window.__folioErrShown = true;
+  var show = function () {
+    if (!document.body) return;
+    var b = document.createElement("div");
+    b.setAttribute("role", "alert");
+    b.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:3000;background:#1c1c22;color:#f2f2f2;border:1px solid #c9a227;border-radius:12px;padding:10px 14px;font:14px system-ui,sans-serif;display:flex;gap:12px;align-items:center;max-width:92vw;box-shadow:0 10px 30px rgba(0,0,0,.45)";
+    var t = document.createElement("span"); t.textContent = "Something went wrong in a part of Folio. Your data is safe.";
+    var r = document.createElement("button"); r.type = "button"; r.textContent = "Reload";
+    r.style.cssText = "background:#c9a227;color:#171410;border:none;border-radius:8px;padding:7px 14px;font-weight:700;cursor:pointer";
+    r.addEventListener("click", function () { location.reload(); });
+    var x = document.createElement("button"); x.type = "button"; x.textContent = "\u2715"; x.setAttribute("aria-label", "Dismiss");
+    x.style.cssText = "background:none;border:none;color:#f2f2f2;font-size:15px;cursor:pointer;padding:4px";
+    x.addEventListener("click", function () { b.remove(); window.__folioErrShown = false; });
+    b.appendChild(t); b.appendChild(r); b.appendChild(x); document.body.appendChild(b);
+  };
+  if (document.body) show(); else document.addEventListener("DOMContentLoaded", show);
+}
+window.addEventListener("error", function () { __folioShowErr(); });
+window.addEventListener("unhandledrejection", function () { __folioShowErr(); });
+</script>
+<meta name="referrer" content="no-referrer">
+<title>FOLIO — Portfolio Tracker | A Singh Caizen Product</title>
+<meta name="description" content="Folio — a private portfolio tracker for Indian stocks, by Singh Caizen. Add your stocks manually, see live profit and loss. No broker connection needed.">
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEsUlEQVR4nLWXTWxUVRTHf+e+O/PaTmfaagQFEVoCERMMpLREYYESIaZIookhYaErJQJxRdTE6IIYV5IQYxMwsBQTTdSkEA0u1IWGlCpEAkJEqkGQpt+dzve8e1y8mdramWmBcpLZvHfn/n/n4553rgBCaBpva+8yYvahuhFoBgwLYwqMgekVdd1j/X09ZV2BFz34XJvaOj4UkX0Aqm6BdGeaSOiPOndkvL91P2WKprb2bmP9va6YC8JnslCe/8/UAWqs77lC7uPx/p/3SGJFx3bjyTeqQRHE47+U3CtT0ECMZwMX7LBi3AHEUxSpJG6MYO4gIAoEQVDpVaijqKgcsKp04pyUvJ+5UoR0Jkcum71tAERIxBsRqRRQ8VQdCB1WRBKV/y/k83nWrlnFpo3tqCqoogCqVXW15OLEZIqTp7+nUChUgQCBmK22kecZ0qk07x7Yx3Pbn6rhanXb3LWb3nMXaIw14Fzlk1UVIAgcscYYbx78ABFhfCLJL79eZHB4lEKhSDQaoa7OxzMz60MVRCA5meLy1WvU1/lVxWsCiAiFQpElDy5iy6ZORIT1jz/G+Qu/8dPZc5zpO8+lK1fJpDOh4qwNDIl4rGr4p5Y1tW2omFDP8xgZGaPnxBF2bNuCqs7a7PqNW2x94WUGhoaJ2khYJ+VIUPUUzLCqEQidkKlNnHMYY3DO4VSxnsdDix/Aj0ZRp7MOsCvOLT4nwCwgETzPw5Sikc3lGBweITk8QjIanXE64ok4nmdqHZjbB5gOAuD7UQ6+9TrjyUms55VSIDjn+Oj4JwwNjxKJ2BmpWRCAskWs5dWXdlV8d+KLU9waGCQatTWjcFcAqsrA4BDFokOEqUItFgNy+TzGzN3C7wigLJTJ5nh21ytcv3krLMZprmayOaLRCM7VLoK7igDAZCrNxGQKP1oIwQBEZjWoBQUoF2Gd73Pq06PkC0XUKcYznOk7z943DtLYUE9QowPOG6BWBRsjrF7ZOuNZNpujWCzOKTwvAFUlErE4pwSlRjS9GxaDgJOnvyOVziAIIsLFK78TiURqgk+36q3YGCaSkzzf9QyfHT889TxwDhc4PM+QyeZY1bmNf/6+iZSK0FpLY6xh3gBVKyVwjng8xpenvuXt9w9z7sIlUukMnjFEIhZjDNbzaGlOEG9p5r6WZu5vaSbRGJu3eM0ITC0QYSKZpKHOZ/mypaxbu4YnO9bzRMc6Vixbyuau3fx5/QZ1vo+WBhYh7MrzwZgbAEA80nnI5/OQy0HgkFgDyx9ewtDoKLlsHjHTvkYKUatYo3NC1P4aCmQLhtWL0ry38y+AsBAJB5Zc/hLW2lLH07I2ngjv9DzC5YEG6iOOWr1IEq3tEyISr7bAKTREHY8uzlQAlKr5vjJQTypvMDXmEYW0BXrFmKfVBa7SZGwE0nnDj9cqzq5VrT4S1BDXQMQzqsFZqyKHgK0h0FQNzYKI+/MbMMpWI+yhjiDGySGTvNb3tQbuqLG+Da9OlS+GTm/vV0XbgTpjfetccGysv6+ndDmFptb+bjFmD9z7y6lTd2xiWew1ftjipl/HtHnlhp2qsl+FTlFNUCEdd2iqkBSRXpDu8T96vyrv/S/UeR0ppfzJygAAAABJRU5ErkJggg==">
+<link rel="icon" href="assets/folio-icon.svg?v=57" type="image/svg+xml">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Folio">
+<link rel="apple-touch-icon" href="assets/folio-icon.svg?v=57">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://api.allorigins.win https://api.codetabs.com https://api.cors.lol https://corsproxy.io https://api.rss2json.com https://api.web3forms.com https://raw.githubusercontent.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://news.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/style.css?v=88">
+<style>
+#splash{position:fixed;inset:0;z-index:2000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease}
+html[data-theme="light"] #splash{background:#f6f1e7}
+#splash.done{opacity:0;pointer-events:none}
+#splash.skip{display:none}
+.splash-logo-wrap{position:relative;overflow:hidden;width:min(220px,58vw)}
+.splash-logo{width:100%;display:block;animation:splashIn .8s ease both}
+.splash-logo.light{display:none}
+html[data-theme="light"] .splash-logo.light{display:block}
+html[data-theme="light"] .splash-logo.dark{display:none}
+.splash-logo-wrap::after{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.35) 50%,transparent 58%);transform:translateX(-120%);animation:splashSweep 1.1s .45s ease both}
+.splash-tag{font-family:"Public Sans",system-ui,sans-serif;font-weight:700;letter-spacing:.42em;font-size:12px;color:#c9a227;text-transform:uppercase;opacity:0;animation:splashUp .6s .8s ease both;text-indent:.42em}
+@keyframes splashIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+@keyframes splashSweep{to{transform:translateX(120%)}}
+@keyframes splashUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){ .splash-logo,.splash-tag,.splash-logo-wrap::after{animation:none!important} .splash-tag{opacity:1} }
+</style>
+<script src="assets/theme-init.js?v=1"></script>
+<style>html.splash-seen #splash{display:none}</style>
+</head>
+<body>
+<div id="splash" role="img" aria-label="Singh Caizen">
+  <div class="splash-logo-wrap">
+    <img class="splash-logo dark" src="assets/sc-logo-white.svg" alt="Singh Caizen" width="300" height="184" fetchpriority="high">
+    <img class="splash-logo light" src="assets/sc-logo-dark.svg" alt="Singh Caizen" width="300" height="184" fetchpriority="high">
+  </div>
+  <div class="splash-tag">A Singh Caizen Product</div>
+</div>
+<script src="assets/splash.js?v=2"></script>
+
+<!-- ============ AUTH VIEW ============ -->
+<div id="authView" class="auth-wrap">
+  <div class="auth-card">
+    <div class="brand">
+      <img decoding="async" class="folio-logo logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+      <img decoding="async" class="folio-logo logo-on-light" src="assets/folio-dark.svg" alt="Folio">
+      <p class="tagline">Your stocks. Your numbers. No broker in between.</p>
+      <p class="product-line">A <span class="sc-brand">Singh Caizen</span> Product</p>
+    </div>
+
+    <div id="demoBanner" class="demo-banner hidden">
+      Checking cloud connection…
+    </div>
+
+    <div class="auth-tabs">
+      <button id="tabLogin" class="auth-tab active" type="button">Login</button>
+      <button id="tabSignup" class="auth-tab" type="button">Sign Up</button>
+    </div>
+
+    <form id="authForm" autocomplete="off">
+      <label>Your name <span class="opt">(only for sign up)</span>
+        <input type="text" id="authName" placeholder="e.g. Lila">
+      </label>
+      <label>Email
+        <input type="email" id="authEmail" placeholder="you@example.com" required>
+      </label>
+      <label>Password
+        <span class="pass-wrap">
+          <input type="password" id="authPass" placeholder="Minimum 6 characters" required minlength="6">
+          <button type="button" id="passEye" class="eye-btn" title="Show or hide password">👁</button>
+        </span>
+      </label>
+      <label class="remember-row"><input type="checkbox" id="rememberMe" checked> Remember me on this device</label>
+      <button type="submit" id="authSubmit" class="btn btn-gold btn-block">Login</button>
+      <p id="authError" class="form-error"></p>
+      <p class="auth-links">
+        <a href="#" id="forgotLink">Forgot password?</a>
+      </p>
+    </form>
+    <div class="auth-or">— or —</div>
+    <button id="googleBtn" class="btn btn-google btn-block" type="button">
+      <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.3-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 8 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.1 5.6l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.3-.4-3.9z"/></svg>
+      Sign in with Google
+    </button>
+    <p class="auth-note">Your portfolio data is private to your account. Prices are free and delayed (~15 min) — good for tracking, not for live trading.</p>
+  </div>
+</div>
+
+<!-- ============ 2FA GATE VIEW ============ -->
+<div id="gateView" class="auth-wrap hidden">
+  <div class="auth-card">
+    <div class="brand">
+      <img decoding="async" class="folio-logo folio-logo-gate logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+      <img decoding="async" class="folio-logo folio-logo-gate logo-on-light" src="assets/folio-dark.svg" alt="Folio">
+      <h1>TWO-FACTOR CHECK</h1>
+      <p>One more step to keep your portfolio safe.</p>
+      <p class="product-line">A <span class="sc-brand">Singh Caizen</span> Product</p>
+    </div>
+    <form id="gateForm" autocomplete="off">
+      <label>Your password (only to unlock your secret key on this device)
+        <input type="password" id="gatePass" autocomplete="current-password">
+      </label>
+      <label>6-digit code from your authenticator app
+        <input type="text" id="gateCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+      </label>
+      <button type="submit" class="btn btn-gold btn-block">Verify &amp; Enter</button>
+      <p id="gateError" class="form-error"></p>
+    </form>
+    <div class="gate-alt">
+      <p class="gate-alt-head">Lost your authenticator app? Use a backup instead — each option works on its own:</p>
+      <button id="gateUseRecovery" class="gate-opt" type="button"><b>Recovery code</b><span>One of the 8 one-time codes you saved at setup. Each code works once.</span></button>
+      <button id="gateUseSeed" class="gate-opt" type="button"><b>Seed phrase</b><span>Your 12-word master backup. It can rebuild your authenticator completely.</span></button>
+    </div>
+    <form id="gateAltForm" class="hidden" autocomplete="off">
+      <label><span id="gateAltLabel">Recovery code</span>
+        <input type="text" id="gateAltInput" placeholder="">
+      </label>
+      <button type="submit" class="btn btn-block">Verify</button>
+      <p id="gateAltError" class="form-error"></p>
+    </form>
+    <p class="auth-links"><a href="#" id="gateLogout">← Back to login</a> · <a href="#" id="gateForgot">Forgot password?</a></p>
+  </div>
+</div>
+
+<!-- ============ APP VIEW ============ -->
+<div id="appView" class="hidden">
+  <header class="topbar">
+    <div class="topbar-left">
+      <img decoding="async" class="folio-logo-top logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+      <img decoding="async" class="folio-logo-top logo-on-light" src="assets/folio-dark.svg" alt="Folio">
+    </div>
+    <div class="topbar-right">
+      <button id="privacyBtn" class="theme-btn" type="button" aria-label="Hide or show amounts (privacy mode)"><span id="privacyIcon">👁</span></button>
+      <button id="profileChip" class="user-chip" type="button">
+        <img id="topAvatar" class="avatar-sm hidden" alt="">
+        <span id="topAvatarInit" class="avatar-sm avatar-init-sm hidden">?</span>
+        <span id="topName" class="chip-name"></span>
+      </button>
+      <button id="issueBtn" class="btn btn-small btn-ghost" type="button">Report Issue</button>
+      <button id="themeBtn" class="theme-btn" type="button" aria-label="Switch light or dark theme"><span id="themeIcon">☾</span></button>
+    </div>
+  </header>
+
+  <div id="accountPop" class="account-pop hidden">
+    <div class="ap-head">
+      <img id="apAvatar" class="avatar-md hidden" alt="">
+      <span id="apAvatarInit" class="avatar-md avatar-init">?</span>
+      <div><b id="apName">Account</b><span id="apEmail" class="price-meta"></span></div>
+    </div>
+    <p class="ap-badge" id="apBadge">🔒 Secured account</p>
+    <button class="ap-row" id="apManage" type="button">Manage your Folio Account</button>
+    <button class="ap-row" id="apTheme" type="button">Switch Theme</button>
+    <button class="ap-row" id="apPrivacy" type="button">Hide Amounts (Privacy Mode)</button>
+    <button class="ap-row danger" id="apLogout" type="button">Sign Out</button>
+  </div>
+
+  <div id="tickerWrap" class="ticker-wrap hidden"><div id="tickerTrack" class="ticker-track"></div></div>
+  <div id="mktBar" class="mkt-bar hidden"><span id="mktPill" class="mkt-pill">⚪ Market Closed · EOD Prices</span><button id="liveRefreshBtn" class="mini-btn" type="button"><svg class="btn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg> Live Refresh</button><span id="tickMeta" class="price-meta"></span></div>
+
+  <nav class="tabs top-liquid-nav-strip">
+    <button class="tab active" data-view="dashboard" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/></svg><span>Dashboard</span></button>
+    <button class="tab" data-view="holdings" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a3 3 0 0 1 3-3v0a3 3 0 0 1 3 3v1.5"/><path d="M3 12.5h18"/></svg><span>Holdings</span></button>
+    <button class="tab" data-view="insights" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v15.5h16"/><path d="M7.5 15l3.8-4.6 3 2.7L18.5 8"/></svg><span>Insights</span></button>
+    <button class="tab" data-view="news" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="15" height="14" rx="2"/><path d="M18 9h1.5A1.5 1.5 0 0 1 21 10.5V17a2 2 0 0 1-2 2"/><path d="M6.5 9h7M6.5 12.5h7M6.5 16h5"/></svg><span>News</span></button>
+    <button class="tab" data-view="watchlist" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.3 6.9 19l1.1-5.6L3.8 9.5l5.7-.7z"/></svg><span>Watchlist</span></button>
+    <button class="tab" data-view="history" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span>History</span></button>
+    <button class="tab" data-view="profile" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg><span>My Profile</span></button>
+  </nav>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view">
+      <div class="stat-grid">
+        <div class="stat-card"><span class="stat-label">Invested</span><span class="stat-value" id="stInvested">—</span></div>
+        <div class="stat-card"><span class="stat-label">Current Value</span><span class="stat-value" id="stValue">—</span></div>
+        <div class="stat-card"><span class="stat-label">Total Profit / Loss</span><span class="stat-value" id="stPnl">—</span><span class="stat-sub" id="stPnlPct"></span></div>
+        <div class="stat-card"><span class="stat-label">XIRR (per year) <button class="info-btn" type="button" data-help="xirr" title="What is XIRR?">i</button></span><span class="stat-value" id="stXirr">—</span><span class="stat-sub" id="stRealised"></span></div>
+      </div>
+
+      <div class="panel" id="moodPanel">
+        <div class="panel-head"><h2>Market Mood</h2><span class="price-meta">Fear &amp; Greed · India VIX + NIFTY RSI &amp; trend</span></div>
+        <div id="moodBox"><p class="empty-note">Reading the market mood…</p></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Portfolio</h2>
+          <div>
+            <span id="priceMeta" class="price-meta"></span>
+            <button id="refreshBtn" class="btn btn-small" type="button">↻ Refresh Prices</button>
+          </div>
+        </div>
+        <div class="seg seg-small" id="donutSeg"><button type="button" data-dmode="stock" class="seg-btn active">By Stock</button><button type="button" data-dmode="sector" class="seg-btn">By Sector</button><button type="button" data-dmode="cap" class="seg-btn">By Market Cap</button></div>
+        <div class="dash-flex">
+          <div class="donut-wrap"><svg id="donut" viewBox="0 0 200 200" width="220" height="220"></svg><div id="donutLegend" class="donut-legend"></div></div>
+          <div class="movers">
+            <h3>Top Gainers</h3><ul id="topGainers" class="mover-list"></ul>
+            <h3>Top Losers</h3><ul id="topLosers" class="mover-list"></ul>
+          </div>
+        </div>
+        <p id="dashEmpty" class="empty-note hidden">No stocks yet. Go to Holdings and tap “+ Add Stock” to add your first stock.</p>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Sector-wise Allocation</h2><span class="price-meta">Which sectors your money sits in</span></div>
+        <div id="sectorBars"></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Profit / Loss by Stock</h2><span class="price-meta">Profit grows right, loss grows left</span></div>
+        <div id="pnlBars"></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Portfolio Performance</h2>
+          <input type="checkbox" id="perfBench" class="hidden"><div class="seg seg-small" id="perfModeSeg"><button type="button" data-pmode="value" class="seg-btn active">Value</button><button type="button" data-pmode="bench" class="seg-btn">vs NIFTY 50</button></div>
+          <div class="seg seg-small" id="perfSeg">
+            <button type="button" data-r="1mo" class="seg-btn">1M</button>
+            <button type="button" data-r="3mo" class="seg-btn active">3M</button>
+            <button type="button" data-r="6mo" class="seg-btn">6M</button>
+            <button type="button" data-r="1y" class="seg-btn">1Y</button>
+            <button type="button" data-r="max" class="seg-btn">ALL</button>
+          </div>
+        </div>
+        <div id="perfChart"></div>
+        <p id="perfMeta" class="price-meta"></p>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Portfolio Heatmap</h2><div class="seg seg-small" id="heatSeg"><button type="button" data-hmode="today" class="seg-btn active">Today %</button><button type="button" data-hmode="pnl" class="seg-btn">Overall P&amp;L %</button></div></div>
+        <div id="heatMap" class="heat-grid"></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Corporate Actions</h2><span class="price-meta">Dividends and splits on your stocks, from exchange data via Yahoo</span></div>
+        <div id="corpBox"><div class="skel" style="height:44px"></div></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Dividend Snowball</h2><span class="price-meta">Dividends received per quarter, and what they earn on your cost</span></div>
+        <div id="divBox"><div class="skel" style="height:80px"></div></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Tax — Harvesting &amp; Booked Profit <button class="info-btn" type="button" data-help="tax" title="What is this?">i</button></h2><span class="price-meta">Worked out from your entry dates</span></div>
+        <div id="taxBox"></div>
+      </div>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section id="view-insights" class="view hidden">
+      <div class="panel ins-tf-panel">
+        <div class="panel-head"><h2>PERIOD PERFORMANCE</h2><span class="price-meta">Pick a window — computed from free daily price history</span></div>
+        <div class="seg seg-small" id="insTfSeg"><button type="button" data-instf="1D" class="seg-btn">1D</button><button type="button" data-instf="1W" class="seg-btn">1W</button><button type="button" data-instf="1M" class="seg-btn">1M</button><button type="button" data-instf="3M" class="seg-btn">3M</button><button type="button" data-instf="6M" class="seg-btn">6M</button><button type="button" data-instf="1Y" class="seg-btn">1Y</button><button type="button" data-instf="ALL" class="seg-btn active">ALL</button></div>
+        <div id="insPeriodBox"><p class="empty-note">Period performance will appear here.</p></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>PERIOD GAINERS VS DRAGGERS</h2><span class="price-meta">Who made it, who dragged it — in the selected window</span></div>
+        <div id="insMoversBox"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>PORTFOLIO HEALTH</h2><span class="price-meta">Win rate &amp; profit factor, all time</span></div>
+        <div id="insHealthBox"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>SECTOR PERFORMANCE (PERIOD)</h2><span class="price-meta">Follows the window picked above</span></div>
+        <div id="insSectorBox"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>MY ASSETS</h2><span class="price-meta">Your money, at a glance</span></div>
+        <div id="insAssets"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>PORTFOLIO SCORE <button class="info-btn" type="button" data-help="score" title="What is this?">i</button></h2><span class="price-meta">Folio's own score, from free price data</span></div>
+        <div class="score-top">
+          <div class="gauge-wrap">
+            <svg class="gauge" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="10"/>
+              <circle id="insGaugeArc" cx="60" cy="60" r="52" fill="none" stroke="var(--text)" stroke-width="10" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="gauge-num"><b id="insScoreNum">–</b><span>/100</span></div>
+          </div>
+          <div class="score-cards">
+            <div class="score-card"><b id="insMomScore">–</b><span class="sc-name">Momentum Score</span><small>6-month price trend of your stocks</small></div>
+            <div class="score-card"><b id="insDivScore">–</b><span class="sc-name">Diversification Score</span><small>Spread across stocks &amp; sectors</small></div>
+            <div class="score-card"><b id="insRiskScore">–</b><span class="sc-name">Risk Score</span><small>Higher = calmer stocks (volatility)</small></div>
+            <div class="score-card"><b id="insQualScore">–</b><span class="sc-name">Quality &amp; Valuation</span><small>Price-based estimate — 52-week strength, size, trend quality</small></div>
+          </div>
+        </div>
+        <p class="price-meta">Scores use free price data only — trend, spread and risk. <a href="#" data-help="quality">Why is there no Quality score?</a></p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>PORTFOLIO GRAPH</h2>
+          <div class="seg seg-small seg-wrap" id="insPerfSeg">
+            <button type="button" data-r="3mo" class="seg-btn">3M</button>
+            <button type="button" data-r="6mo" class="seg-btn active">6M</button>
+            <button type="button" data-r="1y" class="seg-btn">1Y</button>
+          </div>
+        </div>
+        <div id="insPerfBox"></div>
+        <p id="insPerfMeta" class="price-meta"></p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>ALLOCATION — PIE CHARTS</h2><span class="price-meta">Where your money sits</span></div>
+        <div class="viz-grid">
+          <div class="viz-cell"><h4 class="viz-h">By Stock</h4>
+            <div class="donut-wrap"><svg id="insDonutStock" viewBox="0 0 200 200" width="180" height="180"></svg><div id="insDonutStockLegend" class="donut-legend"></div></div>
+          </div>
+          <div class="viz-cell"><h4 class="viz-h">By Sector</h4>
+            <div class="donut-wrap"><svg id="insDonutSector" viewBox="0 0 200 200" width="180" height="180"></svg><div id="insDonutSectorLegend" class="donut-legend"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>HEATMAP</h2><span class="price-meta">Today's move of every holding — tap a tile for its chart</span></div>
+        <div id="insHeat" class="heat-grid"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>RISK vs RETURN — EVERY STOCK</h2><span class="price-meta">One bubble per stock · tap a bubble to open it</span></div>
+        <div id="scatterBox"><div class="skel" style="height:200px"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>UNDERWATER — DRAWDOWN</h2><span class="price-meta" id="ddHead">How deep the dips went, and how fast you recovered</span></div>
+        <div id="ddBox"><div class="skel" style="height:120px"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>MONTHLY RETURNS</h2><span class="price-meta">Your quant tear-sheet — month by month, year by year</span></div>
+        <div id="mrBox"><div class="skel" style="height:120px"></div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>SCORE INSIGHTS</h2><span class="price-meta">What the scores are seeing</span></div>
+        <div id="insDivBox"></div>
+        <div id="insMomBox"><div class="skel" style="height:14px;width:55%"></div><div class="skel" style="height:14px;width:85%;margin-top:8px"></div><div class="skel" style="height:14px;width:70%;margin-top:8px"></div></div>
+        <div id="insRiskBox"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>SIGNALS</h2><span class="price-meta">What is happening in your portfolio right now</span></div>
+        <div id="insSignals"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>MARKET CAP CLASSIFICATION</h2><span class="price-meta">Large / Mid / Small — by NSE index lists</span></div>
+        <div class="cap-chips" id="insCapChips">
+          <button type="button" class="chip active" data-cap="All">All</button>
+          <button type="button" class="chip" data-cap="L">Large Cap</button>
+          <button type="button" class="chip" data-cap="M">Mid Cap</button>
+          <button type="button" class="chip" data-cap="S">Small Cap</button>
+        </div>
+        <div class="cap-grid" id="insCapGrid"></div>
+      </div>
+    </section>
+
+    <!-- NEWS -->
+    <section id="view-news" class="view hidden">
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Results &amp; Announcements</h2><span class="price-meta">Result dates and announcements for your stocks, from free public data</span></div>
+        <div id="eventsBox"><div class="skel" style="height:14px;width:70%"></div><div class="skel" style="height:14px;width:50%;margin-top:8px"></div></div>
+      </div>
+
+      <div class="panel chart-panel">
+        <div class="panel-head"><h2>Portfolio News</h2><span class="price-meta">Latest news about the companies you hold</span></div>
+        <div id="newsList"><div class="skel" style="height:14px;width:90%"></div><div class="skel" style="height:14px;width:75%;margin-top:8px"></div><div class="skel" style="height:14px;width:82%;margin-top:8px"></div></div>
+      </div>
+
+    </section>
+
+    <!-- HOLDINGS -->
+    <section id="view-holdings" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Holdings</h2>
+          <button id="addStockBtn" class="btn btn-gold" type="button">+ Add Stock</button>
+        </div>
+        <div id="holdingsList" class="holdings-list"></div>
+        <p id="holdEmpty" class="empty-note hidden">Nothing here yet. Add your first stock — name, quantity, buy price, date. That is all it takes.</p>
+      </div>
+    </section>
+
+    <!-- WATCHLIST -->
+    <section id="view-watchlist" class="view hidden">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Watchlist</h2>
+          <span class="price-meta">Tap a stock to open its company page — chart, results and news. ✕ removes it. ★ keeps favourites on top.</span>
+        </div>
+        <div id="wlBar" class="wl-bar"></div>
+        <form id="watchForm" class="inline-form">
+          <input type="text" id="watchInput" placeholder="Search stock name or symbol…" autocomplete="off">
+          <button class="btn btn-gold" type="submit">Add</button>
+        </form>
+        <div id="watchListEl" class="watch-list"></div>
+        <p id="watchEmpty" class="empty-note hidden">Watchlist is empty. Add stocks you are watching, even if you have not bought them.</p>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+
+
+    <section id="view-history" class="view hidden">
+      <div class="panel">
+        <div class="panel-head"><h2>History</h2><span class="price-meta">Every buy, sell and dividend you entered.</span></div>
+        <div id="historyList" class="history-list"></div>
+        <p id="histEmpty" class="empty-note hidden">No entries yet.</p>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="view-profile" class="view hidden">
+      <div class="panel profile-panel">
+        <div class="acct-head">
+          <div class="acct-avatar-wrap">
+            <img id="profAvatar" class="avatar-xl hidden" alt="Your photo">
+            <span id="profAvatarInit" class="avatar-xl avatar-init">?</span>
+            <label class="cam-btn" title="Change photo">📷<input type="file" id="dpFile2" accept="image/*" hidden></label>
+          </div>
+          <h2 id="profNameTitle">My Profile</h2>
+          <p class="price-meta" id="profEmailLine"></p>
+          <p class="sec-pill">🔒 Zero-Knowledge AES-256 Vault · 2FA Secret Encrypted with Your Password</p>
+          <p class="price-meta">Manage your Folio account — your photo and details stay inside your own account.</p>
+          <div class="avatar-btns center">
+            <label class="btn btn-small file-label">Change Photo<input type="file" id="dpFile" accept="image/*" hidden></label>
+            <button id="dpRemove" class="mini-btn danger" type="button">Remove Photo</button>
+          </div>
+        </div>
+        <div class="setting-row"><span>Signed in as</span><b id="profEmailRow">—</b></div>
+        <div class="setting-row"><span>Sign out of this device</span><button id="logoutBtn2" class="btn btn-small" type="button">Logout</button></div>
+      </div>
+
+      <div class="panel">
+        <h2>Personal Info</h2>
+        <form id="profileForm" autocomplete="off">
+          <label>Full name
+            <input type="text" id="profName" placeholder="Your name">
+          </label>
+          <label>Mobile number
+            <input type="tel" id="profPhone" placeholder="+91 ">
+          </label>
+          <label>Investor category
+            <select id="profCategory">
+              <option value="">Select…</option>
+              <option>Long-term Investor</option>
+              <option>Trader</option>
+              <option>Long-term Investor + Trader</option>
+              <option>HUF / Family</option>
+              <option>NRI</option>
+            </select>
+          </label>
+          <label>Income tax slab (for estimates)
+            <select id="profSlab">
+              <option value="">Select…</option>
+              <option value="0">No tax (below basic exemption)</option>
+              <option value="5">5%</option>
+              <option value="10">10%</option>
+              <option value="15">15%</option>
+              <option value="20">20%</option>
+              <option value="30">30%</option>
+            </select>
+          </label>
+          <label class="check-line"><input type="checkbox" id="profCompact"> Show amounts in compact form (₹ Lakh / ₹ Crore) on the Dashboard</label>
+          <button type="submit" class="btn btn-gold">Save Changes</button>
+          <p id="profileMsg" class="form-ok"></p>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Security &amp; Sign-in</h2>
+        <div class="setting-row"><span>Login email</span><button id="openEmailModal" class="btn btn-small" type="button">Change Email</button></div>
+        <div class="setting-row"><span>Password</span><button id="openPassModal" class="btn btn-small" type="button">Change Password</button></div>
+        <div class="setting-row"><span>Recovery options</span><b id="secRecSummary" class="row-val">—</b></div>
+        <div class="setting-row"><span>Auto-lock after 15 minutes of inactivity</span><input type="checkbox" id="autoLockToggle" class="switch"></div>
+        <p class="auth-note">Email and password changes open in a secure popup and ask for your current password. If 2FA is on, your secret key is re-locked automatically — nothing breaks.</p>
+        <h3 class="sub-h">Two-Factor Authentication (2FA)</h3>
+        <p class="auth-note">A free extra lock on your account: after your password, a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy — any). Your secret key stays <b>encrypted with your own password</b> — without your password or your seed phrase, nobody can read it, not even from the database. Forgotten the app? Sign in with a <b>recovery code</b> or your <b>12-word seed phrase</b> — both work on the sign-in screen.</p>
+        <div id="totpArea"></div>
+      </div>
+
+<div class="panel">
+        <h2>Data &amp; Vault</h2>
+        <div class="setting-row"><span>Account</span><b id="setEmail">—</b></div>
+        <div class="setting-row"><span>Saving mode</span><b id="setMode">—</b></div>
+        <div class="setting-row"><span>Change password</span><button id="resetPassBtn" class="btn btn-small" type="button">Send reset email</button></div>
+        <div class="setting-row"><span>Report a problem</span><button id="settingsIssueBtn" class="btn btn-small" type="button">Report Issue</button></div>
+        <div class="setting-row"><span>Download encrypted vault (.folio) — zero-knowledge backup</span><button id="vaultExportBtn" class="btn btn-small" type="button">Download Vault</button></div>
+        <div class="setting-row"><span>Restore from encrypted vault (.folio)</span><button id="vaultImportBtn" class="btn btn-small" type="button">Restore Vault</button><input type="file" id="vaultFile" accept=".folio,application/json" hidden></div>
+        <div class="setting-row"><span>Download my data (CSV)</span><button id="exportBtn" class="btn btn-small" type="button">Export</button></div>
+        <div class="setting-row"><span>Clear saved prices &amp; news cache on this device</span><button id="clearCacheBtn" class="btn btn-small" type="button">Clear Cache</button></div>
+        <div class="setting-row"><span>System health &amp; cache diagnostics</span><b class="row-val" id="healthInfo">—</b></div>
+        <div class="setting-row"><span>Repair &amp; refresh state (never touches your holdings)</span><button id="healthRepairBtn" class="btn btn-small" type="button">Repair &amp; Refresh</button></div>
+        <div class="setting-row"><span>Restore from CSV</span><label class="btn btn-small file-label">Import<input type="file" id="importFile" accept=".csv,.xlsx,.xls" hidden></label></div>
+        <div class="setting-row danger"><span>Delete all my entries</span><button id="wipeBtn" class="btn btn-small btn-danger" type="button">Delete everything</button></div>
+        <p class="auth-note">The .folio vault is encrypted with a passphrase only you know (AES-256-GCM, PBKDF2 250,000 rounds) — without the passphrase, nobody can read it, including us. CSV format: Date, Type (BUY/SELL/DIV), Symbol, Name, Qty, Price.</p>
+      </div>
+
+      <div class="panel">
+        <h2>Danger Zone</h2>
+        <div class="setting-row danger"><span>Delete my account and all my data</span><button id="deleteAccountBtn" class="btn btn-small btn-danger" type="button">Delete Account</button></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-foot">
+    <div class="foot-cols">
+      <div class="foot-brand">
+        <img decoding="async" class="folio-logo-top logo-on-dark" src="assets/folio-white.svg" alt="Folio">
+        <img decoding="async" class="folio-logo-top logo-on-light" src="assets/folio-dark.svg" alt="Folio">
+        <p><b>Folio</b> is a private portfolio tracker for Indian stocks — manual entries, delayed free prices, charts, a heatmap and tax views. No broker connection, ever.</p>
+        <p class="product-line">A <span class="sc-brand">Singh Caizen</span> Product</p>
+        <p class="scuts-hint">⌨️ Shortcuts: <b>/</b> search · <b>N</b> add transaction · <b>1–6</b> switch tabs · <b>M</b> privacy · <b>Esc</b> close</p>
+      </div>
+      <div class="foot-links">
+        <h4>Tracker</h4>
+        <a href="#" data-foot-view="dashboard">Dashboard</a>
+        <a href="#" data-foot-view="holdings">Holdings</a>
+        <a href="#" data-foot-view="insights">Insights</a>
+        <a href="#" data-foot-view="news">News</a>
+        <a href="#" data-foot-view="watchlist">Watchlist</a>
+        <a href="#" data-foot-view="profile">My Profile</a>
+      </div>
+      <div class="foot-links">
+        <h4>Help</h4>
+        <a href="#" id="footIssue">Report an Issue</a>
+        <a href="#" data-open-terms="1">Terms, Conditions, Privacy &amp; Data Security</a>
+        <a href="#" data-help="all">Know Your Numbers</a>
+        <a href="#" data-foot-view="profile">Account &amp; Backup</a>
+        <a href="https://singhcaizen.github.io/SinghCaizen/" target="_blank" rel="noopener"><span class="sc-brand">Singh Caizen</span> — Group Website</a>
+      </div>
+    </div>
+    <div class="foot-sc">
+      <img class="sc-foot-logo logo-on-dark" src="assets/sc-logo-white.svg" alt="Singh Caizen">
+      <img class="sc-foot-logo logo-on-light" src="assets/sc-logo-dark.svg" alt="Singh Caizen">
+      <p class="foot-sc-tag">Building businesses for the long term.</p>
+      <a class="foot-sc-visit" href="https://singhcaizen.github.io/SinghCaizen/" target="_blank" rel="noopener noreferrer">Visit Singh Caizen Website</a>
+      <div class="social-row foot-social" data-social-row="1"></div>
+      <p class="foot-sc-disclaimer">For personal tracking only. Not investment advice.</p>
+    </div>
+    <p class="foot-legal">Prices: free public data (Yahoo Finance), delayed by about 15 minutes and occasionally unavailable. For tracking only — not investment or tax advice. <a href="#" data-open-terms="1">Terms, Conditions, Privacy &amp; Data Security</a> · © Folio · A <span class="sc-brand">Singh Caizen</span> Product.</p>
+  </footer>
+</div>
+<!-- ============ TERMS, PRIVACY & SECURITY MODAL ============ -->
+<div id="termsModal" class="modal hidden">
+  <div class="modal-card modal-wide terms-card">
+    <div class="modal-head"><h3>🛡️ Terms, Conditions, Privacy &amp; Data Security</h3><button class="icon-btn modal-close-btn" data-close-terms="1" type="button" aria-label="Close">✕</button></div>
+    <div class="terms-body">
+      <section><h4>1. Encryption — exactly what is and is not encrypted</h4><p><b>Your cloud records are end-to-end encrypted</b> once you complete the one-time encryption setup: a random 256-bit key (AES-256-GCM, a fresh IV on every save) encrypts your transactions, watchlists, profile fields, notes, alerts and settings <b>on your device, before anything is uploaded</b>. That key is itself locked by your password, your 12-word vault seed phrase and your recovery codes (PBKDF2-SHA256, 600,000 iterations). Google Firebase then stores <b>only ciphertext</b> — not even Google, a database administrator, or Folio can read your portfolio. If you skip or postpone the setup, your records are instead protected by sign-in plus Firestore rules that restrict them to your own account only, and Folio will keep offering the setup. Your exported <b>.folio vault backup</b> is separately encrypted with AES-256-GCM and keys derived via PBKDF2-SHA256 at 250,000 iterations.</p><p><b>What is not encrypted, honestly:</b> looking up a price necessarily reveals that <b>ticker symbol</b> to the data source (Yahoo Finance, reached directly or through free public proxies). Your quantities, buy prices, P&amp;L and amounts <b>never leave your device</b>. On-device caches hold only public price history, stored under hashed labels so your holdings and watchlist symbols are not readable in storage. The price feed is delayed ~15 minutes and is public market data.</p><p><b>The trade-off, in plain words:</b> if you lose both your password and your seed phrase (and all recovery codes), your encrypted data <b>cannot be recovered by anyone</b> — that is what end-to-end encryption means.</p></section>
+      <section><h4>2. Multi-Layer Account Protection (2FA &amp; Seed Phrase)</h4><p>Optional Two-Factor Authentication (compatible with Google Authenticator, Microsoft Authenticator and Authy) locks your account behind a time-based 6-digit code. It is backed by a client-side encrypted <b>12-word seed phrase</b> and single-use recovery codes, plus an automatic <b>15-minute inactivity lock</b>. Enable it any time in My Profile → Security.</p></section>
+      <section><h4>3. No Broker, No Bank, No Middlemen — Guaranteed</h4><p>Folio (A Singh Caizen Product) is an independent, privacy-first record-keeping and analytics terminal. It <b>never connects to your demat account, stockbroker, or bank account</b>, and it will never ask for your broker login credentials, MPIN, TPIN, bank account numbers, or UPI PINs. Every entry in Folio is typed in by you, manually.</p></section>
+      <section><h4>4. Zero Data Selling, Zero Ad Tracking</h4><p>Your data is <b>never sold, rented, or shared with advertisers</b>, and Folio carries no external marketing trackers. Your personal portfolio stays 100% private to you.</p></section>
+      <section><h4>5. Your Data, Your Ownership — Export &amp; Erasure</h4><p>You retain 100% control of your records at all times. Export your complete transaction history as a standard <b>.csv</b> file, or as an encrypted <b>.folio</b> vault backup, with one tap. You can permanently delete your cloud account and all associated records instantly from <b>My Profile → Danger Zone</b>, and clear all on-device data from your browser at any time.</p></section>
+      <section><h4>6. Market Data Disclaimer</h4><p>Equity quotes, index levels, historical charts, corporate actions, news feeds are aggregated from <b>free public sources</b> and may be delayed by approximately <b>15 minutes</b> or occasionally unavailable. They are provided strictly for personal portfolio tracking and educational study — not for real-time execution.</p></section>
+      <section><h4>7. Terms of Use — No Financial or Tax Advice</h4><p>Folio — A Singh Caizen Product is a self-directed financial analytics and record-keeping software tool. Nothing displayed — including Portfolio Scores, technical indicators (RSI, EMA, SMA, Support/Resistance), tax estimates (STCG/LTCG calculations) — constitutes investment, legal or tax advice. Always consult a <b>SEBI-registered investment adviser</b> or a qualified chartered accountant before making investment or tax decisions.</p></section>
+    </div>
+    <div class="terms-foot"><button class="btn btn-gold" data-close-terms="1" type="button">Got It, Understood</button></div>
+  </div>
+</div>
+
+
+<!-- ============ ADD TRANSACTION PANEL (MoneyControl-style) ============ -->
+<div id="txnModal" class="modal hidden">
+  <div class="modal-card modal-wide">
+    <div class="modal-head"><h3>ADD TRANSACTION</h3><button id="txnClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
+    <div class="txn-types">
+      <span class="txn-type-chip">Stocks / ETF</span>
+      <span class="price-meta">Manual entry for your shares — no broker connection.</span>
+    </div>
+    <div class="entry-tabs">
+      <button id="entryManual" class="entry-tab active" type="button">Manual Entry</button>
+      <span class="entry-sep">|</span>
+      <button id="entryFile" class="entry-tab" type="button">File Upload</button>
+    </div>
+
+    <form id="txnForm" autocomplete="off">
+      <div class="bt-head"><span>Action</span><span>Stock Name</span><span>Exchange</span><span>Date</span><span>Quantity</span><span>Price / Stock</span><span>Amount</span><span></span></div>
+      <div id="batchRows"></div>
+      <button id="addRowBtn" class="mini-btn add-more" type="button">＋ Add More Transactions</button>
+      <p id="txnError" class="form-error"></p>
+      <div class="txn-foot">
+        <button type="submit" class="btn btn-gold">Add Transactions</button>
+        <button id="txnReset" class="btn" type="button">Reset</button>
+      </div>
+      <p class="auth-note">The ＋ on any row opens optional details — broker, total charges and a note. Charges are added to your buy cost (and taken out of sell proceeds), so profit stays honest. The real date matters: it decides short-term vs long-term tax and your XIRR. NSE prices are used by default.</p>
+    </form>
+
+    <div id="fileBox" class="hidden">
+      <p>Upload a <strong>CSV or Excel (.xlsx)</strong> file — a Zerodha / broker <strong>tradebook</strong> (real buy dates) or a <strong>holdings</strong> export (quantity + average cost; buy date is set to the import day). Folio backup CSVs work here as-is. Columns are recognised automatically.</p>
+      <label id="filePickBtn" class="btn btn-gold file-pick-label" for="importFile">Choose File (CSV / Excel)</label>
+      <div id="importStatus" class="import-status hidden"><div class="imp-row"><span id="impText">Reading file…</span></div><div class="imp-bar"><i id="impBarFill"></i></div></div>
+      <p class="auth-note">Entries are added to your account — nothing is overwritten or deleted.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ STOCK CHART MODAL ============ -->
+<div id="stockModal" class="modal hidden">
+  <div class="modal-card modal-wide">
+    <div class="modal-head"><div><h3 id="stockTitle">—</h3><span id="stockName" class="hold-name"></span></div><button id="stockClose" class="icon-btn modal-close-btn" data-close-modal="1" type="button" aria-label="Close">✕</button></div>
+    <div id="taWrap" class="hidden">
+      <div class="lw-bar ta-bar">
+        <div class="seg seg-small modal-timeframe-bar" id="taTfSeg"><button type="button" data-takind="intra" data-range="5d" data-interval="5m" class="seg-btn">5m</button><button type="button" data-takind="intra" data-range="1mo" data-interval="15m" class="seg-btn">15m</button><button type="button" data-takind="intra" data-range="3mo" data-interval="60m" class="seg-btn">1H</button><button type="button" data-tadays="7" class="seg-btn">1W</button><button type="button" data-tadays="30" class="seg-btn">1M</button><button type="button" data-tadays="91" class="seg-btn">3M</button><button type="button" data-tadays="182" class="seg-btn">6M</button><button type="button" data-tadays="365" class="seg-btn active">1Y</button><button type="button" data-takind="long" data-range="5y" data-interval="1wk" class="seg-btn">5Y</button><button type="button" data-takind="long" data-range="max" data-interval="1mo" class="seg-btn">MAX</button></div>
+      </div>
+      <div class="lw-bar ta-bar">
+        <div class="seg seg-small modal-chart-type-bar" id="taModeSeg"><button type="button" data-ta="candles" class="seg-btn active"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 4v3M7 15v3M17 2v4M17 14v4"/><rect x="4.5" y="7" width="5" height="8" rx="1"/><rect x="14.5" y="6" width="5" height="8" rx="1"/></svg> Candles</button><button type="button" data-ta="area" class="seg-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 19 L8 10 L13 13 L21 5"/><path d="M3 19 L8 10 L13 13 L21 5 V19 Z" fill="currentColor" opacity=".22" stroke="none"/></svg> Area</button><button type="button" data-ta="bars" class="seg-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3v18M6 8h4M6 15H2M13 5v14M13 10h4M13 17H9M20 2v16M20 7h-4"/></svg> Bars</button></div>
+        <div class="seg seg-small modal-indicator-bar" id="taIndSeg"><button type="button" data-taind="ema" class="seg-btn active">20 EMA</button><button type="button" data-taind="sma" class="seg-btn active">200 SMA</button><button type="button" data-taind="bb" class="seg-btn">Bollinger</button><button type="button" data-taind="sr" class="seg-btn active">S/R Levels</button><button type="button" data-taind="trades" class="seg-btn active">My Trades</button><button type="button" data-taind="measure" class="seg-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2.5" y="9" width="19" height="6" rx="1"/><path d="M6.5 9v3M10.5 9v3M14.5 9v3M18.5 9v3"/></svg> Measure</button></div>
+      </div>
+      <div id="taHud" class="ta-hud">Drag on the chart to inspect any day</div>
+      <div class="ta-stack"><canvas id="taCanvas"></canvas><canvas id="taOverlay"></canvas><div id="taLivePill" class="ta-live-pill loading">◌ Loading chart…</div><div class="ta-zoom"><button type="button" data-tazoom="in" title="Zoom in">➕</button><button type="button" data-tazoom="out" title="Zoom out">➖</button><button type="button" data-tazoom="left" title="Pan left">◀</button><button type="button" data-tazoom="right" title="Pan right">▶</button><button type="button" data-tazoom="reset" title="Reset view">↺</button></div></div>
+      <div id="taVerdict" class="stat-chips"></div>
+    </div>
+    <div id="lwBar" class="lw-bar hidden">
+      <div class="seg seg-small" id="lwTypeSeg"><button type="button" data-lwt="candles" class="seg-btn active"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M7 4v3M7 15v3M17 2v4M17 14v4"/><rect x="4.5" y="7" width="5" height="8" rx="1"/><rect x="14.5" y="6" width="5" height="8" rx="1"/></svg> Candles</button><button type="button" data-lwt="area" class="seg-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 19 L8 10 L13 13 L21 5"/><path d="M3 19 L8 10 L13 13 L21 5 V19 Z" fill="currentColor" opacity=".22" stroke="none"/></svg> Area</button><button type="button" data-lwt="bars" class="seg-btn"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3v18M6 8h4M6 15H2M13 5v14M13 10h4M13 17H9M20 2v16M20 7h-4"/></svg> Bars</button></div>
+      <button id="lwIndBtn" class="mini-btn" type="button" aria-expanded="false">Indicators</button>
+      <button id="lwReset" class="mini-btn" type="button">Reset View</button>
+      <div id="lwIndSheet" class="lw-ind-sheet hidden">
+        <label class="bench-toggle"><input type="checkbox" id="lwEma" checked> 20 EMA</label>
+        <label class="bench-toggle"><input type="checkbox" id="lwSma"> 200 SMA</label>
+        <label class="bench-toggle"><input type="checkbox" id="lwVol" checked> Volume</label>
+      </div>
+    </div>
+    <div id="lwLegend" class="price-meta hidden"></div>
+    <div id="lwWrap" class="hidden"></div>
+    <div id="stockChart"></div>
+    <p id="stockRangeMeta" class="price-meta"></p>
+    <div id="stockStats" class="hold-grid"></div>
+    <div id="stockWatchRow" class="dl-row"></div>
+    <div class="company-sec">
+      <h4 class="company-h">About the Company</h4>
+      <div id="stockAbout"><p class="empty-note">Loading company details…</p></div>
+    </div>
+    <div class="company-sec">
+      <h4 class="company-h">Results &amp; Announcements</h4>
+      <div id="stockResults"><p class="empty-note">Loading…</p></div>
+    </div>
+    <div class="company-sec">
+      <h4 class="company-h">Corporate Actions — Dividends &amp; Splits</h4>
+      <div id="stockCorp"><p class="empty-note">Loading…</p></div>
+    </div>
+    <div class="company-sec">
+      <h4 class="company-h">Latest News</h4>
+      <div id="stockNews"><p class="empty-note">Loading news…</p></div>
+    </div>
+    <div id="stockLinks" class="dl-row"></div>
+    <p class="auth-note">Chart uses free delayed data (~15 min). Company details, results and news come from free public sources and may occasionally be unavailable. For tracking and study — not a trading terminal.</p>
+  </div>
+</div>
+
+<!-- ============ REPORT ISSUE MODAL ============ -->
+<div id="issueModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3>Report an Issue</h3><button id="issueClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
+    <form id="issueForm" autocomplete="off">
+      <label>Your name
+        <input type="text" id="issueName" placeholder="Your name">
+      </label>
+      <label>Your email
+        <input type="email" id="issueEmail" placeholder="you@example.com">
+      </label>
+      <label>What went wrong?
+        <textarea id="issueMsg" rows="4" placeholder="Describe the problem in a line or two…" required></textarea>
+      </label>
+      <p id="issueError" class="form-error"></p>
+      <button type="submit" class="btn btn-gold btn-block">Send Report</button>
+      <p class="auth-note">Your report goes straight to the Singh Caizen inbox. You can also write to <a href="mailto:singhcaizen@outlook.in">singhcaizen@outlook.in</a>.</p>
+    </form>
+  </div>
+</div>
+
+<!-- ============ DELETE ACCOUNT MODAL ============ -->
+<div id="delModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3>Delete Account</h3><button id="delClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
+    <p class="auth-note">This permanently deletes your account and <b>all</b> your portfolio data from the cloud. It cannot be undone. If you want a backup first, take a CSV export from Settings, then come back.</p>
+    <form id="delForm" autocomplete="off">
+      <label>Your password (to confirm it is really you)
+        <input type="password" id="delPass">
+      </label>
+      <p id="delError" class="form-error"></p>
+      <button type="submit" class="btn btn-danger btn-block">Delete My Account Forever</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ CHANGE EMAIL MODAL ============ -->
+<div id="emailModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3>Change Email</h3><button id="emailClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
+    <form id="emailForm" autocomplete="off">
+      <label>New email
+        <input type="email" id="newEmail" placeholder="new@example.com">
+      </label>
+      <label>Current password (for safety)
+        <input type="password" id="emailCurPass">
+      </label>
+      <p id="emailMsg" class="form-ok"></p><p id="emailError" class="form-error"></p>
+      <button type="submit" class="btn btn-gold btn-block">Change Email</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ CHANGE PASSWORD MODAL ============ -->
+<div id="passModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3>Change Password</h3><button id="passClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
+    <form id="passForm" autocomplete="off">
+      <label>Current password
+        <input type="password" id="passCur">
+      </label>
+      <label>New password (6+ characters)
+        <input type="password" id="passNew" minlength="6">
+      </label>
+      <p id="passMsg" class="form-ok"></p><p id="passError" class="form-error"></p>
+      <button type="submit" class="btn btn-gold btn-block">Change Password</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ 2FA MODAL (setup / QR / codes / disable) ============ -->
+<div id="totpModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3 id="totpModalTitle">Two-Factor Authentication</h3><button id="totpClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
+    <div id="totpModalBody"></div>
+  </div>
+</div>
+
+<!-- ============ WELCOME / TERMS MODAL (first entry) ============ -->
+<div id="welcomeModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3>Welcome to Folio</h3></div>
+    <div class="terms-body">
+      <p>Before you begin, please take a moment to read how your information is handled here. Your trust matters to us.</p>
+      <h4>Your data is safe with us</h4>
+      <p>All your portfolio data is stored in the cloud on Google Firebase servers, under your own account only. Folio also offers one-time <b>end-to-end encryption</b>: after a short setup (you save a 12-word seed phrase), your records are encrypted on this device before upload, so only ciphertext is ever stored — not even Google can read them. Price lookups reveal only ticker symbols to the data source; your quantities and amounts never leave your device.</p>
+      <h4>Only you hold the keys</h4>
+      <p>Your account is protected by your password. If you turn on Two-Factor Authentication from My Profile, your secret key stays encrypted with your own password. Without your password or your seed phrase, it cannot be read — by anyone.</p>
+      <h4>No broker, no middlemen</h4>
+      <p>This website never connects to your broker or your bank, and it will never ask for your broker password, bank details, PIN or OTP.</p>
+      <h4>We do not sell your data</h4>
+      <p>Your information is used only to run this tracker for you. It is never sold, rented or shared with advertisers.</p>
+      <h4>Prices are delayed</h4>
+      <p>Stock prices come from free public sources and are delayed by about 15 minutes. They are suitable for tracking your portfolio — not for live trading decisions.</p>
+      <h4>Not investment advice</h4>
+      <p>Folio is a personal record-keeping tool, made by Singh Caizen. Nothing on this website is investment, tax or financial advice. Please consult a SEBI-registered adviser for advice.</p>
+      <h4>Your data, your control</h4>
+      <p>You can download a CSV backup of your entries at any time from Settings, and you can permanently delete your account and all of your data from My Profile whenever you wish.</p>
+    </div>
+    <p class="auth-note">By tapping Continue, you confirm that you have read and accepted these terms.</p>
+    <button id="termsAgree" class="btn btn-gold btn-block" type="button">I Understand — Continue</button>
+  </div>
+</div>
+
+<!-- ============ VAULT PASSPHRASE MODAL ============ -->
+<div id="vaultModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3 id="vaultTitle">Encrypted Vault</h3><button id="vaultClose" class="icon-btn" type="button" aria-label="Close">✕</button></div>
+    <p class="auth-note" id="vaultText"></p>
+    <form id="vaultForm" autocomplete="off">
+      <label>Vault passphrase (8+ characters — there is no recovery if you forget it)
+        <input type="password" id="vaultPass" minlength="8">
+      </label>
+      <p id="vaultError" class="form-error"></p>
+      <button type="submit" class="btn btn-gold btn-block" id="vaultGo">Continue</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ KNOW YOUR NUMBERS (glossary) MODAL ============ -->
+<div id="helpModal" class="modal hidden">
+  <div class="modal-card modal-wide">
+    <div class="modal-head"><h3>Know Your Numbers</h3><button id="helpClose" class="icon-btn" type="button">✕</button></div>
+    <div id="helpBody" class="help-body"></div>
+    <p class="auth-note">Plain-English meanings of everything Folio shows you. Scores and figures are information, not investment advice.</p>
+  </div>
+</div>
+
+<!-- ============ RESULTS ALERT POPUP ============ -->
+<div id="eventModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="modal-head"><h3>Results &amp; Announcements</h3><button id="eventClose" class="icon-btn" type="button">✕</button></div>
+    <div id="eventPopupBody"></div>
+    <button id="eventOk" class="btn btn-gold btn-block" type="button">Got It</button>
+  </div>
+</div>
+
+<datalist id="stockList"></datalist>
+<div id="toast" class="toast hidden"></div>
+
+<nav id="bnav" class="bnav">
+  <button type="button" data-bnav="dashboard"><span class="bnav-ic">🏠</span><span>Home</span></button>
+  <button type="button" data-bnav="holdings"><span class="bnav-ic">💼</span><span>Holdings</span></button>
+  <button type="button" data-bnav="watchlist"><span class="bnav-ic">★</span><span>Watchlist</span></button>
+  <button type="button" data-bnav="insights"><span class="bnav-ic">📊</span><span>Insights</span></button>
+  <button type="button" data-bnav="profile"><span class="bnav-ic">👤</span><span>Profile</span></button>
+</nav>
+<script src="assets/lightweight-charts.standalone.production.js?v=1"></script>
+<script src="assets/firebase-app-compat.js?v=1"></script>
+<script src="assets/firebase-auth-compat.js?v=1"></script>
+<script src="assets/firebase-firestore-compat.js?v=1"></script>
+<script src="js/firebase-config.js?v=99"></script>
+<script src="js/stocks.js?v=23"></script>
+<script src="js/app.js?v=57"></script>
+<script src="js/profile.js?v=15"></script>
+<script src="js/e2ee.js?v=5"></script>
+<script src="js/features.js?v=94"></script>
+<div class="samsung-bottom-dock-wrap" aria-label="Bottom Navigation">
+  <nav class="samsung-bottom-capsule">
+    <button type="button" class="mobile-nav-item" data-bnav="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/></svg><span>Home</span></button>
+    <button type="button" class="mobile-nav-item" data-bnav="holdings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a3 3 0 0 1 3-3v0a3 3 0 0 1 3 3v1.5"/><path d="M3 12.5h18"/></svg><span>Holdings</span></button>
+    <button type="button" class="mobile-nav-item" data-bnav="watchlist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.3 6.9 19l1.1-5.6L3.8 9.5l5.7-.7z"/></svg><span>Watchlist</span></button>
+    <button type="button" class="mobile-nav-item" data-bnav="insights"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v15.5h16"/><path d="M7.5 15l3.8-4.6 3 2.7L18.5 8"/></svg><span>Insights</span></button>
+    <button type="button" class="mobile-nav-item" id="dockMoreBtn" aria-label="More"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg><span>More</span></button>
+  </nav>
+</div>
+
+<div id="moreSheet" class="modal sheet-modal hidden" role="dialog" aria-label="More">
+  <div class="sheet-card more-sheet-card">
+    <div class="more-sheet-head"><b>More</b><button type="button" class="sheet-x" data-more-close="1" aria-label="Close">✕</button></div>
+    <div class="sc-block">
+      <img class="sc-sheet-logo logo-on-dark" src="assets/sc-logo-white.svg" alt="Singh Caizen">
+      <img class="sc-sheet-logo logo-on-light" src="assets/sc-logo-dark.svg" alt="Singh Caizen">
+      <a class="sc-visit-btn" href="https://singhcaizen.github.io/SinghCaizen/" target="_blank" rel="noopener noreferrer">Visit Singh Caizen Website</a>
+      <div class="sc-follow-label">Follow Singh Caizen</div>
+      <div class="social-row sheet-social" data-social-row="1"></div>
+    </div>
+    <button type="button" class="more-row" data-more-act="about"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 7.8v.1"/></svg><span>About</span></button>
+
+    <button type="button" class="more-row" data-more-view="news"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 5h13v14H6a2 2 0 0 1-2-2V5z"/><path d="M17 8h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2"/><path d="M7 9h7M7 13h7"/></svg><span>News</span></button>
+    <button type="button" class="more-row" data-more-view="history"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg><span>History</span></button>
+    <button type="button" class="more-row" data-more-view="profile"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-3.4 3.8-5 7-5s5.8 1.6 7 5"/></svg><span>Profile / Account</span></button>
+    <div class="more-group">Quick actions</div>
+    <button type="button" class="more-row" data-more-act="search"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21"/></svg><span>Search stock</span></button>
+    <button type="button" class="more-row" data-more-act="settings"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg><span>Settings</span></button>
+    <button type="button" class="more-row" data-more-act="export"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10"/><path d="M8 10.5L12 14.5l4-4"/><path d="M4 19h16"/></svg><span>Export data (CSV)</span></button>
+    <button type="button" class="more-row" data-more-act="import"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 14V4"/><path d="M8 7.5L12 3.5l4 4"/><path d="M4 19h16"/></svg><span>Import data</span></button>
+    <button type="button" class="more-row" data-more-act="backup"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4.5" width="16" height="5" rx="1"/><path d="M6 9.5V19a1.5 1.5 0 0 0 1.5 1.5h9A1.5 1.5 0 0 0 18 19V9.5"/><path d="M10 14.5h4"/></svg><span>Backup and Restore</span></button>
+    <button type="button" class="more-row" data-more-view="watchlist"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg><span>Notifications / Price alerts</span></button>
+    <button type="button" class="more-row" data-more-act="install" id="moreInstallRow" hidden><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10"/><path d="M8 10.5L12 14.5l4-4"/><path d="M4 17v2a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-2"/></svg><span>Install App</span></button>
+    
+    <div class="more-group">Help</div>
+    <button type="button" class="more-row" data-more-act="help"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M9.6 9.4A2.6 2.6 0 1 1 12 12.4v1.4"/><path d="M12 17.2v.1"/></svg><span>Help and Feedback</span></button>
+    <button type="button" class="more-row" data-more-act="report"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 4 2.8 20h18.4L12 4z"/><path d="M12 10v4.5M12 17.4v.1"/></svg><span>Report Issue</span></button>
+    <button type="button" class="more-row" data-more-act="legal"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg><span>Legal &amp; Privacy</span></button>
+    <div class="more-row more-ver"><span>App version</span><span class="more-ver-num" data-folio-ver>Folio</span></div>
+    <button type="button" class="more-row" data-more-act="logout"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3"/><path d="M15.5 8L19.5 12l-4 4"/><path d="M19.5 12h-10"/></svg><span>Logout</span></button>
+  </div>
+</div>
+
+<div id="aboutModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="About Folio">
+  <div class="modal-card">
+    <div class="modal-head"><h3>About Folio</h3><button id="aboutClose" class="icon-btn" type="button" aria-label="Close" data-close-modal="1">✕</button></div>
+    <p><b>Folio</b> — <span id="aboutVer">Version</span></p>
+    <p class="auth-note">A Singh Caizen Product. Your personal portfolio tracker: manual entries, free delayed prices (~15 min, via Yahoo Finance), cloud sync with optional end-to-end encryption. Made for tracking and study — not investment advice.</p>
+  </div>
+</div>
+</body>
+</html>

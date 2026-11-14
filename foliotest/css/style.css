@@ -1725,3 +1725,6 @@ body.folio-ready .bar-fill,body.folio-ready .pnl-fill{animation:none !important}
 .more-sheet-head{position:sticky;top:-12px;background:var(--panel);z-index:2}
 .sc-follow-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted,#8a8a8a);margin:2px 0 8px}
 .sheet-social{justify-content:center;padding-bottom:8px}
+
+/* ===== v95 Phase 1: nav tap responsiveness ===== */
+.mobile-nav-item{touch-action:manipulation;min-height:48px}
