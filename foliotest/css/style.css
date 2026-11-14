@@ -1922,3 +1922,22 @@ body{min-height:100dvh}
   .panel-head .price-meta{flex:1 1 100%;order:6}
   .panel-head .seg{flex:none}
 }
+
+/* ===== v105 (2026-11-14, LILA): phone header — profile/switch swap, eye redesign, even sizes (phone only) ===== */
+@media (max-width:640px){
+  .topbar-right #privacyBtn{order:1}
+  .topbar-right #themeBtn{order:2}
+  .topbar-right #profileChip{order:3}
+  /* eye: smaller, cleaner glass circle (44px touch area kept via ::after) */
+  #privacyBtn{width:38px;height:38px;font-size:15px;position:relative;border-color:color-mix(in srgb,var(--text) 22%,transparent);box-shadow:inset 0 1px 1px rgba(255,255,255,.18),0 2px 8px rgba(0,0,0,.18)}
+  #privacyBtn::after{content:"";position:absolute;inset:-3px;border-radius:50%}
+  /* profile photo: snug circular chip, same 38px height as the eye */
+  #profileChip{padding:2px;border-radius:50%}
+  /* theme switch: same visual height as its neighbours */
+  #themeBtn{width:62px;height:38px}
+  #themeBtn .th-knob{width:30px;height:30px;font-size:14px}
+  [data-theme="dark"] #themeBtn .th-knob{transform:translate(26px,-50%)}
+  #themeBtn .th-ico{font-size:13px}
+  #themeBtn .th-sun{left:9px}
+  #themeBtn .th-moon{right:9px}
+}
