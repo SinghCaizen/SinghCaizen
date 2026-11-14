@@ -5905,7 +5905,7 @@ const FOLIO_VER = "Folio v97";
         else if (act === "import") { const f = $("importFile"); if (f) f.click(); }
         else if (act === "backup") { switchView("profile"); setTimeout(() => { const b = $("vaultExportBtn"); if (b) b.scrollIntoView({ block: "center" }); }, 80); }
         else if (act === "help") { const h = $("helpModal"); if (h) h.classList.remove("hidden"); }
-        else if (act === "about") { const v = $("aboutVer"); if (v) v.textContent = "Version " + FOLIO_VER.replace("Folio ", ""); const a = $("aboutModal"); if (a) a.classList.remove("hidden"); }
+        else if (act === "about") { const v = $("aboutVer"); if (v) v.textContent = "Version " + FOLIO_VER.replace("Folio ", ""); if (typeof openModal === "function") openModal("aboutModal"); else { const a = $("aboutModal"); if (a) a.classList.remove("hidden"); } }
         else if (act === "logout" && typeof doLogout === "function") doLogout();
       }
     }
@@ -5924,8 +5924,11 @@ const FOLIO_VER = "Folio v97";
     }).join("");
   }
   const html = socialHTML();
-  document.querySelectorAll("[data-social-row]").forEach(el => { el.innerHTML = html; if (!html) el.style.display = "none"; });
-  document.querySelectorAll("[data-folio-ver]").forEach(el => { el.textContent = FOLIO_VER; });
+  const fillStatic = () => {
+    document.querySelectorAll("[data-social-row]").forEach(el => { el.innerHTML = html; if (!html) el.style.display = "none"; });
+    document.querySelectorAll("[data-folio-ver]").forEach(el => { el.textContent = FOLIO_VER; });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", fillStatic); else fillStatic();
   document.addEventListener("click", e => { if (e.target.closest(".more-visit")) { const sh = $("moreSheet"); if (sh) sh.classList.add("hidden"); } });
 })();
 

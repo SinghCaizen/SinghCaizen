@@ -1839,3 +1839,17 @@ button:disabled,.btn.disabled,[aria-disabled="true"]{opacity:.55;cursor:not-allo
   .dock-pill{transition:none}
   .samsung-bottom-capsule .mobile-nav-item{transition:none}
 }
+
+/* ===== v97 fixes: grid margin offset, head meta truncation, insights sub-grids, score tiles ===== */
+#view-dashboard>.panel,#view-insights>.panel{margin-top:0}
+.panel-head>div{min-width:0}
+#priceMeta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 auto}
+#refreshBtn{flex:none}
+.score-cards{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}
+.score-card{min-width:0}
+.score-top{min-width:0;flex-wrap:wrap}
+@media(min-width:900px){
+  #view-insights>#insXWrap,#view-insights>#planWrap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch;grid-auto-flow:dense}
+  #view-insights>#insXWrap>.panel,#view-insights>#planWrap>.panel{margin:0;min-width:0;display:flex;flex-direction:column}
+  #view-insights>#insXWrap>.panel:has(.matrix-wrap),#view-insights>#planWrap>.panel:has(.matrix-wrap){grid-column:1/-1}
+}
