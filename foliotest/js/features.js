@@ -4405,6 +4405,7 @@ async function pulseLoad() {
     panel.innerHTML = '<div class="panel-head"><h2>Market Pulse</h2><span class="price-meta" id="pulseMeta"></span></div><div id="pulseIdx" class="pulse-row"></div><div id="pulseHeat"></div>';
     const mood = $("moodPanel");
     if (mood && mood.nextSibling) view.insertBefore(panel, mood.nextSibling); else view.appendChild(panel);
+    try { dashApplyTabFilter(); } catch (e) {}
   }
   const idxBox = $("pulseIdx");
   const IDX = [["^NSEI", "NIFTY 50"], ["^BSESN", "SENSEX"], ["^NSEBANK", "BANK NIFTY"], ["^CNXIT", "NIFTY IT"], ["^CNXPHARMA", "NIFTY PHARMA"], ["^CNXAUTO", "NIFTY AUTO"], ["^CNXMETAL", "NIFTY METAL"], ["^CNXFMCG", "NIFTY FMCG"]];
