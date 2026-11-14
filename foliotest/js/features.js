@@ -6319,3 +6319,20 @@ async function stockShareChipUpdate(sym) {
     if (diagTaps >= 5) { diagTaps = 0; openDiag(); }
   });
 })();
+
+/* ---------- v108: header search + alerts bell (dot = a real target/SL hit right now) ---------- */
+(function () {
+  const sb = $("folioSearchBtn"), bb = $("folioBellBtn"), dot = $("folioBellDot");
+  if (sb) sb.addEventListener("click", () => { switchView("watchlist"); setTimeout(() => { const i = $("watchInput"); if (i) i.focus(); }, 60); });
+  function bellSync() {
+    if (!dot) return;
+    let hit = false;
+    try {
+      const alerts = (typeof state !== "undefined" && state && state.profile && state.profile.alerts) || {};
+      for (const sym of Object.keys(alerts)) { const st = tgtStatus(sym); if (st && (st.st === "target" || st.st === "sl")) { hit = true; break; } }
+    } catch (e) {}
+    dot.classList.toggle("hidden", !hit);
+  }
+  if (bb) bb.addEventListener("click", () => { switchView("insights"); setTimeout(() => { const el = $("insSignals"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }, 150); });
+  setInterval(() => { if (currentUser && !document.hidden) bellSync(); }, 4000);
+})();
