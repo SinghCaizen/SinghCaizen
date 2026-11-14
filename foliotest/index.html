@@ -20,12 +20,12 @@ function __folioLogErr(kind, msg, src, stack) {
 }
 function __folioIgnorable(msg, src, name) {
   var m = String(msg || ""), sc = String(src || "");
-  if (name === "AbortError" || /aborterror|the user aborted|signal is aborted/i.test(m)) return true;
+  if (name === "AbortError" || name === "AggregateError" || /aborterror|the user aborted|signal is aborted/i.test(m)) return true;
   if (/resizeobserver loop/i.test(m)) return true;
   if (/chrome-extension:|moz-extension:/i.test(sc) || /chrome-extension:|moz-extension:/i.test(m)) return true;
   if (m === "Script error." || m === "Script error") return true;
   if (/service ?worker|cachestorage|cache storage/i.test(m)) return true;
-  if (/failed to fetch|networkerror|load failed|network request failed/i.test(m)) return true;
+  if (/failed to fetch|networkerror|load failed|network request failed|all promises were rejected/i.test(m)) return true;
   return false;
 }
 function __folioBlocked() {

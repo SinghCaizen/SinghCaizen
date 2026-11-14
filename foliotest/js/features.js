@@ -709,7 +709,9 @@ async function fetchOHLC(sym, range, interval) {
   const cached = lsCacheGet(key, 12 * 3600 * 1000);
   if (cached && cached.bars && cached.bars.length) return cached.bars;
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(normalizeTicker(sym)) + "?range=" + range + "&interval=" + interval + "&events=div,split";
-  const r0 = await fetchChartValidated(url, 7000);
+  let r0 = null;
+  try { r0 = await fetchChartValidated(url, 7000); } catch (e) { r0 = null; }
+  if (!r0 || !r0.indicators) return [];
   const q0 = (r0.indicators.quote && r0.indicators.quote[0]) || {};
   const bars = cleanOHLC(r0.timestamp || [], q0);
   lsCacheSet(key, { ts: Date.now(), bars: bars });
@@ -2897,7 +2899,9 @@ async function taFetchRange(sym, range, interval, byDay) {
   const cached = lsCacheGet(key, byDay ? 12 * 3600 * 1000 : 5 * 60 * 1000);
   if (cached && cached.bars && cached.bars.length) return cached.bars;
   const url = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(normalizeTicker(sym)) + "?range=" + range + "&interval=" + interval + "&events=div,split";
-  const r0 = await fetchChartValidated(url, 7000);
+  let r0 = null;
+  try { r0 = await fetchChartValidated(url, 7000); } catch (e) { r0 = null; }
+  if (!r0 || !r0.indicators) return [];
   const q0 = (r0.indicators.quote && r0.indicators.quote[0]) || {};
   const bars = cleanOHLC(r0.timestamp || [], q0, byDay);
   lsCacheSet(key, { ts: Date.now(), bars: bars });
