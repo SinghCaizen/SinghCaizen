@@ -5834,7 +5834,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v100";
+const FOLIO_VER = "Folio v101";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -6172,3 +6172,133 @@ async function stockShareChipUpdate(sym) {
     chip.classList.remove("hidden");
   } catch (e) {}
 }
+
+/* ================= v101: theme-color sync, strip fades, keyboard dock, hidden diagnostics =================
+   Layout-only: no data, calculation, encryption or login code is touched. */
+(function () {
+  /* --- theme-color follows the app theme (the header's own background) --- */
+  const meta = document.querySelector('meta[name="theme-color"]');
+  function syncThemeColor() {
+    if (!meta) return;
+    const light = document.documentElement.getAttribute("data-theme") === "light";
+    let col = light ? "#ffffff" : "#070707";
+    try {
+      const tb = document.querySelector(".topbar");
+      if (tb) {
+        const bg = getComputedStyle(tb).backgroundColor || "";
+        const m = bg.match(/rgba?\(([^)]+)\)/);
+        if (m) {
+          const parts = m[1].split(",").map(x => parseFloat(x));
+          if (parts.length >= 3 && isFinite(parts[0])) {
+            const a = parts.length >= 4 && isFinite(parts[3]) ? parts[3] : 1;
+            if (a >= 0.999) col = "rgb(" + parts[0] + "," + parts[1] + "," + parts[2] + ")";
+            else { const base = light ? 255 : 0; const c = i => Math.round(parts[i] * a + base * (1 - a)); col = "rgb(" + c(0) + "," + c(1) + "," + c(2) + ")"; }
+          }
+        }
+      }
+    } catch (e) {}
+    if (meta.getAttribute("content") !== col) meta.setAttribute("content", col);
+  }
+  try { new MutationObserver(syncThemeColor).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); } catch (e) {}
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", syncThemeColor); else syncThemeColor();
+  setTimeout(syncThemeColor, 1200);
+
+  /* --- keyboard: hide the bottom dock while the on-screen keyboard is up
+         (toggles the same kb-open class the focus handlers already use) --- */
+  if (window.visualViewport) {
+    let baseH = window.innerHeight;
+    const onVv = () => {
+      const h = window.visualViewport.height;
+      if (h > baseH) baseH = h;
+      document.body.classList.toggle("kb-open", h < baseH - 120);
+    };
+    window.visualViewport.addEventListener("resize", onVv);
+  }
+
+  /* --- menu strips: edge fades only where more items hide + active item into view --- */
+  function wireStrip(el) {
+    if (!el || el._folioStrip) return; el._folioStrip = 1;
+    const upd = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      const l = el.scrollLeft > 4, r = el.scrollLeft < max - 4;
+      const f = max <= 4 ? "" : (l && r ? "lr" : r ? "r" : "l");
+      if (el.dataset.fade !== f) el.dataset.fade = f;
+    };
+    el.addEventListener("scroll", () => requestAnimationFrame(upd), { passive: true });
+    try { new ResizeObserver(upd).observe(el); } catch (e) {}
+    const act = () => {
+      const a = el.querySelector(".active");
+      if (a) {
+        const er = el.getBoundingClientRect(), ar = a.getBoundingClientRect();
+        if (ar.left < er.left + 2 || ar.right > er.right - 2) el.scrollBy({ left: (ar.left + ar.width / 2) - (er.left + er.width / 2), behavior: "smooth" });
+      }
+      upd();
+    };
+    try { new MutationObserver(act).observe(el, { attributes: true, attributeFilter: ["class"], subtree: true }); } catch (e) {}
+    setTimeout(act, 400); upd();
+  }
+  let stripTries = 0;
+  const stripTimer = setInterval(() => {
+    stripTries++;
+    wireStrip(document.querySelector(".tabs.top-liquid-nav-strip"));
+    wireStrip($("dashChips"));
+    if (stripTries > 20) clearInterval(stripTimer);
+  }, 800);
+
+  /* --- hidden diagnostics: tap the version line in More > About 5 times --- */
+  function diagRows() {
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)";
+    document.body.appendChild(probe);
+    const pcs = getComputedStyle(probe);
+    const insetTop = pcs.paddingTop, insetBottom = pcs.paddingBottom;
+    probe.remove();
+    const tb = document.querySelector(".topbar");
+    const dock = document.querySelector(".samsung-bottom-dock-wrap");
+    const standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+    return [
+      ["window.innerHeight", window.innerHeight + "px"],
+      ["visualViewport.height", window.visualViewport ? Math.round(window.visualViewport.height) + "px" : "n/a"],
+      ["screen.height", screen.height + "px"],
+      ["env(safe-area-inset-top)", insetTop],
+      ["env(safe-area-inset-bottom)", insetBottom],
+      ["display-mode", standalone ? "standalone (installed)" : "browser"],
+      ["doc scrollWidth / clientWidth", document.documentElement.scrollWidth + " / " + document.documentElement.clientWidth],
+      ["window scrollTop", Math.round(window.scrollY || 0) + "px"],
+      ["header rect.top", tb ? Math.round(tb.getBoundingClientRect().top) + "px" : "n/a"],
+      ["bottom nav rect.bottom", dock ? Math.round(dock.getBoundingClientRect().bottom) + "px (viewport " + window.innerHeight + ")" : "n/a"],
+      ["theme-color meta", (document.querySelector('meta[name="theme-color"]') || {}).content || "n/a"],
+      ["app version", FOLIO_VER]
+    ];
+  }
+  function openDiag() {
+    let m = $("folioDiagModal");
+    if (!m) {
+      m = document.createElement("div");
+      m.id = "folioDiagModal"; m.className = "modal hidden"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Layout diagnostics");
+      m.style.zIndex = "1500";
+      m.innerHTML = '<div class="modal-card"><div class="modal-head"><h3>Layout diagnostics</h3><button type="button" class="icon-btn" data-diag-close="1" aria-label="Close">\u2715</button></div><div data-diag-rows="1" style="font:13px/1.65 ui-monospace,Menlo,Consolas,monospace;word-break:break-word"></div><button type="button" class="btn btn-gold btn-block" data-diag-refresh="1" style="margin-top:12px">Refresh values</button></div>';
+      document.body.appendChild(m);
+      m.addEventListener("click", e => {
+        if (e.target === m || e.target.closest("[data-diag-close]")) m.classList.add("hidden");
+        else if (e.target.closest("[data-diag-refresh]")) fillDiag();
+      });
+    }
+    fillDiag();
+    m.classList.remove("hidden");
+    function fillDiag() {
+      const box = m.querySelector("[data-diag-rows]"); if (!box) return;
+      box.innerHTML = diagRows().map(r => "<div><b>" + r[0] + ":</b> " + r[1] + "</div>").join("");
+    }
+    m._fillDiag = fillDiag;
+  }
+  function fillDiag() { const m = $("folioDiagModal"); if (m && m._fillDiag) m._fillDiag(); }
+  let diagTaps = 0, diagTapT = 0;
+  document.addEventListener("click", e => {
+    if (!e.target.closest || !e.target.closest("#aboutVer")) return;
+    const now = Date.now();
+    diagTaps = (now - diagTapT < 2500) ? diagTaps + 1 : 1;
+    diagTapT = now;
+    if (diagTaps >= 5) { diagTaps = 0; openDiag(); }
+  });
+})();

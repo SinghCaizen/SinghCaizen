@@ -71,11 +71,13 @@ window.addEventListener("unhandledrejection", function (e) {
 });
 </script>
 <meta name="referrer" content="no-referrer">
-<title>FOLIO — Portfolio Tracker | A Singh Caizen Product</title>
+<title>FOLIO by Singh Caizen</title>
 <meta name="description" content="Folio — a private portfolio tracker for Indian stocks, by Singh Caizen. Add your stocks manually, see live profit and loss. No broker connection needed.">
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEsUlEQVR4nLWXTWxUVRTHf+e+O/PaTmfaagQFEVoCERMMpLREYYESIaZIookhYaErJQJxRdTE6IIYV5IQYxMwsBQTTdSkEA0u1IWGlCpEAkJEqkGQpt+dzve8e1y8mdramWmBcpLZvHfn/n/n4553rgBCaBpva+8yYvahuhFoBgwLYwqMgekVdd1j/X09ZV2BFz34XJvaOj4UkX0Aqm6BdGeaSOiPOndkvL91P2WKprb2bmP9va6YC8JnslCe/8/UAWqs77lC7uPx/p/3SGJFx3bjyTeqQRHE47+U3CtT0ECMZwMX7LBi3AHEUxSpJG6MYO4gIAoEQVDpVaijqKgcsKp04pyUvJ+5UoR0Jkcum71tAERIxBsRqRRQ8VQdCB1WRBKV/y/k83nWrlnFpo3tqCqoogCqVXW15OLEZIqTp7+nUChUgQCBmK22kecZ0qk07x7Yx3Pbn6rhanXb3LWb3nMXaIw14Fzlk1UVIAgcscYYbx78ABFhfCLJL79eZHB4lEKhSDQaoa7OxzMz60MVRCA5meLy1WvU1/lVxWsCiAiFQpElDy5iy6ZORIT1jz/G+Qu/8dPZc5zpO8+lK1fJpDOh4qwNDIl4rGr4p5Y1tW2omFDP8xgZGaPnxBF2bNuCqs7a7PqNW2x94WUGhoaJ2khYJ+VIUPUUzLCqEQidkKlNnHMYY3DO4VSxnsdDix/Aj0ZRp7MOsCvOLT4nwCwgETzPw5Sikc3lGBweITk8QjIanXE64ok4nmdqHZjbB5gOAuD7UQ6+9TrjyUms55VSIDjn+Oj4JwwNjxKJ2BmpWRCAskWs5dWXdlV8d+KLU9waGCQatTWjcFcAqsrA4BDFokOEqUItFgNy+TzGzN3C7wigLJTJ5nh21ytcv3krLMZprmayOaLRCM7VLoK7igDAZCrNxGQKP1oIwQBEZjWoBQUoF2Gd73Pq06PkC0XUKcYznOk7z943DtLYUE9QowPOG6BWBRsjrF7ZOuNZNpujWCzOKTwvAFUlErE4pwSlRjS9GxaDgJOnvyOVziAIIsLFK78TiURqgk+36q3YGCaSkzzf9QyfHT889TxwDhc4PM+QyeZY1bmNf/6+iZSK0FpLY6xh3gBVKyVwjng8xpenvuXt9w9z7sIlUukMnjFEIhZjDNbzaGlOEG9p5r6WZu5vaSbRGJu3eM0ITC0QYSKZpKHOZ/mypaxbu4YnO9bzRMc6Vixbyuau3fx5/QZ1vo+WBhYh7MrzwZgbAEA80nnI5/OQy0HgkFgDyx9ewtDoKLlsHjHTvkYKUatYo3NC1P4aCmQLhtWL0ry38y+AsBAJB5Zc/hLW2lLH07I2ngjv9DzC5YEG6iOOWr1IEq3tEyISr7bAKTREHY8uzlQAlKr5vjJQTypvMDXmEYW0BXrFmKfVBa7SZGwE0nnDj9cqzq5VrT4S1BDXQMQzqsFZqyKHgK0h0FQNzYKI+/MbMMpWI+yhjiDGySGTvNb3tQbuqLG+Da9OlS+GTm/vV0XbgTpjfetccGysv6+ndDmFptb+bjFmD9z7y6lTd2xiWew1ftjipl/HtHnlhp2qsl+FTlFNUCEdd2iqkBSRXpDu8T96vyrv/S/UeR0ppfzJygAAAABJRU5ErkJggg==">
 <link rel="icon" href="assets/folio-icon.svg?v=57" type="image/svg+xml">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" id="themeColorMeta" content="#070707">
+<meta name="application-name" content="FOLIO by Singh Caizen">
+<meta property="og:title" content="FOLIO by Singh Caizen">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -83,7 +85,7 @@ window.addEventListener("unhandledrejection", function (e) {
 <link rel="apple-touch-icon" href="assets/folio-icon.svg?v=57">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://api.allorigins.win https://api.codetabs.com https://api.cors.lol https://corsproxy.io https://api.rss2json.com https://api.web3forms.com https://raw.githubusercontent.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://news.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/style.css?v=95">
+<link rel="stylesheet" href="css/style.css?v=96">
 <style>
 #splash{position:fixed;inset:0;z-index:2000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease}
 html[data-theme="light"] #splash{background:#f6f1e7}
@@ -110,7 +112,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
     <img class="splash-logo dark" src="assets/sc-logo-white.svg" alt="Singh Caizen" width="300" height="184" fetchpriority="high">
     <img class="splash-logo light" src="assets/sc-logo-dark.svg" alt="Singh Caizen" width="300" height="184" fetchpriority="high">
   </div>
-  <div class="splash-tag">A Singh Caizen Product</div>
+  <div class="splash-tag">FOLIO by Singh Caizen</div>
 </div>
 <script src="assets/splash.js?v=2"></script>
 
@@ -894,7 +896,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <script src="js/profile.js?v=17"></script>
 <script src="js/e2ee.js?v=6"></script>
 <script src="js/quickunlock.js?v=1"></script>
-<script src="js/features.js?v=100"></script>
+<script src="js/features.js?v=101"></script>
 <div class="samsung-bottom-dock-wrap" aria-label="Bottom Navigation">
   <nav class="samsung-bottom-capsule">
     <button type="button" class="mobile-nav-item" data-bnav="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/></svg><span>Home</span></button>
@@ -941,7 +943,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <div id="aboutModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="About Folio">
   <div class="modal-card">
     <div class="modal-head"><h3>About Folio</h3><button id="aboutClose" class="icon-btn" type="button" aria-label="Close" data-close-modal="1">✕</button></div>
-    <p><b>Folio</b> — <span id="aboutVer">Version</span></p>
+    <p><b>FOLIO by Singh Caizen</b> — <span id="aboutVer">Version</span></p>
     <p class="auth-note">A Singh Caizen Product. Your personal portfolio tracker: manual entries, free delayed prices (~15 min, via Yahoo Finance), cloud sync with optional end-to-end encryption. Made for tracking and study — not investment advice.</p>
   </div>
 </div>
