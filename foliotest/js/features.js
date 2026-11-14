@@ -6592,7 +6592,7 @@ function anaRenderAlloc() {
     const d2 = enriched(); const wmap = {}; const tot2 = d2.rows.reduce((a, x) => a + (x.cur || 0), 0) || 1; d2.rows.forEach(x => wmap[x.sym] = (x.cur || 0) / tot2 * 100);
     const syms = Object.keys(rc).sort((a, b) => rc[b] - rc[a]);
     const missingRc = (() => { try { return enriched().rows.map(x => x.sym).filter(x => !(x in rc)); } catch (e) { return []; } })();
-    h += '<h4 class="ana-sub">Weight vs risk contribution ' + insxInfoBtn("riskcontrib") + "</h4>" + (missingRc.length ? '<p class="insx-note">Covers the stocks with price history; ' + missingRc.map(esc).join(", ") + ' has none, so weights are renormalised over the covered stocks and the shares sum to 100%.</p>' : "") + syms.map(s => {
+    h += '<h4 class="ana-sub">Weight vs risk contribution ' + insxInfoBtn("riskcontrib") + "</h4>" + (missingRc.length ? '<p class="insx-note">Risk shares are computed over the stocks with price history (' + missingRc.map(esc).join(", ") + ' excluded) and sum to 100%. The w column is each stock\'s share of the whole portfolio.</p>' : "") + syms.map(s => {
       const w = wmap[s] || 0, rp = rc[s];
       return '<div class="ana-rc-row"><span class="ana-rc-sym">' + esc(s) + '</span><span class="ana-rc-bars"><i class="ana-rc-w" style="width:' + Math.min(100, w).toFixed(1) + '%"></i><i class="ana-rc-r" style="width:' + Math.min(100, rp).toFixed(1) + '%"></i></span><span class="ana-rc-val">' + w.toFixed(0) + "% w · " + rp.toFixed(0) + "% risk</span></div>";
     }).join("") + '<p class="insx-note">Grey bar = weight, green bar = share of total risk.</p>';
