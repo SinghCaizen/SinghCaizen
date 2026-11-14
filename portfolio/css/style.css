@@ -1681,3 +1681,19 @@ tr.deal-big td{font-weight:600}
 .insx-cal-d{min-height:40px}
 .info-btn,.insx-i{position:relative}
 .info-btn::after,.insx-i::after{content:"";position:absolute;inset:-12px}
+
+/* ===== v90: More groups, Singh Caizen visit, social row, footer brand, page clearance ===== */
+.more-group{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted,#8a8a8a);margin:14px 2px 4px}
+.more-visit{border:1px solid var(--gold,#c9a227);color:var(--gold,#c9a227);font-weight:700;border-radius:12px;justify-content:center;text-decoration:none;margin:4px 0}
+.social-row{display:flex;flex-wrap:wrap;gap:10px;padding:8px 2px 2px}
+.soc-btn{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;color:var(--text);background:var(--panel-2);transition:transform .15s ease,border-color .15s ease}
+.soc-btn:active{transform:scale(.94)}
+.more-ver{justify-content:space-between;cursor:default}
+.more-ver-num{color:var(--muted,#8a8a8a);font-size:13px}
+.foot-sc{margin-top:26px;padding-top:22px;border-top:1px solid var(--line);text-align:center}
+.sc-foot-logo{height:38px;width:auto}
+.foot-sc-tag{margin:8px 0 2px}
+.foot-sc-visit{display:inline-block;margin:6px 0 2px;font-weight:700;color:var(--gold,#c9a227)}
+.foot-social{justify-content:center}
+.foot-sc-disclaimer{font-size:12.5px;color:var(--muted,#8a8a8a);margin-top:8px}
+.view{padding-bottom:calc(124px + env(safe-area-inset-bottom, 0px)) !important}
