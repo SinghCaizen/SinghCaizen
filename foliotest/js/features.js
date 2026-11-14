@@ -6412,7 +6412,7 @@ async function anaBuildInput() {
 function anaLoadScript() {
   return new Promise((res, rej) => {
     if (window.FolioAnalytics) return res();
-    const sc = document.createElement("script"); sc.src = "js/analytics.js?v=1"; sc.async = true;
+    const sc = document.createElement("script"); sc.src = "js/analytics.js?v=2"; sc.async = true;
     sc.onload = () => res(); sc.onerror = () => rej(new Error("analytics load failed"));
     document.head.appendChild(sc);
   });
@@ -6420,7 +6420,7 @@ function anaLoadScript() {
 function anaComputeViaWorker(input) {
   return new Promise((resolve, reject) => {
     let w, done = false;
-    try { w = new Worker("js/analytics-worker.js?v=1"); } catch (e) { reject(e); return; }
+    try { w = new Worker("js/analytics-worker.js?v=2"); } catch (e) { reject(e); return; }
     const to = setTimeout(() => { if (!done) { done = true; try { w.terminate(); } catch (e) {} reject(new Error("worker timeout")); } }, 25000);
     w.onmessage = e => { if (done) return; done = true; clearTimeout(to); try { w.terminate(); } catch (err) {} if (e.data && e.data.error) reject(new Error(e.data.error)); else resolve(e.data); };
     w.onerror = () => { if (!done) { done = true; clearTimeout(to); reject(new Error("worker error")); } };
