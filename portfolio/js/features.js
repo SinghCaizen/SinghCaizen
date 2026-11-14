@@ -2462,7 +2462,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v95";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v96";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -5779,10 +5779,10 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v95";
+const FOLIO_VER = "Folio v96";
 (function () {
   const stack = [];
-  const STATIC = { e2eeUnlock: 1, e2eeSetup: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
+  const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
   const isOpen = m => m && !m.classList.contains("hidden");
   function prune() { for (let i = stack.length - 1; i >= 0; i--) if (!isOpen(stack[i])) stack.splice(i, 1); }
   function top() { prune(); return stack.length ? stack[stack.length - 1] : null; }

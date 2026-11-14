@@ -441,7 +441,7 @@ function totpDisable() {
 let gateAltMode = null;
 function unlockSession() {
   sessionStorage.setItem("pf_gate_" + currentUser.email, "1");
-  if (window.e2eeNeedsUnlock && window.e2eeNeedsUnlock()) { window.e2eeShowUnlock(); return; }
+  if (window.e2eeNeedsUnlock && window.e2eeNeedsUnlock()) { if (window.quickGate) window.quickGate(); else window.e2eeShowUnlock(); return; }
   showApp();
 }
 function gateShakeCard() {

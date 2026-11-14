@@ -1767,3 +1767,11 @@ body.folio-ready .bar-fill,body.folio-ready .pnl-fill{animation:none !important}
   color:var(--liquid-text-primary);
 }
 .view{padding-bottom:calc(140px + env(safe-area-inset-bottom, 0px))}
+
+/* ===== v96 Quick unlock ===== */
+.quick-card{max-width:380px}
+.quick-lock-head{text-align:center;padding:4px 0 2px}
+.quick-lock-head h3{margin:6px 0 4px;font-size:19px}
+.quick-lock-ico{font-size:30px;line-height:1}
+#e2eeUnlock .modal-card{max-width:420px}
+.mini-select{min-height:36px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);padding:4px 8px;font-size:13px}
