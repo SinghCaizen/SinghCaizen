@@ -848,7 +848,8 @@ const WEB3_KEY = "94e01d94-8fae-4cdc-b9b9-716cf169d7dc";
 function renderIssueDiag() {
   const box = $("issueDiagList"); if (!box) return;
   const log = window.__folioErrLog || [];
-  box.textContent = log.length ? log.slice().reverse().map(en => String(en.t).slice(11, 19) + " \u00b7 " + en.kind + " \u00b7 " + en.message + (en.source ? " (" + en.source + ")" : "")).join("\n") : "No errors recorded this session.";
+  const info = "App version: " + FOLIO_VER + (FOLIO_BUILT ? " \u00b7 Built " + FOLIO_BUILT : "") + "\nBoot to dashboard: " + (window.__folioBootMs ? window.__folioBootMs + " ms (this open, this device)" : "\u2014") + "\n";
+  box.textContent = info + (log.length ? log.slice().reverse().map(en => String(en.t).slice(11, 19) + " \u00b7 " + en.kind + " \u00b7 " + en.message + (en.source ? " (" + en.source + ")" : "")).join("\n") : "No errors recorded this session.");
 }
 function openIssue() {
   $("issueModal").classList.remove("hidden");
