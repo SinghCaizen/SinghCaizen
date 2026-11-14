@@ -616,7 +616,12 @@
     // Risk contributions: RC_i = w_i * (Sigma w)_i / sigma_p^2 * 100 (percent),
     // covariance from the days where ALL included stocks have a return
     // (listwise), current weights renormalised over the included stocks.
-    var inc = syms.filter(function (s3) { return weights[s3] > 0 && seriesBySym[s3]; });
+    var inc = syms.filter(function (s3) {
+      if (!(weights[s3] > 0) || !seriesBySym[s3]) return false;
+      var rb = seriesBySym[s3].retByDay, cnt = 0;
+      for (var q3 = 0; q3 < rb.length; q3++) if (isNum(rb[q3])) cnt++;
+      return cnt >= PAIR_MIN; // a stock with no usable history must not empty the listwise day set
+    });
     if (inc.length) {
       var wRaw = inc.map(function (s4) { return weights[s4]; });
       var wTot = wRaw.reduce(function (x, y) { return x + y; }, 0);
@@ -1043,6 +1048,32 @@
         for (var s in r.allocation.riskContrib) sum += r.allocation.riskContrib[s];
       }
       T("8 risk contributions sum to 100 +/- 0.5", sum, 100, 0.5);
+    })();
+
+    /* 9 — A held stock with NO price history (all-null closes) must not kill
+       risk contributions: they still sum to 100 over the live stocks. */
+    (function () {
+      var rA = [], rB = [], chain = [], brets = [];
+      for (k = 0; k < 120; k++) {
+        var f = 0.006 * Math.sin(1.3 * k);
+        rA.push(0.001 + f + 0.004 * Math.sin(2.1 * k));
+        rB.push(0.0005 + 0.7 * f + 0.005 * Math.cos(1.1 * k));
+        chain.push(rA[k]); brets.push(0.001 * Math.sin(0.5 * k));
+      }
+      var dead = []; for (k = 0; k < 121; k++) dead.push(null);
+      var r = compute({
+        dates: dateSeq(121), rets: chain, brets: brets, bench: closesFrom(brets, 100),
+        symCloses: { A: closesFrom(rA), B: closesFrom(rB), DEAD: dead },
+        weights: { A: 0.4, B: 0.2, DEAD: 0.4 }, rf: 0.065
+      });
+      var sum = null, hasDead = null;
+      if (r.allocation.riskContrib) {
+        sum = 0;
+        for (var s2 in r.allocation.riskContrib) sum += r.allocation.riskContrib[s2];
+        hasDead = "DEAD" in r.allocation.riskContrib;
+      }
+      T("9a risk contributions survive a no-history stock (sum 100)", sum, 100, 0.5);
+      T("9b no-history stock absent from risk contributions", hasDead, false);
     })();
 
     return tests;
