@@ -1868,3 +1868,8 @@ button:disabled,.btn.disabled,[aria-disabled="true"]{opacity:.55;cursor:not-allo
 
 /* ===== v98: outperformer share chip on the stock sheet ===== */
 #stockAlphaChip{margin:0 0 10px;border-color:rgba(212,175,55,.55)}
+
+/* ===== v99: More sheet is a proper-width dialog on PC (phone sheet untouched) ===== */
+@media (min-width:1024px){
+  .more-sheet-card{width:min(620px,94vw);max-width:620px;border-radius:18px}
+}

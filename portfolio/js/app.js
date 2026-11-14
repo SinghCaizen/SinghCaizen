@@ -217,9 +217,13 @@ function friendlyFbError(e) {
   if (c.includes("weak-password")) return "Password is too weak — use 6+ characters.";
   if (c.includes("invalid-email")) return "That email does not look right.";
   if (c.includes("popup-closed")) return "The Google window closed before finishing. Please try again.";
+  if (c.includes("network-request-failed")) return "Network problem \u2014 check your internet connection and try again.";
+  if (c.includes("operation-not-supported")) return "Google sign-in is not supported in this browser view. Open Folio in Chrome and try there.";
+  if (c.includes("web-storage-unsupported")) return "Your browser is blocking the storage Google sign-in needs. Allow cookies for this site, or try Chrome.";
+  if (c.includes("internal-error")) return "Google sign-in hit a temporary error. Please try again in a moment.";
   if (c.includes("unauthorized-domain")) return "This website's domain is not allowed in Firebase yet (Settings → Authorized domains).";
   if (c.includes("operation-not-allowed")) return "This sign-in method is not enabled in Firebase yet.";
-  return "Something went wrong. Please check your internet and try again.";
+  return "Something went wrong (" + (c || "unknown error") + "). Please check your internet and try again.";
 }
 async function doLogout() {
   syncFrozen = true; clearTimeout(saveTimer);
@@ -246,12 +250,17 @@ async function doGoogleSignIn() {
   authError("");
   if (!FIREBASE_ON) { authError("Google login starts once the Firebase config is added — it is on its way. Till then, please use email and password."); return; }
   const provider = new firebase.auth.GoogleAuthProvider();
-  try { await fb.auth.signInWithPopup(provider); }
+  try { await fb.auth.signInWithPopup(provider); return; }
   catch (e) {
-    if (e && e.code && e.code.includes("popup-blocked")) {
-      try { await fb.auth.signInWithRedirect(provider); return; } catch (e2) { authError(friendlyFbError(e2)); return; }
-    }
-    authError(friendlyFbError(e));
+    const c = (e && e.code) || "";
+    /* Hard configuration problems: say so plainly, a redirect cannot fix them. */
+    if (c.includes("unauthorized-domain") || c.includes("operation-not-allowed") || c.includes("invalid-api-key") || c.includes("user-disabled")) { authError(friendlyFbError(e)); return; }
+    /* Any other popup failure (blocked, closed by the browser, unsupported in
+       this view) falls back to the full-page redirect flow, which works in
+       every browser \u2014 the popup path alone was a dead end here. */
+    try { sessionStorage.setItem("folio_g_redirect", "1"); } catch (e2) {}
+    try { await fb.auth.signInWithRedirect(provider); }
+    catch (e3) { try { sessionStorage.removeItem("folio_g_redirect"); } catch (e4) {} authError(friendlyFbError(e3)); }
   }
 }
 
@@ -1279,6 +1288,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const fbOn = initFirebase();
   if (window.refreshDemoBanner) window.refreshDemoBanner();
   if (fbOn) {
+    /* Complete (or explain) a Google redirect sign-in we returned from. */
+    try {
+      fb.auth.getRedirectResult().then(res => {
+        let flagged = false;
+        try { flagged = sessionStorage.getItem("folio_g_redirect") === "1"; sessionStorage.removeItem("folio_g_redirect"); } catch (e) {}
+        if (flagged && !(res && res.user)) authError("Google sign-in did not complete. Please try again \u2014 if it keeps failing, open Folio directly in Chrome.");
+      }).catch(e => { try { sessionStorage.removeItem("folio_g_redirect"); } catch (e2) {} authError(friendlyFbError(e)); });
+    } catch (e) {}
     fb.auth.onAuthStateChanged(user => {
       syncFrozen = true; clearTimeout(saveTimer);
       if (user) {

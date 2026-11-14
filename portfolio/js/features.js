@@ -2479,7 +2479,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v98";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v99";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -4573,6 +4573,7 @@ if ("serviceWorker" in navigator) { try { navigator.serviceWorker.register("sw.j
 let deferredInstall = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredInstall = e; platInstallBtn(); });
 window.addEventListener("appinstalled", () => { const x = $("installBtn"); if (x) x.remove(); });
+try { platInstallBtn(); } catch (e) {}
 function platInstallBtn() {
   const bar = $("dashChips"); if (!bar) return;
   if (window.matchMedia("(display-mode: standalone)").matches) { const x = $("installBtn"); if (x) x.remove(); return; }
@@ -4582,6 +4583,7 @@ function platInstallBtn() {
   b.addEventListener("click", async () => {
     if (window.matchMedia("(display-mode: standalone)").matches) { toast("Folio is already installed on this device — open it from your home screen / app list."); return; }
     if (deferredInstall) { deferredInstall.prompt(); try { await deferredInstall.userChoice; } catch (e) {} deferredInstall = null; b.remove(); }
+    else if (window.folioInstallHelp) window.folioInstallHelp();
     else toast("To install: open your browser menu and choose “Add to Home screen” / “Install app”.");
   });
   bar.appendChild(b);
@@ -5801,7 +5803,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v98";
+const FOLIO_VER = "Folio v99";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -5985,7 +5987,10 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
 })();
 
 /* ================= v94: PWA update toast + Install App row ================= */
-(function () {
+/* v99 fix: this must run AFTER the DOM exists \u2014 the app scripts sit before the
+   More-sheet markup in index.html, so an immediate run found no #moreInstallRow
+   and returned early, leaving the Install row unwired since v94. */
+function folioV94Install() {
   if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
     let shown = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
@@ -6004,16 +6009,34 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
   if (!row) return;
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || "");
   const isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
-  function syncInstallRow() { row.hidden = isStandalone || !(deferredInstall || isIOS); }
+  function syncInstallRow() { row.hidden = isStandalone; }
   window.addEventListener("beforeinstallprompt", () => setTimeout(syncInstallRow, 0));
   window.addEventListener("appinstalled", () => { row.hidden = true; });
   syncInstallRow();
+  window.folioInstallHelp = function () {
+    let m = $("installHelpModal");
+    if (!m) {
+      m = document.createElement("div");
+      m.id = "installHelpModal"; m.className = "modal hidden"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Install Folio");
+      const isAnd = /android/i.test(navigator.userAgent || "");
+      const txt = isIOS
+        ? 'Tap <b>Share</b>, then <b>Add to Home Screen</b> to install Folio on this iPhone.'
+        : isAnd
+        ? 'Open the browser menu (<b>⋮</b>) at the top and tap <b>Install app</b> or <b>Add to Home screen</b>, then confirm <b>Install</b>.'
+        : 'Look at the right end of the address bar for the <b>install icon</b> and click it \u2014 or open the browser menu and choose <b>Install Folio</b> (in Edge: <b>Settings \u2192 Apps \u2192 Install this site as an app</b>).';
+      m.innerHTML = '<div class="modal-card"><div class="modal-head"><h3>Install Folio</h3><button type="button" class="icon-btn" data-help-close="1" aria-label="Close">✕</button></div><p class="auth-note">' + txt + '</p><button type="button" class="btn btn-gold btn-block" data-help-close="1">Got it</button></div>';
+      document.body.appendChild(m);
+      m.addEventListener("click", e => { if (e.target === m || e.target.closest("[data-help-close]")) m.classList.add("hidden"); });
+    }
+    m.classList.remove("hidden");
+  };
   row.addEventListener("click", async () => {
     const sh = $("moreSheet"); if (sh) sh.classList.add("hidden");
     if (deferredInstall) {
       try { deferredInstall.prompt(); await deferredInstall.userChoice; } catch (e) {}
       deferredInstall = null; syncInstallRow(); return;
     }
+    if (!isIOS && window.folioInstallHelp) { window.folioInstallHelp(); return; }
     if (isIOS) {
       let m = $("iosInstallModal");
       if (!m) {
@@ -6026,7 +6049,8 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
       m.classList.remove("hidden");
     }
   });
-})();
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", folioV94Install); else folioV94Install();
 
 /* ===== v95 Phase 4: Enter submits popups whose fields are not inside a <form>
    (security wizards, confirm/prompt dialogs). Guarded: plain text inputs only,
