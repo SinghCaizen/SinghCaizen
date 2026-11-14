@@ -61,6 +61,10 @@ async function quickRecord() { try { return await qget(QUICK_REC); } catch (e) {
 window.quickWipe = async function () {
   try { await qdel(QUICK_REC); } catch (e) {}
   try { await qdel(QUICK_DEVKEY); } catch (e) {}
+  /* repaint any visible security rows NOW, so a later sign-in never
+     shows the pre-wipe state the DOM happened to be holding */
+  try { refreshQuickRow(); } catch (e) {}
+  try { if (window.refreshSkipRow) refreshSkipRow(); } catch (e) {}
 };
 
 /* ---------------- small helpers ---------------- */
