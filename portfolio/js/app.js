@@ -138,7 +138,7 @@ function initFirebase() {
     fb.auth = firebase.auth(); fb.db = firebase.firestore();
     window.__fbInitOk = true;
     return true;
-  } catch (e) { console.warn("Firebase init failed", e); return false; }
+  } catch (e) { return false; }
 }
 let saveTimer = null;
 let syncFrozen = true;            /* no saves until enterApp installs THIS account's state */
@@ -371,7 +371,7 @@ function attachSuggest(input) {
     box.querySelectorAll(".suggest-item").forEach(b => b.addEventListener("mousedown", e => { e.preventDefault(); pick(Number(b.dataset.i)); }));
   }
   let sugT = null;
-  input.addEventListener("input", () => { clearTimeout(sugT); sugT = setTimeout(render, 250); });
+  input.addEventListener("input", () => { clearTimeout(sugT); sugT = setTimeout(render, 300); });
   input.addEventListener("focus", render);
   input.addEventListener("blur", () => setTimeout(close, 150));
   input.addEventListener("keydown", e => {
@@ -464,8 +464,9 @@ function yahooUrl(sym) {
   const s = sym.indexOf(".") >= 0 ? sym : sym + ".NS";
   return "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(s) + "?range=1mo&interval=1d";
 }
-async function fetchTO(url, ms) {
+async function fetchTO(url, ms, register) {
   const ctl = new AbortController();
+  if (register) register.push(ctl);
   const to = setTimeout(() => ctl.abort(), ms || 9000);
   try { return await fetch(url, { cache: "no-store", signal: ctl.signal }); }
   finally { clearTimeout(to); }
@@ -481,9 +482,10 @@ async function fetchOne(sym) {
   /* Proxy racing: every route runs in parallel (3.5s cap each) — the first
      valid answer wins, so one slow proxy can never hold up a price. */
   const attempts = [];
+  const ctls = [];
   for (const url of urls) for (const p of proxies) {
     attempts.push((async () => {
-      const res = await fetchTO(p(url), 3500);
+      const res = await fetchTO(p(url), 3500, ctls);
       if (!res.ok) throw new Error("bad route");
       const j = await res.json();
       const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
@@ -494,10 +496,11 @@ async function fetchOne(sym) {
       return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
     })());
   }
-  try { return await Promise.any(attempts); } catch (e) { /* every NSE route failed */ }
+  try { return await Promise.any(attempts); } catch (e) { /* every NSE route failed */ } finally { ctls.forEach(c => { try { c.abort(); } catch (e) {} }); }
   if (sym.indexOf(".") < 0 && sym.charAt(0) !== "^") {
+    const ctls2 = [];
     const boAttempts = proxies.map(p => (async () => {
-      const res = await fetchTO(p(yahooUrl(sym).replace(".NS", ".BO")), 3500);
+      const res = await fetchTO(p(yahooUrl(sym).replace(".NS", ".BO")), 3500, ctls2);
       if (!res.ok) throw new Error("bad route");
       const j = await res.json();
       const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
@@ -507,7 +510,7 @@ async function fetchOne(sym) {
       const prev = spark.length > 1 ? spark[spark.length - 2] : (meta.chartPreviousClose || meta.regularMarketPrice);
       return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
     })());
-    try { return await Promise.any(boAttempts); } catch (e) { /* BSE failed too */ }
+    try { return await Promise.any(boAttempts); } catch (e) { /* BSE failed too */ } finally { ctls2.forEach(c => { try { c.abort(); } catch (e) {} }); }
   }
   if (manual) return { price: Number(manual), prevClose: Number(manual), ts: Date.now(), manual: true, spark: [] };
   return null;

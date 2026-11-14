@@ -40,8 +40,9 @@ const PROXIES = [
   u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
   u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
 ];
-async function fetchT(url, ms) {
+async function fetchT(url, ms, register) {
   const ctl = new AbortController();
+  if (register) register.push(ctl);
   const to = setTimeout(() => ctl.abort(), ms || 9000);
   try { return await fetch(url, { cache: "no-store", signal: ctl.signal }); }
   finally { clearTimeout(to); }
@@ -76,13 +77,13 @@ function histLsSet(ck, data) {
 }
 async function fetchHistoryNet(sym, rangeKey, ck) {
   const cfg = RANGE_CFG[rangeKey] || RANGE_CFG["6mo"];
-  const buildAttempts = s => {
+  const buildAttempts = (s, ctls) => {
     const attempts = [];
     for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
       const url = "https://" + host + "/v8/finance/chart/" + encodeURIComponent(s) + "?range=" + cfg.range + "&interval=" + cfg.interval;
       for (const p of PROXIES) {
         attempts.push((async () => {
-          const res = await fetchT(p(url), 3500);
+          const res = await fetchT(p(url), 3500, ctls);
           if (!res.ok) throw new Error("bad route");
           const j = await res.json();
           const r0 = j && j.chart && j.chart.result && j.chart.result[0];
@@ -99,8 +100,9 @@ async function fetchHistoryNet(sym, rangeKey, ck) {
     return attempts;
   };
   const s = (sym.indexOf(".") >= 0 || sym.charAt(0) === "^") ? sym : sym + ".NS";
+  const ctls = [];
   try {
-    const out = await Promise.any(buildAttempts(s));
+    const out = await Promise.any(buildAttempts(s, ctls)).finally(() => ctls.forEach(c => { try { c.abort(); } catch (e) {} }));
     histCache[ck] = out;
     histLsSet(ck, out);
     return out;
@@ -108,7 +110,7 @@ async function fetchHistoryNet(sym, rangeKey, ck) {
     /* NSE silent? Try the BSE (.BO) listing once before giving up. */
     if (sym.indexOf(".") < 0 && sym.charAt(0) !== "^") {
       try {
-        const out = await Promise.any(buildAttempts(sym + ".BO"));
+        const out = await Promise.any(buildAttempts(sym + ".BO", ctls)).finally(() => ctls.forEach(c => { try { c.abort(); } catch (e) {} }));
         histCache[ck] = out;
         histLsSet(ck, out);
         return out;
@@ -1555,8 +1557,10 @@ async function fetchChartValidated(targetUrl, timeoutMs) {
       return await r.json();
     }
   ];
+  const ctls = [];
   const wrapped = attempts.map(async fn => {
     const ctl = new AbortController();
+    ctls.push(ctl);
     const timer = setTimeout(() => ctl.abort(), timeoutMs || 6000);
     try {
       const data = await fn(ctl.signal);
@@ -1569,7 +1573,7 @@ async function fetchChartValidated(targetUrl, timeoutMs) {
       clearTimeout(timer);
     }
   });
-  return await Promise.any(wrapped);
+  try { return await Promise.any(wrapped); } finally { ctls.forEach(c => { try { c.abort(); } catch (e) {} }); }
 }
 
 /* ---------- single-fetch master engine (v8 chart powers the whole modal) ---------- */
@@ -2444,7 +2448,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v93";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v94";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -3672,7 +3676,7 @@ function insxRenderScore() {
     (sorted.length ? "" : '<p class="empty-note">No stock matches your search.</p>') +
     '<p class="insx-note">Tap a column heading to sort. CAGR covers the shares you still hold; XIRR covers every rupee in and out of that stock.</p>';
   const q = $("insxScoreQ");
-  if (q) q.addEventListener("input", folioDeb(() => { insXQuery = q.value.trim().toLowerCase(); const pos = q.selectionStart; insxRenderScore(); const q2 = $("insxScoreQ"); if (q2) { q2.focus(); try { q2.setSelectionRange(pos, pos); } catch (e) {} } }, 250));
+  if (q) q.addEventListener("input", folioDeb(() => { insXQuery = q.value.trim().toLowerCase(); const pos = q.selectionStart; insxRenderScore(); const q2 = $("insxScoreQ"); if (q2) { q2.focus(); try { q2.setSelectionRange(pos, pos); } catch (e) {} } }, 300));
 }
 /* ---------- wiring: info buttons, legend chips, calendar, sorting ---------- */
 document.addEventListener("click", e => {
@@ -4381,7 +4385,7 @@ function holdEnsure() {
   const list = $("holdingsList");
   if (list) { panel.insertBefore(bar, list); const tw = document.createElement("div"); tw.id = "holdTableWrap"; tw.className = "hidden"; list.after(tw); }
   bar.querySelectorAll("[data-hview]").forEach(b => b.addEventListener("click", () => { state.profile.holdView = b.dataset.hview; persist(); holdApply(); }));
-  $("holdQ").addEventListener("input", folioDeb(e => { holdQuery = e.target.value.trim().toLowerCase(); holdApply(); }, 250));
+  $("holdQ").addEventListener("input", folioDeb(e => { holdQuery = e.target.value.trim().toLowerCase(); holdApply(); }, 300));
   $("holdSortSel").addEventListener("change", e => { holdSort = e.target.value; holdApply(); });
   $("holdGroupTgl").addEventListener("change", e => { holdGroup = e.target.checked; holdApply(); });
 }
@@ -4480,7 +4484,7 @@ function platInstallBtn() {
 function platOffline() {
   let pill = $("offlinePill");
   if (!navigator.onLine) {
-    if (!pill) { pill = document.createElement("div"); pill.id = "offlinePill"; pill.textContent = "You're offline — showing your last saved data. Nothing you see can refresh until you're back online."; document.body.appendChild(pill); }
+    if (!pill) { pill = document.createElement("div"); pill.id = "offlinePill"; pill.textContent = "You are offline, showing last saved data"; document.body.appendChild(pill); }
   } else if (pill) pill.remove();
 }
 window.addEventListener("online", platOffline);
@@ -4578,7 +4582,7 @@ function platPalette() {
   pop.innerHTML = '<div class="cmdk-card"><input id="cmdkInput" type="text" placeholder="Search a stock, or jump to a tab or card…" aria-label="Command palette"><div id="cmdkList" class="cmdk-list"></div></div>';
   document.body.appendChild(pop);
   pop.addEventListener("click", e => { if (e.target === pop) pop.classList.add("hidden"); });
-  $("cmdkInput").addEventListener("input", folioDeb(e => cmdkRender(e.target.value.trim().toLowerCase()), 200));
+  $("cmdkInput").addEventListener("input", folioDeb(e => cmdkRender(e.target.value.trim().toLowerCase()), 300));
   $("cmdkInput").addEventListener("keydown", e => {
     if (e.key === "Escape") pop.classList.add("hidden");
     if (e.key === "Enter") { const first = pop.querySelector("[data-cmdk]"); if (first) first.click(); }
@@ -5256,7 +5260,7 @@ function folioEnsureDealsView() {
     '<div id="dealWatchChips" class="stat-chips"></div><div id="dealSpotted"></div><div id="dealTable" style="margin-top:10px"></div>' +
     '<p class="price-meta">These are reported deals only, as published by the exchange. A name in the watch list is matched against the client name printed in the deal.</p></div>';
   document.querySelector("main").appendChild(sec);
-  $("dealSearch").addEventListener("input", folioDeb(folioRenderDeals, 250));
+  $("dealSearch").addEventListener("input", folioDeb(folioRenderDeals, 300));
   $("dealThr").addEventListener("change", () => { const p = folioProf(); p.dealThresholdCr = Number($("dealThr").value) || 1; persist(); folioRenderDeals(); folioRenderDealsCard(); });
   $("dealWatchAdd").addEventListener("click", () => {
     const v = $("dealWatchIn").value.trim(); if (!v) return;
@@ -5691,7 +5695,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v93";
+const FOLIO_VER = "Folio v94";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -5869,4 +5873,48 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
     }).join("");
   }
   document.addEventListener("click", e => { if (e.target.closest("#dockMoreBtn")) fillSheetSocials(); });
+})();
+
+/* ================= v94: PWA update toast + Install App row ================= */
+(function () {
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    let shown = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (shown) return; shown = true;
+      try {
+        const d = document.createElement("button");
+        d.type = "button"; d.textContent = "Update available, tap to reload";
+        d.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:2900;background:#1c1c22;color:#f2f2f2;border:1px solid #c9a227;border-radius:999px;padding:10px 16px;font:600 13px system-ui,sans-serif;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.45)";
+        d.addEventListener("click", () => location.reload());
+        document.body.appendChild(d);
+        setTimeout(() => { try { d.remove(); } catch (e) {} }, 15000);
+      } catch (e) {}
+    });
+  }
+  const row = $("moreInstallRow");
+  if (!row) return;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent || "");
+  const isStandalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true;
+  function syncInstallRow() { row.hidden = isStandalone || !(deferredInstall || isIOS); }
+  window.addEventListener("beforeinstallprompt", () => setTimeout(syncInstallRow, 0));
+  window.addEventListener("appinstalled", () => { row.hidden = true; });
+  syncInstallRow();
+  row.addEventListener("click", async () => {
+    const sh = $("moreSheet"); if (sh) sh.classList.add("hidden");
+    if (deferredInstall) {
+      try { deferredInstall.prompt(); await deferredInstall.userChoice; } catch (e) {}
+      deferredInstall = null; syncInstallRow(); return;
+    }
+    if (isIOS) {
+      let m = $("iosInstallModal");
+      if (!m) {
+        m = document.createElement("div");
+        m.id = "iosInstallModal"; m.className = "modal hidden"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Install Folio");
+        m.innerHTML = '<div class="modal-card"><div class="modal-head"><h3>Install Folio</h3><button type="button" class="icon-btn" data-ios-close="1" aria-label="Close">✕</button></div><p class="auth-note">Tap <b>Share</b>, then <b>Add to Home Screen</b> to install Folio on this iPhone.</p><button type="button" class="btn btn-gold btn-block" data-ios-close="1">Got it</button></div>';
+        document.body.appendChild(m);
+        m.addEventListener("click", e => { if (e.target === m || e.target.closest("[data-ios-close]")) m.classList.add("hidden"); });
+      }
+      m.classList.remove("hidden");
+    }
+  });
 })();
