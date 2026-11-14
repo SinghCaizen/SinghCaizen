@@ -775,6 +775,7 @@ function renderHoldings() {
         </div>
         <div class="hold-actions">
           <button class="mini-btn" data-act="chart" data-sym="${esc(h.sym)}">📊 Chart &amp; News</button>
+          <button class="mini-btn" data-fshare="${esc(h.sym)}" type="button">↗ Share Card</button>
           <button class="mini-btn" data-act="buy" data-sym="${esc(h.sym)}" data-name="${esc(h.name)}">+ Buy More</button>
           <button class="mini-btn" data-act="sell" data-sym="${esc(h.sym)}" data-name="${esc(h.name)}">Sell</button>
           <button class="mini-btn" data-act="div" data-sym="${esc(h.sym)}" data-name="${esc(h.name)}">Dividend</button>
