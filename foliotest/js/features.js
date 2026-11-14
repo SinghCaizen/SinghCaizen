@@ -2525,7 +2525,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v99";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio " + (typeof FOLIO_BUILD !== "undefined" ? "v" + FOLIO_BUILD.version : "");
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -6108,7 +6108,7 @@ window.openShareSheet = function (opts) {
   if (!shareModLoading) {
     shareModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/share.js?v=2"; sc.async = true;
+      sc.src = "js/share.js?v=3"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("share module failed to load"));
       document.head.appendChild(sc);
     });
@@ -6333,6 +6333,6 @@ async function stockShareChipUpdate(sym) {
     } catch (e) {}
     dot.classList.toggle("hidden", !hit);
   }
-  if (bb) bb.addEventListener("click", () => { switchView("insights"); setTimeout(() => { const el = $("insSignals"); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); }, 150); });
+  if (bb) bb.addEventListener("click", () => { switchView("insights"); [150, 500, 1000, 1800].forEach(ms => setTimeout(() => { const el = $("insSignals"); if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); } }, ms)); });
   setInterval(() => { if (currentUser && !document.hidden) bellSync(); }, 4000);
 })();

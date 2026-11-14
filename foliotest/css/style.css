@@ -2206,3 +2206,13 @@ html[data-theme="light"] #splash{background:#0b0e0c !important}
 /* v108 header alerts bell dot (dot shows only on a real target/stop-loss hit) */
 #folioBellBtn{position:relative}
 .bell-dot{position:absolute;top:6px;right:6px;width:9px;height:9px;border-radius:50%;background:var(--neg);border:2px solid var(--panel)}
+
+/* ---------- v108 QA fixes ---------- */
+.topbar{box-shadow:none!important}
+#txnModal .modal-card{max-width:min(860px,100%) !important}
+#watchInput:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);outline:none}
+.w52-track i{background:var(--accent)}
+.demo-banner,.auth-card .demo-banner{border-left:3px solid var(--warn)}
+body:has(#authView:not(.hidden), #gateView:not(.hidden)) .samsung-bottom-dock-wrap{display:none!important}
+.terms-body{padding-bottom:88px}
+.insx-corr-h{font-size:9.5px}
