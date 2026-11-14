@@ -40,7 +40,7 @@ window.addEventListener("unhandledrejection", function () { __folioShowErr(); })
 <link rel="apple-touch-icon" href="assets/folio-icon.svg?v=57">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://api.allorigins.win https://api.codetabs.com https://api.cors.lol https://corsproxy.io https://api.rss2json.com https://api.web3forms.com https://raw.githubusercontent.com https://query1.finance.yahoo.com https://query2.finance.yahoo.com https://news.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
 <link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="css/style.css?v=87">
+<link rel="stylesheet" href="css/style.css?v=88">
 <style>
 #splash{position:fixed;inset:0;z-index:2000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .45s ease}
 html[data-theme="light"] #splash{background:#f6f1e7}
@@ -845,7 +845,7 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 <script src="js/app.js?v=56"></script>
 <script src="js/profile.js?v=15"></script>
 <script src="js/e2ee.js?v=5"></script>
-<script src="js/features.js?v=92"></script>
+<script src="js/features.js?v=93"></script>
 <div class="samsung-bottom-dock-wrap" aria-label="Bottom Navigation">
   <nav class="samsung-bottom-capsule">
     <button type="button" class="mobile-nav-item" data-bnav="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2.2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2.2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2.2"/></svg><span>Home</span></button>
@@ -858,12 +858,13 @@ html[data-theme="light"] .splash-logo.dark{display:none}
 
 <div id="moreSheet" class="modal sheet-modal hidden" role="dialog" aria-label="More">
   <div class="sheet-card more-sheet-card">
-    <div class="more-sheet-head"><b>More</b><button type="button" class="mini-btn" data-more-close="1">Close</button></div>
+    <div class="more-sheet-head"><b>More</b><button type="button" class="sheet-x" data-more-close="1" aria-label="Close">✕</button></div>
     <div class="sc-block">
       <img class="sc-sheet-logo logo-on-dark" src="assets/sc-logo-white.svg" alt="Singh Caizen">
       <img class="sc-sheet-logo logo-on-light" src="assets/sc-logo-dark.svg" alt="Singh Caizen">
       <a class="sc-visit-btn" href="https://singhcaizen.github.io/SinghCaizen/" target="_blank" rel="noopener noreferrer">Visit Singh Caizen Website</a>
-      <div class="sc-social-grid" data-social-labeled="1"></div>
+      <div class="sc-follow-label">Follow Singh Caizen</div>
+      <div class="social-row sheet-social" data-social-row="1"></div>
     </div>
     <button type="button" class="more-row" data-more-act="about"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5"/><path d="M12 7.8v.1"/></svg><span>About</span></button>
 

@@ -1716,8 +1716,12 @@ body.folio-ready .bar-fill,body.folio-ready .pnl-fill{animation:none !important}
 .sc-sheet-logo{height:46px;width:auto}
 .sc-visit-btn{display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:var(--gold,#c9a227);color:#171410;font-weight:800;font-size:15px;text-decoration:none;margin:10px 0 12px}
 .sc-visit-btn:active{transform:scale(.98)}
-.sc-social-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.soc-pill{display:flex;align-items:center;gap:9px;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;color:var(--text);text-decoration:none;font-weight:600;font-size:13.5px;background:var(--panel-2)}
-.soc-pill svg{flex-shrink:0}
-.soc-pill:active{transform:scale(.97)}
+
 @media (min-width:1024px){.more-sheet-card{width:380px;max-width:380px}}
+
+/* ===== v93: sheet close button, scrollable card at every width, follow row ===== */
+.sheet-x{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--text);font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.more-sheet-card{max-height:85dvh;overflow-y:auto}
+.more-sheet-head{position:sticky;top:-12px;background:var(--panel);z-index:2}
+.sc-follow-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted,#8a8a8a);margin:2px 0 8px}
+.sheet-social{justify-content:center;padding-bottom:8px}
