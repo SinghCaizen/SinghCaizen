@@ -5859,11 +5859,4 @@ function folioDeb(fn, ms) { let t = null; return function () { const a = argumen
   }
   const b = $("dockMoreBtn");
   if (b) b.addEventListener("click", openSheet);
-  document.querySelectorAll("[data-social-labeled]").forEach(el => {
-    el.innerHTML = SOCIAL_ORDER.map(k => {
-      const url = (SOCIAL_LINKS[k] || "").trim();
-      if (!url || url.indexOf("http") !== 0 || !SOCIAL_ICONS[k]) return "";
-      return '<a class="soc-pill" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer" aria-label="Singh Caizen on ' + SOCIAL_NAMES[k] + '"><svg viewBox="0 0 24 24" width="19" height="19" fill="currentColor" aria-hidden="true"><path d="' + SOCIAL_ICONS[k] + '"/></svg><span>' + SOCIAL_NAMES[k] + '</span></a>';
-    }).join("");
-  });
 })();
