@@ -586,6 +586,10 @@ let __pendingEnter = null, __pendingRender = false, __enteredEmail = "";
 function uiBusy() {
   if (document.querySelector(".modal:not(.hidden)")) return true;
   const ae = document.activeElement;
+  /* Fields on the sign-in / gate screens are the entry flow itself, never
+     "editing": counting them deferred app entry forever when the login was
+     submitted with Enter/Go, because focus stays in the password field. */
+  if (ae && ae.closest && (ae.closest("#authView") || ae.closest("#gateView"))) return false;
   if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT") && ae.type !== "checkbox" && ae.type !== "radio" && ae.type !== "search") return true;
   return false;
 }
