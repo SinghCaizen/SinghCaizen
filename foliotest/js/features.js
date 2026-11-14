@@ -540,16 +540,47 @@ function updateMktPill() {
 }
 let lastScrollAt = 0;
 window.addEventListener("scroll", () => { lastScrollAt = Date.now(); }, { passive: true });
-async function doTick() {
+/* v100: soft price paint \u2014 the auto tick updates prices IN PLACE (price texts,
+   dashboard totals, movers) instead of re-rendering the whole view, so the screen
+   never rebuilds itself every minute. Manual Refresh stays a full render. */
+function softPricePaint() {
+  document.querySelectorAll("[data-pflash]").forEach(el => {
+    const pr = prices[el.dataset.pflash]; if (!pr || !isFinite(pr.price)) return;
+    const wp = el.querySelector(".wp-price");
+    if (wp) { wp.textContent = inr2(pr.price); return; }
+    if (/^LTP/.test(el.textContent || "")) el.textContent = "LTP " + inr2(pr.price);
+  });
+  const g = $("topGainers"), l = $("topLosers");
+  if (!g || !l || typeof enriched !== "function") return;
+  const d = enriched(); if (!d.rows.length) return;
+  try {
+    animNum($("stInvested"), d.invested, moneyFmt);
+    animNum($("stValue"), d.value, moneyFmt);
+    animNum($("stPnl"), d.totalPnl, moneyFmt);
+    const sp = $("stPnl"); if (sp) sp.className = "stat-value " + (d.totalPnl >= 0 ? "gain" : "loss");
+    const spp = $("stPnlPct");
+    if (spp) { spp.textContent = pct(d.invested ? d.totalPnl / d.invested * 100 : 0) + " overall \u00b7 today " + moneyFmt(d.dayPnl); spp.className = "stat-sub " + (d.dayPnl >= 0 ? "gain" : "loss"); }
+    const sx = $("stXirr"); if (sx) { const x = portfolioXirr(d.value); sx.textContent = x === null ? "\u2014" : pct(x * 100).replace("+", x >= 0 ? "+" : ""); }
+    const sr = $("stRealised"); if (sr) sr.textContent = "Booked profit so far: " + inr(d.realisedTotal) + (d.divTotal ? " \u00b7 Dividends: " + inr(d.divTotal) : "");
+  } catch (e) {}
+  const sorted = [...d.rows].filter(r_ => r_.ltp !== null);
+  const gainers = [...sorted].sort((a, b) => b.pnlPct - a.pnlPct).filter(r_ => r_.pnlPct > 0).slice(0, 3);
+  const losers = [...sorted].sort((a, b) => a.pnlPct - b.pnlPct).filter(r_ => r_.pnlPct < 0).slice(0, 3);
+  g.innerHTML = gainers.length ? gainers.map(r_ => `<li><span>${esc(r_.sym)}</span><b class="gain">${pct(r_.pnlPct)}</b></li>`).join("") : "<li><span>\u2014</span></li>";
+  l.innerHTML = losers.length ? losers.map(r_ => `<li><span>${esc(r_.sym)}</span><b class="loss">${pct(r_.pnlPct)}</b></li>`).join("") : "<li><span>\u2014</span></li>";
+}
+async function doTick(soft) {
   if (!currentUser || typeof refreshPrices !== "function") return;
   const stockOpen = (() => { const m = $("stockModal"); return m && !m.classList.contains("hidden"); })();
   if (stockOpen) return; /* modal open: pause all background polling, the opened stock owns the network */
+  if (soft) window.__folioSoftTick = true;
   const modalOpen = ["txnModal", "totpModal", "helpModal"].some(id => { const m = $(id); return m && !m.classList.contains("hidden"); });
-  if (modalOpen) { try { await refreshPrices(); } catch (e) {} return; }
-  if (Date.now() - lastScrollAt < 500) { setTimeout(() => { try { doTick(); } catch (e) {} }, 650); return; }
+  if (modalOpen) { try { await refreshPrices(); } catch (e) {} window.__folioSoftTick = false; return; }
+  if (Date.now() - lastScrollAt < 500) { window.__folioSoftTick = false; setTimeout(() => { try { doTick(soft); } catch (e) {} }, 650); return; }
   const before = {};
   Object.keys(prices || {}).forEach(k => { if (prices[k]) before[k] = prices[k].price; });
   await refreshPrices();
+  window.__folioSoftTick = false;
   Object.keys(prices || {}).forEach(sym => {
     const old = before[sym], now = prices[sym] && prices[sym].price;
     if (old === undefined || now === undefined || now === old) return;
@@ -566,7 +597,7 @@ async function doTick() {
   tickerLoadedAt = 0;
   try { loadTicker(); } catch (e) {}
 }
-setInterval(() => { updateMktPill(); if (marketOpenIST() && currentUser && !document.hidden) doTick(); }, 60000);
+setInterval(() => { updateMktPill(); if (marketOpenIST() && currentUser && !document.hidden) doTick(true); }, 60000);
 
 /* ---------- Yahoo search top-up for autocomplete (beyond the built-in list) ---------- */
 window.__yahooSuggest = async function (q) {
@@ -665,7 +696,7 @@ function lwSave() { try { localStorage.setItem("folio_lw", JSON.stringify(lwStat
   const rst = $("lwReset");
   if (rst) rst.addEventListener("click", () => { if (lwChart) lwChart.timeScale().fitContent(); });
   const rb = $("liveRefreshBtn");
-  if (rb) rb.addEventListener("click", doTick);
+  if (rb) rb.addEventListener("click", () => doTick(false));
 
 })();
 
@@ -3798,7 +3829,7 @@ function tgtPanelRender() {
 }
 /* ================= Phase 8: pause price refresh while the tab is hidden ================= */
 const _doTickP8 = doTick;
-doTick = function () { if (document.hidden) return; _doTickP8(); };
+doTick = function () { if (document.hidden) return; _doTickP8.apply(null, arguments); };
 
 function tgtNotifyCheck() {
   if (!state.profile || !state.profile.notify) return;
@@ -5803,7 +5834,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v99";
+const FOLIO_VER = "Folio v100";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */

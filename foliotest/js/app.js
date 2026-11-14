@@ -533,7 +533,7 @@ async function refreshPrices() {
   const syms = new Set();
   computeHoldings().holdings.forEach(h => syms.add(h.sym));
   state.watch.forEach(w => syms.add(w.sym));
-  if (!syms.size) { renderAll(); return; }
+  if (!syms.size) { if (window.__folioSoftTick && typeof softPricePaint === "function") softPricePaint(); else renderAll(); return; }
   refreshing = true;
   $("priceMeta").textContent = "Fetching prices…";
   const list = [...syms];
@@ -549,6 +549,7 @@ async function refreshPrices() {
   renderAfterPrices();
 }
 function renderAfterPrices() {
+  if (window.__folioSoftTick && typeof softPricePaint === "function") { softPricePaint(); return; }
   const v = document.querySelector(".view:not(.hidden)");
   const name = v ? v.id.replace("view-", "") : "";
   if (name === "dashboard") renderDashboard();
