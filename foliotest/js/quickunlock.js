@@ -173,6 +173,17 @@ window.quickGate = async function () {
     const rec = await quickRecord();
     const em = quickEmail();
     if (rec && em && rec.email === em && window.e2eeNeedsUnlock && window.e2eeNeedsUnlock()) {
+      if (rec.skip) { /* Skip password on this device: silent auto-unlock */
+        try {
+          const devKey = await qget(QUICK_DEVKEY);
+          if (devKey) {
+            const secret = TD.decode(await aesDec(devKey, { iv: rec.skip.iv, data: rec.skip.data }));
+            if (await quickFinish(secret, rec)) return;
+          }
+        } catch (e) {}
+        e2eeShowUnlock(); /* skip failed on this device \u2014 fall back to the master sheet */
+        return;
+      }
       showQuickLock(rec);
       return;
     }
@@ -302,7 +313,9 @@ async function quickStartPending() {
 }
 async function quickSavePending() {
   if (!quickPending) return false;
+  try { const old = await quickRecord(); if (old && old.skip && old.email === quickPending.rec.email) toast("Password skip was turned OFF on this device \u2014 Quick unlock and Skip password cannot both be on."); } catch (e) {}
   await qset(QUICK_REC, quickPending.rec);
+  if (window.refreshSkipRow) { try { refreshSkipRow(); } catch (e) {} }
   quickPending = null;
   refreshQuickRow();
   toast("Quick unlock is ON for this device.");
@@ -493,7 +506,133 @@ document.addEventListener("visibilitychange", async () => {
   if (!window.__e2eeActive) return;
   const rec = await quickRecord();
   if (!rec || !currentUser || rec.email !== currentUser.email) return;
+  if (rec.skip) return; /* Skip password is ON: this device does not lock */
+  
   if (away < quickCfg().mins * 60000) return;
   if (window.e2eeWipeForLock) window.e2eeWipeForLock();
   if (window.quickGate) window.quickGate();
+});
+
+/* ================================================================
+   Skip password on this device (v102) — a fully automatic,
+   device-local unlock for the same unchanged vault. Like Quick
+   unlock it adds ONE extra wrap of the master key, held only in
+   this device's IndexedDB — but here the wrap's secret is sealed
+   by a NON-extractable device key alone, so opening the app
+   unlocks with no password, no PIN and no fingerprint. The
+   password / seed phrase / recovery code wraps are untouched and
+   remain the fallback everywhere else. Only ONE of Quick unlock
+   and Skip password can be on at a time (they share one record).
+   Signing out wipes the record and the device key (app.js calls
+   quickWipe). The password itself and the seed phrase are NEVER
+   stored — only the sealed wrap and the device key are.
+   ================================================================ */
+function ensureSkipRow() {
+  if ($("skipSecRow")) return;
+  const anchor = $("quickSecRow") || $("e2eeSecRow");
+  if (!anchor) return;
+  const row = document.createElement("div");
+  row.className = "setting-row"; row.id = "skipSecRow";
+  row.innerHTML =
+    '<span><b>Skip password on this device</b>' +
+    '<span class="muted small" style="display:block;margin-top:2px">Open Folio straight to your dashboard on THIS device — no password, PIN or fingerprint. Other devices still ask. Your phone or computer lock screen becomes the only protection.</span>' +
+    '<span class="muted small" id="skipSecStatus" style="display:block;margin-top:2px"></span></span>' +
+    '<label class="fld" style="flex-direction:row;align-items:center;gap:6px;margin:0">Off <input type="checkbox" id="skipToggle" role="switch" aria-label="Skip password on this device"> On</label>';
+  anchor.after(row);
+  $("skipToggle").addEventListener("change", async e => {
+    if (e.target.checked) { e.target.checked = false; openSkipConfirm(); }
+    else {
+      await window.quickWipe();
+      refreshSkipRow(); refreshQuickRow();
+      toast("Skip password is OFF. This device will ask for your password again.");
+    }
+  });
+  refreshSkipRow();
+}
+async function refreshSkipRow() {
+  const tg = $("skipToggle"), st = $("skipSecStatus"), row = $("skipSecRow");
+  if (!tg || !st) return;
+  const hasVault = (typeof E2 !== "undefined") && (window.__e2eeActive || E2.wraps);
+  if (!hasVault) { if (row) row.style.display = "none"; return; }
+  if (row) row.style.display = "";
+  const rec = await quickRecord();
+  const mine = rec && currentUser && rec.email === currentUser.email;
+  const on = !!(mine && rec.skip);
+  tg.checked = on;
+  st.textContent = on && rec.skip.since
+    ? "Password skipped on this device since " + new Date(rec.skip.since).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+    : "";
+}
+window.refreshSkipRow = refreshSkipRow;
+function openSkipConfirm() {
+  let m = $("skipConfirm");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "skipConfirm"; m.className = "modal hidden"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Turn on Skip password");
+    m.innerHTML =
+      '<div class="modal-card quick-card">' +
+      '<div class="modal-head"><h3>Skip password on this device?</h3><button type="button" class="icon-btn" id="skipX" aria-label="Close">\u2715</button></div>' +
+      '<div id="skipPaneWarn">' +
+      '<p>Anyone who can open this app on this phone or computer will see your portfolio without a password. Your phone\u2019s own lock screen is your only protection. You can turn this off any time.</p>' +
+      '<button type="button" class="btn btn-gold btn-block" id="skipTurnOn">Turn on</button>' +
+      '<button type="button" class="btn btn-block" id="skipCancel" style="margin-top:8px">Cancel</button>' +
+      "</div>" +
+      '<form id="skipPanePw" class="hidden" autocomplete="off">' +
+      '<p class="muted">Enter your account password once. It is used only to prepare this device\u2019s key — the password itself is never stored.</p>' +
+      '<label class="fld">Account password<input type="password" id="skipPw" autocomplete="current-password" enterkeyhint="go" placeholder="Your Folio account password"></label>' +
+      '<p class="form-error" id="skipPwMsg"></p>' +
+      '<button type="submit" class="btn btn-gold btn-block" id="skipPwGo">Turn on Skip password</button>' +
+      '<button type="button" class="btn btn-block" id="skipPwBack" style="margin-top:8px">Back</button>' +
+      "</form>" +
+      "</div>";
+    document.body.appendChild(m);
+    const close = () => { m.classList.add("hidden"); refreshSkipRow(); };
+    $("skipX").addEventListener("click", close);
+    $("skipCancel").addEventListener("click", close);
+    m.addEventListener("click", e => { if (e.target === m) close(); });
+    $("skipTurnOn").addEventListener("click", () => {
+      $("skipPaneWarn").classList.add("hidden");
+      $("skipPanePw").classList.remove("hidden");
+      $("skipPw").value = ""; $("skipPwMsg").textContent = "";
+      setTimeout(() => { const i = $("skipPw"); if (i) try { i.focus(); } catch (e) {} }, 60);
+    });
+    $("skipPwBack").addEventListener("click", () => {
+      $("skipPanePw").classList.add("hidden");
+      $("skipPaneWarn").classList.remove("hidden");
+    });
+    $("skipPanePw").addEventListener("submit", async e => {
+      e.preventDefault();
+      const pw = $("skipPw").value, msg = $("skipPwMsg"), btn = $("skipPwGo");
+      if (!pw) { msg.textContent = "Enter your account password."; return; }
+      if (typeof E2 === "undefined" || !E2.wraps || !E2.wraps.pw) { msg.textContent = "The vault password link was not found for this account."; return; }
+      btn.disabled = true; btn.textContent = "Checking\u2026";
+      const raw = await e2eeUnwrapRaw(E2.wraps.pw, pw);
+      if (!raw) { btn.disabled = false; btn.textContent = "Turn on Skip password"; msg.textContent = "That password did not open your vault — check it and try again."; return; }
+      try {
+        let hadQuick = false;
+        try { const old = await quickRecord(); hadQuick = !!(old && old.email === quickEmail() && (old.bio || old.pin)); } catch (e) {}
+        const secret = b64encode(crypto.getRandomValues(new Uint8Array(32)));
+        const wrap = await e2eeWrapDek(raw, secret);
+        const devKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+        await qset(QUICK_DEVKEY, devKey);
+        const pack = await aesEnc(devKey, TE.encode(secret));
+        await qset(QUICK_REC, { v: 1, email: quickEmail(), wrap: wrap, skip: { iv: pack.iv, data: pack.data, since: Date.now() } });
+        if (document.activeElement && document.activeElement.blur) { try { document.activeElement.blur(); } catch (e) {} }
+        m.classList.add("hidden");
+        refreshSkipRow(); refreshQuickRow();
+        toast(hadQuick ? "Skip password is ON for this device. Quick unlock was turned off \u2014 only one of the two can be on." : "Skip password is ON for this device.");
+      } catch (e2) {
+        msg.textContent = "Something went wrong while setting this up. Nothing was changed.";
+      }
+      btn.disabled = false; btn.textContent = "Turn on Skip password";
+    });
+  }
+  $("skipPanePw").classList.add("hidden");
+  $("skipPaneWarn").classList.remove("hidden");
+  m.classList.remove("hidden");
+}
+document.addEventListener("DOMContentLoaded", () => {
+  ensureSkipRow();
+  const _svS = switchView;
+  switchView = function (n) { _svS(n); if (n === "profile") { ensureSkipRow(); refreshSkipRow(); } };
 });
