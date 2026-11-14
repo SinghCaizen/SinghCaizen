@@ -4769,7 +4769,7 @@ function platEnsure() {
     const wrap = document.createElement("span"); wrap.dataset.plat = "1"; wrap.className = "plat-btns";
     wrap.innerHTML = '<button type="button" class="mini-btn" id="platReportBtn">📄 Report</button><button type="button" class="mini-btn" id="platShareBtn">🖼 Share Card</button>';
     rb.after(wrap);
-    $("platReportBtn").addEventListener("click", platReport);
+    $("platReportBtn").addEventListener("click", () => window.openReportSheet());
     $("platShareBtn").addEventListener("click", () => window.openShareSheet({ type: "summary" }));
   }
   const tb = $("themeBtn"); if (tb && !tb.getAttribute("aria-label")) tb.setAttribute("aria-label", "Switch light or dark theme");
@@ -5834,7 +5834,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v102";
+const FOLIO_VER = "Folio v103";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
@@ -6115,6 +6115,22 @@ window.openShareSheet = function (opts) {
   }
   shareModLoading.then(() => { if (window.FolioShare && window.FolioShare.open) window.FolioShare.open(opts); })
     .catch(() => { shareModLoading = null; toast("Share could not load — check your connection and try again."); });
+};
+
+/* ================= PORTFOLIO REPORT (PDF): lazy-loaded report.js ================= */
+let reportModLoading = null;
+window.openReportSheet = function () {
+  if (window.FolioReport && window.FolioReport.open) { window.FolioReport.open(); return; }
+  if (!reportModLoading) {
+    reportModLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = "js/report.js?v=1"; sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("report module failed to load"));
+      document.head.appendChild(sc);
+    });
+  }
+  reportModLoading.then(() => { if (window.FolioReport && window.FolioReport.open) window.FolioReport.open(); })
+    .catch(() => { reportModLoading = null; toast("Report could not load — opening the print view instead."); platReport(); });
 };
 document.addEventListener("click", e => {
   const b = e.target && e.target.closest ? e.target.closest("[data-fshare]") : null;
