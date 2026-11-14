@@ -169,7 +169,37 @@ function setAuthMode(m) {
   $("authSubmit").textContent = m === "login" ? "Login" : "Create Account";
   $("authName").closest("label").style.display = m === "signup" ? "block" : "none";
   $("authPass").autocomplete = m === "signup" ? "new-password" : "current-password";
+  const apm = $("authPwMeter"); if (apm) apm.classList.toggle("hidden", m !== "signup");
+  if (window.folioPwWire) window.folioPwWire("authPass", "authPwMeter");
 }
+/* v107: one password rule for every NEW password — at least 10 characters,
+   because the password also protects the encryption key. Login and unlock
+   with existing shorter passwords are NOT affected. */
+window.folioPwCheck = function (pw) {
+  pw = String(pw || "");
+  let score = 0;
+  if (pw.length >= 10) score++;
+  if (pw.length >= 14) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/\d/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return { ok: pw.length >= 10, pct: Math.min(100, score * 20) };
+};
+window.folioPwWire = function (inputId, meterId) {
+  const inp = $(inputId), met = $(meterId);
+  if (!inp || !met || inp.dataset.pwWired) return;
+  inp.dataset.pwWired = "1";
+  const fill = met.querySelector(".pw-fill"), note = met.querySelector(".pw-note");
+  const upd = () => {
+    const v = inp.value, c = window.folioPwCheck(v);
+    if (!v) { fill.style.width = "0"; note.textContent = ""; return; }
+    fill.style.width = c.pct + "%";
+    note.textContent = !c.ok
+      ? "Too short \u2014 use at least 10 characters. Your password also protects your encryption key."
+      : (c.pct >= 80 ? "Strong. " : c.pct >= 50 ? "Good. " : "Okay. ") + "Your password also protects your encryption key.";
+  };
+  inp.addEventListener("input", upd); upd();
+};
 function authError(msg) {
   $("authError").textContent = msg || "";
   const b = $("authSubmit"); if (b) { b.disabled = false; b.textContent = b.dataset.txt || b.textContent; }
@@ -183,9 +213,10 @@ async function doAuth(ev) {
   window.__pendingPass = pass;
   const name = $("authName").value.trim();
   if (!email || pass.length < 6) { authError("Email and a 6+ character password are needed."); return; }
+  if (authMode === "signup" && pass.length < 10) { authError("For a new account, please use at least 10 characters \u2014 your password also protects your encryption key."); return; }
   const __sb = $("authSubmit"); if (__sb) { __sb.dataset.txt = __sb.textContent; __sb.disabled = true; __sb.textContent = "Please wait…"; }
   if (FIREBASE_ON) {
-    try { const P = firebase.auth.Auth.Persistence; await fb.auth.setPersistence($("rememberMe") && $("rememberMe").checked ? P.LOCAL : P.SESSION); } catch (e) {}
+    try { const P = firebase.auth.Auth.Persistence; let skipOn = false; try { skipOn = localStorage.getItem("folio_skip_on") === "1"; } catch (e) {} await fb.auth.setPersistence(skipOn || ($("rememberMe") && $("rememberMe").checked) ? P.LOCAL : P.SESSION); } catch (e) {}
     try {
       if (authMode === "signup") {
         const cred = await fb.auth.createUserWithEmailAndPassword(email, pass);
@@ -265,6 +296,8 @@ async function doGoogleSignIn() {
 }
 
 function enterApp(user, initialState) {
+  document.documentElement.classList.remove("skipboot");
+  if (!window.__folioBootMs) window.__folioBootMs = Math.round(performance.now());
   if (__enteredEmail && user && user.email === __enteredEmail && uiBusy()) { __pendingEnter = { user: user, s: initialState }; return; }
   __enteredEmail = user ? user.email : "";
   currentUser = user;
@@ -1286,6 +1319,24 @@ document.addEventListener("DOMContentLoaded", () => {
     } else toast("In demo mode, your password is saved in this browser only.");
   });
 
+  /* v107 hooks for Skip password (quickunlock.js): make this device's session
+     persistent, and a clean forced return to the login screen. */
+  window.folioPersistLocal = async function (pw) {
+    try {
+      if (!FIREBASE_ON || !fb || !fb.auth) return;
+      const P = firebase.auth.Auth.Persistence;
+      await fb.auth.setPersistence(P.LOCAL);
+      const u = fb.auth.currentUser;
+      if (pw && u && u.providerData && u.providerData.some(pr => pr.providerId === "password")) {
+        await fb.auth.signInWithEmailAndPassword(u.email, pw); /* re-issue the session under LOCAL persistence */
+      }
+    } catch (e) {}
+  };
+  window.folioForceRelogin = function (msg) {
+    try { if (msg) sessionStorage.setItem("folio_relogin_msg", msg); } catch (e) {}
+    try { if (fb && fb.unsub) { fb.unsub(); fb.unsub = null; } } catch (e) {}
+    try { if (fb && fb.auth) fb.auth.signOut().catch(() => {}); } catch (e) {}
+  };
   const fbOn = initFirebase();
   if (window.refreshDemoBanner) window.refreshDemoBanner();
   if (fbOn) {
@@ -1302,8 +1353,32 @@ document.addEventListener("DOMContentLoaded", () => {
       if (user) {
         fb.docRef = fb.db.collection("users").doc(user.uid);
         if (fb.unsub) fb.unsub();
+        /* v107 fast start: if this device holds the last encrypted cloud doc
+           (it is ciphertext — the same bytes Firestore holds), open from it
+           at once; the live snapshot below refreshes in the background. */
+        let __fromCache = false;
+        try {
+          const raw = localStorage.getItem("folio_encdoc_" + user.uid);
+          if (raw) {
+            const cached = JSON.parse(raw);
+            if (cached && cached.v === 2 && window.e2eeHandleDoc) {
+              if (cached.updatedAt) lastAppliedCloudTs = cached.updatedAt;
+              __fromCache = true;
+              window.e2eeHandleDoc(cached, { email: user.email, name: user.displayName || "" }, "cloud");
+              setTimeout(() => {
+                if (window.__folioLiveSync) return;
+                let pill = $("offlinePill");
+                if (!pill) { pill = document.createElement("div"); pill.id = "offlinePill"; pill.textContent = "You are offline, showing last saved data"; document.body.appendChild(pill); }
+                pill.style.display = "block";
+              }, 3000);
+            }
+          }
+        } catch (e) {}
         fb.unsub = fb.docRef.onSnapshot(doc => {
+          window.__folioLiveSync = true;
+          const pill0 = $("offlinePill"); if (pill0 && navigator.onLine) pill0.style.display = "none";
           const data = doc.exists ? doc.data() : null;
+          if (data && data.v === 2) { try { localStorage.setItem("folio_encdoc_" + user.uid, JSON.stringify(data)); } catch (e) {} }
           const ts = data && data.updatedAt ? data.updatedAt : 0;
           if (ts && ts < lastAppliedCloudTs) return;               /* older echo: never roll back */
           if (ts && lastLocalEditTs > ts) { cloudSave(); return; } /* our newer edits win; re-push them */
@@ -1319,11 +1394,18 @@ document.addEventListener("DOMContentLoaded", () => {
           } catch (e2) {}
         });
       } else {
-        $("appView").classList.add("hidden"); $("authView").classList.remove("hidden"); authError("");
+        document.documentElement.classList.remove("skipboot");
+        let rmsg = "";
+        try { rmsg = sessionStorage.getItem("folio_relogin_msg") || ""; sessionStorage.removeItem("folio_relogin_msg"); } catch (e) {}
+        let hadSkip = false;
+        try { hadSkip = localStorage.getItem("folio_skip_on") === "1"; localStorage.removeItem("folio_skip_on"); } catch (e) {}
+        if (!rmsg && hadSkip) rmsg = "You were signed out on this device, so Skip password was turned off here. Please sign in again.";
+        $("appView").classList.add("hidden"); $("authView").classList.remove("hidden"); authError(rmsg);
       }
     });
   } else {
     const sess = localStorage.getItem(LS_SESSION);
+    if (!(sess && lsUsers()[sess])) document.documentElement.classList.remove("skipboot");
     if (sess && lsUsers()[sess]) {
       window.__e2eeDemoUser = sess;
       const rec = lsUsers()[sess];

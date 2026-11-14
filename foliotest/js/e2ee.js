@@ -179,7 +179,7 @@ function e2eeShowSetup(user) {
     '<p>From now on, your transactions, watchlists, profile and notes can be stored in the cloud as <b>ciphertext only</b>. Not even Google can read them.</p>' +
     '<p class="muted">How it works: a random master key encrypts your data on this device. That key is locked separately by your password, by a 12-word seed phrase, and by 8 recovery codes — you will save the phrase and codes in the next step.</p>' +
     '<p class="form-error">⚠️ If you lose BOTH your password AND your seed phrase (and all recovery codes), your data can never be recovered. No one can reset encryption for you — that is the point of it.</p>' +
-    (window.__pendingPass ? "" : '<label class="fld">Create a vault password (only for unlocking Folio on this device — separate from Google sign-in)<input type="password" id="e2eeNewPw" placeholder="6+ characters"></label>') +
+    (window.__pendingPass ? "" : '<label class="fld">Create a vault password (only for unlocking Folio on this device — separate from Google sign-in)<input type="password" id="e2eeNewPw" placeholder="10+ characters"></label>') +
     '<button type="button" class="btn btn-gold" id="e2eeGen" style="width:100%">Generate my seed phrase &amp; codes</button>' +
     '<button type="button" class="btn" id="e2eeLater" style="width:100%;margin-top:8px">Later (not recommended)</button></div>' +
     '<div id="e2eeStep2" class="hidden">' +
@@ -198,6 +198,7 @@ function e2eeShowSetup(user) {
   $("e2eeGen").addEventListener("click", async () => {
     const pwField = $("e2eeNewPw");
     const pw = window.__pendingPass || (pwField ? pwField.value : "");
+    if (!window.__pendingPass && pwField && pw.length < 10) { toast("Please use at least 10 characters for your vault password \u2014 it also protects your encryption key."); pwField.focus(); return; }
     if (!pw || pw.length < 6) { toast("A 6+ character password is needed to lock the key — sign in with email/password once, or type a vault password."); if (pwField) pwField.focus(); return; }
     gen = await e2eeMakeKeyset(pw);
     $("e2eeSeedOut").value = gen.phrase;

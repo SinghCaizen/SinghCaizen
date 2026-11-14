@@ -59,6 +59,7 @@ async function qdel(key) {
 }
 async function quickRecord() { try { return await qget(QUICK_REC); } catch (e) { return null; } }
 window.quickWipe = async function () {
+  try { localStorage.removeItem("folio_skip_on"); } catch (e) {}
   try { await qdel(QUICK_REC); } catch (e) {}
   try { await qdel(QUICK_DEVKEY); } catch (e) {}
   /* repaint any visible security rows NOW, so a later sign-in never
@@ -185,7 +186,11 @@ window.quickGate = async function () {
             if (await quickFinish(secret, rec)) return;
           }
         } catch (e) {}
-        e2eeShowUnlock(); /* skip failed on this device \u2014 fall back to the master sheet */
+        /* v107: a skip that cannot unlock means this device's stored key is
+           gone or corrupt \u2014 turn skip OFF here and return to normal sign-in */
+        try { await window.quickWipe(); } catch (e) {}
+        if (window.folioForceRelogin) { window.folioForceRelogin("Skip password could not unlock this device, so it was turned off here. Please sign in again."); return; }
+        e2eeShowUnlock();
         return;
       }
       showQuickLock(rec);
@@ -584,6 +589,7 @@ function openSkipConfirm() {
       '<form id="skipPanePw" class="hidden" autocomplete="off">' +
       '<p class="muted">Enter your account password once. It is used only to prepare this device\u2019s key — the password itself is never stored.</p>' +
       '<label class="fld">Account password<input type="password" id="skipPw" autocomplete="current-password" enterkeyhint="go" placeholder="Your Folio account password"></label>' +
+      '<label class="fld hidden" id="skipCodeRow">6-digit code from your authenticator app<input type="text" id="skipCode" inputmode="numeric" autocomplete="one-time-code" enterkeyhint="go" maxlength="6" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022"></label>' +
       '<p class="form-error" id="skipPwMsg"></p>' +
       '<button type="submit" class="btn btn-gold btn-block" id="skipPwGo">Turn on Skip password</button>' +
       '<button type="button" class="btn btn-block" id="skipPwBack" style="margin-top:8px">Back</button>' +
@@ -598,6 +604,9 @@ function openSkipConfirm() {
       $("skipPaneWarn").classList.add("hidden");
       $("skipPanePw").classList.remove("hidden");
       $("skipPw").value = ""; $("skipPwMsg").textContent = "";
+      const t2fa = (typeof state !== "undefined") && state && state.profile && state.profile.totp && state.profile.totp.enabled;
+      const crow = $("skipCodeRow"); if (crow) crow.classList.toggle("hidden", !t2fa);
+      const scode = $("skipCode"); if (scode) scode.value = "";
       setTimeout(() => { const i = $("skipPw"); if (i) try { i.focus(); } catch (e) {} }, 60);
     });
     $("skipPwBack").addEventListener("click", () => {
@@ -612,6 +621,16 @@ function openSkipConfirm() {
       btn.disabled = true; btn.textContent = "Checking\u2026";
       const raw = await e2eeUnwrapRaw(E2.wraps.pw, pw);
       if (!raw) { btn.disabled = false; btn.textContent = "Turn on Skip password"; msg.textContent = "That password did not open your vault — check it and try again."; return; }
+      /* v107: if 2FA is on for this account, the 6-digit code is asked ONCE here too */
+      const t2 = (typeof state !== "undefined") && state && state.profile && state.profile.totp;
+      if (t2 && t2.enabled) {
+        const code = (($("skipCode") && $("skipCode").value) || "").trim();
+        let ok2 = false;
+        try { const sec = await unlockSecret(pw); if (sec) ok2 = await totpVerify(sec, code); } catch (e) {}
+        if (!ok2) { btn.disabled = false; btn.textContent = "Turn on Skip password"; msg.textContent = "That 2FA code did not match \u2014 enter the current 6-digit code from your authenticator app."; return; }
+        try { sessionStorage.setItem("pf_gate_" + quickEmail(), "1"); } catch (e) {}
+      }
+      if (window.folioPersistLocal) await window.folioPersistLocal(pw); /* the session becomes persistent on this device */
       try {
         let hadQuick = false;
         try { const old = await quickRecord(); hadQuick = !!(old && old.email === quickEmail() && (old.bio || old.pin)); } catch (e) {}
@@ -621,6 +640,7 @@ function openSkipConfirm() {
         await qset(QUICK_DEVKEY, devKey);
         const pack = await aesEnc(devKey, TE.encode(secret));
         await qset(QUICK_REC, { v: 1, email: quickEmail(), wrap: wrap, skip: { iv: pack.iv, data: pack.data, since: Date.now() } });
+        try { localStorage.setItem("folio_skip_on", "1"); } catch (e) {}
         if (document.activeElement && document.activeElement.blur) { try { document.activeElement.blur(); } catch (e) {} }
         m.classList.add("hidden");
         refreshSkipRow(); refreshQuickRow();

@@ -539,6 +539,8 @@ function wireProfile() {
   $("openPassModal").addEventListener("click", () => {
     $("passMsg").textContent = ""; $("passError").textContent = "";
     $("passModal").classList.remove("hidden");
+    const ppm = $("passPwMeter"); if (ppm) ppm.classList.remove("hidden");
+    if (window.folioPwWire) window.folioPwWire("passNew", "passPwMeter");
   });
   $("passClose").addEventListener("click", () => $("passModal").classList.add("hidden"));
   $("passModal").addEventListener("click", e => { if (e.target === $("passModal")) $("passModal").classList.add("hidden"); });
@@ -635,7 +637,7 @@ function wireProfile() {
     const curPass = $("passCur").value, newPass = $("passNew").value;
     const okEl = $("passMsg"), errEl = $("passError");
     okEl.textContent = ""; errEl.textContent = "";
-    if (newPass.length < 6) { errEl.textContent = "New password must be at least 6 characters."; return; }
+    if (newPass.length < 10) { errEl.textContent = "New password must be at least 10 characters \u2014 it also protects your encryption key."; return; }
     let secret = null;
     const t = state.profile.totp;
     if (t && t.enabled) {
