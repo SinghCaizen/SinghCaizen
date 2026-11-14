@@ -859,6 +859,7 @@ document.addEventListener("DOMContentLoaded", () => {
     catch (e) { toast("Copy is not available in this browser"); }
   });
   $("stockClose").addEventListener("click", () => $("stockModal").classList.add("hidden"));
+  const aboutCloseBtn = $("aboutClose"); if (aboutCloseBtn) aboutCloseBtn.addEventListener("click", () => { const am = $("aboutModal"); if (am) am.classList.add("hidden"); });
   $("stockModal").addEventListener("click", e => { if (e.target === $("stockModal")) $("stockModal").classList.add("hidden"); });
   document.querySelectorAll("#stockSeg .seg-btn").forEach(b => b.addEventListener("click", () => {
     stockRange = b.dataset.r;
@@ -2556,7 +2557,8 @@ window.closeCompanyModal = function () {
 document.addEventListener("click", e => {
   const t = e.target;
   if (!t || !t.closest) return;
-  if (t.closest("[data-close-modal]")) { e.stopPropagation(); window.closeCompanyModal(); }
+  const cmEl = t.closest("[data-close-modal]");
+  if (cmEl && cmEl.closest("#stockModal")) { e.stopPropagation(); window.closeCompanyModal(); }
 }, true);
 window.addEventListener("popstate", () => {
   const m = $("stockModal");
@@ -5905,7 +5907,7 @@ const FOLIO_VER = "Folio v97";
         else if (act === "import") { const f = $("importFile"); if (f) f.click(); }
         else if (act === "backup") { switchView("profile"); setTimeout(() => { const b = $("vaultExportBtn"); if (b) b.scrollIntoView({ block: "center" }); }, 80); }
         else if (act === "help") { const h = $("helpModal"); if (h) h.classList.remove("hidden"); }
-        else if (act === "about") { const v = $("aboutVer"); if (v) v.textContent = "Version " + FOLIO_VER.replace("Folio ", ""); if (typeof openModal === "function") openModal("aboutModal"); else { const a = $("aboutModal"); if (a) a.classList.remove("hidden"); } }
+        else if (act === "about") { const v = $("aboutVer"); if (v) v.textContent = "Version " + FOLIO_VER.replace("Folio ", ""); const a = $("aboutModal"); if (a) a.classList.remove("hidden"); }
         else if (act === "logout" && typeof doLogout === "function") doLogout();
       }
     }
