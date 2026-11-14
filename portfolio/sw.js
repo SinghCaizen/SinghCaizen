@@ -1,6 +1,6 @@
 /* Folio service worker — network-first for the app shell so a new build is
    never stuck behind the cache; the cache only answers when offline. */
-const CACHE = "folio-shell-v2";
+const CACHE = "folio-shell-v3";
 const CORE = ["./", "./index.html", "./css/style.css", "./js/app.js", "./js/features.js", "./js/stocks.js", "./js/profile.js", "./js/firebase-config.js", "./assets/folio-icon.svg", "./manifest.json"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()).catch(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
