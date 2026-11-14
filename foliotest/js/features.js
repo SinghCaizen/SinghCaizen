@@ -4225,19 +4225,27 @@ dashPanels().forEach(p => {
 function dashEnsure() {
   const view = $("view-dashboard"); if (!view || $("dashChips")) return;
   const bar = document.createElement("div"); bar.id = "dashChips"; bar.className = "dash-chips";
-  bar.innerHTML = ["Overview", "Performance", "Risk", "Income", "Tax", "Market", "News"].map(n => '<button type="button" class="insx-chip" data-dash-chip="' + n + '">' + n + "</button>").join("") +
+  bar.setAttribute("role", "tablist");
+  bar.innerHTML = ["Overview", "Performance", "Risk", "Income", "Tax", "Market", "News"].map(n => '<button type="button" class="insx-chip" role="tab" aria-selected="false" data-dash-chip="' + n + '">' + n + "</button>").join("") +
+    '<span class="dash-div" aria-hidden="true"></span>' +
     '<button type="button" class="insx-chip" id="dashCustomBtn">⚙ Customize</button>' +
-    '<button type="button" class="insx-chip" id="dashCompactBtn">Compact</button>';
+    '<button type="button" class="insx-chip" id="dashCompactBtn" aria-pressed="false">Compact</button>';
   const grid = view.querySelector(".stat-grid");
   if (grid) view.insertBefore(bar, grid); else view.prepend(bar);
   try { platInstallBtn(); } catch (e) {}
   bar.addEventListener("click", e => {
     const chip = e.target.closest("[data-dash-chip]");
-    if (chip) { dashGo(chip.dataset.dashChip); return; }
-    if (e.target.closest("#dashCustomBtn")) { document.body.classList.toggle("dash-customizing"); toast(document.body.classList.contains("dash-customizing") ? "Customize mode: use the ↑ ↓ 👁 buttons on each card. Tap Customize again to finish." : "Dashboard layout saved."); return; }
+    if (chip) {
+      const n = chip.dataset.dashChip;
+      if (n === "Risk" || n === "News") { dashGo(n); return; }
+      dashSetTab(n);
+      return;
+    }
+    if (e.target.closest("#dashCustomBtn")) { dashOpenCustomize(); return; }
     if (e.target.closest("#dashCompactBtn")) {
       const on = document.body.classList.toggle("compact-dash");
-      e.target.closest("#dashCompactBtn").classList.toggle("on", on);
+      const b = e.target.closest("#dashCompactBtn");
+      b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false");
       const L = dashLayout(); L.compact = on; state.profile.dashLayout = L; persist();
     }
   });
@@ -4253,17 +4261,75 @@ function dashEnsure() {
   /* hero sparkline holder */
   const valCard = $("stValue") && $("stValue").closest(".stat-card");
   if (valCard && !$("heroSpark")) { const s = document.createElement("span"); s.id = "heroSpark"; valCard.appendChild(s); }
-  /* active-chip highlighting */
-  const io = new IntersectionObserver(es => {
-    es.forEach(en => {
-      if (!en.isIntersecting) return;
-      const map = [["portfolio", "Overview"], ["performance", "Performance"], ["dividend snowball", "Income"], ["tax", "Tax"], ["market mood", "Market"]];
-      const h = en.target.querySelector("h2"); if (!h) return;
-      const m = map.find(([t]) => h.textContent.toLowerCase().includes(t));
-      document.querySelectorAll("[data-dash-chip]").forEach(c => c.classList.toggle("on", !!m && c.dataset.dashChip === m[1]));
+  /* real tabs: restore the last selected tab (default Overview) */
+  dashSetTab(dashSavedTab(), true);
+}
+const DASH_TABS = ["Overview", "Performance", "Income", "Tax", "Market"];
+function dashSavedTab() {
+  try { const t = localStorage.getItem("folio_dash_tab"); if (DASH_TABS.includes(t)) return t; } catch (e) {}
+  return "Overview";
+}
+function dashTabOf(p) {
+  const h = p.querySelector("h2"); const t = h ? h.textContent.toLowerCase() : "";
+  if (t.includes("market mood") || t.includes("market pulse")) return "Market";
+  if (t.includes("tax") || t.includes("capital gains")) return "Tax";
+  if (t.includes("dividend") || t.includes("corporate actions")) return "Income";
+  if (t.includes("performance") || t.includes("p/l by stock")) return "Performance";
+  return "Overview";
+}
+function dashApplyTabFilter() {
+  const name = dashSavedTab();
+  dashPanels().forEach(p => p.classList.toggle("dash-tab-hide", dashTabOf(p) !== name));
+  const strip = $("dashHiddenStrip"); if (strip) strip.style.display = name === "Overview" ? "" : "none";
+  document.querySelectorAll("[data-dash-chip]").forEach(c => {
+    const on = c.dataset.dashChip === name;
+    c.classList.toggle("on", on); c.setAttribute("aria-selected", on ? "true" : "false");
+  });
+}
+function dashSetTab(name, silent) {
+  if (!DASH_TABS.includes(name)) name = "Overview";
+  try { localStorage.setItem("folio_dash_tab", name); } catch (e) {}
+  dashApplyTabFilter();
+  const chip = document.querySelector('[data-dash-chip="' + name + '"]');
+  if (chip) { try { chip.scrollIntoView({ inline: "center", block: "nearest" }); } catch (e) {} }
+  if (!silent) { try { window.scrollTo({ top: 0, behavior: "auto" }); } catch (e) { window.scrollTo(0, 0); } }
+}
+function dashOpenCustomize() {
+  let m = $("dashCustomModal");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "dashCustomModal"; m.className = "modal hidden"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", "Customize Dashboard");
+    m.innerHTML = '<div class="modal-card"><div class="modal-head"><h3>Customize Dashboard</h3><button type="button" class="icon-btn" data-dc-close="1" aria-label="Close">✕</button></div><p class="auth-note">Move cards up or down, or hide them. Changes save automatically.</p><div id="dashCustomList"></div></div>';
+    document.body.appendChild(m);
+    m.addEventListener("click", e => {
+      if (e.target === m || e.target.closest("[data-dc-close]")) { m.classList.add("hidden"); return; }
+      const b = e.target.closest("[data-dc]"); if (!b) return;
+      const L = dashLayout(); const k = b.dataset.k; const act = b.dataset.dc;
+      if (act === "hide") { if (!L.hidden.includes(k)) L.hidden.push(k); }
+      else if (act === "show") { L.hidden = L.hidden.filter(x => x !== k); }
+      else {
+        const order = dashPanels().map(dashKey);
+        const i = order.indexOf(k); const j = act === "up" ? i - 1 : i + 1;
+        if (i < 0 || j < 0 || j >= order.length) return;
+        [order[i], order[j]] = [order[j], order[i]]; L.order = order;
+      }
+      state.profile.dashLayout = L; persist(); dashApplyLayout(); dashRenderCustomList();
     });
-  }, { rootMargin: "-30% 0px -55% 0px" });
-  dashPanels().forEach(p => io.observe(p));
+  }
+  dashRenderCustomList();
+  m.classList.remove("hidden");
+}
+function dashRenderCustomList() {
+  const box = $("dashCustomList"); if (!box) return;
+  const L = dashLayout();
+  box.innerHTML = dashPanels().map(p => {
+    const k = dashKey(p); const h = p.querySelector("h2"); const t = h ? h.textContent.trim() : k;
+    const hid = L.hidden.includes(k);
+    return '<div class="dc-row"><span class="dc-name">' + esc(t) + '</span><span class="dc-btns">' +
+      '<button type="button" class="mini-btn" data-dc="up" data-k="' + esc(k) + '" aria-label="Move up">↑</button>' +
+      '<button type="button" class="mini-btn" data-dc="down" data-k="' + esc(k) + '" aria-label="Move down">↓</button>' +
+      '<button type="button" class="mini-btn" data-dc="' + (hid ? "show" : "hide") + '" data-k="' + esc(k) + '">' + (hid ? "Show" : "Hide") + '</button></span></div>';
+  }).join("");
 }
 function dashGo(name) {
   const scrollTo = p => { if (p) p.scrollIntoView({ behavior: "smooth", block: "start" }); };
@@ -4469,8 +4535,11 @@ renderHoldings = function () { _renderHoldingsT4(); try { holdEnsure(); holdAppl
 if ("serviceWorker" in navigator) { try { navigator.serviceWorker.register("sw.js").catch(() => {}); } catch (e) {} }
 let deferredInstall = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredInstall = e; platInstallBtn(); });
+window.addEventListener("appinstalled", () => { const x = $("installBtn"); if (x) x.remove(); });
 function platInstallBtn() {
-  const bar = $("dashChips"); if (!bar || $("installBtn")) return;
+  const bar = $("dashChips"); if (!bar) return;
+  if (window.matchMedia("(display-mode: standalone)").matches) { const x = $("installBtn"); if (x) x.remove(); return; }
+  if ($("installBtn")) return;
   const b = document.createElement("button");
   b.type = "button"; b.className = "insx-chip"; b.id = "installBtn"; b.textContent = "📲 Install Folio";
   b.addEventListener("click", async () => {
