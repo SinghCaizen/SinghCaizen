@@ -2444,7 +2444,7 @@ function wireHealth() {
     Object.keys(localStorage).forEach(k => {
       if (k.indexOf("folio_") === 0) { caches++; bytes += (localStorage.getItem(k) || "").length; }
     });
-    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v92";
+    info.textContent = caches + " saved caches · " + Math.max(1, Math.round(bytes / 1024)) + " KB on this device · Folio v93";
   };
   fill();
   if (btn) btn.addEventListener("click", () => {
@@ -4908,6 +4908,7 @@ function p7QualityScore(f) {
 }
 async function p7EnhanceOverview() {
   const box = $("sxTabBody"); if (!box || !sxSym) return;
+  if (box.dataset.p7done) return; box.dataset.p7done = "1";
   await p7Load();
   let html = "";
   const f = p7Fund && p7Fund[sxSym];
@@ -4935,8 +4936,10 @@ async function p7EnhanceOverview() {
   } catch (e) {}
   if (html && $("sxTabBody")) box.insertAdjacentHTML("beforeend", html);
 }
-const _sxRenderTabP7 = sxRenderTab;
-sxRenderTab = async function (tab) { await _sxRenderTabP7(tab); if (tab === "overview") { try { await p7EnhanceOverview(); } catch (e) {} } };
+if (typeof sxSetTab === "function") {
+  const _sxSetTabP7 = sxSetTab;
+  sxSetTab = function (tab) { const r = _sxSetTabP7(tab); if (tab === "overview") { try { p7EnhanceOverview(); } catch (e) {} } return r; };
+}
 
 
 /* ================= TASK A: card merges, More sheet, stale-data watchdog ================= */
@@ -5688,7 +5691,7 @@ function folioSetupsC() {
 if (typeof dashDecoratePanels === "function") { const _dcpC2 = dashDecoratePanels; dashDecoratePanels = function () { const r = _dcpC2.apply(this, arguments); try { folioSetupsC(); } catch (e) {} return r; }; }
 
 /* ================= v89: central modal manager, Android back, More actions ================= */
-const FOLIO_VER = "Folio v92";
+const FOLIO_VER = "Folio v93";
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
