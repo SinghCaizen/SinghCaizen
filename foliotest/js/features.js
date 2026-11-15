@@ -648,7 +648,7 @@ document.addEventListener("keydown", e => {
   } else if (e.key.toLowerCase() === "n" || e.key.toLowerCase() === "a") {
     if (typeof openTxn === "function") openTxn("BUY");
   } else if (["1", "2", "3", "4", "5", "6", "7"].includes(e.key)) {
-    const views = ["dashboard", "holdings", "insights", "news", "watchlist", "profile", "history"];
+    const views = ["dashboard", "holdings", "watchlist", "insights", "news", "history", "profile"]; /* v113: new IA order — 1 Home, 2 Holdings, 3 Watchlist, 4 Insights, 5 News, 6 History, 7 Account (audit 3.2n) */
     switchView(views[Number(e.key) - 1]);
   } else if (e.key.toLowerCase() === "m") {
     const pb = $("privacyBtn");
@@ -888,7 +888,7 @@ async function submitIssue(e) {
 
 /* ---------- v4 wiring ---------- */
 document.addEventListener("DOMContentLoaded", () => {
-  $("issueBtn").addEventListener("click", openIssue);
+  const _issueBtnEl = $("issueBtn"); if (_issueBtnEl) _issueBtnEl.addEventListener("click", openIssue); /* v113: header Report Issue button retired (owner U4); openIssue() + #issueModal stay, More/Profile rows call openIssue() directly */
   $("settingsIssueBtn").addEventListener("click", openIssue);
   $("footIssue").addEventListener("click", e => { e.preventDefault(); openIssue(); });
   $("issueClose").addEventListener("click", () => $("issueModal").classList.add("hidden"));
@@ -4046,6 +4046,67 @@ renderInsights = function (d) { _renderInsightsT2(d); try { planEnsure(); } catc
 const _renderHistoryT2 = renderHistory;
 renderHistory = function () { _renderHistoryT2(); try { journalEnsure(); } catch (e) {} };
 
+/* ================= PHASE 4A (v115): History — date grouping + type filter =================
+   Presentation only. renderHistory() (app.js) is untouched; this wrap
+   decorates its output after the journal wrap above has run: it inserts
+   a DS date-group label before the first row of each day and a segmented
+   All / Buys / Sells / Dividends filter above the list. It never moves,
+   edits or deletes a row — labels are siblings, filtering is
+   display-only, and each row's Delete button keeps the listener
+   renderHistory() itself attached. Amounts stay inside .hist-row,
+   which Privacy Mode already blurs wholesale (style.css privacy list). */
+let histFilter = "ALL";
+const HIST_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function histDayLabel(iso) {
+  const p = String(iso || "").split("-");
+  if (p.length !== 3) return iso || "";
+  const dt = new Date(+p[0], +p[1] - 1, +p[2]);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((today - dt) / 86400000);
+  const base = (+p[2]) + " " + HIST_MONTHS[+p[1] - 1] + " " + p[0];
+  return diff === 0 ? "Today · " + base : diff === 1 ? "Yesterday · " + base : base;
+}
+function histDecorate() {
+  const list = $("historyList"); if (!list) return;
+  const panel = list.closest(".panel");
+  let tools = $("histTools");
+  if (panel && !tools) {
+    tools = document.createElement("div");
+    tools.id = "histTools"; tools.className = "seg seg-small hist-filter";
+    tools.setAttribute("role", "group"); tools.setAttribute("aria-label", "Filter history by type");
+    tools.innerHTML = [["ALL", "All"], ["BUY", "Buys"], ["SELL", "Sells"], ["DIV", "Dividends"]].map(([v, l]) => '<button type="button" class="seg-btn" data-hfilter="' + v + '">' + l + "</button>").join("");
+    panel.insertBefore(tools, list);
+    tools.addEventListener("click", e => { const b = e.target.closest("[data-hfilter]"); if (!b) return; histFilter = b.dataset.hfilter; histDecorate(); });
+  }
+  if (tools) tools.querySelectorAll("[data-hfilter]").forEach(b => b.classList.toggle("active", b.dataset.hfilter === histFilter));
+  list.querySelectorAll(".hist-day").forEach(x => x.remove());
+  let lastDate = "", visible = 0, label = null, labelCount = 0;
+  const flush = () => { if (label) label.style.display = labelCount ? "" : "none"; };
+  [...list.querySelectorAll(".hist-row")].forEach(row => {
+    const m = /(\d{4}-\d{2}-\d{2})/.exec(row.textContent || "");
+    const date = m ? m[1] : "";
+    const tEl = row.querySelector(".hist-type");
+    const type = tEl ? tEl.textContent.trim().toUpperCase() : "";
+    const show = histFilter === "ALL" || type === histFilter;
+    row.style.display = show ? "" : "none";
+    if (date !== lastDate) {
+      flush();
+      lastDate = date; labelCount = 0;
+      label = document.createElement("div");
+      label.className = "ds-group-label hist-day";
+      label.textContent = histDayLabel(date);
+      list.insertBefore(label, row);
+    }
+    if (show) { visible++; labelCount++; }
+  });
+  flush();
+  let none = panel ? panel.querySelector(".hist-none") : null;
+  if (!none && panel) { none = document.createElement("p"); none.className = "empty-note hist-none"; none.textContent = "No entries of this type yet."; list.after(none); }
+  if (none) none.style.display = (list.querySelectorAll(".hist-row").length && !visible) ? "" : "none";
+}
+const _renderHistoryP4 = renderHistory;
+renderHistory = function () { const r = _renderHistoryP4.apply(this, arguments); try { histDecorate(); } catch (e) {} return r; };
+
 /* ================= TASK 3 (v62): Tijori-style stock page =================
    Field test first (2026-11-12): Yahoo's v8 chart feed — the app's existing
    source — returns prices, OHLCV, 52-week range and dividend/split events.
@@ -4657,32 +4718,7 @@ function platReport() {
   document.body.classList.add("printing");
   setTimeout(() => { window.print(); setTimeout(() => document.body.classList.remove("printing"), 600); }, 60);
 }
-function platShareCard() {
-  const d = enriched();
-  const { holdings } = computeHoldings();
-  const total = d.value || 1;
-  const top = holdings.map(h => { const p = priceOf(h.sym); const v = p ? h.qty * p.price : h.invested; return { sym: h.sym, w: v / total * 100, pnl: h.invested ? (v - h.invested) / h.invested * 100 : 0 }; }).sort((a, b) => b.w - a.w).slice(0, 5);
-  const cv = document.createElement("canvas"); cv.width = 1200; cv.height = 630;
-  const g = cv.getContext("2d");
-  g.fillStyle = "#0f2234"; g.fillRect(0, 0, 1200, 630);
-  g.fillStyle = "#c9a227"; g.fillRect(0, 596, 1200, 34);
-  g.fillStyle = "#ffffff"; g.font = "800 64px system-ui, sans-serif"; g.fillText("FOLIO", 60, 105);
-  g.font = "600 25px system-ui, sans-serif"; g.fillStyle = "#9fb4c8"; g.fillText("A SINGH CAIZEN PRODUCT · MY PORTFOLIO IN %", 60, 148);
-  const ret = d.invested ? d.totalPnl / d.invested * 100 : 0;
-  g.font = "800 92px system-ui, sans-serif"; g.fillStyle = ret >= 0 ? "#4caf6d" : "#e05b4b";
-  g.fillText((ret >= 0 ? "▲ +" : "▼ ") + ret.toFixed(1) + "%", 60, 268);
-  g.font = "600 27px system-ui, sans-serif"; g.fillStyle = "#ffffff"; g.fillText("overall return" + (d.xirr != null && isFinite(d.xirr) ? " · XIRR " + (d.xirr * 100).toFixed(1) + "% a year" : ""), 60, 312);
-  g.font = "600 30px system-ui, sans-serif";
-  top.forEach((t, i) => { const y = 392 + i * 42; g.fillStyle = "#ffffff"; g.fillText(t.sym, 60, y); g.fillStyle = t.pnl >= 0 ? "#4caf6d" : "#e05b4b"; g.fillText(t.w.toFixed(1) + "% of portfolio · " + (t.pnl >= 0 ? "+" : "") + t.pnl.toFixed(1) + "%", 420, y); });
-  g.font = "500 22px system-ui, sans-serif"; g.fillStyle = "#9fb4c8";
-  g.fillText("Percentages only — no amounts. Free delayed prices. Not investment advice.", 60, 578);
-  cv.toBlob(async blob => {
-    const file = new File([blob], "folio-share-card.png", { type: "image/png" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: "My Folio" }); return; } catch (e) {} }
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "folio-share-card.png"; a.click(); URL.revokeObjectURL(a.href);
-    toast("Share card downloaded — percentages only, no amounts.");
-  });
-}
+/* v113: legacy platShareCard() retired (owner decision U3). It had zero callers — a repo-wide grep found only this definition; the share sheet (window.openShareSheet, v98) superseded it. */
 /* --- chart PNG downloads --- */
 function svgToPng(svg, name) {
   const clone = svg.cloneNode(true);
@@ -4740,7 +4776,7 @@ function cmdkRender(q) {
 document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); platPalette(); } });
 /* --- swipe between tabs + pull to refresh --- */
 (function () {
-  const ORDER = ["dashboard", "holdings", "watch", "insights", "news", "profile"];
+  const ORDER = ["dashboard", "holdings", "watchlist", "insights"]; /* v113: swipe follows the capsule order, More excluded (audit 3.2n); also fixes the dead "watch" entry (no #view-watch ever existed) */
   let tx = 0, ty = 0, pull = 0;
   document.addEventListener("touchstart", e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; pull = 0; }, { passive: true });
   document.addEventListener("touchmove", e => {
@@ -5203,7 +5239,7 @@ document.addEventListener("click", e => {
   const ma = e.target.closest("[data-more-act]");
   if (ma) {
     const s = $("moreSheet"); if (s) s.classList.add("hidden");
-    if (ma.dataset.moreAct === "report") { const b = $("issueBtn"); if (b) b.click(); }
+    if (ma.dataset.moreAct === "report") { openIssue(); }
     if (ma.dataset.moreAct === "legal") { const m = $("termsModal"); if (m) m.classList.remove("hidden"); }
     return;
   }
@@ -5371,6 +5407,7 @@ function folioOnDeals() {
 }
 function folioRenderDealsCard() {
   if (!folioDeals) return;
+  const _mdr = $("moreDealsRow"); if (_mdr) _mdr.hidden = false; /* v113: More-hub Big Deals row shows only when deal data exists (R12) */
   const view = $("view-dashboard"); if (!view) return;
   let panel = $("dealsCard");
   if (!panel) {
@@ -5941,6 +5978,9 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
         else if (act === "import") { const f = $("importFile"); if (f) f.click(); }
         else if (act === "backup") { switchView("profile"); setTimeout(() => { const b = $("vaultExportBtn"); if (b) b.scrollIntoView({ block: "center" }); }, 80); }
         else if (act === "help") { const h = $("helpModal"); if (h) h.classList.remove("hidden"); }
+        else if (act === "pdf") { if (window.openReportSheet) window.openReportSheet(); }
+        else if (act === "sharecard") { if (window.openShareSheet) window.openShareSheet({ type: "summary" }); }
+        else if (act === "tour") { if (window.folioTourLoad) window.folioTourLoad(true); }
         else if (act === "about") { const v = $("aboutVer"); if (v) v.textContent = "Version " + FOLIO_VER.replace("Folio ", "") + (FOLIO_BUILT ? " \u00b7 Built " + FOLIO_BUILT : ""); const a = $("aboutModal"); if (a) a.classList.remove("hidden"); }
         else if (act === "logout" && typeof doLogout === "function") doLogout();
       }
@@ -6029,7 +6069,7 @@ function folioV94Install() {
       try {
         const d = document.createElement("button");
         d.type = "button"; d.textContent = "Update available, tap to reload";
-        d.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:2900;background:#1c1c22;color:#f2f2f2;border:1px solid #c9a227;border-radius:999px;padding:10px 16px;font:600 13px system-ui,sans-serif;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.45)";
+        d.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:2900;background:var(--toast-bg);color:var(--toast-text);border:1px solid var(--gold);border-radius:999px;padding:10px 16px;font:600 13px system-ui,sans-serif;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.45)";
         d.addEventListener("click", () => location.reload());
         document.body.appendChild(d);
         setTimeout(() => { try { d.remove(); } catch (e) {} }, 15000);
@@ -6108,7 +6148,7 @@ window.openShareSheet = function (opts) {
   if (!shareModLoading) {
     shareModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/share.js?v=3"; sc.async = true;
+      sc.src = "js/share.js?v=4"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("share module failed to load"));
       document.head.appendChild(sc);
     });
@@ -6804,3 +6844,107 @@ window.folioAnalyticsForReport = async function () {
     return anaResult ? { result: anaResult, benchName: anaBenchNameCur, rf: Number(insxSettings().rf) || 6.5 } : null;
   } catch (e) { return null; }
 };
+
+/* ================= PHASE 4B (v115): settings screens + stock header price =================
+   Presentation only — two additive decorators, both fully defensive
+   (any failure leaves the shipped behaviour exactly as it was):
+
+   1) Settings screens. The four profile sections stay exactly where
+      the accordion builder put them — no panel, row or injected
+      security row is moved, rebuilt or re-anchored (the R5 chain
+      auto-lock → E2EE → Quick → Skip keeps its anchors). This block
+      only (a) builds the desktop section index (#profIndex — a plain
+      <nav>, NOT a .panel, so accordion indices, the router's
+      ":scope > .panel" selection and authflow's secPanel() are all
+      unaffected) and (b) keeps the hash route in sync when a
+      section's accordion head is tapped: the router (router.js) is
+      the single writer of the .prof-screen presentation state.
+   2) Stock page header price. After each company-sheet load, the
+      app's own LTP + day change (priceOf() / folioDayPct() — the
+      same two numbers loadCompanySheet() prints in its About chip)
+      are mirrored into an additive header element. Display only:
+      nothing is computed for record, no existing node is touched. */
+(function p4bDecorators() {
+  const KEYS = ["profile", "security", "data", "danger"];
+  const LABELS = {
+    profile: ["Personal Info", "Name, mobile, category, tax & preferences", "i-user"],
+    security: ["Security", "Password, 2FA, vault & device unlock", "i-shield"],
+    data: ["Data & Vault", "Backups, CSV, cache & health", "i-file"],
+    danger: ["Danger Zone", "Delete your account permanently", "i-alert"]
+  };
+  function buildProfIndex() {
+    const view = document.getElementById("view-profile");
+    if (!view || document.getElementById("profIndex")) return true;
+    if (!view.querySelector(":scope > .panel.acc-card")) return false; /* accordions not built yet */
+    const nav = document.createElement("nav");
+    nav.id = "profIndex"; nav.className = "ds-group prof-index";
+    nav.setAttribute("aria-label", "Settings sections");
+    nav.innerHTML = KEYS.map(k => {
+      const L = LABELS[k];
+      return '<button type="button" class="ds-row" data-prof-go="' + k + '">' +
+        '<span class="ds-row__icon"><svg class="ds-icon ds-icon--sm"><use href="#' + L[2] + '"/></svg></span>' +
+        '<span class="ds-row__main"><span class="ds-row__title">' + L[0] + '</span>' +
+        '<span class="ds-row__sub">' + L[1] + '</span></span>' +
+        '<span class="ds-row__chev"><svg class="ds-icon ds-icon--sm"><use href="#i-chev-r"/></svg></span></button>';
+    }).join("");
+    view.appendChild(nav);
+    nav.addEventListener("click", e => {
+      const b = e.target && e.target.closest ? e.target.closest("[data-prof-go]") : null;
+      if (b && window.FolioRouter && window.FolioRouter.go) window.FolioRouter.go("#/account/" + b.getAttribute("data-prof-go"));
+    });
+    return true;
+  }
+  const idxTimer = setInterval(() => {
+    try { if (buildProfIndex()) clearInterval(idxTimer); } catch (e) { clearInterval(idxTimer); }
+  }, 700);
+  /* Head-tap → route sync. The head's own toggle listener sits on the
+     head itself, so by the time this delegated (bubble-phase) handler
+     runs, the panel's .open class already reflects the tap. If the
+     hash already says the same thing, do nothing — that is what keeps
+     router-driven head clicks (openAccPanel, the Security Checkup's
+     gotoSetting) from looping back into the router. */
+  document.addEventListener("click", e => {
+    try {
+      const head = e.target && e.target.closest ? e.target.closest("#view-profile .acc-head") : null;
+      if (!head) return;
+      const view = document.getElementById("view-profile");
+      const panel = head.closest(".panel");
+      if (!view || !panel) return;
+      const panels = view.querySelectorAll(":scope > .panel");
+      const idx = Array.prototype.indexOf.call(panels, panel);
+      if (idx < 1) return; /* the account card (panel 0) is the hub itself, not a screen */
+      const want = panel.classList.contains("open") ? "#/account/" + KEYS[idx - 1] : "#/account";
+      if (window.location.hash === want) return;
+      if (window.FolioRouter && window.FolioRouter.go) window.FolioRouter.go(want);
+    } catch (err) {}
+  });
+  /* Stock header price mirror (wrap added last, after every earlier
+     loadCompanySheet wrap, so the sheet is fully rendered first). */
+  function sxHeadPrice(sym) {
+    const head = document.querySelector("#stockModal .modal-head");
+    if (!head) return;
+    let el = document.getElementById("sxHeadPrice");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "sxHeadPrice"; el.className = "sx-head-price";
+      const share = document.getElementById("stockShareBtn");
+      if (share) head.insertBefore(el, share); else head.appendChild(el);
+    }
+    let p = null;
+    try { p = (typeof priceOf === "function") ? priceOf(sym) : null; } catch (e) {}
+    if (!p || !p.price) { el.style.display = "none"; return; }
+    let dp = null;
+    try { dp = (typeof folioDayPct === "function") ? folioDayPct(sym) : null; } catch (e) {}
+    el.style.display = "";
+    el.innerHTML = "<b>" + inr2(p.price) + "</b>" +
+      (dp == null || !isFinite(dp) ? "" : '<span class="' + (dp >= 0 ? "gain" : "loss") + '">' + pct(dp) + " today</span>");
+  }
+  if (typeof loadCompanySheet === "function") {
+    const _lcsP4B = loadCompanySheet;
+    loadCompanySheet = async function (sym) {
+      const r = await _lcsP4B.apply(this, arguments);
+      try { sxHeadPrice(sym); } catch (e) {}
+      return r;
+    };
+  }
+})();
