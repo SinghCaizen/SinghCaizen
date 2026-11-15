@@ -2482,7 +2482,27 @@ body.privacy-on .hold-strip,body.privacy-on .hold-meta,body.privacy-on .lot-row,
 body.privacy-on .dr-txn,body.privacy-on .dr-status,body.privacy-on .wi-out,
 body.privacy-on .hold-table,body.privacy-on #divBox,body.privacy-on #corpBox .event-row,
 body.privacy-on .exempt-box,body.privacy-on #taxBox .price-meta,
-body.privacy-on #gainsPanel .folio-table,body.privacy-on #gainsPanel .price-meta{filter:blur(7px);transition:filter .25s ease}
+body.privacy-on #gainsPanel .folio-table,body.privacy-on #gainsPanel .price-meta,body.privacy-on .cs-amt{filter:blur(7px);transition:filter .25s ease}
+
+/* ---------- PRIVACY — QA FIX PASS (v116) ----------
+   1a) #changedStrip ("What changed today", folioChanged()): of its
+   lines only the "Biggest drag" line carries a personal ₹ amount
+   (inrShort of the drag P&L); the renderer now tags exactly that
+   line .cs-amt (covered by the rule above). The ₹ shares one text
+   node with the symbol name, so the whole drag line blurs — the
+   documented trade-off; the strip's percentage line and its count
+   lines are separate .cs-line elements and stay readable.
+   1b) Hero delta chip: #stPnlPct is the P&L delta PERCENTAGE (the
+   Phase 4A pill below). The legacy line-678 rule blurs .stat-sub
+   wholesale, hiding the % with the amounts. The chip is un-blurred
+   here (id specificity beats the class rule); the ₹ spans keep
+   their blur via .stat-value, and #stRealised — the other hero
+   .stat-sub — keeps its blur because it prints realised/dividend
+   ₹ totals. So the chip can never ride an amount along, the three
+   features.js writers that touch it print its pure-% form while
+   privacy is on (dashHero on toggle + in the renderDashboard wrap;
+   softPricePaint omits its "· today ₹…" tail). */
+body.privacy-on #stPnlPct{filter:none}#stXirr{filter:none}
 
 /* ---------- section rhythm (all .panel screens) ----------
    One card padding / head rhythm on DS tokens. Panel <h2> text is
@@ -2695,10 +2715,17 @@ body.privacy-on #gainsPanel .folio-table,body.privacy-on #gainsPanel .price-meta
   #view-dashboard>#dashHiddenStrip,#view-dashboard>#moodPanel,#view-dashboard>#pulsePanel{grid-column:1/-1}
   #view-dashboard>.panel:has(#perfChart),#view-dashboard>.panel:has(#heatMap),#view-dashboard>.panel:has(#donut){grid-column:1/-1}
   /* Holdings cards: two columns; sector heads span the row.
-     Compact mode keeps its own shipped grid; table mode hides
-     the list entirely, as before. */
+     Table mode hides the list entirely, as before. */
   #holdingsList:not(.hold-compact){display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)}
   #holdingsList:not(.hold-compact) .hold-sector-head{grid-column:1/-1}
+  /* Compact is a dense LIST at every width (QA fix pass, v116):
+     the shipped line-1414 rule widened .hold-compact to the same
+     1fr 1fr grid as Cards at ≥1024px, erasing the difference
+     between the two modes on desktop. Same specificity as that
+     rule, later in source, so this wins: compact keeps its
+     shipped single column and tight rhythm (gap 8px and the
+     line-1415 card padding, both tighter than Cards). */
+  #holdingsList.hold-compact{grid-template-columns:1fr;gap:8px}
 }
 
 /* ================================================================
@@ -2858,6 +2885,22 @@ body.privacy-on #sxPosition .sx-cells{filter:blur(7px);transition:filter .25s ea
      account card becomes the rail head, the index sits under it */
   #view-profile > .panel.profile-panel{grid-row:1}
 }
+
+/* capsule clearance for scroll landings (QA fix pass, v116): the
+   view's FLOW bottom padding already honours the shell contract
+   (the v90 !important .view rule exceeds --ds-nav-clear), but the
+   profile view's programmatic landings had no scroll margin at
+   all — the router's openAccPanel() scrollIntoView and in-screen
+   jumps could rest a section panel, or the section index at the
+   rail's foot, inside the floating capsule's zone where taps are
+   covered. Scroll margins on the profile view's children only;
+   the pushed phone screen is its own scroller, so it gets the
+   matching scroll-padding. The 4B screen mechanism, anchors and
+   router are untouched. */
+#view-profile > .panel,
+#view-profile > #secCheckup,
+#view-profile .prof-index{scroll-margin-bottom:var(--ds-nav-clear)}
+#view-profile > .panel.prof-screen-panel{scroll-padding-bottom:var(--ds-nav-clear)}
 
 /* --- settings SCREENS: phone push presentation ---
    The open section panel becomes a full-screen pushed screen.

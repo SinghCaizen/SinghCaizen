@@ -564,7 +564,7 @@ function softPricePaint() {
     animNum($("stPnl"), d.totalPnl, moneyFmt);
     const sp = $("stPnl"); if (sp) sp.className = "stat-value " + (d.totalPnl >= 0 ? "gain" : "loss");
     const spp = $("stPnlPct");
-    if (spp) { spp.textContent = pct(d.invested ? d.totalPnl / d.invested * 100 : 0) + " overall \u00b7 today " + moneyFmt(d.dayPnl); spp.className = "stat-sub " + (d.dayPnl >= 0 ? "gain" : "loss"); }
+    if (spp) { spp.textContent = pct(d.invested ? d.totalPnl / d.invested * 100 : 0) + " overall" + (document.body.classList.contains("privacy-on") ? "" : " \u00b7 today " + moneyFmt(d.dayPnl)); spp.className = "stat-sub " + (d.dayPnl >= 0 ? "gain" : "loss"); }
     const sx = $("stXirr"); if (sx) { const x = portfolioXirr(d.value); sx.textContent = x === null ? "\u2014" : pct(x * 100).replace("+", x >= 0 ? "+" : ""); }
     const sr = $("stRealised"); if (sr) sr.textContent = "Booked profit so far: " + inr(d.realisedTotal) + (d.divTotal ? " \u00b7 Dividends: " + inr(d.divTotal) : "");
   } catch (e) {}
@@ -2226,6 +2226,12 @@ function wireAccountCenter() {
     document.body.classList.toggle("privacy-on", on);
     $("privacyIcon").textContent = on ? "🙈" : "👁";
     try { localStorage.setItem("folio_privacy", on ? "1" : "0"); } catch (e) {}
+    /* Privacy fix pass: the hero % chip (#stPnlPct) stays readable in
+       Privacy Mode (style.css Phase 4A), so when privacy turns ON the
+       chip is immediately rewritten by dashHero() — its pure-% form —
+       instead of keeping the "… · today ₹…" string until the next
+       render. dashHero is this file's own hero writer (hoisted). */
+    if (on && typeof currentUser !== "undefined" && currentUser) { try { dashHero(); } catch (e) {} }
   };
   window.togglePrivacy = () => setPrivacy(!document.body.classList.contains("privacy-on"));
   const pb = $("privacyBtn");
@@ -4562,7 +4568,7 @@ async function pulseLoad() {
 const _renderDashboardT4 = renderDashboard;
 renderDashboard = function () {
   _renderDashboardT4();
-  try { dashEnsure(); dashDecoratePanels(); dashApplyLayout(); if (heroPnlMode === "today") dashHero(); else dashHeroSparkOnly(); pulseLoad(); } catch (e) {}
+  try { dashEnsure(); dashDecoratePanels(); dashApplyLayout(); if (heroPnlMode === "today" || document.body.classList.contains("privacy-on")) dashHero(); else dashHeroSparkOnly(); pulseLoad(); } catch (e) {}
 };
 function dashHeroSparkOnly() { const keep = heroPnlMode; heroPnlMode = "spark"; dashHero(); heroPnlMode = keep; }
 
@@ -5489,6 +5495,7 @@ function folioChanged() {
   let d; try { d = enriched(); } catch (e) { return; }
   if (!d || !d.rows || !d.rows.length) { strip.classList.add("hidden"); return; }
   const lines = [];
+  let amtLine = -1; /* index of the one line carrying a ₹ amount (the drag line) — Privacy Mode blurs exactly that line */
   let dayPnl = 0, dayBase = 0, drag = null, nearLow = 0;
   d.rows.forEach(r => {
     if (r.dayPct != null && r.ltp) { const pc = r.ltp / (1 + r.dayPct / 100); const dp = r.qty * (r.ltp - pc); dayPnl += dp; dayBase += r.qty * pc; if (!drag || dp < drag.dp) drag = { sym: r.sym, dp: dp }; }
@@ -5497,12 +5504,12 @@ function folioChanged() {
     if (lo && r.ltp && r.ltp <= lo * 1.05) nearLow++;
   });
   if (dayBase) { const pd = dayPnl / dayBase * 100; lines.push("Portfolio " + (pd >= 0 ? "+" : "") + pd.toFixed(1) + "% today"); }
-  if (drag && drag.dp < 0) lines.push("Biggest drag: " + drag.sym + " (" + inrShort(drag.dp) + ")");
+  if (drag && drag.dp < 0) { amtLine = lines.length; lines.push("Biggest drag: " + drag.sym + " (" + inrShort(drag.dp) + ")"); }
   if (nearLow) lines.push(nearLow + (nearLow === 1 ? " stock" : " stocks") + " near 52W low");
   if (folioDeals) { const today = new Date().toISOString().slice(0, 10); const mine = mySyms(); const todays = folioDeals.filter(x => x.d === today && mine.has(x.sym)); if (todays.length) lines.push(todays.length + " big deal" + (todays.length > 1 ? "s" : "") + " on " + todays[0].sym + (todays.length > 1 ? " & others" : "") + " today"); }
   if (!lines.length) { strip.classList.add("hidden"); return; }
   strip.classList.remove("hidden");
-  strip.innerHTML = '<span class="cs-title">What changed today</span>' + lines.map(l => '<span class="cs-line">' + esc(l) + "</span>").join("");
+  strip.innerHTML = '<span class="cs-title">What changed today</span>' + lines.map((l, i) => '<span class="cs-line' + (i === amtLine ? " cs-amt" : "") + '">' + esc(l) + "</span>").join("");
 }
 /* ---------- News upgrade: tags, filters, Important, new-dot ---------- */
 const NEWS_TAG_LABELS = { results: "Results", orders: "Orders & Deals", mgmt: "Management", reg: "Regulatory", div: "Dividends" };

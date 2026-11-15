@@ -51,12 +51,13 @@
       if (nav) nav.classList.add("hidden");
     }
     /* Same button, same id, same doGoogleSignIn handler — only the
-       label mirrors the current tab, like #authSubmit already does. */
+       label text node is refreshed on a tab switch; the owner's
+       wording is "Continue with Google" on BOTH tabs. */
     var gb = el("googleBtn");
     if (gb) {
       for (var i = 0; i < gb.childNodes.length; i++) {
         var nd = gb.childNodes[i];
-        if (nd.nodeType === 3 && nd.textContent.trim()) { nd.textContent = m === "signup" ? " Sign up with Google " : " Sign in with Google "; break; }
+        if (nd.nodeType === 3 && nd.textContent.trim()) { nd.textContent = " Continue with Google "; break; }
       }
     }
   }
