@@ -5914,6 +5914,7 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
     m.classList.add("hidden");
   }
   window.folioCloseTopModal = function () { const m = top(); if (m) closeModal(m); return !!m; };
+  window.folioCloseModal = closeModal; /* Phase 5: the handle-drag decorator closes through this exact path (STATIC refusal, stockModal cleanup and native close-button click included) */
 
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") { const m = top(); if (m && !STATIC[m.id]) { e.preventDefault(); closeModal(m); } return; }
@@ -5959,6 +5960,7 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
     const m = card.closest(".modal");
     if (!m || !isOpen(m) || STATIC[m.id]) return;
     if (card.scrollTop > 0) return;
+    if (card.__folioHandleDrag) return; /* Phase 5: a handle drag (pointer events, set before touchstart fires) owns this gesture */
     swipe = { m: m, card: card, y: e.touches[0].clientY, dy: 0 };
   }, { passive: true });
   document.addEventListener("touchmove", e => {
@@ -5987,6 +5989,13 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
         else if (act === "help") { const h = $("helpModal"); if (h) h.classList.remove("hidden"); }
         else if (act === "pdf") { if (window.openReportSheet) window.openReportSheet(); }
         else if (act === "sharecard") { if (window.openShareSheet) window.openShareSheet({ type: "summary" }); }
+        else if (act === "tools") { if (window.folioOpenTools) window.folioOpenTools(); }
+        else if (act === "ptools") { if (window.folioOpenPTools) window.folioOpenPTools(); }
+        else if (act === "smartmoney") { if (window.folioOpenSmartMoney) window.folioOpenSmartMoney(); }
+        else if (act === "markethub") { if (window.folioOpenMarketHub) window.folioOpenMarketHub(); }
+        else if (act === "mutualfunds") { if (window.folioOpenMutualFunds) window.folioOpenMutualFunds(); }
+        else if (act === "calendar") { if (window.folioOpenCalendar) window.folioOpenCalendar(); }
+        else if (act === "learn") { if (window.folioOpenLearn) window.folioOpenLearn(); }
         else if (act === "tour") { if (window.folioTourLoad) window.folioTourLoad(true); }
         else if (act === "about") { const v = $("aboutVer"); if (v) v.textContent = "Version " + FOLIO_VER.replace("Folio ", "") + (FOLIO_BUILT ? " \u00b7 Built " + FOLIO_BUILT : ""); const a = $("aboutModal"); if (a) a.classList.remove("hidden"); }
         else if (act === "logout" && typeof doLogout === "function") doLogout();
@@ -6155,7 +6164,7 @@ window.openShareSheet = function (opts) {
   if (!shareModLoading) {
     shareModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/share.js?v=4"; sc.async = true;
+      sc.src = "js/share.js?v=5"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("share module failed to load"));
       document.head.appendChild(sc);
     });
@@ -6171,7 +6180,7 @@ window.openReportSheet = function () {
   if (!reportModLoading) {
     reportModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/report.js?v=3"; sc.async = true;
+      sc.src = "js/report.js?v=4"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("report module failed to load"));
       document.head.appendChild(sc);
     });
@@ -6955,3 +6964,1327 @@ window.folioAnalyticsForReport = async function () {
     };
   }
 })();
+
+/* ================= Phase 5 (v117): overlay pattern — drag-handle decorator =================
+   Presentation only. Inserts the DS drag handle (.folio-grab) as the first
+   child of every .modal-card / .sheet-card inside a .modal overlay, and
+   implements drag-to-dismiss FROM THE HANDLE ONLY:
+   - pointer events with capture on the handle; .folio-grab carries
+     touch-action:none (style.css Phase 5 layer), so a handle gesture is
+     never claimed by the card's own internal scrolling;
+   - the v89 touch swipe keeps owning every other gesture — pointerdown
+     fires before the compatibility touchstart, so the flag set below
+     makes the v89 swipe stand down for handle gestures via the one-line
+     guard added to its touchstart handler (Phase 5 surgical edit);
+   - dismissal calls window.folioCloseModal — the v89 manager's own
+     closeModal, exported for this purpose (Phase 5 surgical edit) — so
+     STATIC lock screens are refused by the manager itself, the stock
+     sheet runs closeCompanyModal(), and native close buttons receive
+     their real click, exactly as with Esc / backdrop / Back. Nothing in
+     this block ever hides an element directly.
+   - Gates mirror the shipped swipe's: bottom-sheet presentation only
+     (<=768px), the STATIC lock screens get no handle at all, and the
+     card must be at scrollTop 0 (the in-flow handle is only on screen
+     there anyway). Editing-shield parity: the drag can dismiss exactly
+     the overlays Esc / backdrop / swipe already dismiss today, through
+     the same close path, and no others. */
+(function () {
+  const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* mirrors the v89 manager's list; folioCloseModal re-checks it inside closeModal, so a drift here could never make a lock screen dismissible */
+  const SHEET_MQ = "(max-width: 768px)";
+
+  function wireGrab(grab, card, m) {
+    let drag = null;
+    grab.addEventListener("pointerdown", e => {
+      try {
+        if (drag || !e.isPrimary) return;
+        if (!window.matchMedia(SHEET_MQ).matches) return;        /* desktop: centered modal, no drag */
+        if (STATIC[m.id]) return;                                 /* lock screens: never (defence in depth; they get no handle anyway) */
+        if (m.classList.contains("hidden")) return;               /* closed */
+        if (card.scrollTop > 0) return;                           /* parity with the v89 swipe gate */
+        drag = { y: e.clientY, dy: 0, id: e.pointerId };
+        card.__folioHandleDrag = 1;                               /* set before touchstart fires: the v89 swipe stands down */
+        try { grab.setPointerCapture(e.pointerId); } catch (err) {}
+        setTimeout(() => { card.__folioHandleDrag = 0; }, 1500);  /* safety: never leave the card swipe disarmed */
+      } catch (err) {}
+    });
+    grab.addEventListener("pointermove", e => {
+      if (!drag || e.pointerId !== drag.id) return;
+      drag.dy = e.clientY - drag.y;
+      if (drag.dy > 0) card.style.transform = "translateY(" + drag.dy + "px)";
+    });
+    const finish = (e, cancelled) => {
+      if (!drag || (e && e.pointerId !== drag.id)) return;
+      const dy = drag.dy; drag = null;
+      card.__folioHandleDrag = 0;
+      if (!cancelled && dy > 90) {                                /* same threshold as the v89 swipe; a cancelled gesture (browser took it for scrolling, system interruption) never dismisses */
+        card.style.transform = "";
+        if (typeof window.folioCloseModal === "function") window.folioCloseModal(m);
+        return;
+      }
+      if (card.style.transform) {                                 /* spring back: transform only, DS duration token */
+        card.classList.add("folio-grab-back");
+        card.style.transform = "";
+        setTimeout(() => card.classList.remove("folio-grab-back"), 240);
+      }
+    };
+    grab.addEventListener("pointerup", e => finish(e, false));
+    grab.addEventListener("pointercancel", e => finish(e, true));
+  }
+
+  function dressCard(card) {
+    if (!card || card.__folioGrab) return;
+    card.__folioGrab = 1;
+    const m = card.closest(".modal");
+    if (!m || STATIC[m.id]) return;                               /* lock screens: no handle (their shipped ::before is hidden by the Phase 5 CSS layer instead) */
+    const grab = document.createElement("div");
+    grab.className = "folio-grab"; grab.setAttribute("aria-hidden", "true");
+    grab.innerHTML = '<span class="folio-grab-bar"></span>';
+    card.insertBefore(grab, card.firstChild);
+    wireGrab(grab, card, m);
+  }
+  function dressAll(root) {
+    if (root && root.querySelectorAll) root.querySelectorAll(".modal .modal-card, .modal .sheet-card").forEach(dressCard);
+  }
+  try {
+    dressAll(document);
+    new MutationObserver(ms => ms.forEach(rec => rec.addedNodes.forEach(n => {
+      if (n.nodeType !== 1) return;
+      dressAll(n);
+      if (n.classList && (n.classList.contains("modal-card") || n.classList.contains("sheet-card"))) dressCard(n);
+    }))).observe(document.body, { childList: true });
+  } catch (e) {}
+})();
+
+/* ================= TOOLS HUB (Phase 6A): lazy-loaded tools.js + entry point ================= */
+let toolsModLoading = null;
+window.folioOpenTools = function (opts) {
+  opts = opts || {};
+  if (window.FolioTools && window.FolioTools.open) { window.FolioTools.open(opts); return; }
+  if (!toolsModLoading) {
+    toolsModLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = "js/tools.js?v=1"; sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("tools module failed to load"));
+      document.head.appendChild(sc);
+    });
+  }
+  toolsModLoading.then(() => { if (window.FolioTools && window.FolioTools.open) window.FolioTools.open(opts); })
+    .catch(() => { toolsModLoading = null; toast("Tools could not load — check your connection and try again."); });
+};
+
+/* ================= PORTFOLIO TOOLS (Phase 6B): lazy-loaded ptools.js + entry point ================= */
+let ptoolsModLoading = null;
+window.folioOpenPTools = function (opts) {
+  opts = opts || {};
+  if (window.FolioPTools && window.FolioPTools.open) { window.FolioPTools.open(opts); return; }
+  if (!ptoolsModLoading) {
+    ptoolsModLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = "js/ptools.js?v=1"; sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("ptools module failed to load"));
+      document.head.appendChild(sc);
+    });
+  }
+  ptoolsModLoading.then(() => { if (window.FolioPTools && window.FolioPTools.open) window.FolioPTools.open(opts); })
+    .catch(() => { ptoolsModLoading = null; toast("Portfolio Tools could not load — check your connection and try again."); });
+};
+
+/* ================= SMART MONEY — PART 1 (pipeline data): lazy-loaded smartmoney.js + entry points =================
+   Nothing here runs data work at startup: the loader fires only on an
+   explicit open (Insights card / More row / stock tab / Data Sources
+   link), plus ONE idle, cache-only alert evaluation when — and only
+   when — the user has turned Smart Money alerts on. */
+let smModLoading = null;
+function smLoadModule() {
+  if (window.FolioSmartMoney) return Promise.resolve();
+  if (!smModLoading) {
+    smModLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = "js/smartmoney.js?v=4"; sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("smartmoney module failed to load"));
+      document.head.appendChild(sc);
+    });
+    smModLoading.catch(() => { smModLoading = null; });
+  }
+  return smModLoading;
+}
+window.folioOpenSmartMoney = function (opts) {
+  opts = opts || {};
+  smLoadModule().then(() => {
+    if (!window.FolioSmartMoney) return;
+    if (opts.silentEval) { window.FolioSmartMoney.evaluateCached({ notify: true }); return; }
+    if (opts.stockTab) { window.FolioSmartMoney.renderOwners(opts.stockTab, opts.el); return; }
+    window.FolioSmartMoney.open(opts);
+  }).catch(() => { toast("Smart Money could not load — check your connection and try again."); });
+};
+
+/* Insights entry card — a plain decorator child of #view-insights (not a
+   folioMerges panel, no h2 element), inserted first so Smart Money is
+   one tap from the Insights top. The meta line stays neutral until the
+   module has loaded real manifest data (paintEntryMeta). */
+(function smInsightsEntry() {
+  const view = $("view-insights"); if (!view || $("smEntry")) return;
+  const d = document.createElement("div");
+  d.className = "panel sm-entry"; d.id = "smEntry";
+  d.innerHTML = '<button type="button" class="sm-entry-btn" id="smEntryBtn">' +
+    '<span class="sm-entry-main"><span class="sm-entry-title">Smart Money</span>' +
+    '<span class="sm-entry-sub">Which mutual funds hold your stocks, who is entering or exiting — from public monthly disclosures, compared on your device.</span>' +
+    '<span class="sm-entry-meta" id="smEntryMeta">Tap to explore</span></span>' +
+    '<span class="sm-entry-chev" aria-hidden="true">›</span></button>';
+  view.insertBefore(d, view.firstChild);
+  d.querySelector("#smEntryBtn").addEventListener("click", () => { if (window.folioOpenSmartMoney) window.folioOpenSmartMoney(); });
+})();
+
+/* Data Sources & Credits — reachable from Profile's System Health row
+   (same after-the-row insertion pattern as the sysPerf line). */
+(function smHealthLink() {
+  const hi = $("healthInfo"); if (!hi || $("smSourcesBtn")) return;
+  const row = hi.closest(".setting-row") || hi;
+  const b = document.createElement("button");
+  b.type = "button"; b.id = "smSourcesBtn"; b.className = "mini-btn"; b.style.marginTop = "8px";
+  b.textContent = "Data sources & status";
+  b.addEventListener("click", () => { if (window.folioOpenSmartMoney) window.folioOpenSmartMoney({ screen: "sources" }); });
+  row.after(b);
+})();
+
+/* Stock sheet — "Who Owns It" tab: one additive tab button + pane inside
+   the existing #sheetX, added by wrapping sxEnsure; tab switching rides
+   the shipped sxSetTab (wrapped) so .on state, .sx-away and the other
+   panes behave exactly as for Peers/Indicators. */
+function smSxTabEnsure() {
+  const box = $("sheetX"); if (!box || $("sxOwners")) return;
+  const tabs = box.querySelector(".sheet-tabs"); if (!tabs) return;
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "insx-chip"; b.dataset.sxTab = "owners"; b.textContent = "Who Owns It";
+  tabs.appendChild(b);
+  b.addEventListener("click", () => sxSetTab("owners"));
+  const pane = document.createElement("div");
+  pane.id = "sxOwners"; pane.className = "hidden";
+  box.appendChild(pane);
+}
+if (typeof sxEnsure === "function") {
+  const _sxEnsureSM = sxEnsure;
+  sxEnsure = function () { const r = _sxEnsureSM.apply(this, arguments); try { smSxTabEnsure(); } catch (e) {} return r; };
+}
+if (typeof sxSetTab === "function") {
+  const _sxSetTabSM = sxSetTab;
+  sxSetTab = function (tab) {
+    const r = _sxSetTabSM(tab);
+    try {
+      const pane = $("sxOwners");
+      if (pane) {
+        pane.classList.toggle("hidden", tab !== "owners");
+        if (tab === "owners" && typeof sxSym !== "undefined" && sxSym && window.folioOpenSmartMoney) {
+          window.folioOpenSmartMoney({ stockTab: sxSym, el: pane });
+        }
+      }
+    } catch (e) {}
+    return r;
+  };
+}
+
+/* Smart Money alerts join the Insights Signals card through the same
+   wrap pattern the Targets & SL card uses — the module paints its own
+   group after every signals render; nothing is painted when the module
+   has not loaded or there are no alerts. */
+let smEvalKicked = false;
+if (typeof renderSignalsSync === "function") {
+  const _rssSM = renderSignalsSync;
+  renderSignalsSync = function (d) {
+    const r = _rssSM.apply(this, arguments);
+    try {
+      if (window.FolioSmartMoney && window.FolioSmartMoney.paintSignals) window.FolioSmartMoney.paintSignals();
+      /* One-shot: if alerts are on but the module has not loaded yet this
+         session, evaluate silently from cache so the Signals group and
+         any notification are not held hostage to opening Smart Money. */
+      if (!smEvalKicked && !window.FolioSmartMoney && typeof state !== "undefined" && state && state.profile) {
+        const sm = state.profile.smartmoney;
+        if (sm && sm.alerts && (sm.alerts.mfChange || sm.alerts.followMoves || sm.alerts.deals)) {
+          smEvalKicked = true;
+          if (window.folioOpenSmartMoney) window.folioOpenSmartMoney({ silentEval: true });
+        }
+      }
+    } catch (e) {}
+    return r;
+  };
+}
+
+/* App-open alert evaluation: idle, cache-only, and ONLY when the user
+   has opted in — with every alert toggle off (the default) this hook
+   costs one settings read and nothing else. No bell is added (the
+   owner's standing order); alerts surface in the Signals card, the
+   Smart Money home strip and, if permitted, a browser notification
+   while the app is open. */
+window.addEventListener("load", () => {
+  setTimeout(() => {
+    try {
+      if (!currentUser || typeof state === "undefined" || !state || !state.profile) return;
+      const sm = state.profile.smartmoney;
+      if (!sm || !sm.alerts || !(sm.alerts.mfChange || sm.alerts.followMoves || sm.alerts.deals)) return;
+      const ric = window.requestIdleCallback || (cb => setTimeout(cb, 1500));
+      ric(() => { if (window.folioOpenSmartMoney) window.folioOpenSmartMoney({ silentEval: true }); });
+    } catch (e) {}
+  }, 1600);
+});
+
+/* ================= SMART MONEY — PART 2: data hooks + stock-chart overlay =================
+   The hooks are the ONLY bridge report.js / share.js use to reach
+   Smart Money data: each quietly lazy-loads smartmoney.js (user-
+   initiated surfaces only — report sheet, share sheet, chart toggle)
+   and delegates to its Part 1 loaders. Nothing here fetches data
+   itself, and nothing runs at startup. */
+window.folioSmartMoneyForReport = function () {
+  return smLoadModule()
+    .then(() => (window.FolioSmartMoney && window.FolioSmartMoney.forReport) ? window.FolioSmartMoney.forReport() : null)
+    .catch(() => null);
+};
+window.folioSmartMoneyGates = function () {
+  return smLoadModule()
+    .then(() => (window.FolioSmartMoney && window.FolioSmartMoney.gates) ? window.FolioSmartMoney.gates() : null)
+    .catch(() => null);
+};
+window.folioSmartMoneyOverlay = function (sym) {
+  return smLoadModule()
+    .then(() => (window.FolioSmartMoney && window.FolioSmartMoney.stockOverlayData) ? window.FolioSmartMoney.stockOverlayData(sym) : null)
+    .catch(() => null);
+};
+
+/* "Institutional activity" toggle — a fourth row inside the chart's
+   existing Indicators sheet (#lwIndSheet), default OFF, persisted in
+   state.profile.smartmoney.chartOverlay (the insX-style settings
+   object Part 1 owns). When OFF, the renderLW wrap below returns
+   before touching anything and the chart is byte-identical. */
+function smOverlayOn() {
+  try { return !!(typeof state !== "undefined" && state && state.profile && state.profile.smartmoney && state.profile.smartmoney.chartOverlay); }
+  catch (e) { return false; }
+}
+function smSyncSmLegend() {
+  const lg = $("lwSmLegend"), bar = $("lwBar");
+  if (!lg) return;
+  const show = smOverlayOn() && bar && !bar.classList.contains("hidden");
+  lg.classList.toggle("hidden", !show);
+}
+(function smLwToggleInit() {
+  const sheet = $("lwIndSheet");
+  if (!sheet || $("lwSmInst")) return;
+  const lab = document.createElement("label");
+  lab.className = "bench-toggle sm-lw-toggle";
+  lab.innerHTML = '<input type="checkbox" id="lwSmInst"> Institutional activity ' +
+    '<button type="button" class="sm-lw-info" id="lwSmInfo" aria-label="About institutional activity markers">i</button>' +
+    '<span class="sm-lw-note" id="lwSmNote"></span>';
+  sheet.appendChild(lab);
+  const bar = $("lwBar");
+  if (bar && !$("lwSmLegend")) {
+    const lg = document.createElement("div");
+    lg.id = "lwSmLegend";
+    lg.className = "price-meta sm-lw-legend hidden";
+    lg.textContent = "Markers: green ● = mutual funds raised their combined holding that month · red ● = cut it · ▲▼ = bulk/block deal (green buy, red sell). Fund changes are inferred from monthly scheme disclosures.";
+    bar.insertAdjacentElement("afterend", lg);
+  }
+  const cb = $("lwSmInst");
+  if (!cb) return;
+  try { cb.checked = smOverlayOn(); } catch (e) {}
+  cb.addEventListener("change", () => {
+    try {
+      if (typeof state !== "undefined" && state) {
+        if (!state.profile || typeof state.profile !== "object") state.profile = {};
+        if (!state.profile.smartmoney || typeof state.profile.smartmoney !== "object") state.profile.smartmoney = {};
+        state.profile.smartmoney.chartOverlay = !!cb.checked;
+        persist();
+      }
+    } catch (e) {}
+    smSyncSmLegend();
+    renderLW();
+  });
+  const info = $("lwSmInfo");
+  if (info) info.addEventListener("click", (e) => {
+    e.preventDefault(); e.stopPropagation();
+    toast("Institutional activity: at each month-end where the change was material (2% or more of the funds' combined shares, or an entry/exit), a round marker shows whether mutual funds together raised or cut their holding in this stock — inferred from monthly scheme disclosures, so a split or bonus can distort share counts. Arrow markers show bulk/block deals when that data is available. Off by default; with it off, the chart is exactly as before.");
+  });
+})();
+
+/* Bars for marker snapping — the SAME sources renderLW paints from
+   (fetchMaster daily ranges, the 12h-cached fetchOHLC for 5y/max), so
+   a marker always lands on a bar the chart actually drew. */
+async function smOverlayBars(sym) {
+  const DAILY = { "7d15m": 7, "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366 };
+  if (DAILY[stockRange]) {
+    const mst = await fetchMaster(sym);
+    if (!mst || !mst.ohlc) return [];
+    return stockRange === "1y" ? mst.ohlc : mst.ohlc.filter(b => b.t >= Date.now() - DAILY[stockRange] * 86400000);
+  }
+  if (stockRange === "5y" || stockRange === "max") {
+    try { return await fetchOHLC(sym, stockRange === "5y" ? "5y" : "max", stockRange === "5y" ? "1wk" : "1mo"); }
+    catch (e) { return []; }
+  }
+  return [];
+}
+
+async function smApplyOverlay() {
+  if (!smOverlayOn()) return; /* OFF: base renderLW output stands untouched */
+  if (typeof lwSeries === "undefined" || !lwSeries || !lwSeries.setMarkers) return;
+  const sym = stockSym;
+  if (!sym) return;
+  const tok = lwTok;
+  const data = await window.folioSmartMoneyOverlay(sym);
+  if (!data || tok !== lwTok || stockSym !== sym) return;
+  const note = $("lwSmNote");
+  if (note) {
+    note.textContent = !data.mfAvailable
+      ? "Smart Money data is not available yet."
+      : (!data.dealsAvailable ? "Bulk/block deals are not available yet — showing fund holding changes only." : "");
+  }
+  if (!data.mfAvailable && !data.dealsAvailable) return;
+  let bars = [];
+  try { bars = await smOverlayBars(sym); } catch (e) { bars = []; }
+  if (!bars.length || tok !== lwTok || stockSym !== sym) return;
+  const barDays = [...new Set(bars.map(b => dayStr(b.t)))].sort();
+  const SM = window.FolioSmartMoneyMath;
+  if (!SM || !SM.overlayMarkers) return;
+  const raw = SM.overlayMarkers(data.history || [], data.deals || null, barDays);
+  if (!raw.length) return; /* nothing material: the base txn markers stand as-is */
+  /* The user's own transaction markers, recomputed EXACTLY as
+     renderLW builds them, so merging never alters their look. */
+  const txn = (state.txns || []).filter(t => t.sym === sym && t.type !== "DIV")
+    .map(t => ({ time: t.date, position: t.type === "BUY" ? "belowBar" : "aboveBar", color: t.type === "BUY" ? "#089981" : "#f23645", shape: t.type === "BUY" ? "arrowUp" : "arrowDown", text: t.type + " @ " + inr2(t.price) }));
+  let smMarks = raw.map(m => {
+    if (m.kind === "deal") {
+      return m.cls === "sell"
+        ? { time: m.time, position: "aboveBar", color: "#f23645", shape: "arrowDown", text: "Deal sell" }
+        : { time: m.time, position: "belowBar", color: "#089981", shape: "arrowUp", text: "Deal buy" };
+    }
+    if (m.cls === "increased" || m.cls === "new") {
+      return { time: m.time, position: "belowBar", color: "#0a7d4f", shape: "circle", text: m.cls === "new" ? "MF new entry" : "MF increased" };
+    }
+    return { time: m.time, position: "aboveBar", color: "#c23327", shape: "circle", text: m.cls === "exited" ? "MF exited" : "MF reduced" };
+  });
+  /* Cap the TOTAL at 300 markers: transactions always survive; the
+     Smart Money markers are stride-decimated (newest always kept). */
+  const room = 300 - txn.length;
+  if (smMarks.length > room) {
+    if (room <= 0) smMarks = [];
+    else {
+      const step = Math.ceil(smMarks.length / room);
+      const keep = smMarks.filter((_, i) => i % step === 0);
+      if (keep[keep.length - 1] !== smMarks[smMarks.length - 1]) keep.push(smMarks[smMarks.length - 1]);
+      smMarks = keep.slice(0, room);
+    }
+  }
+  const all = txn.concat(smMarks);
+  all.sort((a, b) => a.time < b.time ? -1 : 1);
+  try { lwSeries.setMarkers(all); } catch (e) {}
+}
+if (typeof renderLW === "function") {
+  const _renderLWBaseSM2 = renderLW;
+  renderLW = async function () {
+    const r = await _renderLWBaseSM2.apply(this, arguments);
+    try { smSyncSmLegend(); } catch (e) {}
+    try { await smApplyOverlay(); } catch (e) {}
+    return r;
+  };
+}
+
+/* ================= MARKET HUB (Phase 6C): lazy-loaded markethub.js + entry points ================= */
+let mhModLoading = null;
+window.folioOpenMarketHub = function (opts) {
+  opts = opts || {};
+  if (window.FolioMarketHub && window.FolioMarketHub.open) { window.FolioMarketHub.open(opts); return; }
+  if (!mhModLoading) {
+    mhModLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = "js/markethub.js?v=2"; sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("markethub module failed to load"));
+      document.head.appendChild(sc);
+    });
+  }
+  mhModLoading.then(() => { if (window.FolioMarketHub && window.FolioMarketHub.open) window.FolioMarketHub.open(opts); })
+    .catch(() => { mhModLoading = null; toast("Market Hub could not load — check your connection and try again."); });
+};
+
+/* Market Pulse link — a small "Market Hub" button in the Dashboard
+   pulse panel's head. pulseLoad() creates #pulsePanel synchronously
+   at the start of its run (inside the existing renderDashboard wrap),
+   so one more wrap of renderDashboard can decorate the head right
+   after; the check runs on every dashboard render and adds the
+   button at most once. Decorator only — pulseLoad is untouched. */
+if (typeof renderDashboard === "function") {
+  const _renderDashboardMH = renderDashboard;
+  renderDashboard = function () {
+    const r = _renderDashboardMH.apply(this, arguments);
+    try {
+      const panel = $("pulsePanel");
+      if (panel && !panel.querySelector("[data-mh-open]")) {
+        const head = panel.querySelector(".panel-head");
+        if (head) {
+          const b = document.createElement("button");
+          b.type = "button"; b.className = "mini-btn"; b.dataset.mhOpen = "1";
+          b.textContent = "Market Hub →";
+          b.addEventListener("click", () => { if (window.folioOpenMarketHub) window.folioOpenMarketHub(); });
+          head.appendChild(b);
+        }
+      }
+    } catch (e) {}
+    return r;
+  };
+}
+
+/* ================= MUTUAL FUNDS (Phase 6D): lazy-loaded mutualfunds.js + entry point ================= */
+let mfModLoading = null;
+window.folioOpenMutualFunds = function (opts) {
+  opts = opts || {};
+  if (window.FolioMutualFunds && window.FolioMutualFunds.open) { window.FolioMutualFunds.open(opts); return; }
+  if (!mfModLoading) {
+    mfModLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = "js/mutualfunds.js?v=1"; sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("mutualfunds module failed to load"));
+      document.head.appendChild(sc);
+    });
+  }
+  mfModLoading.then(() => { if (window.FolioMutualFunds && window.FolioMutualFunds.open) window.FolioMutualFunds.open(opts); })
+    .catch(() => { mfModLoading = null; toast("Mutual Funds could not load — check your connection and try again."); });
+};
+
+/* ================= Phase 6E/6F/6G (v124): alert badging, watchlist metadata, calendar =================
+   Three additive features, all presentation-layer:
+   - 6E: the installed app's icon badge shows how many of the user's
+     EXISTING price alerts (state.profile.alerts — the Target / Stop-loss
+     boxes in each holding card, app.js) are currently triggered, per
+     the app's own tgtStatus() evaluation. Nothing about alerts changes:
+     no new state, no new polling — the count is refreshed only where
+     statuses are already recomputed (the doTick chain and the holdings
+     render chain). The Badging API is feature-detected; where it is
+     absent (most desktop browsers) this is a silent no-op.
+   - 6E honesty line: appended into every holding card's Price Alerts
+     box (the exact place alerts are set) by the renderHoldings wrap
+     below — app.js markup itself is untouched.
+   - 6F: per-symbol watchlist metadata (target / note / tags) stored in
+     state.profile.watchMeta — state.watch entries are never written.
+     A decorator in the established folioWatchDecorate style adds a tag
+     button to each row, a meta strip inside rows that have metadata,
+     and a "Target distance" option in the existing sort seg. Rows
+     without metadata show no strip and behave exactly as before.
+   - 6G: window.folioOpenCalendar() lazy-loads js/calendar.js (NOT in
+     SW CORE); window.folioNseHolidays() exposes the Market Hub's one
+     embedded NSE holiday list so the calendar never duplicates it. */
+
+/* PURE6EFG-BEGIN — pure helpers: no DOM, no browser globals, no app
+   state. The Phase 6EFG harness extracts this block and unit-tests it. */
+function folioBadgeCountFromStatuses(statuses) {
+  let n = 0;
+  if (!Array.isArray(statuses)) return 0;
+  for (let i = 0; i < statuses.length; i++) if (statuses[i] === "target" || statuses[i] === "sl") n++;
+  return n;
+}
+function folioWatchDistPct(price, target) {
+  const p = Number(price), t = Number(target);
+  if (!isFinite(p) || !isFinite(t) || p <= 0 || t <= 0) return null;
+  return (t - p) / p * 100;
+}
+function folioWatchMetaNorm(raw) {
+  const out = { target: null, note: "", tags: [] };
+  if (!raw || typeof raw !== "object") return out;
+  const t = Number(raw.target);
+  if (isFinite(t) && t > 0) out.target = t;
+  if (typeof raw.note === "string") out.note = raw.note.slice(0, 280);
+  if (Array.isArray(raw.tags)) {
+    const seen = {};
+    raw.tags.forEach(tag => {
+      const s = String(tag == null ? "" : tag).trim().replace(/\s+/g, " ").slice(0, 24);
+      const k = s.toLowerCase();
+      if (s && !seen[k]) { seen[k] = 1; out.tags.push(s); }
+    });
+    out.tags = out.tags.slice(0, 8);
+  }
+  return out;
+}
+function folioWatchMetaHas(m) {
+  return !!(m && (m.target || (m.note && m.note.trim()) || (m.tags && m.tags.length)));
+}
+function folioWatchSortDist(items) {
+  /* items: [{dist: number|null, ...}] — nearest to target first
+     (smallest absolute distance); items without a distance keep their
+     relative order at the end. Input array is not mutated. */
+  return items.map((it, i) => ({ it: it, i: i })).sort((a, b) => {
+    const da = a.it.dist == null ? null : Math.abs(a.it.dist);
+    const db = b.it.dist == null ? null : Math.abs(b.it.dist);
+    if (da === null && db === null) return a.i - b.i;
+    if (da === null) return 1;
+    if (db === null) return -1;
+    return (da - db) || (a.i - b.i);
+  }).map(x => x.it);
+}
+/* PURE6EFG-END */
+
+/* ---------- 6E: app-icon badge for triggered alerts ---------- */
+let folioBadgeLast = -1;
+function folioBadgeSync() {
+  try {
+    if (!navigator || (!("setAppBadge" in navigator) && !("clearAppBadge" in navigator))) return;
+    const alerts = (typeof state !== "undefined" && state && state.profile && state.profile.alerts) || {};
+    const statuses = Object.keys(alerts)
+      .filter(s => alerts[s] && (alerts[s].target || alerts[s].sl))
+      .map(s => { const st = tgtStatus(s); return st ? st.st : null; });
+    const n = folioBadgeCountFromStatuses(statuses);
+    if (n === folioBadgeLast) return;
+    folioBadgeLast = n;
+    if (n > 0) { if (navigator.setAppBadge) { const r = navigator.setAppBadge(n); if (r && r.catch) r.catch(() => {}); } }
+    else if (navigator.clearAppBadge) { const r2 = navigator.clearAppBadge(); if (r2 && r2.catch) r2.catch(() => {}); }
+  } catch (e) {}
+}
+if (typeof doTick === "function") {
+  const _doTick6E = doTick;
+  doTick = async function () { const r = await _doTick6E.apply(this, arguments); try { folioBadgeSync(); } catch (e) {} return r; };
+}
+
+/* ---------- 6E: honesty line inside the Price Alerts box ---------- */
+const FOLIO_ALERT_HONESTY = "Folio checks these alerts only while the app is open, using delayed prices — they are not live, server-side alerts, and Folio never places an order.";
+function folioAlertHonestyDecorate() {
+  document.querySelectorAll("#view-holdings .dr-block.alerts").forEach(block => {
+    if (block.querySelector(".folio-alert-honesty")) return;
+    const p = document.createElement("p");
+    p.className = "price-meta folio-alert-honesty";
+    p.textContent = FOLIO_ALERT_HONESTY;
+    block.appendChild(p);
+  });
+}
+if (typeof renderHoldings === "function") {
+  const _renderHoldings6E = renderHoldings;
+  renderHoldings = function () {
+    const r = _renderHoldings6E.apply(this, arguments);
+    try { folioAlertHonestyDecorate(); } catch (e) {}
+    try { folioBadgeSync(); } catch (e) {}
+    return r;
+  };
+}
+
+/* ---------- 6F: watchlist metadata (target / note / tags) ---------- */
+function folioWatchMetaStore() { const p = folioProf(); if (!p.watchMeta || typeof p.watchMeta !== "object") p.watchMeta = {}; return p.watchMeta; }
+function folioWatchMetaFor(sym) { const all = folioProf().watchMeta || {}; return folioWatchMetaNorm(all[sym]); }
+
+let wlMetaSheet = null, wlMetaSym = null;
+function folioWatchMetaSheetBuild() {
+  if (wlMetaSheet) return wlMetaSheet;
+  const m = document.createElement("div");
+  m.id = "wlMetaSheet"; m.className = "modal sheet-modal hidden";
+  m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true"); m.setAttribute("aria-label", "Watchlist target, note and tags");
+  m.innerHTML = '<div class="modal-card wlmeta-card">' +
+    '<div class="wlmeta-head"><h3 id="wlMetaTitle">Watchlist note</h3><button type="button" class="icon-btn" data-wlmeta-close aria-label="Close">✕</button></div>' +
+    '<div class="wlmeta-body">' +
+    '<label class="wlmeta-field">Target price (₹)<input type="number" inputmode="decimal" min="0" step="any" id="wlMetaTarget" placeholder="e.g. 2500"></label>' +
+    '<label class="wlmeta-field">Note<textarea id="wlMetaNote" rows="3" maxlength="280" placeholder="Why are you watching this stock?"></textarea></label>' +
+    '<label class="wlmeta-field">Tags (comma separated)<input type="text" id="wlMetaTags" placeholder="e.g. results, long-term" autocomplete="off"></label>' +
+    '<p class="price-meta">Saved with your Folio account data. Shown only on your Watchlist — never in share cards or reports. A target here is a note to yourself, not an order, and it is separate from the price alerts on your holdings. Distance uses the latest delayed price.</p>' +
+    '<div class="wlmeta-btns"><button type="button" class="btn small" data-wlmeta-save>Save</button><button type="button" class="mini-btn danger" data-wlmeta-clear>Clear all</button></div>' +
+    "</div></div>";
+  document.body.appendChild(m);
+  m.querySelector("[data-wlmeta-close]").addEventListener("click", () => m.classList.add("hidden"));
+  m.addEventListener("click", e => { if (e.target === m) m.classList.add("hidden"); });
+  m.querySelector("[data-wlmeta-save]").addEventListener("click", folioWatchMetaSave);
+  m.querySelector("[data-wlmeta-clear]").addEventListener("click", () => {
+    if (wlMetaSym) { const all = folioWatchMetaStore(); delete all[wlMetaSym]; persist(); }
+    m.classList.add("hidden");
+    try { folioWatchMetaDecorate(); } catch (e) {}
+    toast("Watchlist note cleared" + (wlMetaSym ? " for " + wlMetaSym : ""));
+  });
+  wlMetaSheet = m;
+  return m;
+}
+function folioWatchMetaEdit(sym) {
+  wlMetaSym = sym;
+  const m = folioWatchMetaSheetBuild();
+  const meta = folioWatchMetaFor(sym);
+  m.querySelector("#wlMetaTitle").textContent = sym + " — target, note & tags";
+  m.querySelector("#wlMetaTarget").value = meta.target || "";
+  m.querySelector("#wlMetaNote").value = meta.note || "";
+  m.querySelector("#wlMetaTags").value = meta.tags.join(", ");
+  m.classList.remove("hidden");
+}
+function folioWatchMetaSave() {
+  if (!wlMetaSym || !wlMetaSheet) return;
+  const m = wlMetaSheet;
+  const meta = folioWatchMetaNorm({
+    target: Number(m.querySelector("#wlMetaTarget").value) || null,
+    note: m.querySelector("#wlMetaNote").value,
+    tags: String(m.querySelector("#wlMetaTags").value || "").split(",")
+  });
+  const all = folioWatchMetaStore();
+  if (folioWatchMetaHas(meta)) all[wlMetaSym] = meta; else delete all[wlMetaSym];
+  persist();
+  m.classList.add("hidden");
+  try { folioWatchMetaDecorate(); } catch (e) {}
+  toast("Watchlist note saved for " + wlMetaSym);
+}
+function folioWatchDistControl() {
+  const ctl = $("wlControls"); if (!ctl) return;
+  const seg = ctl.querySelector(".seg"); if (!seg || seg.querySelector('[data-wlsort="dist"]')) return;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "seg-btn" + (folioProf().wlSort === "dist" ? " active" : "");
+  b.dataset.wlsort = "dist";
+  b.textContent = "Target distance";
+  b.setAttribute("aria-label", "Sort watchlist by distance to target");
+  b.addEventListener("click", () => {
+    const p = folioProf(); p.wlSort = "dist"; persist();
+    seg.querySelectorAll("[data-wlsort]").forEach(x => x.classList.toggle("active", x === b));
+    try { folioWatchDecorate(); } catch (e) {}
+    try { folioWatchMetaDecorate(); } catch (e) {}
+  });
+  seg.appendChild(b);
+}
+function folioWatchApplyDistSort(el) {
+  const rows = [...el.querySelectorAll(".watchlist-row")];
+  const items = rows.map(row => {
+    const sym = row.dataset.wrow;
+    const meta = folioWatchMetaFor(sym);
+    const p = sym ? priceOf(sym) : null;
+    return { row: row, dist: meta.target ? folioWatchDistPct(p && p.price, meta.target) : null };
+  });
+  folioWatchSortDist(items).forEach(x => el.appendChild(x.row));
+}
+function folioWatchMetaDecorate() {
+  const el = $("watchListEl"); if (!el || !currentUser) return;
+  folioWatchDistControl();
+  [...el.querySelectorAll(".watchlist-row")].forEach(row => {
+    const sym = row.dataset.wrow; if (!sym) return;
+    if (!row.querySelector("[data-wmeta]")) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "watch-x w-meta"; b.dataset.wmeta = sym;
+      b.setAttribute("aria-label", "Target, note and tags for " + sym);
+      b.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.3"/></svg>';
+      b.addEventListener("click", e => { e.stopPropagation(); folioWatchMetaEdit(sym); });
+      const x = row.querySelector("[data-unwatch]");
+      if (x) row.insertBefore(b, x); else row.appendChild(b);
+    }
+    const meta = folioWatchMetaFor(sym);
+    const btn = row.querySelector("[data-wmeta]");
+    if (btn) btn.classList.toggle("w-meta-on", folioWatchMetaHas(meta));
+    let strip = row.querySelector(".wl-meta");
+    if (!folioWatchMetaHas(meta)) { if (strip) strip.remove(); return; }
+    const p = priceOf(sym);
+    const dist = meta.target ? folioWatchDistPct(p && p.price, meta.target) : null;
+    let html = "";
+    if (meta.target) {
+      html += '<span class="wl-meta-tgt">🎯 Target ' + inr2(meta.target) + "</span>";
+      if (dist === null) html += '<span class="wl-meta-dist">price not loaded yet</span>';
+      else if (dist > 0) html += '<span class="wl-meta-dist gain">▲ ' + Math.abs(dist).toFixed(1) + "% to go</span>";
+      else if (dist < 0) html += '<span class="wl-meta-dist loss">▼ ' + Math.abs(dist).toFixed(1) + "% past target</span>";
+      else html += '<span class="wl-meta-dist">At target</span>';
+    }
+    if (meta.note && meta.note.trim()) html += '<span class="wl-meta-note">📝 ' + esc(meta.note) + "</span>";
+    meta.tags.forEach(t => { html += '<span class="wl-tag">#' + esc(t) + "</span>"; });
+    html += '<span class="wl-meta-edit" aria-hidden="true">✎ Edit</span>';
+    if (!strip) {
+      strip = document.createElement("div");
+      strip.className = "wl-meta";
+      strip.setAttribute("role", "button");
+      strip.setAttribute("aria-label", "Edit target, note and tags for " + sym);
+      strip.addEventListener("click", e => { e.stopPropagation(); folioWatchMetaEdit(sym); });
+      row.appendChild(strip);
+    }
+    if (strip.innerHTML !== html) strip.innerHTML = html;
+  });
+  if ((folioProf().wlSort || "fav") === "dist") folioWatchApplyDistSort(el);
+}
+if (typeof renderWatch === "function") {
+  const _renderWatch6F = renderWatch;
+  renderWatch = function () {
+    const r = _renderWatch6F.apply(this, arguments);
+    try { folioWatchMetaDecorate(); } catch (e) {}
+    return r;
+  };
+}
+
+/* ---------- 6G: NSE holidays hook + lazy-loaded calendar.js ---------- */
+let calMhLoading = null;
+window.folioNseHolidays = function () {
+  const ready = () => (window.FolioMarketHub && typeof window.FolioMarketHub.holidays === "function") ? window.FolioMarketHub.holidays() : {};
+  if (window.FolioMarketHub && typeof window.FolioMarketHub.holidays === "function") return Promise.resolve(ready());
+  if (typeof mhModLoading !== "undefined" && mhModLoading) return mhModLoading.then(ready, () => ({}));
+  if (!calMhLoading) {
+    calMhLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = "js/markethub.js?v=2"; sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("markethub module failed to load"));
+      document.head.appendChild(sc);
+    });
+  }
+  return calMhLoading.then(ready, () => ({}));
+};
+let calModLoading = null;
+window.folioOpenCalendar = function (opts) {
+  opts = opts || {};
+  if (window.FolioCalendar && window.FolioCalendar.open) { window.FolioCalendar.open(opts); return; }
+  if (!calModLoading) {
+    calModLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = "js/calendar.js?v=1"; sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("calendar module failed to load"));
+      document.head.appendChild(sc);
+    });
+  }
+  calModLoading.then(() => { if (window.FolioCalendar && window.FolioCalendar.open) window.FolioCalendar.open(opts); })
+    .catch(() => { calModLoading = null; toast("Calendar could not load — check your connection and try again."); });
+};
+
+/* ================= Phase 6H–6K: PWA notes, palette actions, Learn, EN/HI chrome =================
+   6H (PWA): manifest shortcuts live in manifest.json. The update
+   flow already exists (folioV94Install's controllerchange pill,
+   v94) and is untouched. share_target / file_handlers / a custom
+   offline page are DEFERRED BY RULE — see PHASE6HK.md: each needs
+   service-worker fetch handling or a navigate fallback the SW
+   rule forbids changing (the SW already falls back to the cached
+   app shell for offline navigations).
+   6I: the Ctrl+K palette gains an Actions section by WRAPPING
+   cmdkRender (the v64 palette itself is untouched — no fork).
+   Every action routes through the same global the matching UI
+   button calls, so the editing shield and modal behaviour are
+   inherited, never reimplemented.
+   6J: Learn is a lazy module (js/learn.js) like the others.
+   6K: a zero-risk EN/HI layer for CHROME ONLY. It swaps text
+   nodes of explicitly tagged elements; it never touches any
+   heading (folioMerges matches panels by <h2> text), never
+   touches a string app code writes or matches on, and restores
+   the stored originals byte-for-byte when English is chosen. */
+
+/* PURE6HK-BEGIN */
+/* --- 6I: palette action registry (pure; the environment is
+   injected so the harness can prove every run() reaches the
+   route its UI twin uses) --- */
+function folioCmdkActions(env) {
+  env = env || {};
+  function call(name, args) { try { if (typeof env[name] === "function") return env[name].apply(null, args || []); } catch (e) {} }
+  return [
+    { id: "add-txn", icon: "➕", label: "Add transaction", keys: "add buy sell new entry transaction", run: function () { call("openTxn", ["BUY", "", ""]); } },
+    { id: "export-csv", icon: "⬇", label: "Export data (CSV)", keys: "export csv download backup data", run: function () { call("exportCsv"); } },
+    { id: "open-tools", icon: "🧮", label: "Open Calculators & Tools", keys: "tools calculators sip lumpsum fire brokerage xirr goal", run: function () { call("openTools"); } },
+    { id: "open-ptools", icon: "📊", label: "Open Portfolio Tools", keys: "portfolio tools rebalance what-if tax harvesting simulator", run: function () { call("openPTools"); } },
+    { id: "open-smartmoney", icon: "🏦", label: "Open Smart Money", keys: "smart money funds institutions fii mf holdings who owns", run: function () { call("openSmartMoney"); } },
+    { id: "open-markethub", icon: "📈", label: "Open Market Hub", keys: "market hub indices nifty sensex gold dollar crude compare movers", run: function () { call("openMarketHub"); } },
+    { id: "open-mutualfunds", icon: "◉", label: "Open Mutual Funds", keys: "mutual funds mf nav schemes sip returns", run: function () { call("openMutualFunds"); } },
+    { id: "open-calendar", icon: "📅", label: "Open Calendar", keys: "calendar holidays ex-dividend splits events dates", run: function () { call("openCalendar"); } },
+    { id: "open-learn", icon: "📖", label: "Open Learn — glossary", keys: "learn glossary meaning words help xirr beta sharpe nav", run: function () { call("openLearn"); } },
+    { id: "toggle-privacy", icon: "👁", label: "Toggle Privacy Mode", keys: "privacy hide amounts show amounts eye", run: function () { call("togglePrivacy"); } },
+    { id: "toggle-theme", icon: "🌓", label: "Toggle light / dark theme", keys: "theme dark light mode colour color", run: function () { call("clickTheme"); } },
+    { id: "shortcuts", icon: "⌨", label: "Keyboard shortcuts", keys: "keyboard shortcuts keys hotkeys help", run: function () { call("openShortcuts"); } }
+  ];
+}
+function folioCmdkMatch(actions, q) {
+  var needle = String(q == null ? "" : q).trim().toLowerCase();
+  if (!needle) return actions.slice();
+  return actions.filter(function (a) { return (a.label + " " + (a.keys || "")).toLowerCase().indexOf(needle) >= 0; });
+}
+/* --- 6K: the chrome dictionary. `en` is the string the app
+   ships today (the settings-row tagger matches on it); `hi` is
+   the Hindi swap. Keys NOT listed here are never touched. --- */
+var FOLIO_I18N = {
+  "nav.home": { en: "Home", hi: "होम" },
+  "nav.holdings": { en: "Holdings", hi: "होल्डिंग्स" },
+  "nav.watchlist": { en: "Watchlist", hi: "वॉचलिस्ट" },
+  "nav.insights": { en: "Insights", hi: "इनसाइट्स" },
+  "nav.more": { en: "More", hi: "और" },
+  "auth.login": { en: "Login", hi: "लॉगिन" },
+  "auth.signup": { en: "Sign Up", hi: "साइन अप" },
+  "auth.name": { en: "Your name", hi: "आपका नाम" },
+  "auth.email": { en: "Email", hi: "ईमेल" },
+  "auth.password": { en: "Password", hi: "पासवर्ड" },
+  "auth.remember": { en: "Remember me on this device", hi: "इस डिवाइस पर याद रखें" },
+  "auth.forgot": { en: "Forgot password?", hi: "पासवर्ड भूल गए?" },
+  "pop.manage": { en: "Manage your Folio Account", hi: "Folio खाता प्रबंधित करें" },
+  "pop.theme": { en: "Switch Theme", hi: "थीम बदलें" },
+  "pop.logout": { en: "Sign Out", hi: "साइन आउट" },
+  "set.signedin": { en: "Signed in as", hi: "इस खाते से साइन इन" },
+  "set.signout": { en: "Sign out of this device", hi: "इस डिवाइस से साइन आउट" },
+  "set.logemail": { en: "Login email", hi: "लॉगिन ईमेल" },
+  "set.password": { en: "Password", hi: "पासवर्ड" },
+  "set.recovery": { en: "Recovery options", hi: "रिकवरी विकल्प" },
+  "set.autolock": { en: "Auto-lock after 15 minutes of inactivity", hi: "15 मिनट निष्क्रियता के बाद ऑटो-लॉक" },
+  "set.account": { en: "Account", hi: "खाता" },
+  "set.mode": { en: "Saving mode", hi: "सेविंग मोड" },
+  "set.changepw": { en: "Change password", hi: "पासवर्ड बदलें" },
+  "set.report": { en: "Report a problem", hi: "समस्या बताएं" },
+  "set.csv": { en: "Download my data (CSV)", hi: "मेरा डेटा डाउनलोड करें (CSV)" },
+  "set.health": { en: "System health & cache diagnostics", hi: "सिस्टम हेल्थ और कैश जानकारी" },
+  "set.delentries": { en: "Delete all my entries", hi: "मेरी सभी एंट्री हटाएं" },
+  "set.delaccount": { en: "Delete my account and all my data", hi: "मेरा खाता और सारा डेटा हटाएं" }
+};
+function folioI18nT(dict, key, lang) {
+  var e = dict && dict[key];
+  if (!e) return null;
+  if (lang === "hi" && e.hi) return e.hi;
+  return e.en || null;
+}
+/* The exclusion predicate: headings are NEVER eligible (folioMerges
+   matches panels by <h2> text; the same caution covers every
+   heading level), and neither is anything inside one. */
+function folioI18nSafeEl(el) {
+  if (!el || !el.tagName) return false;
+  if (/^H[1-6]$/.test(el.tagName)) return false;
+  try { if (typeof el.closest === "function" && el.closest("h1,h2,h3,h4,h5,h6")) return false; } catch (e) {}
+  return true;
+}
+/* PURE6HK-END */
+
+/* ---------- 6J: lazy-loaded learn.js ---------- */
+let learnModLoading = null;
+window.folioOpenLearn = function (opts) {
+  opts = opts || {};
+  if (window.FolioLearn && window.FolioLearn.open) { window.FolioLearn.open(opts); return; }
+  if (!learnModLoading) {
+    learnModLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = "js/learn.js?v=1"; sc.async = true;
+      sc.onload = () => res(); sc.onerror = () => rej(new Error("learn module failed to load"));
+      document.head.appendChild(sc);
+    });
+  }
+  learnModLoading.then(() => { if (window.FolioLearn && window.FolioLearn.open) window.FolioLearn.open(opts); })
+    .catch(() => { learnModLoading = null; toast("Learn could not load — check your connection and try again."); });
+};
+
+/* ---------- 6I: shortcuts cheat sheet (v89-adopted sheet) ----------
+   Every row below was verified against the shipped handlers:
+   Ctrl/⌘+K and the palette Enter rule (platPalette block), "/" /
+   N / A / 1–7 / M / Esc (the features.js shortcut handler), Enter
+   in a popup (the v95 handler), suggestion-list arrows
+   (attachSuggest in app.js), swipe + pull-to-refresh (the touch
+   IIFE). Nothing is listed that the app does not actually do. */
+const FOLIO_SCUTS = [
+  ["Ctrl / ⌘ + K", "Open the command palette — jump to a screen, open a stock, or run an action"],
+  ["/", "Go to Watchlist and focus its search box"],
+  ["N or A", "Add a transaction"],
+  ["1 – 7", "Switch screens: 1 Home · 2 Holdings · 3 Watchlist · 4 Insights · 5 News · 6 History · 7 Account"],
+  ["M", "Privacy Mode on / off (hide or show amounts)"],
+  ["Esc", "Close the open popup or sheet; also closes an open holding card"],
+  ["Enter", "In the palette: open the first match. In a popup with one main button: press that button"],
+  ["↑ ↓ + Enter", "In a suggestion list: move through the list, then pick (Esc closes the list)"]
+];
+let scutsEl = null;
+function folioScutsOpen() {
+  if (!scutsEl) {
+    scutsEl = document.createElement("div");
+    scutsEl.id = "scutsSheet"; scutsEl.className = "modal sheet-modal hidden";
+    scutsEl.setAttribute("role", "dialog"); scutsEl.setAttribute("aria-modal", "true"); scutsEl.setAttribute("aria-label", "Keyboard shortcuts");
+    scutsEl.innerHTML = '<div class="modal-card scuts-card"><div class="learn-head"><h3>Keyboard shortcuts</h3>' +
+      '<button type="button" class="icon-btn" data-scuts-close="1" aria-label="Close">✕</button></div>' +
+      FOLIO_SCUTS.map(r => '<div class="scut-row"><span class="scut-keys">' + esc(r[0]) + '</span><span class="scut-desc">' + esc(r[1]) + "</span></div>").join("") +
+      '<p class="price-meta scuts-note">Shortcuts pause while you are typing in a field or while a popup is open. On touch screens: swipe left or right to move between the main screens, and pull down at the top of a screen to refresh prices.</p></div>';
+    document.body.appendChild(scutsEl);
+    scutsEl.addEventListener("click", e => { if (e.target === scutsEl || e.target.closest("[data-scuts-close]")) scutsEl.classList.add("hidden"); });
+  }
+  scutsEl.classList.remove("hidden");
+}
+window.folioScutsOpen = folioScutsOpen;
+
+/* ---------- 6I: palette Actions section (cmdkRender wrap) ---------- */
+function cmdk6Env() {
+  return {
+    openTxn: function (t, s, n) { if (typeof openTxn === "function") openTxn(t, s, n); },
+    exportCsv: function () { const b = $("exportBtn"); if (b) { b.click(); return; } if (typeof exportCsv === "function") exportCsv(); },
+    openTools: function () { if (window.folioOpenTools) window.folioOpenTools(); },
+    openPTools: function () { if (window.folioOpenPTools) window.folioOpenPTools(); },
+    openSmartMoney: function () { if (window.folioOpenSmartMoney) window.folioOpenSmartMoney(); },
+    openMarketHub: function () { if (window.folioOpenMarketHub) window.folioOpenMarketHub(); },
+    openMutualFunds: function () { if (window.folioOpenMutualFunds) window.folioOpenMutualFunds(); },
+    openCalendar: function () { if (window.folioOpenCalendar) window.folioOpenCalendar(); },
+    openLearn: function () { if (window.folioOpenLearn) window.folioOpenLearn(); },
+    togglePrivacy: function () { if (typeof window.togglePrivacy === "function") window.togglePrivacy(); },
+    clickTheme: function () { const b = $("themeBtn"); if (b) b.click(); },
+    openShortcuts: function () { folioScutsOpen(); }
+  };
+}
+function cmdk6Decorate(q) {
+  const list = $("cmdkList"); if (!list) return;
+  const pop = $("cmdkPop"); if (!pop) return;
+  const card = pop.querySelector(".cmdk-card");
+  if (card && !card.querySelector("#cmdk6Foot")) {
+    const f = document.createElement("div");
+    f.id = "cmdk6Foot"; f.className = "cmdk6-foot";
+    f.innerHTML = '<button type="button" class="cmdk6-scuts" id="cmdk6Scuts">⌨ Keyboard shortcuts</button><span class="cmdk6-hint">Actions run the same buttons you tap</span>';
+    card.appendChild(f);
+    f.querySelector("#cmdk6Scuts").addEventListener("click", () => { pop.classList.add("hidden"); folioScutsOpen(); });
+  }
+  const acts = folioCmdkMatch(folioCmdkActions(cmdk6Env()), q);
+  if (!acts.length) return;
+  const sep = document.createElement("div");
+  sep.className = "cmdk6-sep"; sep.textContent = "Actions";
+  list.appendChild(sep);
+  acts.forEach(a => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "cmdk-item cmdk6-item"; b.dataset.cmdk6 = a.id;
+    b.textContent = a.icon + " " + a.label;
+    b.addEventListener("click", () => { pop.classList.add("hidden"); a.run(); });
+    list.appendChild(b);
+  });
+}
+if (typeof cmdkRender === "function") {
+  const _cmdkRender6I = cmdkRender;
+  cmdkRender = function (q) {
+    const r = _cmdkRender6I.apply(this, arguments);
+    try { cmdk6Decorate(q); } catch (e) {}
+    return r;
+  };
+}
+
+/* ---------- 6K: EN/HI chrome layer (scaffolding) ----------
+   Coverage is ONLY the tagged set below. Deliberately excluded
+   (see PHASE6HK.md for the full list): every heading; the auth
+   submit button (protected app.js rewrites its text on mode
+   switch and busy state); the Google button (authflow.js
+   rewrites its label); the account-popover badge and privacy
+   row (features.js rewrites both from live state); all More
+   rows, panel titles, buttons inside content screens, numbers,
+   dates and ₹ amounts (out of this phase's chrome-only scope). */
+const FOLIO_LANG_LS = "folio_lang";
+let folioI18nNodes = [];
+function folioI18nLang() {
+  try { if (typeof state !== "undefined" && state && state.profile && (state.profile.lang === "hi" || state.profile.lang === "en")) return state.profile.lang; } catch (e) {}
+  try { const l = localStorage.getItem(FOLIO_LANG_LS); if (l === "hi" || l === "en") return l; } catch (e) {}
+  return "en";
+}
+function folioI18nTextNode(el) {
+  if (!el || !el.childNodes) return null;
+  for (let i = 0; i < el.childNodes.length; i++) {
+    const n = el.childNodes[i];
+    if (n.nodeType === 3 && n.nodeValue && n.nodeValue.trim()) return n;
+  }
+  return null;
+}
+function folioI18nTag(el, key) {
+  if (!folioI18nSafeEl(el)) return;
+  const node = folioI18nTextNode(el);
+  if (!node || node.__folioI18nKey) return;
+  node.__folioI18nKey = key;
+  node.__folioI18nOrig = node.nodeValue;
+  folioI18nNodes.push(node);
+}
+function folioI18nTagAll() {
+  const tag = (sel, key) => { const el = document.querySelector(sel); if (el) folioI18nTag(el, key); };
+  tag('[data-bnav="dashboard"] span', "nav.home");
+  tag('[data-bnav="holdings"] span', "nav.holdings");
+  tag('[data-bnav="watchlist"] span', "nav.watchlist");
+  tag('[data-bnav="insights"] span', "nav.insights");
+  tag("#dockMoreBtn span", "nav.more");
+  tag("#tabLogin", "auth.login");
+  tag("#tabSignup", "auth.signup");
+  const fieldLabel = id => { const inp = $(id); const l = inp && inp.closest ? inp.closest("label") : null; return l ? l.querySelector(".ds-field__label") : null; };
+  const fl1 = fieldLabel("authName"); if (fl1) folioI18nTag(fl1, "auth.name");
+  const fl2 = fieldLabel("authEmail"); if (fl2) folioI18nTag(fl2, "auth.email");
+  const fl3 = fieldLabel("authPass"); if (fl3) folioI18nTag(fl3, "auth.password");
+  tag("#authView .remember-row", "auth.remember");
+  tag("#forgotLink", "auth.forgot");
+  tag("#apManage", "pop.manage");
+  tag("#apTheme", "pop.theme");
+  tag("#apLogout", "pop.logout");
+  const byText = {};
+  Object.keys(FOLIO_I18N).forEach(k => { if (k.indexOf("set.") === 0) byText[FOLIO_I18N[k].en] = k; });
+  document.querySelectorAll("#view-profile .setting-row > span:first-child").forEach(sp => {
+    const key = byText[(sp.textContent || "").trim()];
+    if (key) folioI18nTag(sp, key);
+  });
+}
+function folioI18nApply() {
+  try { folioI18nTagAll(); } catch (e) {}
+  const lang = folioI18nLang();
+  folioI18nNodes.forEach(node => {
+    const orig = node.__folioI18nOrig;
+    if (lang !== "hi") { if (node.nodeValue !== orig) node.nodeValue = orig; return; }
+    const t = folioI18nT(FOLIO_I18N, node.__folioI18nKey, "hi");
+    if (!t) { if (node.nodeValue !== orig) node.nodeValue = orig; return; }
+    node.nodeValue = orig.replace(orig.trim(), t);
+  });
+  try { document.documentElement.lang = lang; } catch (e) {}
+  document.querySelectorAll("[data-lang-opt]").forEach(b => b.classList.toggle("active", b.dataset.langOpt === lang));
+}
+window.folioI18nApply = folioI18nApply;
+function folioI18nSetLang(lang) {
+  lang = lang === "hi" ? "hi" : "en";
+  try { localStorage.setItem(FOLIO_LANG_LS, lang); } catch (e) {}
+  try {
+    if (typeof state !== "undefined" && state && state.profile && typeof currentUser !== "undefined" && currentUser) {
+      state.profile.lang = lang;
+      persist();
+    }
+  } catch (e) {}
+  folioI18nApply();
+  try { toast(lang === "hi" ? "भाषा: हिन्दी — सिर्फ मेनू और सेटिंग्स के नाम बदले हैं" : "Language: English"); } catch (e) {}
+}
+function folioLangRowEnsure() {
+  if ($("folioLangRow")) return;
+  const form = $("profileForm"); if (!form) return;
+  const row = document.createElement("div");
+  row.className = "setting-row"; row.id = "folioLangRow";
+  row.innerHTML = '<span>Language · भाषा</span><span class="seg seg-small folio-lang-seg" role="group" aria-label="App language"><button type="button" class="seg-btn" data-lang-opt="en">English</button><button type="button" class="seg-btn" data-lang-opt="hi">हिन्दी</button></span>';
+  form.after(row);
+  row.querySelectorAll("[data-lang-opt]").forEach(b => b.addEventListener("click", () => folioI18nSetLang(b.dataset.langOpt)));
+}
+/* Apply at boot from the device mirror (the auth screen predates
+   any profile), then re-apply whenever the profile renders — the
+   account's state.profile.lang wins and re-mirrors to the device. */
+try { folioLangRowEnsure(); folioI18nApply(); } catch (e) {}
+if (typeof renderProfile === "function") {
+  const _renderProfile6K = renderProfile;
+  renderProfile = function () {
+    const r = _renderProfile6K.apply(this, arguments);
+    try {
+      folioLangRowEnsure();
+      try { if (typeof state !== "undefined" && state && state.profile && (state.profile.lang === "hi" || state.profile.lang === "en")) localStorage.setItem(FOLIO_LANG_LS, state.profile.lang); } catch (e) {}
+      folioI18nApply();
+    } catch (e) {}
+    return r;
+  };
+}
+
+/* ================================================================
+   PHASE 7 — MOTION SYSTEM
+
+   One effective mode drives everything: html[data-anim] is set
+   from the Animations setting (state.profile.animations:
+   auto/full/reduced/off) resolved against the device
+   reduce-motion hint — the hint ALWAYS caps the result (Full on a
+   reduce-motion device resolves to Reduced). CSS keys off the
+   attribute (ds.css token gating + the style.css Phase 7 layer);
+   the JS pieces below read the same resolution:
+   - count-up: animNum (app.js) is wrapped by reassignment — the
+     codebase's decorator pattern. In Full it animates from the
+     previous value over 300ms (--dur-3); in Reduced/Off, under
+     Privacy Mode, or while the editing shield is up it writes the
+     final value directly, exactly as the original does after its
+     first run. (The original's own dashAnimated flag becomes
+     inert: it was only ever read by the original animNum.)
+   - view transitions: switchView is wrapped once more (this wrap
+     sits inside router.js's, which loads later and stays the
+     outermost). In Full, with document.startViewTransition
+     available, real tab switches run inside it; the first switch
+     after boot, same-view switches, switches under a modal and
+     every non-Full mode keep the class-based entrance.
+   - FLIP: folioWatchDecorate / folioWatchMetaDecorate are wrapped
+     so a re-sort that actually changes row ORDER animates the
+     rows from their old tops (transform only, <=300ms, <=30 rows,
+     Full only). Order-preserving decorate calls never animate.
+   - haptics: one delegated click listener, four deliberate spots
+     (theme toggle, privacy toggle, holding-card alert Save,
+     watchlist alert Save, watchlist note/tag Save), gated by
+     state.profile.haptics (default ON) — haptics are not visual
+     motion, so they are NOT tied to the Animations mode.
+   Append-only: no existing line is edited; every integration is
+   a reassignment wrap or a new node.
+   ================================================================ */
+/* PURE7-BEGIN */
+function folioAnimResolve(setting, prmReduce) {
+  var s = (setting === "full" || setting === "reduced" || setting === "off") ? setting : "auto";
+  if (s === "off") return "off";
+  if (s === "reduced") return "reduced";
+  /* full and auto both yield to the device hint */
+  return prmReduce ? "reduced" : "full";
+}
+function folioCountValue(from, to, k) {
+  if (!(k > 0)) return from;
+  if (k >= 1) return to;
+  var e = 1 - Math.pow(1 - k, 3); /* easeOutCubic — the curve the original animNum used */
+  return from + (to - from) * e;
+}
+function folioFlipPlan(beforeKeys, afterKeys, beforeTops, afterTops) {
+  if (!Array.isArray(beforeKeys) || !Array.isArray(afterKeys)) return [];
+  var same = beforeKeys.length === afterKeys.length;
+  if (same) for (var i = 0; i < beforeKeys.length; i++) if (beforeKeys[i] !== afterKeys[i]) { same = false; break; }
+  if (same) return []; /* decoration without a re-order never animates */
+  var plan = [];
+  afterKeys.forEach(function (k) {
+    var b = beforeTops ? beforeTops[k] : undefined, a = afterTops ? afterTops[k] : undefined;
+    if (typeof b === "number" && typeof a === "number" && b !== a) plan.push({ key: k, dy: b - a });
+  });
+  return plan;
+}
+/* PURE7-END */
+
+const FOLIO_ANIM_LS = "folio_anim";
+const FOLIO_HAPTICS_LS = "folio_haptics";
+const FOLIO_COUNT_MS = 300; /* mirrors --dur-3, the token ceiling */
+function folioAnimPRM() {
+  try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; }
+}
+function folioAnimSetting() {
+  try { if (typeof state !== "undefined" && state && state.profile && ["auto", "full", "reduced", "off"].indexOf(state.profile.animations) >= 0) return state.profile.animations; } catch (e) {}
+  try { const l = localStorage.getItem(FOLIO_ANIM_LS); if (["auto", "full", "reduced", "off"].indexOf(l) >= 0) return l; } catch (e) {}
+  return "auto";
+}
+function folioAnimEffective() { return folioAnimResolve(folioAnimSetting(), folioAnimPRM()); }
+function folioAnimApply() {
+  const s = folioAnimSetting();
+  try { document.documentElement.dataset.anim = folioAnimResolve(s, folioAnimPRM()); } catch (e) {}
+  try {
+    if (typeof state !== "undefined" && state && state.profile && ["auto", "full", "reduced", "off"].indexOf(state.profile.animations) >= 0) localStorage.setItem(FOLIO_ANIM_LS, state.profile.animations);
+  } catch (e) {}
+  document.querySelectorAll("[data-anim-opt]").forEach(b => b.classList.toggle("active", b.dataset.animOpt === s));
+}
+function folioAnimSet(mode) {
+  if (["auto", "full", "reduced", "off"].indexOf(mode) < 0) mode = "auto";
+  try { localStorage.setItem(FOLIO_ANIM_LS, mode); } catch (e) {}
+  try {
+    if (typeof state !== "undefined" && state && state.profile && typeof currentUser !== "undefined" && currentUser) {
+      state.profile.animations = mode;
+      persist();
+    }
+  } catch (e) {}
+  folioAnimApply();
+}
+function folioHapticsOn() {
+  try { if (typeof state !== "undefined" && state && state.profile && typeof state.profile.haptics === "boolean") return state.profile.haptics; } catch (e) {}
+  try { const l = localStorage.getItem(FOLIO_HAPTICS_LS); if (l === "1") return true; if (l === "0") return false; } catch (e) {}
+  return true;
+}
+function folioHapticsSet(on) {
+  try { localStorage.setItem(FOLIO_HAPTICS_LS, on ? "1" : "0"); } catch (e) {}
+  try {
+    if (typeof state !== "undefined" && state && state.profile && typeof currentUser !== "undefined" && currentUser) {
+      state.profile.haptics = !!on;
+      persist();
+    }
+  } catch (e) {}
+  const t = $("folioHapticsToggle"); if (t) t.checked = folioHapticsOn();
+}
+function folioAnimRowsEnsure() {
+  if (!$("folioAnimRow")) {
+    const anchor = $("folioLangRow") || $("profileForm"); if (!anchor) return;
+    const row = document.createElement("div");
+    row.className = "setting-row"; row.id = "folioAnimRow";
+    row.innerHTML = '<span>Animations</span><span class="seg seg-small folio-anim-seg" role="group" aria-label="Animations"><button type="button" class="seg-btn" data-anim-opt="auto">Auto</button><button type="button" class="seg-btn" data-anim-opt="full">Full</button><button type="button" class="seg-btn" data-anim-opt="reduced">Reduced</button><button type="button" class="seg-btn" data-anim-opt="off">Off</button></span>';
+    anchor.after(row);
+    row.querySelectorAll("[data-anim-opt]").forEach(b => b.addEventListener("click", () => folioAnimSet(b.dataset.animOpt)));
+  }
+  if (!$("folioHapticsRow")) {
+    const a2 = $("folioAnimRow") || $("folioLangRow") || $("profileForm"); if (!a2) return;
+    const r2 = document.createElement("div");
+    r2.className = "setting-row"; r2.id = "folioHapticsRow";
+    r2.innerHTML = '<span>Haptics — tiny vibration on key taps</span><input type="checkbox" id="folioHapticsToggle" class="switch">';
+    a2.after(r2);
+    const note = document.createElement("p");
+    note.className = "folio-anim-note"; note.id = "folioAnimNote";
+    note.textContent = "Auto follows your device's reduce-motion setting — and that device setting always wins. Reduced keeps gentle fades only. Off makes everything instant. Loading spinners keep working in every mode.";
+    r2.after(note);
+    r2.querySelector("#folioHapticsToggle").addEventListener("change", ev => folioHapticsSet(!!ev.target.checked));
+  }
+  const t = $("folioHapticsToggle"); if (t) t.checked = folioHapticsOn();
+  folioAnimApply();
+}
+/* Apply at boot from the device mirror (the profile may not be
+   loaded yet), then re-apply whenever the profile renders — the
+   account's state.profile.animations wins and re-mirrors. */
+try { folioAnimRowsEnsure(); folioAnimApply(); } catch (e) {}
+try {
+  const _mq7 = window.matchMedia("(prefers-reduced-motion: reduce)");
+  if (_mq7 && _mq7.addEventListener) _mq7.addEventListener("change", () => { try { folioAnimApply(); } catch (e) {} });
+} catch (e) {}
+if (typeof renderProfile === "function") {
+  const _renderProfile7 = renderProfile;
+  renderProfile = function () {
+    const r = _renderProfile7.apply(this, arguments);
+    try { folioAnimRowsEnsure(); folioAnimApply(); } catch (e) {}
+    return r;
+  };
+}
+
+/* ---- count-up: the animNum wrap ---- */
+if (typeof animNum === "function") {
+  animNum = function (el, val, fmt) {
+    if (!el) return;
+    const direct = !isFinite(val) || folioAnimEffective() !== "full" ||
+      (document.body && document.body.classList.contains("privacy-on")) ||
+      (typeof uiBusy === "function" && uiBusy());
+    if (direct) {
+      if (el.__folioCount) { try { cancelAnimationFrame(el.__folioCount.raf); } catch (e) {} el.__folioCount = null; }
+      el.textContent = fmt(val);
+      return;
+    }
+    const prev = el.__folioCount;
+    const from = prev && isFinite(prev.val) ? prev.val : 0;
+    const st = { val: val, raf: 0, lastText: null };
+    el.__folioCount = st;
+    const t0 = performance.now();
+    const stepFn = now => {
+      if (el.__folioCount !== st || !el.isConnected) return;        /* superseded or gone: yield */
+      if (st.lastText !== null && el.textContent !== st.lastText) return; /* a re-render wrote a newer value mid-count: it wins */
+      const k = Math.min(1, (now - t0) / FOLIO_COUNT_MS);
+      const txt = fmt(folioCountValue(from, val, k));
+      el.textContent = txt; st.lastText = txt;
+      if (k < 1) st.raf = requestAnimationFrame(stepFn);
+    };
+    st.raf = requestAnimationFrame(stepFn);
+  };
+}
+
+/* ---- view transitions: the switchView wrap (inside the router's) ---- */
+if (typeof switchView === "function") {
+  const _switchView7 = switchView;
+  let folioVtArmed = false;
+  switchView = function (name) {
+    const cur = document.body && document.body.dataset ? document.body.dataset.view : null;
+    let canVT = false;
+    try {
+      canVT = folioVtArmed && folioAnimEffective() === "full" &&
+        typeof document.startViewTransition === "function" && !document.hidden &&
+        !!name && name !== cur && !document.querySelector(".modal:not(.hidden)") &&
+        !(typeof uiBusy === "function" && uiBusy());
+    } catch (e) { canVT = false; }
+    folioVtArmed = true;
+    if (!canVT) return _switchView7.apply(this, arguments);
+    try {
+      document.documentElement.classList.add("vt-active");
+      const t = document.startViewTransition(() => { _switchView7.apply(this, arguments); });
+      const done = () => { try { document.documentElement.classList.remove("vt-active"); } catch (e) {} };
+      if (t && t.finished && t.finished.then) t.finished.then(done, done); else done();
+    } catch (e) {
+      try { document.documentElement.classList.remove("vt-active"); } catch (x) {}
+      return _switchView7.apply(this, arguments);
+    }
+  };
+}
+
+/* ---- FLIP for watchlist re-sorts ---- */
+function folioFlipAround(orig, args, self) {
+  const el = $("watchListEl");
+  if (!el || folioAnimEffective() !== "full" || (typeof uiBusy === "function" && uiBusy())) return orig.apply(self, args);
+  const view = el.closest ? el.closest(".view") : null;
+  if (view && view.classList.contains("hidden")) return orig.apply(self, args);
+  const rows0 = Array.prototype.slice.call(el.querySelectorAll(".watchlist-row"));
+  if (!rows0.length || rows0.length > 30) return orig.apply(self, args);
+  const keys0 = rows0.map(r => r.dataset.wrow), tops0 = {};
+  rows0.forEach(r => { tops0[r.dataset.wrow] = r.getBoundingClientRect().top; });
+  const out = orig.apply(self, args);
+  try {
+    const rows1 = Array.prototype.slice.call(el.querySelectorAll(".watchlist-row"));
+    const tops1 = {}, byKey = {};
+    rows1.forEach(r => { tops1[r.dataset.wrow] = r.getBoundingClientRect().top; byKey[r.dataset.wrow] = r; });
+    folioFlipPlan(keys0, rows1.map(r => r.dataset.wrow), tops0, tops1).forEach(p => {
+      const row = byKey[p.key]; if (!row) return;
+      row.style.transition = "none";
+      row.style.transform = "translateY(" + p.dy + "px)";
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        row.style.transition = "transform var(--dur-3) var(--ease)";
+        row.style.transform = "";
+        setTimeout(() => { row.style.transition = ""; row.style.transform = ""; }, 340);
+      }));
+    });
+  } catch (e) {}
+  return out;
+}
+if (typeof folioWatchDecorate === "function") {
+  const _folioWatchDecorate7 = folioWatchDecorate;
+  folioWatchDecorate = function () { return folioFlipAround(_folioWatchDecorate7, arguments, this); };
+}
+if (typeof folioWatchMetaDecorate === "function") {
+  const _folioWatchMetaDecorate7 = folioWatchMetaDecorate;
+  folioWatchMetaDecorate = function () { return folioFlipAround(_folioWatchMetaDecorate7, arguments, this); };
+}
+
+/* ---- haptics: deliberate confirmations only ---- */
+function folioBuzz() {
+  try { if (!folioHapticsOn()) return; if (navigator && navigator.vibrate) navigator.vibrate(10); } catch (e) {}
+}
+document.addEventListener("click", e => {
+  const t = e.target && e.target.closest ? e.target.closest("#themeBtn, #privacyBtn, [data-alertsave], .wa-save, [data-wlmeta-save]") : null;
+  if (t) folioBuzz();
+}, false);
+
+window.FolioMotion = { resolve: folioAnimResolve, effective: folioAnimEffective, apply: folioAnimApply, set: folioAnimSet, countValue: folioCountValue, flipPlan: folioFlipPlan };

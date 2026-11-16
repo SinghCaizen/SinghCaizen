@@ -108,6 +108,8 @@
   --gold-soft: #e3c565;
   --gold-deep: #e3c565;     /* on dark surfaces the soft gold IS the AA-safe gold text */
 
+  --focus: var(--accent);   /* Phase 8 fix: was defined only in the light block, so var(--focus) never resolved in dark theme */
+
   --toast-bg: #edf3ee;
   --toast-text: #0b0e0c;
   --toast-action: #0a7d4f;
@@ -750,3 +752,38 @@ body.privacy-on .ds-amt { filter: blur(7px); transition: filter var(--dur-2) var
 @media (hover: hover) {
   .ds-tip:hover .ds-tip__bubble { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* ================================================================
+   PHASE 7 — MOTION TOKENS (semantic aliases + mode gating)
+
+   The Phase 1 tokens above (--dur-1/2/3, --ease, --ease-out) stay
+   the single source every component reads. Phase 7 adds:
+   - semantic aliases --dur-fast / --dur-base / --dur-slow (the
+     Prompt-2 vocabulary) pointing at the same three tokens, plus
+     --ease-in (exits) and --ease-spring (the sheet settle);
+   - mode gating keyed on html[data-anim], the EFFECTIVE mode
+     resolved by js/features.js folioAnimResolve() (and pre-paint
+     by assets/theme-init.js) from the user's Animations setting
+     (state.profile.animations: auto/full/reduced/off) and the
+     device reduce-motion hint, which always caps the result.
+
+   Reduced: a shorter duration scale — but ONLY when the device
+   itself has no reduce-motion preference. Under
+   prefers-reduced-motion the Phase 1 collapse above (.01ms)
+   keeps governing untouched: the device setting always wins.
+   Off: the tokens collapse exactly like the PRM collapse, in
+   every device state — components that read the tokens stop
+   animating; style.css's Phase 7 layer handles the components
+   that hard-code their durations.
+   ================================================================ */
+:root {
+  --dur-fast: var(--dur-1);
+  --dur-base: var(--dur-2);
+  --dur-slow: var(--dur-3);
+  --ease-in: cubic-bezier(.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(.34, 1.25, .4, 1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  html[data-anim="reduced"] { --dur-1: 90ms; --dur-2: 140ms; --dur-3: 200ms; }
+}
+html[data-anim="off"] { --dur-1: .01ms; --dur-2: .01ms; --dur-3: .01ms; }
