@@ -1,0 +1,789 @@
+/* ================================================================
+   FOLIO — DESIGN SYSTEM (Phase 1, redesign v2)
+   Self-contained component library. Every selector is a .ds- class
+   (or a descendant of one); the ONLY element-level selectors are
+   :root / [data-theme] token blocks. Nothing here resets or styles
+   bare elements, so this file can load before or after style.css
+   without fighting it. Adoption notes: PHASE1-DESIGN-SYSTEM.md.
+
+   Theme convention: LIGHT tokens live on :root (and, explicitly, on
+   [data-theme="light"]); DARK tokens on [data-theme="dark"].
+   style.css (v108) uses the inverse split (:root = dark). Phase 2
+   must flip ONE of the two files when they are combined — see doc.
+
+   Motion rule: transitions/animations animate transform and opacity
+   ONLY. Durations come from --dur-1/2/3; under
+   prefers-reduced-motion the tokens collapse and keyframed
+   components are switched off explicitly.
+   ================================================================ */
+
+/* ================= TOKENS — LIGHT (default) ================= */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* surfaces */
+  --bg: #f3f5f3;            /* app background */
+  --panel: #ffffff;         /* surface 1 — cards */
+  --panel-2: #edf1ed;       /* surface 2 — tiles, tracks, wells */
+  --panel-3: #e3eae3;       /* surface 3 — deepest well / pressed */
+  --input: #ffffff;         /* field background */
+  --scrim: rgba(10, 16, 12, .48);
+  --glass-bg: rgba(255, 255, 255, .80);   /* capsule nav / header */
+  --glass-line: rgba(21, 33, 26, .08);
+
+  /* text + lines */
+  --text: #15211a;
+  --muted: #5f6d62;         /* AA-adjusted from v108 #68766c (was 4.19:1 on --panel-2, now 4.78:1) */
+  --line: #e2e8e2;          /* decorative hairlines only */
+  --line-strong: #7d8f83;   /* interactive boundaries (inputs) — 3.43:1 on --input */
+
+  /* accent + semantics */
+  --accent: #0a7d4f;        /* deep green — the functional accent */
+  --accent-ink: #ffffff;    /* text ON an accent fill — 5.17:1 */
+  --accent-soft: rgba(10, 125, 79, .10);
+  --pos: #0a7d4f;
+  --neg: #c23327;           /* AA-adjusted from v108 #cf3529 (was 4.39:1 on --panel-2, now 4.85:1) */
+  --warn: #8f5d07;          /* AA-adjusted from v108 #a86e0a (was 3.76:1 on --panel-2, now 4.93:1) */
+  --pos-soft: rgba(10, 125, 79, .10);
+  --neg-soft: rgba(194, 51, 39, .10);
+  --warn-soft: rgba(143, 93, 7, .12);
+
+  /* brand — gold is for brand moments ONLY, never body text */
+  --gold: #c9a227;
+  --gold-soft: #e3c565;
+  --gold-deep: #7a5c0e;     /* the only gold allowed as text in light theme (6.24:1 on --panel) */
+
+  /* toast (inverted surface) */
+  --toast-bg: #15211a;
+  --toast-text: #f3f5f3;
+  --toast-action: #e3c565;
+
+  --focus: var(--accent);   /* focus ring colour — ≥3:1 on every surface */
+
+  /* elevation */
+  --sh-1: 0 1px 2px rgba(21, 33, 26, .05), 0 6px 18px rgba(21, 33, 26, .05);
+  --sh-2: 0 16px 40px rgba(21, 33, 26, .13), 0 4px 12px rgba(21, 33, 26, .07);
+  --sh-3: 0 24px 64px rgba(21, 33, 26, .20), 0 8px 20px rgba(21, 33, 26, .10);
+  --sh-nav: 0 10px 30px rgba(21, 33, 26, .16), 0 2px 8px rgba(21, 33, 26, .08);
+
+  /* legacy aliases — same names style.css already uses */
+  --green: var(--accent);
+  --gain: var(--pos);
+  --loss: var(--neg);
+  --red: var(--neg);
+  --surface: var(--panel);
+  --ink: var(--text);
+}
+
+/* ================= TOKENS — DARK ================= */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0b0e0c;
+  --panel: #151916;
+  --panel-2: #1e2420;
+  --panel-3: #262e28;
+  --input: #10130f;
+  --scrim: rgba(0, 0, 0, .60);
+  --glass-bg: rgba(21, 25, 22, .72);
+  --glass-line: rgba(237, 243, 238, .09);
+
+  --text: #edf3ee;
+  --muted: #9db1a3;
+  --line: #27302a;
+  --line-strong: #5b6f62;   /* 3.47:1 on --input */
+
+  --accent: #2fbd6b;
+  --accent-ink: #04231a;    /* dark ink on the bright green — 6.83:1 (white would be 2.3:1) */
+  --accent-soft: rgba(47, 189, 107, .14);
+  --pos: #35c26e;
+  --neg: #ff6f61;
+  --warn: #e8b23f;
+  --pos-soft: rgba(53, 194, 110, .14);
+  --neg-soft: rgba(255, 111, 97, .13);
+  --warn-soft: rgba(232, 178, 63, .13);
+
+  --gold: #c9a227;
+  --gold-soft: #e3c565;
+  --gold-deep: #e3c565;     /* on dark surfaces the soft gold IS the AA-safe gold text */
+
+  --focus: var(--accent);   /* Phase 8 fix: was defined only in the light block, so var(--focus) never resolved in dark theme */
+
+  --toast-bg: #edf3ee;
+  --toast-text: #0b0e0c;
+  --toast-action: #0a7d4f;
+
+  --sh-1: 0 1px 2px rgba(0, 0, 0, .35), 0 4px 14px rgba(0, 0, 0, .22);
+  --sh-2: 0 12px 34px rgba(0, 0, 0, .50), 0 4px 12px rgba(0, 0, 0, .35);
+  --sh-3: 0 24px 64px rgba(0, 0, 0, .60), 0 8px 24px rgba(0, 0, 0, .40);
+  --sh-nav: 0 10px 30px rgba(0, 0, 0, .50), 0 2px 8px rgba(0, 0, 0, .35);
+}
+
+/* ================= TOKENS — theme-independent ================= */
+:root {
+  /* spacing — 4/8 scale */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
+
+  /* radius — heritage 12 / 16 / 20 kept */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-card: 16px;
+  --r-lg: 20px;
+  --r-sheet: 20px;
+  --pill: 999px;
+
+  /* type — system sans; serif ONLY for the brand wordmark */
+  --font-sans: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-brand: "Fraunces", Georgia, "Times New Roman", serif;
+  --fs-display: 30px;  /* hero numbers */
+  --fs-title: 20px;    /* screen / card titles */
+  --fs-h: 16px;        /* section headings */
+  --fs-body: 15px;
+  --fs-small: 13px;
+  --fs-micro: 11px;
+  --lh-tight: 1.15;
+  --lh-body: 1.45;
+
+  /* motion — transform / opacity only */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 300ms;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+
+  /* z-index scale */
+  --z-header: 40;
+  --z-jump: 35;
+  --z-nav: 60;
+  --z-scrim: 70;
+  --z-sheet: 80;
+  --z-dialog: 90;
+  --z-toast: 120;
+  --z-tip: 130;
+
+  /* safe areas (viewport-fit=cover) */
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+
+  /* layout */
+  --ds-container: 1120px;   /* desktop content max-width (Phase 2) */
+  --ds-header-h: 56px;
+  --ds-nav-clear: calc(96px + var(--sab));  /* bottom padding so the capsule nav never covers content */
+}
+
+/* Reduced motion: collapse the duration tokens (every component
+   transition reads them) and stop the keyframed components. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-1: 0.01ms; --dur-2: 0.01ms; --dur-3: 0.01ms; }
+  .ds-skel::after, .ds-spinner, .ds-sheet, .ds-dialog, .ds-toast { animation: none; }
+}
+
+/* ================= FOUNDATION UTILITIES ================= */
+/* Put .ds-root on the app wrapper (Phase 2: #appView / body child). */
+.ds-root {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+.ds-num { font-variant-numeric: tabular-nums; }
+.ds-t-muted { color: var(--muted); }
+.ds-t-pos { color: var(--pos); }
+.ds-t-neg { color: var(--neg); }
+.ds-t-warn { color: var(--warn); }
+.ds-t-accent { color: var(--accent); }
+.ds-visually-hidden {
+  position: absolute; width: 1px; height: 1px; margin: -1px;
+  clip-path: inset(50%); overflow: hidden; white-space: nowrap;
+}
+.ds-pad-b-safe { padding-bottom: var(--sab); }
+.ds-scroll-x {
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.ds-scroll-x::-webkit-scrollbar { display: none; }
+.ds-icon { width: 22px; height: 22px; flex: none; }
+.ds-icon--sm { width: 18px; height: 18px; }
+.ds-icon--flip { transform: scaleX(-1); }
+
+/* Brand lockup: FOLIO in the brand serif; "by Singh Caizen" in sans
+   with the name bold — gold reserved for the splash/brand moments,
+   so in chrome the wordmark is plain text colour. */
+.ds-brand { font-family: var(--font-brand); font-weight: 700; letter-spacing: .14em; }
+.ds-brand-by { font-size: var(--fs-small); color: var(--muted); letter-spacing: 0; }
+.ds-brand-name { color: var(--text); font-weight: 700; }
+
+/* ============ PRIVACY HOOK (Phase 0 risks R7/R9) ============
+   EVERY money amount rendered by a ds- component carries .ds-amt.
+   Privacy Mode blurs this one class — components must never invent
+   their own amount class. Percentages do NOT get .ds-amt (they stay
+   visible, matching current behaviour). The blur radius matches
+   style.css's existing privacy rule (7px). */
+.ds-amt { font-variant-numeric: tabular-nums; }
+body.privacy-on .ds-amt { filter: blur(7px); transition: filter var(--dur-2) var(--ease); }
+
+/* Focus: one visible ring for every interactive ds- component. */
+.ds-btn:focus-visible, .ds-iconbtn:focus-visible, .ds-seg__btn:focus-visible,
+.ds-tab:focus-visible, .ds-jump__chip:focus-visible, .ds-row:focus-visible,
+.ds-nav__item:focus-visible, .ds-chip-btn:focus-visible, .ds-tip__btn:focus-visible {
+  outline: 2px solid var(--focus); outline-offset: 2px;
+}
+
+/* ================= BUTTONS =================
+   All hit areas ≥44px tall. Primary = accent fill with --accent-ink
+   text (white on light green, near-black on dark green — both AA). */
+.ds-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  min-height: 48px; padding: 0 var(--sp-5);
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-family: inherit; font-size: var(--fs-body); font-weight: 600;
+  cursor: pointer; text-decoration: none; user-select: none;
+  transition: transform var(--dur-1) var(--ease), background var(--dur-1) var(--ease),
+              border-color var(--dur-1) var(--ease), opacity var(--dur-1) var(--ease);
+}
+.ds-btn:active { transform: scale(.98); }
+.ds-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.ds-btn--primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--accent-ink)); border-color: transparent; }
+/* Gold = brand moments only (auth primary, splash CTAs). Ink #171408 = 7.61:1 on the gold. */
+.ds-btn--gold { background: var(--gold); border-color: var(--gold); color: #171408; font-weight: 700; }
+.ds-btn--gold:hover { background: var(--gold-soft); border-color: var(--gold-soft); }
+.ds-btn--ghost { background: transparent; }
+.ds-btn--soft { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.ds-btn--danger { background: var(--neg-soft); border-color: color-mix(in srgb, var(--neg) 45%, transparent); color: var(--neg); }
+.ds-btn--block { width: 100%; }
+.ds-btn--lg { min-height: 54px; font-size: var(--fs-h); border-radius: var(--r-md); }
+.ds-btn[disabled], .ds-btn--disabled { opacity: .5; pointer-events: none; }
+
+.ds-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; flex: none;
+  background: transparent; color: var(--muted);
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: transform var(--dur-1) var(--ease), background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.ds-iconbtn:hover { background: var(--accent-soft); color: var(--accent); }
+.ds-iconbtn:active { transform: scale(.94); }
+.ds-iconbtn--bordered { background: var(--panel); border-color: var(--line); color: var(--text); }
+.ds-iconbtn--badge { position: relative; }
+.ds-iconbtn__dot {
+  position: absolute; top: 9px; right: 9px; width: 9px; height: 9px;
+  border-radius: 50%; background: var(--neg); border: 2px solid var(--panel);
+}
+
+/* ================= DELTA CHIP + BADGE =================
+   Chip text colours are the semantic tokens on their soft tints —
+   contrast computed over --panel (see doc §2). */
+.ds-chip {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 9px; border-radius: var(--pill);
+  font-size: var(--fs-small); font-weight: 700; font-variant-numeric: tabular-nums;
+  background: var(--panel-2); color: var(--muted); white-space: nowrap;
+}
+.ds-chip--pos { background: var(--pos-soft); color: var(--pos); }
+.ds-chip--neg { background: var(--neg-soft); color: var(--neg); }
+.ds-chip--flat { background: var(--panel-2); color: var(--muted); }
+.ds-chip__arrow { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; }
+.ds-chip--pos .ds-chip__arrow { border-bottom: 6px solid currentColor; }
+.ds-chip--neg .ds-chip__arrow { border-top: 6px solid currentColor; }
+.ds-chip--flat .ds-chip__arrow { border: none; width: 7px; height: 2px; background: currentColor; }
+
+.ds-badge {
+  display: inline-flex; align-items: center; gap: var(--sp-1);
+  padding: 2px 8px; border-radius: var(--pill);
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  background: var(--panel-2); color: var(--muted); white-space: nowrap;
+}
+.ds-badge--pos { background: var(--pos-soft); color: var(--pos); }
+.ds-badge--neg { background: var(--neg-soft); color: var(--neg); }
+.ds-badge--warn { background: var(--warn-soft); color: var(--warn); }
+.ds-badge--gold { background: color-mix(in srgb, var(--gold) 16%, transparent); color: var(--gold-deep); }
+.ds-badge--accent { background: var(--accent-soft); color: var(--accent); }
+
+/* ================= SEGMENTED CONTROL ================= */
+.ds-seg {
+  display: flex; gap: 2px; padding: 4px;
+  background: var(--panel-2); border-radius: var(--pill);
+}
+.ds-seg__btn {
+  flex: 1 1 0; min-height: 44px; padding: 0 var(--sp-3);
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: none; border-radius: var(--pill);
+  color: var(--muted); font-family: inherit; font-size: var(--fs-small); font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.ds-seg__btn[aria-pressed="true"], .ds-seg__btn--active {
+  background: var(--panel); color: var(--text); font-weight: 700; box-shadow: var(--sh-1);
+}
+.ds-seg--scroll { overflow-x: auto; scrollbar-width: none; }
+.ds-seg--scroll::-webkit-scrollbar { display: none; }
+.ds-seg--scroll .ds-seg__btn { flex: 0 0 auto; }
+
+/* ================= TABS (underline + pill) ================= */
+.ds-tabs {
+  display: flex; gap: var(--sp-1);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto; scrollbar-width: none;
+}
+.ds-tabs::-webkit-scrollbar { display: none; }
+.ds-tab {
+  position: relative; flex: none;
+  min-height: 48px; padding: 0 var(--sp-4);
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-family: inherit; font-size: var(--fs-body); font-weight: 600;
+}
+.ds-tab[aria-selected="true"] { color: var(--text); font-weight: 700; }
+.ds-tab[aria-selected="true"]::after {
+  content: ""; position: absolute; left: var(--sp-4); right: var(--sp-4); bottom: -1px;
+  height: 3px; border-radius: 3px 3px 0 0; background: var(--accent);
+}
+.ds-tabs--pill { border-bottom: none; gap: var(--sp-2); }
+.ds-tabs--pill .ds-tab {
+  min-height: 44px; padding: 0 var(--sp-4); border-radius: var(--pill);
+  background: var(--panel-2); font-size: var(--fs-small);
+}
+.ds-tabs--pill .ds-tab[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.ds-tabs--pill .ds-tab[aria-selected="true"]::after { display: none; }
+
+/* ================= JUMP BAR (Insights) =================
+   Sticky chip strip; edge fade via mask so the scroll affordance is
+   visible without extra DOM. top offset = header height. */
+.ds-jump {
+  position: sticky; top: var(--ds-header-h); z-index: var(--z-jump);
+  display: flex; gap: var(--sp-2); padding: var(--sp-2) var(--sp-4);
+  overflow-x: auto; scrollbar-width: none;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom: 1px solid var(--line);
+  mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent 100%);
+}
+.ds-jump::-webkit-scrollbar { display: none; }
+.ds-jump__chip {
+  flex: none; min-height: 44px; padding: 0 var(--sp-4);
+  display: inline-flex; align-items: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--pill);
+  color: var(--muted); font-family: inherit; font-size: var(--fs-small); font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
+.ds-jump__chip[aria-current="true"], .ds-jump__chip--active {
+  background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent); font-weight: 700;
+}
+
+/* ================= CARD + STAT TILE ================= */
+.ds-card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--r-card); box-shadow: var(--sh-1);
+  padding: var(--sp-4);
+}
+.ds-card__head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--sp-2); margin-bottom: var(--sp-3);
+}
+.ds-card__title { margin: 0; font-size: var(--fs-h); font-weight: 700; line-height: var(--lh-tight); }
+.ds-card__sub { margin: 2px 0 0; font-size: var(--fs-small); color: var(--muted); }
+.ds-card__action {
+  background: none; border: none; padding: var(--sp-2); margin: calc(var(--sp-2) * -1);
+  color: var(--accent); font-family: inherit; font-size: var(--fs-small); font-weight: 600; cursor: pointer;
+}
+
+.ds-stat {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--r-card); box-shadow: var(--sh-1);
+  padding: var(--sp-4);
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+}
+.ds-stat__label {
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--muted);
+  display: flex; align-items: center; gap: var(--sp-1);
+}
+.ds-stat__value { font-size: 26px; font-weight: 800; letter-spacing: -.01em; line-height: var(--lh-tight); }
+.ds-stat__value--display { font-size: var(--fs-display); }
+.ds-stat__row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.ds-stat__sub { font-size: var(--fs-small); color: var(--muted); }
+.ds-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+@media (min-width: 768px) { .ds-stat-grid { grid-template-columns: repeat(4, 1fr); } }
+
+/* ================= GROUPED LIST + ROWS ================= */
+.ds-group {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--r-card); box-shadow: var(--sh-1);
+  padding: var(--sp-1);
+}
+.ds-group-label {
+  margin: var(--sp-5) var(--sp-2) var(--sp-2);
+  font-size: var(--fs-micro); font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muted);
+}
+.ds-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  width: 100%; min-height: 56px; padding: var(--sp-2) var(--sp-3);
+  background: transparent; border: none; border-radius: var(--r-md);
+  color: var(--text); font-family: inherit; font-size: var(--fs-body);
+  text-align: left; text-decoration: none; cursor: pointer;
+  transition: background var(--dur-1) var(--ease);
+}
+.ds-row:active { background: var(--panel-2); }
+.ds-row--static { cursor: default; }
+.ds-row--static:active { background: transparent; }
+.ds-row__icon {
+  width: 40px; height: 40px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-sm); background: var(--accent-soft); color: var(--accent);
+  font-weight: 800; font-size: var(--fs-small);
+}
+.ds-row__icon--gold { background: color-mix(in srgb, var(--gold) 16%, transparent); color: var(--gold-deep); }
+.ds-row__icon--neg { background: var(--neg-soft); color: var(--neg); }
+.ds-row__icon--warn { background: var(--warn-soft); color: var(--warn); }
+.ds-row__icon--muted { background: var(--panel-2); color: var(--muted); }
+.ds-row__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ds-row__title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-row__sub { font-size: var(--fs-small); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-row__value { flex: none; text-align: right; display: flex; flex-direction: column; gap: 1px; align-items: flex-end; }
+.ds-row__value-main { font-weight: 700; }
+.ds-row__chev { flex: none; color: var(--muted); display: inline-flex; }
+.ds-divider { height: 1px; background: var(--line); margin: var(--sp-1) var(--sp-3); border: none; }
+
+/* ================= INPUTS =================
+   16px font in fields (prevents iOS focus zoom). Interactive
+   boundaries use --line-strong (≥3:1) per WCAG 1.4.11. */
+.ds-label { display: block; font-size: var(--fs-small); font-weight: 600; color: var(--muted); margin-bottom: var(--sp-2); }
+.ds-input {
+  width: 100%; min-height: 52px; padding: 0 var(--sp-4);
+  background: var(--input); color: var(--text);
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+  font-family: inherit; font-size: 16px;
+  transition: border-color var(--dur-1) var(--ease), box-shadow var(--dur-1) var(--ease);
+}
+.ds-input::placeholder { color: var(--muted); }
+.ds-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.ds-input[disabled] { opacity: .55; }
+.ds-select {
+  appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center;
+}
+.ds-field { position: relative; }
+.ds-field .ds-input { height: 60px; padding: 20px 48px 4px var(--sp-4); }
+.ds-field__label {
+  position: absolute; left: var(--sp-4); top: 50%; transform: translateY(-50%);
+  color: var(--muted); font-size: 16px; pointer-events: none;
+  transition: transform var(--dur-1) var(--ease), font-size var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.ds-field .ds-input:focus + .ds-field__label,
+.ds-field .ds-input:not(:placeholder-shown) + .ds-field__label {
+  transform: translateY(-16px); font-size: var(--fs-micro); font-weight: 700;
+  letter-spacing: .05em; text-transform: uppercase; color: var(--accent);
+}
+.ds-field__eye {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 44px; height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; border-radius: var(--r-sm);
+  color: var(--muted); cursor: pointer;
+}
+.ds-field__msg { margin-top: var(--sp-1); font-size: var(--fs-small); color: var(--muted); }
+.ds-field--error .ds-input { border-color: var(--neg); }
+.ds-field--error .ds-field__label { color: var(--neg); }
+.ds-field--error .ds-field__msg { color: var(--neg); }
+
+/* ================= TOGGLE SWITCH =================
+   The label row carries the 44px+ hit area; the track is 52×32. */
+.ds-switch {
+  display: inline-flex; align-items: center; gap: var(--sp-3);
+  min-height: 44px; cursor: pointer; user-select: none;
+}
+.ds-switch__input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.ds-switch__track {
+  width: 52px; height: 32px; flex: none; border-radius: var(--pill);
+  background: var(--panel-3); position: relative;
+  transition: background var(--dur-2) var(--ease);
+}
+.ds-switch__track::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--panel); box-shadow: var(--sh-1);
+  transition: transform var(--dur-2) var(--ease);
+}
+.ds-switch__input:checked + .ds-switch__track { background: var(--accent); }
+.ds-switch__input:checked + .ds-switch__track::after { transform: translateX(20px); }
+.ds-switch__input:focus-visible + .ds-switch__track { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ds-switch__input[disabled] + .ds-switch__track { opacity: .5; }
+.ds-switch__text { font-size: var(--fs-body); }
+
+/* ================= HEADER BAR =================
+   Minimal chrome: back/title on the left, actions on the right.
+   Glass surface so content scrolls under it. */
+.ds-header {
+  position: sticky; top: 0; z-index: var(--z-header);
+  display: flex; align-items: center; gap: var(--sp-2);
+  min-height: var(--ds-header-h);
+  padding: var(--sat) var(--sp-3) 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px) saturate(1.4); -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-bottom: 1px solid var(--line);
+}
+.ds-header__title { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 17px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-header__actions { display: flex; align-items: center; gap: 2px; flex: none; }
+.ds-header__brand { display: flex; flex-direction: column; line-height: 1.1; }
+.ds-header__brand .ds-brand { font-size: 19px; }
+
+/* ================= CAPSULE BOTTOM NAV =================
+   Floating liquid-glass capsule (the owner's chosen chrome):
+   translucent surface + blur, safe-area aware, active pill.
+   Phase 2 hides it while the keyboard is open (body.kb-open). */
+.ds-nav {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--sp-3) + var(--sab));
+  width: min(430px, calc(100% - 24px));
+  z-index: var(--z-nav);
+  display: flex; gap: 2px; padding: 6px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(1.5); -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--pill);
+  box-shadow: var(--sh-nav);
+}
+.ds-nav__item {
+  flex: 1 1 0; position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px 0 6px; min-height: 52px; justify-content: center;
+  background: none; border: none; border-radius: var(--pill);
+  color: var(--muted); font-family: inherit; font-size: 10.5px; font-weight: 600;
+  cursor: pointer; text-decoration: none;
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+.ds-nav__item .ds-icon { width: 22px; height: 22px; }
+.ds-nav__item[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.ds-nav__dot {
+  position: absolute; top: 7px; left: calc(50% + 4px);
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--neg); border: 2px solid var(--panel);
+}
+/* Desktop: the capsule stays (owner's direction — bottom nav on
+   every platform), it just floats over the centered container. */
+@media (min-width: 1024px) { .ds-nav { width: 460px; } }
+
+/* ================= SCRIM / SHEET / DIALOG ================= */
+.ds-scrim {
+  position: fixed; inset: 0; z-index: var(--z-scrim);
+  background: var(--scrim);
+  opacity: 1; transition: opacity var(--dur-2) var(--ease);
+}
+.ds-scrim[hidden] { display: none; }
+.ds-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-sheet);
+  background: var(--panel); color: var(--text);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  box-shadow: var(--sh-3);
+  max-height: 88dvh; overflow-y: auto;
+  padding-bottom: var(--sab);
+  animation: dsSheetUp var(--dur-3) var(--ease-out);
+}
+.ds-sheet[hidden] { display: none; }
+@keyframes dsSheetUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.ds-sheet__handle {
+  width: 40px; height: 5px; border-radius: var(--pill);
+  background: var(--panel-3); margin: var(--sp-2) auto var(--sp-1);
+}
+.ds-sheet__head {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+}
+.ds-sheet__title { flex: 1; margin: 0; font-size: var(--fs-title); font-weight: 700; }
+.ds-sheet__body { padding: var(--sp-2) var(--sp-4) var(--sp-4); }
+.ds-sheet__foot {
+  display: flex; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  border-top: 1px solid var(--line);
+}
+/* Desktop: the same sheet becomes a centered modal. The `translate`
+   property (not `transform`) does the centering so the entrance
+   keyframes can keep animating `transform`. */
+@media (min-width: 768px) {
+  .ds-sheet {
+    left: 50%; top: 50%; right: auto; bottom: auto;
+    translate: -50% -50%;
+    width: min(480px, calc(100% - 48px));
+    border-radius: var(--r-sheet); padding-bottom: 0;
+    max-height: 86dvh;
+    animation: dsDialogIn var(--dur-2) var(--ease-out);
+  }
+  .ds-sheet__handle { display: none; }
+}
+.ds-dialog {
+  position: fixed; left: 50%; top: 50%; z-index: var(--z-dialog);
+  translate: -50% -50%;
+  width: min(440px, calc(100% - 32px));
+  background: var(--panel); color: var(--text);
+  border-radius: var(--r-sheet); box-shadow: var(--sh-3);
+  max-height: 88dvh; overflow-y: auto;
+  animation: dsDialogIn var(--dur-2) var(--ease-out);
+}
+.ds-dialog[hidden] { display: none; }
+@keyframes dsDialogIn { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ================= TOAST =================
+   Inverted surface; sits ABOVE the capsule nav. */
+.ds-toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(92px + var(--sab)); z-index: var(--z-toast);
+  display: flex; align-items: center; gap: var(--sp-3);
+  max-width: min(480px, calc(100% - 32px));
+  background: var(--toast-bg); color: var(--toast-text);
+  border-radius: var(--r-md); box-shadow: var(--sh-2);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-small); font-weight: 600;
+  animation: dsToastIn var(--dur-2) var(--ease-out);
+}
+.ds-toast[hidden] { display: none; }
+@keyframes dsToastIn { from { transform: translate(-50%, 10px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+.ds-toast__btn {
+  background: none; border: none; padding: var(--sp-2); margin: calc(var(--sp-2) * -1) 0;
+  color: var(--toast-action); font-family: inherit; font-size: var(--fs-small);
+  font-weight: 800; text-transform: uppercase; letter-spacing: .04em; cursor: pointer;
+}
+
+/* ================= SKELETON =================
+   Shimmer is a translating highlight (transform only); the media
+   block at the top of this file disables it for reduced motion. */
+.ds-skel {
+  position: relative; overflow: hidden;
+  background: var(--panel-2); border-radius: var(--r-xs);
+  min-height: 14px;
+}
+.ds-skel::after {
+  content: ""; position: absolute; inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 9%, transparent), transparent);
+  animation: dsShimmer 1.4s var(--ease) infinite;
+}
+@keyframes dsShimmer { to { transform: translateX(100%); } }
+.ds-skel--line { height: 14px; }
+.ds-skel--title { height: 20px; width: 55%; }
+.ds-skel--circle { border-radius: 50%; width: 40px; height: 40px; min-height: 40px; }
+.ds-skel--card { height: 108px; border-radius: var(--r-card); }
+
+/* ================= EMPTY STATE ================= */
+.ds-empty { text-align: center; padding: var(--sp-8) var(--sp-5); }
+.ds-empty__icon {
+  width: 56px; height: 56px; margin: 0 auto var(--sp-3);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--panel-2); color: var(--muted);
+}
+.ds-empty__title { margin: 0 0 var(--sp-1); font-size: var(--fs-h); font-weight: 700; }
+.ds-empty__sub { margin: 0 auto var(--sp-4); max-width: 300px; font-size: var(--fs-small); color: var(--muted); }
+
+/* ================= TABLE =================
+   (Cell selectors are descendants of .ds-table — scoped, never global.)
+   Numbers right-align with tabular figures; first column can stick. */
+.ds-table { width: 100%; border-collapse: collapse; font-size: var(--fs-small); }
+.ds-table th, .ds-table td {
+  padding: 10px; border-bottom: 1px solid var(--line);
+  text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.ds-table th { color: var(--muted); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.ds-table td:first-child, .ds-table th:first-child { text-align: left; }
+.ds-table .num { text-align: right; }
+.ds-table--sticky-first td:first-child, .ds-table--sticky-first th:first-child {
+  position: sticky; left: 0; background: var(--panel); font-weight: 700; z-index: 1;
+}
+.ds-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ================= CHART WRAPPER ================= */
+.ds-chart { position: relative; border-radius: var(--r-md); overflow: hidden; }
+.ds-chart--line { aspect-ratio: 16 / 8; }
+.ds-chart--tall { aspect-ratio: 4 / 3; }
+.ds-chart__svg { display: block; width: 100%; height: 100%; }
+.ds-chart__veil {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-2);
+  background: color-mix(in srgb, var(--panel) 62%, transparent);
+  color: var(--muted); font-size: var(--fs-small); font-weight: 600;
+}
+.ds-chart__veil[hidden] { display: none; }
+.ds-spinner {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 3px solid var(--accent-soft); border-top-color: var(--accent);
+  animation: dsSpin .8s linear infinite;
+}
+@keyframes dsSpin { to { transform: rotate(360deg); } }
+
+/* ================= TOOLTIP =================
+   Tap-friendly: the trigger is a real <button>, so a tap focuses it
+   and :focus-within opens the bubble — no hover-only behaviour.
+   JS may also toggle [data-open="true"] on .ds-tip. Hover is only
+   an extra on devices that have it. */
+.ds-tip { position: relative; display: inline-flex; }
+.ds-tip__btn {
+  width: 32px; height: 32px; margin: -6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; border-radius: 50%;
+  color: var(--muted); cursor: pointer; font-family: inherit;
+}
+.ds-tip__bubble {
+  position: absolute; bottom: calc(100% + 10px); left: 50%;
+  transform: translate(-50%, 4px);
+  width: max-content; max-width: 240px;
+  background: var(--toast-bg); color: var(--toast-text);
+  border-radius: var(--r-sm); box-shadow: var(--sh-2);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-small); font-weight: 500; line-height: var(--lh-body);
+  text-align: left; white-space: normal;
+  opacity: 0; pointer-events: none; z-index: var(--z-tip);
+  transition: opacity var(--dur-1) var(--ease), transform var(--dur-1) var(--ease);
+}
+.ds-tip:focus-within .ds-tip__bubble,
+.ds-tip[data-open="true"] .ds-tip__bubble {
+  opacity: 1; transform: translate(-50%, 0); pointer-events: auto;
+}
+@media (hover: hover) {
+  .ds-tip:hover .ds-tip__bubble { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ================================================================
+   PHASE 7 — MOTION TOKENS (semantic aliases + mode gating)
+
+   The Phase 1 tokens above (--dur-1/2/3, --ease, --ease-out) stay
+   the single source every component reads. Phase 7 adds:
+   - semantic aliases --dur-fast / --dur-base / --dur-slow (the
+     Prompt-2 vocabulary) pointing at the same three tokens, plus
+     --ease-in (exits) and --ease-spring (the sheet settle);
+   - mode gating keyed on html[data-anim], the EFFECTIVE mode
+     resolved by js/features.js folioAnimResolve() (and pre-paint
+     by assets/theme-init.js) from the user's Animations setting
+     (state.profile.animations: auto/full/reduced/off) and the
+     device reduce-motion hint, which always caps the result.
+
+   Reduced: a shorter duration scale — but ONLY when the device
+   itself has no reduce-motion preference. Under
+   prefers-reduced-motion the Phase 1 collapse above (.01ms)
+   keeps governing untouched: the device setting always wins.
+   Off: the tokens collapse exactly like the PRM collapse, in
+   every device state — components that read the tokens stop
+   animating; style.css's Phase 7 layer handles the components
+   that hard-code their durations.
+   ================================================================ */
+:root {
+  --dur-fast: var(--dur-1);
+  --dur-base: var(--dur-2);
+  --dur-slow: var(--dur-3);
+  --ease-in: cubic-bezier(.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(.34, 1.25, .4, 1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  html[data-anim="reduced"] { --dur-1: 90ms; --dur-2: 140ms; --dur-3: 200ms; }
+}
+html[data-anim="off"] { --dur-1: .01ms; --dur-2: .01ms; --dur-3: .01ms; }

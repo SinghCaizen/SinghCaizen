@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FOLIO Design System — Showcase (Phase 1)</title>
+<link rel="stylesheet" href="css/ds.css">
+<style>
+  /* Showcase scaffolding ONLY — not part of the design system.
+     The DS file itself contains no element selectors; this page
+     styles its own frame with the DS tokens. */
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 16px 16px calc(120px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 20px; }
+  .cols { display: grid; grid-template-columns: 1fr; gap: 20px; }
+  @media (min-width: 900px) { .cols { grid-template-columns: 1fr 1fr; } }
+  .demo-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 4px 2px -8px; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  .foot-note { text-align: center; color: var(--muted); font-size: 13px; padding: 8px 0 4px; }
+</style>
+</head>
+<body>
+
+<!-- ============ ICON SET — inline SVG symbols ============
+     24×24 viewBox, stroke 1.9, round caps/joins, no fill.
+     Usage: <svg class="ds-icon"><use href="#i-home"/></svg> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/></symbol>
+    <symbol id="i-briefcase" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7.5" width="18" height="12.5" rx="2.5"/><path d="M9 7.5V6a3 3 0 0 1 3-3v0a3 3 0 0 1 3 3v1.5"/><path d="M3 13h18"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v15.5h16"/><path d="M8 15.5v-4"/><path d="M12.5 15.5V8"/><path d="M17 15.5v-6.5"/></symbol>
+    <symbol id="i-dots" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l16 16"/><path d="M9.9 6.2A9.4 9.4 0 0 1 12 6c6 0 9.5 6 9.5 6a17.6 17.6 0 0 1-3.3 3.5M6 8.5A16.9 16.9 0 0 0 2.5 12S6 18 12 18c1.2 0 2.3-.3 3.3-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.6-4.6"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-chev-d" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m5 9 7 7 7-7"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m4.5 12.5 5 5 10-11"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4.2"/><circle cx="12" cy="17" r=".4" fill="currentColor"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.6"/><circle cx="17.5" cy="5.5" r="2.6"/><circle cx="17.5" cy="18.5" r="2.6"/><path d="m8.3 10.8 6.9-4M8.3 13.2l6.9 4"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m6.5 10.5 5.5 5.5 5.5-5.5"/><path d="M4 20h16"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"/><path d="m6.5 9.5L12 4l5.5 5.5"/><path d="M4 20h16"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2.2"/><circle cx="9" cy="16" r="2.2"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20.5c1.4-3.4 4.2-5 7.5-5s6.1 1.6 7.5 5"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 5.6v5.2c0 4.6 3 8.4 7 10.2 4-1.8 7-5.6 7-10.2V5.6z"/><path d="m9 11.6 2.2 2.2 4-4.2"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.8h8L19 8v13.2H6z"/><path d="M13.5 3v5.5H19"/><path d="M9 13.5h6M9 17h6"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h-7v16h7"/><path d="M10.5 12H21"/><path d="m17.5 8 3.5 4-3.5 4"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5 5l1.7 1.7M17.3 17.3 19 19M19 5l-1.7 1.7M6.7 17.3 5 19"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2.2 2.2 0 0 0 4 0"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="7.8" r=".5" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<div class="ds-root">
+
+  <!-- ================= HEADER ================= -->
+  <header class="ds-header">
+    <div class="ds-header__brand">
+      <span class="ds-brand">FOLIO</span>
+      <span class="ds-brand-by">by <span class="ds-brand-name">Singh Caizen</span></span>
+    </div>
+    <div style="flex:1"></div>
+    <div class="ds-header__actions">
+      <button class="ds-iconbtn" type="button" aria-label="Hide amounts" onclick="document.body.classList.toggle('privacy-on'); this.firstElementChild.innerHTML = document.body.classList.contains('privacy-on') ? '<use href=\'#i-eye-off\'/>' : '<use href=\'#i-eye\'/>'"><svg class="ds-icon"><use href="#i-eye"/></svg></button>
+      <button class="ds-iconbtn ds-iconbtn--badge" type="button" aria-label="Alerts"><svg class="ds-icon"><use href="#i-bell"/></svg><span class="ds-iconbtn__dot"></span></button>
+      <button class="ds-iconbtn" type="button" id="themeBtn" aria-label="Switch theme"><svg class="ds-icon"><use href="#i-moon"/></svg></button>
+      <button class="ds-iconbtn ds-iconbtn--bordered" type="button" aria-label="Account"><svg class="ds-icon"><use href="#i-user"/></svg></button>
+    </div>
+  </header>
+
+  <!-- ================= JUMP BAR ================= -->
+  <nav class="ds-jump" aria-label="Insights sections" data-chipgroup>
+    <button class="ds-jump__chip" type="button" aria-current="true">Report Card</button>
+    <button class="ds-jump__chip" type="button">Returns</button>
+    <button class="ds-jump__chip" type="button">Risk</button>
+    <button class="ds-jump__chip" type="button">Allocation</button>
+    <button class="ds-jump__chip" type="button">Stocks</button>
+    <button class="ds-jump__chip" type="button">Income</button>
+    <button class="ds-jump__chip" type="button">Trades</button>
+    <button class="ds-jump__chip" type="button">Scenarios</button>
+  </nav>
+
+  <div class="wrap">
+
+    <p class="demo-label">Stat tiles · amounts carry .ds-amt (tap the eye in the header to test Privacy Mode)</p>
+    <div class="ds-stat-grid">
+      <div class="ds-stat">
+        <span class="ds-stat__label">Invested</span>
+        <span class="ds-stat__value ds-amt">₹8,42,350</span>
+        <span class="ds-stat__sub">11 stocks · since Mar 2023</span>
+      </div>
+      <div class="ds-stat">
+        <span class="ds-stat__label">Current Value</span>
+        <span class="ds-stat__value ds-amt">₹9,15,672</span>
+        <span class="ds-stat__row"><span class="ds-chip ds-chip--pos"><span class="ds-chip__arrow"></span>+8.70%</span><span class="ds-stat__sub">all time</span></span>
+      </div>
+      <div class="ds-stat">
+        <span class="ds-stat__label">Total Profit / Loss</span>
+        <span class="ds-stat__value ds-amt ds-t-pos">+₹73,322</span>
+        <span class="ds-stat__row"><span class="ds-chip ds-chip--pos"><span class="ds-chip__arrow"></span>Today +₹4,218</span></span>
+      </div>
+      <div class="ds-stat">
+        <span class="ds-stat__label">XIRR
+          <span class="ds-tip">
+            <button class="ds-tip__btn" type="button" aria-label="What is XIRR?"><svg class="ds-icon ds-icon--sm"><use href="#i-info"/></svg></button>
+            <span class="ds-tip__bubble" role="tooltip">XIRR is your personal yearly return rate, counting every buy and sell date. Tap elsewhere to close.</span>
+          </span>
+        </span>
+        <span class="ds-stat__value">14.2%</span>
+        <span class="ds-stat__sub">Realised <span class="ds-amt">₹18,940</span></span>
+      </div>
+    </div>
+
+    <p class="demo-label">Chart card · segmented control · chart wrapper</p>
+    <section class="ds-card">
+      <div class="ds-card__head">
+        <div>
+          <h2 class="ds-card__title">Portfolio Performance</h2>
+          <p class="ds-card__sub">Value <span class="ds-amt">₹9,15,672</span> · updated 12 min ago</p>
+        </div>
+        <span class="ds-badge ds-badge--accent">Live</span>
+      </div>
+      <div class="ds-seg" data-chipgroup role="group" aria-label="Performance range" style="margin-bottom:14px">
+        <button class="ds-seg__btn" type="button">1M</button>
+        <button class="ds-seg__btn" type="button">3M</button>
+        <button class="ds-seg__btn" type="button" aria-pressed="true">6M</button>
+        <button class="ds-seg__btn" type="button">1Y</button>
+        <button class="ds-seg__btn" type="button">ALL</button>
+      </div>
+      <div class="ds-chart ds-chart--line">
+        <svg class="ds-chart__svg" viewBox="0 0 320 130" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0,104 C30,98 48,106 74,92 C100,78 118,86 146,68 C172,52 190,62 218,44 C244,28 268,36 292,20 L320,12 L320,130 L0,130 Z" fill="var(--accent-soft)"/>
+          <path d="M0,104 C30,98 48,106 74,92 C100,78 118,86 146,68 C172,52 190,62 218,44 C244,28 268,36 292,20 L320,12" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="ds-chart ds-chart--line" style="margin-top:14px; background: var(--panel-2)">
+        <div class="ds-chart__veil"><span class="ds-spinner" aria-hidden="true"></span>Loading chart…</div>
+      </div>
+    </section>
+
+    <p class="demo-label">Tabs — underline and pill</p>
+    <div>
+      <div class="ds-tabs" role="tablist" data-tabgroup>
+        <button class="ds-tab" type="button" role="tab" aria-selected="true">Overview</button>
+        <button class="ds-tab" type="button" role="tab" aria-selected="false">Performance</button>
+        <button class="ds-tab" type="button" role="tab" aria-selected="false">Income</button>
+        <button class="ds-tab" type="button" role="tab" aria-selected="false">Tax</button>
+        <button class="ds-tab" type="button" role="tab" aria-selected="false">Market</button>
+      </div>
+      <div class="ds-tabs ds-tabs--pill" role="tablist" data-tabgroup style="margin-top:14px">
+        <button class="ds-tab" type="button" role="tab" aria-selected="true">By Stock</button>
+        <button class="ds-tab" type="button" role="tab" aria-selected="false">By Sector</button>
+        <button class="ds-tab" type="button" role="tab" aria-selected="false">By Market Cap</button>
+      </div>
+    </div>
+
+    <div class="cols">
+      <div class="stack">
+        <p class="demo-label">Holdings — list rows</p>
+        <div class="ds-group" role="list">
+          <button class="ds-row" type="button" role="listitem">
+            <span class="ds-row__icon">RE</span>
+            <span class="ds-row__main">
+              <span class="ds-row__title">RELIANCE</span>
+              <span class="ds-row__sub">Reliance Industries · <span class="ds-amt">42 shares</span></span>
+            </span>
+            <span class="ds-row__value">
+              <span class="ds-row__value-main ds-amt">₹1,24,530</span>
+              <span class="ds-chip ds-chip--pos"><span class="ds-chip__arrow"></span>2.34%</span>
+            </span>
+          </button>
+          <hr class="ds-divider">
+          <button class="ds-row" type="button" role="listitem">
+            <span class="ds-row__icon ds-row__icon--gold">TC</span>
+            <span class="ds-row__main">
+              <span class="ds-row__title">TCS</span>
+              <span class="ds-row__sub">Tata Consultancy · <span class="ds-amt">18 shares</span></span>
+            </span>
+            <span class="ds-row__value">
+              <span class="ds-row__value-main ds-amt">₹72,410</span>
+              <span class="ds-chip ds-chip--neg"><span class="ds-chip__arrow"></span>0.86%</span>
+            </span>
+          </button>
+          <hr class="ds-divider">
+          <button class="ds-row" type="button" role="listitem">
+            <span class="ds-row__icon ds-row__icon--muted">HD</span>
+            <span class="ds-row__main">
+              <span class="ds-row__title">HDFCBANK</span>
+              <span class="ds-row__sub">HDFC Bank · <span class="ds-amt">65 shares</span></span>
+            </span>
+            <span class="ds-row__value">
+              <span class="ds-row__value-main ds-amt">₹1,09,275</span>
+              <span class="ds-chip ds-chip--flat"><span class="ds-chip__arrow"></span>0.00%</span>
+            </span>
+          </button>
+        </div>
+
+        <p class="demo-label">Table — numeric, tabular, sticky first column</p>
+        <div class="ds-card" style="padding:6px 4px">
+          <div class="ds-table-wrap">
+            <table class="ds-table ds-table--sticky-first">
+              <thead><tr><th>Stock</th><th>Qty</th><th>LTP</th><th>Day %</th><th>Value</th></tr></thead>
+              <tbody>
+                <tr><td>RELIANCE</td><td class="ds-amt">42</td><td class="ds-amt">₹2,965.00</td><td class="ds-t-pos">+2.34%</td><td class="ds-amt">₹1,24,530</td></tr>
+                <tr><td>TCS</td><td class="ds-amt">18</td><td class="ds-amt">₹4,022.80</td><td class="ds-t-neg">−0.86%</td><td class="ds-amt">₹72,410</td></tr>
+                <tr><td>HDFCBANK</td><td class="ds-amt">65</td><td class="ds-amt">₹1,681.15</td><td class="ds-t-muted">0.00%</td><td class="ds-amt">₹1,09,275</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <p class="demo-label">Grouped list — tinted icon tiles + chevrons</p>
+        <div>
+          <p class="ds-group-label">Account &amp; Security</p>
+          <div class="ds-group">
+            <button class="ds-row" type="button">
+              <span class="ds-row__icon"><svg class="ds-icon"><use href="#i-shield"/></svg></span>
+              <span class="ds-row__main"><span class="ds-row__title">Security Checkup</span><span class="ds-row__sub">2FA on · Vault encrypted · 6 recovery codes left</span></span>
+              <span class="ds-badge ds-badge--pos">Strong</span>
+              <span class="ds-row__chev"><svg class="ds-icon ds-icon--sm"><use href="#i-chev-r"/></svg></span>
+            </button>
+            <hr class="ds-divider">
+            <button class="ds-row" type="button">
+              <span class="ds-row__icon ds-row__icon--gold"><svg class="ds-icon"><use href="#i-file"/></svg></span>
+              <span class="ds-row__main"><span class="ds-row__title">Download Report</span><span class="ds-row__sub">PDF · 19 sections · your choice</span></span>
+              <span class="ds-row__chev"><svg class="ds-icon ds-icon--sm"><use href="#i-chev-r"/></svg></span>
+            </button>
+            <hr class="ds-divider">
+            <button class="ds-row" type="button">
+              <span class="ds-row__icon"><svg class="ds-icon"><use href="#i-share"/></svg></span>
+              <span class="ds-row__main"><span class="ds-row__title">Share Card</span><span class="ds-row__sub">Amounts hidden by default</span></span>
+              <span class="ds-row__chev"><svg class="ds-icon ds-icon--sm"><use href="#i-chev-r"/></svg></span>
+            </button>
+            <hr class="ds-divider">
+            <button class="ds-row" type="button">
+              <span class="ds-row__icon ds-row__icon--muted"><svg class="ds-icon"><use href="#i-sliders"/></svg></span>
+              <span class="ds-row__main"><span class="ds-row__title">Preferences</span><span class="ds-row__sub">Theme, compact amounts, alerts</span></span>
+              <span class="ds-row__chev"><svg class="ds-icon ds-icon--sm"><use href="#i-chev-r"/></svg></span>
+            </button>
+            <hr class="ds-divider">
+            <button class="ds-row" type="button">
+              <span class="ds-row__icon ds-row__icon--neg"><svg class="ds-icon"><use href="#i-logout"/></svg></span>
+              <span class="ds-row__main"><span class="ds-row__title" style="color: var(--neg)">Sign out</span><span class="ds-row__sub">This device only</span></span>
+            </button>
+          </div>
+        </div>
+
+        <p class="demo-label">Skeleton + empty state</p>
+        <div class="ds-card stack" aria-hidden="true">
+          <div class="ds-skel ds-skel--title"></div>
+          <div class="ds-skel ds-skel--line"></div>
+          <div class="ds-skel ds-skel--line" style="width:82%"></div>
+          <div class="ds-skel ds-skel--card"></div>
+        </div>
+        <div class="ds-card">
+          <div class="ds-empty">
+            <span class="ds-empty__icon"><svg class="ds-icon"><use href="#i-briefcase"/></svg></span>
+            <h3 class="ds-empty__title">No stocks yet</h3>
+            <p class="ds-empty__sub">Add your first stock or import a CSV from your broker to see your portfolio here.</p>
+            <button class="ds-btn ds-btn--primary" type="button"><svg class="ds-icon ds-icon--sm"><use href="#i-plus"/></svg>Add your first stock</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="demo-label">Buttons + badges</p>
+    <div class="btn-row">
+      <button class="ds-btn ds-btn--primary" type="button">Primary</button>
+      <button class="ds-btn ds-btn--gold" type="button">Gold — brand</button>
+      <button class="ds-btn" type="button">Default</button>
+      <button class="ds-btn ds-btn--ghost" type="button">Ghost</button>
+      <button class="ds-btn ds-btn--soft" type="button"><svg class="ds-icon ds-icon--sm"><use href="#i-download"/></svg>Soft</button>
+      <button class="ds-btn ds-btn--danger" type="button">Delete</button>
+      <button class="ds-iconbtn ds-iconbtn--bordered" type="button" aria-label="Search"><svg class="ds-icon"><use href="#i-search"/></svg></button>
+      <span class="ds-badge ds-badge--warn">Market closed</span>
+      <span class="ds-badge ds-badge--gold">Singh Caizen</span>
+      <span class="ds-badge">Delayed ~15 min</span>
+    </div>
+
+    <div class="cols">
+      <div class="stack">
+        <p class="demo-label">Inputs — floating labels, password eye, select</p>
+        <div class="ds-card stack">
+          <div class="ds-field">
+            <input class="ds-input" id="fEmail" type="email" placeholder=" " autocomplete="email" value="you@example.com">
+            <label class="ds-field__label" for="fEmail">Email address</label>
+          </div>
+          <div class="ds-field">
+            <input class="ds-input" id="fPass" type="password" placeholder=" " autocomplete="current-password" value="demo-password">
+            <label class="ds-field__label" for="fPass">Password</label>
+            <button class="ds-field__eye" type="button" id="pwEye" aria-label="Show password"><svg class="ds-icon"><use href="#i-eye"/></svg></button>
+          </div>
+          <div class="ds-field ds-field--error">
+            <input class="ds-input" id="fCode" type="text" inputmode="numeric" placeholder=" " value="482 910">
+            <label class="ds-field__label" for="fCode">Authenticator code</label>
+            <p class="ds-field__msg">That code did not match. Check the time on your phone and try again.</p>
+          </div>
+          <div>
+            <label class="ds-label" for="fCat">Investor category</label>
+            <select class="ds-input ds-select" id="fCat">
+              <option>Long-term Investor</option><option>Trader</option><option>Long-term + Trader</option><option>HUF / Family</option><option>NRI</option>
+            </select>
+          </div>
+          <button class="ds-btn ds-btn--gold ds-btn--block ds-btn--lg" type="button">Continue</button>
+        </div>
+      </div>
+
+      <div class="stack">
+        <p class="demo-label">Toggles</p>
+        <div class="ds-group">
+          <div class="ds-row ds-row--static">
+            <span class="ds-row__main"><span class="ds-row__title">Privacy Mode</span><span class="ds-row__sub">Blur all amounts on this screen</span></span>
+            <label class="ds-switch"><input class="ds-switch__input" type="checkbox" id="swPrivacy"><span class="ds-switch__track"></span></label>
+          </div>
+          <hr class="ds-divider">
+          <div class="ds-row ds-row--static">
+            <span class="ds-row__main"><span class="ds-row__title">Auto-lock</span><span class="ds-row__sub">Lock after 15 minutes away</span></span>
+            <label class="ds-switch"><input class="ds-switch__input" type="checkbox" checked><span class="ds-switch__track"></span></label>
+          </div>
+          <hr class="ds-divider">
+          <div class="ds-row ds-row--static">
+            <span class="ds-row__main"><span class="ds-row__title">Compact amounts</span><span class="ds-row__sub">Show ₹ Lakh / ₹ Crore on Dashboard</span></span>
+            <label class="ds-switch"><input class="ds-switch__input" type="checkbox"><span class="ds-switch__track"></span></label>
+          </div>
+        </div>
+
+        <p class="demo-label">Overlays — sheet (mobile) / modal (desktop), dialog, toast</p>
+        <div class="ds-card btn-row">
+          <button class="ds-btn" type="button" id="openSheet">Open sheet</button>
+          <button class="ds-btn" type="button" id="openDialog">Open dialog</button>
+          <button class="ds-btn" type="button" id="showToast">Show toast</button>
+          <span class="ds-stat__sub">Resize the window past 768px — the sheet becomes a centered modal.</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="foot-note">FOLIO by <strong style="color: var(--text)">Singh Caizen</strong> — Design System v1 · Phase 1 showcase · every component on this page is drawn only with css/ds.css</p>
+  </div><!-- /wrap -->
+
+  <!-- ================= SHEET / DIALOG / TOAST ================= -->
+  <div class="ds-scrim" id="scrim" hidden></div>
+
+  <section class="ds-sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+    <div class="ds-sheet__handle" aria-hidden="true"></div>
+    <div class="ds-sheet__head">
+      <h2 class="ds-sheet__title" id="sheetTitle">Share Card</h2>
+      <button class="ds-iconbtn" type="button" data-close aria-label="Close"><svg class="ds-icon"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="ds-sheet__body stack">
+      <p class="ds-stat__sub" style="margin:0">Amounts are hidden by default on every share card. Your name, email and phone never appear on a card.</p>
+      <div class="ds-seg" data-chipgroup role="group" aria-label="Card size">
+        <button class="ds-seg__btn" type="button" aria-pressed="true">Square 1:1</button>
+        <button class="ds-seg__btn" type="button">Portrait 4:5</button>
+        <button class="ds-seg__btn" type="button">Story 9:16</button>
+      </div>
+      <div class="ds-row ds-row--static" style="padding-left:0; padding-right:0">
+        <span class="ds-row__main"><span class="ds-row__title">Show amounts</span><span class="ds-row__sub">Off keeps percentages only</span></span>
+        <label class="ds-switch"><input class="ds-switch__input" type="checkbox"><span class="ds-switch__track"></span></label>
+      </div>
+    </div>
+    <div class="ds-sheet__foot">
+      <button class="ds-btn" type="button" data-close>Cancel</button>
+      <button class="ds-btn ds-btn--primary" type="button" style="flex:1">Share</button>
+    </div>
+  </section>
+
+  <section class="ds-dialog" id="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgTitle" aria-describedby="dlgBody" hidden>
+    <div class="ds-sheet__head">
+      <h2 class="ds-sheet__title" id="dlgTitle">Remove all entries?</h2>
+      <button class="ds-iconbtn" type="button" data-close aria-label="Close"><svg class="ds-icon"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="ds-sheet__body">
+      <p id="dlgBody" style="margin:0">This removes every RELIANCE transaction from your portfolio. You can undo this from the toast that appears next.</p>
+    </div>
+    <div class="ds-sheet__foot">
+      <button class="ds-btn" type="button" data-close>Keep</button>
+      <button class="ds-btn ds-btn--danger" type="button" data-close style="flex:1">Remove</button>
+    </div>
+  </section>
+
+  <div class="ds-toast" id="toast" role="status" hidden>
+    <span>Entries removed</span>
+    <button class="ds-toast__btn" type="button" data-close>Undo</button>
+  </div>
+
+  <!-- ================= CAPSULE NAV ================= -->
+  <nav class="ds-nav" aria-label="Main">
+    <button class="ds-nav__item" type="button" aria-current="page"><svg class="ds-icon"><use href="#i-home"/></svg>Home</button>
+    <button class="ds-nav__item" type="button"><svg class="ds-icon"><use href="#i-briefcase"/></svg>Holdings</button>
+    <button class="ds-nav__item" type="button"><svg class="ds-icon"><use href="#i-star"/></svg>Watchlist</button>
+    <button class="ds-nav__item" type="button"><svg class="ds-icon"><use href="#i-chart"/></svg>Insights<span class="ds-nav__dot" aria-label="New signals"></span></button>
+    <button class="ds-nav__item" type="button"><svg class="ds-icon"><use href="#i-dots"/></svg>More</button>
+  </nav>
+
+</div><!-- /ds-root -->
+
+<script>
+  // Showcase interactions only — real wiring is Phase 2+.
+  var rootEl = document.documentElement;
+
+  // Theme toggle (the button in the header)
+  var themeBtn = document.getElementById('themeBtn');
+  function syncThemeIcon() {
+    themeBtn.innerHTML = '<svg class="ds-icon"><use href="#i-' + (rootEl.getAttribute('data-theme') === 'dark' ? 'sun' : 'moon') + '"/></svg>';
+  }
+  themeBtn.addEventListener('click', function () {
+    rootEl.setAttribute('data-theme', rootEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    syncThemeIcon();
+  });
+  syncThemeIcon();
+
+  // Privacy switch mirrors the header eye
+  document.getElementById('swPrivacy').addEventListener('change', function () {
+    document.body.classList.toggle('privacy-on', this.checked);
+  });
+
+  // Password show/hide
+  var pw = document.getElementById('fPass'), pwEye = document.getElementById('pwEye');
+  pwEye.addEventListener('click', function () {
+    var show = pw.type === 'password';
+    pw.type = show ? 'text' : 'password';
+    pwEye.innerHTML = '<svg class="ds-icon"><use href="#i-eye' + (show ? '-off' : '') + '"/></svg>';
+    pwEye.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  });
+
+  // Chip groups: seg buttons + jump chips (single-select per group)
+  document.querySelectorAll('[data-chipgroup]').forEach(function (group) {
+    group.addEventListener('click', function (e) {
+      var btn = e.target.closest('button'); if (!btn) return;
+      group.querySelectorAll('button').forEach(function (b) {
+        b.removeAttribute('aria-pressed'); b.removeAttribute('aria-current');
+      });
+      if (btn.classList.contains('ds-seg__btn')) btn.setAttribute('aria-pressed', 'true');
+      if (btn.classList.contains('ds-jump__chip')) btn.setAttribute('aria-current', 'true');
+    });
+  });
+  // Tab groups
+  document.querySelectorAll('[data-tabgroup]').forEach(function (group) {
+    group.addEventListener('click', function (e) {
+      var btn = e.target.closest('[role="tab"]'); if (!btn) return;
+      group.querySelectorAll('[role="tab"]').forEach(function (b) { b.setAttribute('aria-selected', 'false'); });
+      btn.setAttribute('aria-selected', 'true');
+    });
+  });
+  // Capsule nav active state
+  document.querySelector('.ds-nav').addEventListener('click', function (e) {
+    var item = e.target.closest('.ds-nav__item'); if (!item) return;
+    this.querySelectorAll('.ds-nav__item').forEach(function (i) { i.removeAttribute('aria-current'); });
+    item.setAttribute('aria-current', 'page');
+  });
+
+  // Overlays
+  var scrim = document.getElementById('scrim'),
+      sheet = document.getElementById('sheet'),
+      dialog = document.getElementById('dialog'),
+      toast = document.getElementById('toast'), toastTimer = null;
+  function openLayer(el) { scrim.hidden = false; el.hidden = false; }
+  function closeLayers() {
+    scrim.hidden = true; sheet.hidden = true; dialog.hidden = true; toast.hidden = true;
+    if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+  }
+  document.getElementById('openSheet').addEventListener('click', function () { openLayer(sheet); });
+  document.getElementById('openDialog').addEventListener('click', function () { openLayer(dialog); });
+  document.getElementById('showToast').addEventListener('click', function () {
+    toast.hidden = false;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toast.hidden = true; }, 4000);
+  });
+  scrim.addEventListener('click', closeLayers);
+  document.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', closeLayers); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeLayers(); });
+</script>
+</body>
+</html>

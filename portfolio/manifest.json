@@ -5,6 +5,33 @@
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
+  "shortcuts": [
+    {
+      "name": "Home",
+      "url": "./#/home",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Holdings",
+      "url": "./#/holdings",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Watchlist",
+      "url": "./#/watchlist",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Insights",
+      "url": "./#/insights",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "More",
+      "url": "./#/more",
+      "icons": [{ "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
   "background_color": "#0f2234",
   "theme_color": "#070707",
   "icons": [
