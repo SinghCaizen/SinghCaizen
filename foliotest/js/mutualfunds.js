@@ -4,7 +4,15 @@
    NOT in SW CORE. Nothing in this module runs at app startup.
 
    DATA: the free open API at api.mfapi.in ONLY (brief-sanctioned;
-   CORS-open, no key). mfapi republishes AMFI's official NAV data:
+   no key). mfapi republishes AMFI's official NAV data. FETCH ROUTE
+   (FIX v127): the API is fetched DIRECTLY first; on ANY failure
+   (a browser-origin CORS block, a timeout, an HTTP error) the same
+   URL is fetched through the app's existing proxy race —
+   window.folioProxyJson in features.js, the PROXIES machinery that
+   already carries the Yahoo data — and parsed identically. The
+   v126 foliotest QA proved the direct route alone is not reliable
+   from the app origin even when the API itself is up; only when
+   both routes fail does the honest error state show.
    - GET https://api.mfapi.in/mf/search?q=<text>  -> [{schemeCode,
      schemeName}] (verified live 2026-11-16; multi-word queries can
      return [] even for real schemes, so an empty result is retried
@@ -318,13 +326,21 @@
     return out;
   };
 
+  /* Fetch route plan (FIX v127, pure — harness-tested): every mfapi
+     call tries "direct" first, then falls back to "proxy" (the app's
+     proxy race via window.folioProxyJson). nextRoute returns the
+     route to try after `route` fails, or null when the plan is
+     exhausted and the caller must show its honest error state. */
+  M.fetchPlan = ["direct", "proxy"];
+  M.nextRoute = function (route) { return route === "direct" ? "proxy" : null; };
+
   window.FolioMutualFundsMath = M;
 
   /* ================= fetching (mfapi.in only) ================= */
   var schemeCache = {};    /* code -> {scheme, navDate} — session only */
   var schemeInflight = {}; /* code -> Promise */
 
-  function fetchJson(url) {
+  function fetchDirect(url) {
     return new Promise(function (resolve, reject) {
       if (typeof fetch !== "function") { reject(new Error("fetch unavailable")); return; }
       var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -336,6 +352,19 @@
       }).then(resolve, function (e) { clearTimeout(timer); reject(e); });
     });
   }
+  /* The proxy route: window.folioProxyJson (features.js FIX v127)
+     races the app's PROXIES list — folio-proxy Worker first when
+     configured — and resolves with the parsed JSON body. */
+  function fetchViaProxy(url) {
+    if (typeof window === "undefined" || typeof window.folioProxyJson !== "function") return Promise.reject(new Error("proxy route unavailable"));
+    return window.folioProxyJson(url, 12000);
+  }
+  /* M.fetchPlan in action: direct first, proxy on ANY direct failure;
+     the response is parsed identically whichever route carried it. */
+  function fetchJson(url) {
+    return fetchDirect(url).catch(function () { return fetchViaProxy(url); });
+  }
+  M.fetchJson = fetchJson; /* harness surface */
   function getScheme(code, force) {
     code = String(code);
     if (!force && schemeCache[code]) return Promise.resolve(schemeCache[code].scheme);

@@ -438,7 +438,7 @@
     var saved = savedTargets();
     wrap.innerHTML = rows.map(function (r) {
       var curPct = total > 0 ? r.cur / total * 100 : 0;
-      var t = Number.isFinite(saved[r.sym]) ? saved[r.sym] : Math.round(curPct * 10) / 10;
+      var t = Math.round((Number.isFinite(saved[r.sym]) ? saved[r.sym] : curPct) * 10) / 10; /* FIX v127: inputs always carry 1-decimal values (a saved float like 29.700000762939453 displayed as 29.7 but sat raw in the DOM/a11y tree) */
       return '<div class="pt-trow"><span class="pt-trow-sym">' + escT(r.sym) + '</span>' +
         '<span class="pt-trow-now">' + curPct.toFixed(1) + '% now</span>' +
         '<input class="pt-tin" data-pt-sym="' + escT(r.sym) + '" type="number" inputmode="decimal" step="0.5" min="0" max="100" value="' + t + '" aria-label="Target percent for ' + escT(r.sym) + '">' +

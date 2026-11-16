@@ -178,6 +178,19 @@
     return { level: level, prevClose: prev, dayPct: prev ? (level / prev - 1) * 100 : null, closes: closes };
   };
 
+  /* Day-change presentation (FIX v127): the arrow + colour carry the
+     sign and the number is the magnitude — the Market Pulse
+     convention, and the same one this module's heat cells use.
+     Pre-v127 the index tile ran fmtPct(Math.abs(dayPct)): Math.abs
+     stripped the sign and fmtPct re-added a "+", so a DOWN day
+     printed "▼ +0.61%" while the Pulse printed "▼ -0.61%" from the
+     same closes. Returns null for a non-finite input (tile shows —). */
+  M.dayChg = function (dayPct) {
+    if (!Number.isFinite(dayPct)) return null;
+    var up = dayPct >= 0;
+    return { cls: up ? "mh-up" : "mh-dn", arrow: up ? "▲" : "▼", text: Math.abs(dayPct).toFixed(2) + "%" };
+  };
+
   /* rows: [{sym, dayPct}] (dayPct may be null) -> top gainers/losers. */
   M.movers = function (rows, n) {
     n = n || 5;
@@ -455,8 +468,9 @@
   /* ---------- tiles ---------- */
   function tileHtml(def, q, sub) {
     if (!q) return "";
-    var chg = q.dayPct == null ? '<span class="mh-muted">—</span>' :
-      '<span class="' + (q.dayPct >= 0 ? "mh-up" : "mh-dn") + '">' + (q.dayPct >= 0 ? "▲ " : "▼ ") + fmtPct(Math.abs(q.dayPct)) + "</span>";
+    var dc = q.dayPct == null ? null : M.dayChg(q.dayPct);
+    var chg = !dc ? '<span class="mh-muted">—</span>' :
+      '<span class="' + dc.cls + '">' + dc.arrow + " " + dc.text + "</span>";
     return '<div class="mh-tile"><span class="mh-tile-name">' + escT(def.label) + "</span>" +
       '<b class="mh-tile-val">' + fmtNum(q.level, def.digits) + "</b>" +
       '<span class="mh-tile-sub">' + chg + (sub ? ' <span class="mh-muted">' + escT(sub) + "</span>" : "") + "</span></div>";

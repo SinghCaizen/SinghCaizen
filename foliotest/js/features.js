@@ -5385,7 +5385,7 @@ async function folioLoadDeals() {
   if (folioDeals || folioDealsTried) return folioDeals;
   folioDealsTried = true;
   const j = await folioDataJson("deals.json");
-  if (j && Array.isArray(j.data) && j.data.length) { folioDeals = j.data.filter(r => r && r.sym && isFinite(Number(r.qty)) && isFinite(Number(r.price))); if (folioDeals.length) { try { folioOnDeals(); } catch (e) {} } else folioDeals = null; }
+  if (j && Array.isArray(j.data) && j.data.length) { folioDeals = j.data.filter(r => r && typeof r.sym === "string" && r.sym && isFinite(Number(r.qty)) && isFinite(Number(r.price))).map(r => ({ sym: r.sym, client: r.client == null ? "" : String(r.client), side: r.side, qty: Number(r.qty), price: Number(r.price), d: r.d == null ? "" : String(r.d) })); if (folioDeals.length) { try { folioOnDeals(); } catch (e) {} } else folioDeals = null; }
   return folioDeals;
 }
 function dealThr() { const p = folioProf(); return Number(p.dealThresholdCr) > 0 ? Number(p.dealThresholdCr) : 1; }
@@ -6515,12 +6515,12 @@ async function anaEnsure() {
   anaBusy = false;
 }
 function anaRenderAll() { anaRenderGrade(); anaRenderReturns(); anaRenderRisk(); anaRenderAlloc(); anaRenderStocks(); anaRenderIncome(); anaRenderTrades(); anaRenderScen(); }
-function anaGradeChip(g) { const col = g === "A" ? "var(--pos)" : g === "B" ? "#7fb069" : g === "C" ? "var(--warn)" : "var(--neg)"; return '<b class="ana-grade-chip" style="background:' + col + '">' + g + "</b>"; }
+function anaGradeChip(g) { if (g == null || g === "") return '<b class="ana-grade-chip" style="background:var(--muted)">—</b>'; const col = g === "A" ? "var(--pos)" : g === "B" ? "#7fb069" : g === "C" ? "var(--warn)" : "var(--neg)"; return '<b class="ana-grade-chip" style="background:' + col + '">' + g + "</b>"; }
 function anaRenderGrade() {
   const r = anaResult; if (!r) return;
   const rc = r.reportCard || {};
   const order = [["Returns", "returns"], ["RiskControl", "risk control"], ["Diversification", "diversification"], ["Consistency", "consistency"], ["Momentum", "momentum"]];
-  const rows = order.map(([k]) => { const g = rc[k]; if (!g) return ""; return '<div class="ana-grade-row"><span class="ana-grade-name">' + k.replace(/([A-Z])/g, " $1").trim() + "</span>" + anaGradeChip(g.grade) + '<span class="ana-grade-score">' + Math.round(g.score) + '</span><span class="ana-grade-reason">' + esc(g.reason) + "</span></div>"; }).join("");
+  const rows = order.map(([k]) => { const g = rc[k]; if (!g) return ""; return '<div class="ana-grade-row"><span class="ana-grade-name">' + k.replace(/([A-Z])/g, " $1").trim() + "</span>" + anaGradeChip(g.grade) + '<span class="ana-grade-score">' + (g.score == null ? "—" : Math.round(g.score)) + '</span><span class="ana-grade-reason">' + esc(g.reason) + "</span></div>"; }).join("");
   const benchOpts = ANA_BENCHES.map(b => {
     const un = anaBenchAvail && anaBenchAvail[b.sym] === false;
     return '<option value="' + b.sym + '"' + (b.sym === anaBenchSym ? " selected" : "") + (un ? " disabled" : "") + ">" + b.name + (un ? " (not available in free data)" : "") + "</option>";
@@ -6599,7 +6599,7 @@ function anaRenderRisk() {
     anaTile("Down-capture", "capture", K.downCapture == null ? "—" : K.downCapture.toFixed(0) + "%") +
     anaTile("VaR 95% (1 day, historical)", "varhist", varTxt) +
     anaTile("CVaR 95% (worst 5% days)", "varhist", cvarTxt) +
-    anaTile("Max drawdown", "drawdowns", K.maxDD ? insxPct(-K.maxDD.pct) : "—", K.maxDD ? esc(K.maxDD.peakDate + " → " + K.maxDD.troughDate) : "") +
+    anaTile("Max drawdown", "drawdowns", K.maxDD ? insxPct(-K.maxDD.pct) : "—", (K.maxDD && K.maxDD.peakDate && K.maxDD.troughDate) ? esc(K.maxDD.peakDate + " → " + K.maxDD.troughDate) : "") +
     anaTile("Current drawdown", "drawdowns", K.currentDD ? insxPct(-K.currentDD.pct) : "—", K.currentDD ? K.currentDD.days + " days below peak" : "") +
     anaTile("Longest drawdown", "drawdowns", K.longestDD ? K.longestDD.days + " days" : "—", K.longestDD ? (K.longestDD.recovered ? "recovered in " + (K.longestDD.recoveryDays != null ? K.longestDD.recoveryDays + " days" : "—") : "not yet recovered") : "") +
     "</div>" + (insXSeries ? anaDdSvg(insXSeries.rets) : "") + '<p class="insx-note">Drawdown chart: fall from the running peak of the flow-adjusted equity curve. Historical VaR reads your actual past returns; the Risk Metrics card above uses a formula-based estimate, so the two can differ.</p>' + anaBasisLine();
@@ -7080,7 +7080,7 @@ window.folioOpenPTools = function (opts) {
   if (!ptoolsModLoading) {
     ptoolsModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/ptools.js?v=1"; sc.async = true;
+      sc.src = "js/ptools.js?v=2"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("ptools module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7392,7 +7392,7 @@ window.folioOpenMarketHub = function (opts) {
   if (!mhModLoading) {
     mhModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/markethub.js?v=2"; sc.async = true;
+      sc.src = "js/markethub.js?v=3"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("markethub module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7436,7 +7436,7 @@ window.folioOpenMutualFunds = function (opts) {
   if (!mfModLoading) {
     mfModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/mutualfunds.js?v=1"; sc.async = true;
+      sc.src = "js/mutualfunds.js?v=2"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("mutualfunds module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7704,7 +7704,7 @@ window.folioNseHolidays = function () {
   if (!calMhLoading) {
     calMhLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/markethub.js?v=2"; sc.async = true;
+      sc.src = "js/markethub.js?v=3"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("markethub module failed to load"));
       document.head.appendChild(sc);
     });
@@ -8288,3 +8288,49 @@ document.addEventListener("click", e => {
 }, false);
 
 window.FolioMotion = { resolve: folioAnimResolve, effective: folioAnimEffective, apply: folioAnimApply, set: folioAnimSet, countValue: folioCountValue, flipPlan: folioFlipPlan };
+
+/* ================= FIX v127 (FIX127-BEGIN) =================
+   Two repairs from the v126 foliotest QA round (FIXROUND-V127.md):
+
+   1) Big Deals crash. app.js switchView(name) runs
+      $("view-" + name).classList.remove("hidden") UNGUARDED, and
+      #view-deals is created lazily by folioEnsureDealsView() — which
+      the old chain only reached AFTER the switch (the Task C wrap
+      calls folioRenderDeals() post-switch, and the More-hub handler
+      at folioSetupsC-era line ~5244 calls switchView("deals")
+      directly). The deals data file has never existed, so nothing
+      pre-created the view: the first tap hid every view, then threw
+      on the missing element -> error boundary + blank screen.
+      This wrap (the outermost features.js wrap; router.js still
+      wraps outside this file and already ensured for hash routes)
+      creates the view BEFORE the switch chain runs. folioRenderDeals
+      itself renders the honest "data has not arrived yet" state when
+      folioDeals is null, and folioLoadDeals now normalises rows at
+      load (string sym/client/date, numeric qty/price), so 404 /
+      empty / malformed data files cannot throw downstream either.
+
+   2) window.folioProxyJson(url, timeoutMs): a generic JSON fetch
+      through the app's existing proxy race — the PROXIES list
+      (folio-proxy Worker first when configured) raced with fetchT +
+      Promise.any, exactly the fetchHistoryNet pattern. Resolves
+      with the parsed JSON body; rejects when every route fails.
+      Used by js/mutualfunds.js as the fallback for api.mfapi.in
+      (whose direct browser fetch can fail on CORS even though the
+      API itself is up). fetchChartValidated() cannot serve this —
+      it hard-validates a Yahoo chart payload shape. */
+const _svFix127 = switchView;
+switchView = function (name) {
+  if (name === "deals") { try { folioEnsureDealsView(); } catch (e) {} }
+  return _svFix127.apply(this, arguments);
+};
+window.folioProxyJson = async function (url, timeoutMs) {
+  const ctls = [];
+  try {
+    return await Promise.any(PROXIES.map(p => (async () => {
+      const res = await fetchT(p(url), timeoutMs || 9000, ctls);
+      if (!res.ok) throw new Error("proxy HTTP " + res.status);
+      return await res.json();
+    })()));
+  } finally { ctls.forEach(c => { try { c.abort(); } catch (e) {} }); }
+};
+/* FIX127-END */
