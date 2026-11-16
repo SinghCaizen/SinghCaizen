@@ -7436,7 +7436,7 @@ window.folioOpenMutualFunds = function (opts) {
   if (!mfModLoading) {
     mfModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/mutualfunds.js?v=2"; sc.async = true;
+      sc.src = "js/mutualfunds.js?v=3"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("mutualfunds module failed to load"));
       document.head.appendChild(sc);
     });
@@ -8334,3 +8334,81 @@ window.folioProxyJson = async function (url, timeoutMs) {
   } finally { ctls.forEach(c => { try { c.abort(); } catch (e) {} }); }
 };
 /* FIX127-END */
+/* ================= FIX v128 (FIX128-BEGIN) =================
+   Mutual Funds scheme DETAIL never loaded live (v127 foliotest QA:
+   search worked through the fallback; /mf/<code> failed on both QA
+   schemes, Retry identical). Diagnosis (FIXROUND-V128.md):
+   - The folio-proxy Worker CANNOT carry mfapi at all: as deployed
+     (tools/cloudflare-worker/worker.js) it allowlists Yahoo Finance
+     hosts/paths only, so an api.mfapi.in target gets a fast 403 and
+     the whole proxy route rests on the three free public proxies.
+   - The v127 folioProxyJson above returns the first body that
+     merely JSON-parses — no envelope unwrap, no payload check. A
+     proxy answering with an allorigins-style {"contents": "<json>"}
+     envelope (a format this codebase already unwraps for Yahoo in
+     fetchChartValidated) or any parseable error body WINS the race,
+     the finally-abort kills the slower routes carrying the real
+     payload, and the caller normalises the envelope to "no data".
+   - The 12 s MF budget was tuned for small Yahoo payloads; the
+     detail body is the scheme's FULL NAV history (several hundred
+     KB for an old fund) through third-party proxies.
+
+   This block SUPERSEDES the v127 definition of window.folioProxyJson
+   (left above for the record; this assignment replaces it at
+   runtime — the same layering the FIX v127 switchView wrap uses).
+   Signature stays compatible: folioProxyJson(url, timeoutMs[, opts]).
+   - Every attempt now reads the body as text and passes it through
+     window.folioUnwrapJsonText: raw JSON passes through unchanged;
+     a {contents: "..."} envelope (including data:...;base64
+     contents, mirroring fetchChartValidated) and double-encoded
+     JSON strings are unwrapped; garbage throws, failing the attempt.
+   - opts.validate(data): per-attempt payload check — an attempt
+     whose unwrapped body fails it counts as failed, so the race
+     keeps waiting for a route carrying a real payload instead of
+     settling for a fast wrong one.
+   - opts.workerFirst: the folio-proxy Worker is tried ON ITS OWN
+     first (raw passthrough, no third-party size/time behaviour);
+     only if it fails does the PROXIES race run (the Worker is also
+     PROXIES[0] when configured, so it gets a second chance there).
+     NOTE: until api.mfapi.in is allowlisted in the Worker (one-line
+     owner step, FIXROUND-V128.md), this attempt 403s fast for MF
+     and the race carries the call — the order takes full effect
+     with no further app change once the Worker allows the host. */
+window.folioUnwrapJsonText = function (text) {
+  if (typeof text !== "string") throw new Error("proxy body is not text");
+  var data = JSON.parse(text);
+  if (data && typeof data === "object" && typeof data.contents === "string") {
+    var t = data.contents;
+    if (t.indexOf("data:") === 0) {
+      var b64 = t.split(",")[1] || "";
+      t = decodeURIComponent(escape(atob(b64)));
+    }
+    return JSON.parse(t);
+  }
+  if (typeof data === "string") return JSON.parse(data);
+  return data;
+};
+window.folioProxyJson = async function (url, timeoutMs, opts) {
+  opts = opts || {};
+  var ms = timeoutMs || 9000;
+  var validate = typeof opts.validate === "function" ? opts.validate : null;
+  var one = async function (proxiedUrl, ctls) {
+    const res = await fetchT(proxiedUrl, ms, ctls);
+    if (!res.ok) throw new Error("proxy HTTP " + res.status);
+    const data = window.folioUnwrapJsonText(await res.text());
+    if (validate && !validate(data)) throw new Error("proxy payload failed validation");
+    return data;
+  };
+  if (opts.workerFirst && window.FOLIO_WORKER_URL) {
+    const wctls = [];
+    try {
+      return await one(window.FOLIO_WORKER_URL + "?url=" + encodeURIComponent(url), wctls);
+    } catch (e) { /* Worker route failed — fall through to the race. */ }
+    finally { wctls.forEach(c => { try { c.abort(); } catch (e) {} }); }
+  }
+  const ctls = [];
+  try {
+    return await Promise.any(PROXIES.map(p => one(p(url), ctls)));
+  } finally { ctls.forEach(c => { try { c.abort(); } catch (e) {} }); }
+};
+/* FIX128-END */

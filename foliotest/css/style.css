@@ -3657,3 +3657,28 @@ html[data-anim="full"] .insx-line:not([stroke-dasharray]) {
    line and shrink to fit the tile instead of breaking. */
 .tl-stats .ds-stat { min-width: 0; }
 .tl-stats .ds-stat__value { white-space: nowrap; overflow-wrap: normal; font-size: clamp(15px, 4.8vw, 20px); }
+
+/* ================= FIX v128: Tools result values FIT their tile (supersedes the FIX v127 layer above) =================
+   v127 stopped the mid-number wrap but guessed the size, and the
+   guess was too big: the .ds-stat-grid breakpoint keys off the
+   VIEWPORT, so in a desktop browser the stats run 4-across inside
+   the 560px Tools sheet — tile (560 - 41.6 card padding - 36 gaps)/4
+   = 120.6px, value box 120.6 - 32 tile padding = 88.6px — while the
+   v127 clamp let the value reach 20px (₹23,23,391 at 20px ≈ 128px).
+   The excess overflowed its column and the NEXT tile's opaque
+   background painted over it, so values looked CUT ("₹23,23,3").
+   No overflow:hidden is involved anywhere on the value or the tile;
+   the fix is sizing, not clipping: tile padding 16px -> 12px/10px
+   and the value capped at 14.5px.
+   Fit check, worst realistic string ₹1,00,00,000 (12 glyphs: ₹ +
+   8 digits + 3 commas; ≈ 6.4em in the app sans — Segoe/Roboto/Arial
+   digits 0.5–0.556em, ₹ ≈ 0.75em, comma ≈ 0.33em, weight-800
+   widening included, letter-spacing −0.01em netted):
+   14.5px × 6.4 ≈ 93px ≤ value box 120.6 − 20 = 100.6px. ✓
+   At 360px the grid is 2-across (viewport < 768px): sheet content
+   360 − 32 card padding = 328; tile (328 − 12)/2 = 158; value box
+   158 − 20 = 138px ≥ 93px. ✓ (QA's actual SIP strings are 10
+   glyphs — ₹23,23,391 ≈ 5.4em ≈ 78px at 14.5px — comfortable at
+   both widths.) */
+.tl-stats .ds-stat { min-width: 0; padding: 12px 10px; }
+.tl-stats .ds-stat__value { white-space: nowrap; overflow-wrap: normal; font-size: clamp(13px, 4vw, 14.5px); }

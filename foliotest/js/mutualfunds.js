@@ -13,6 +13,14 @@
    v126 foliotest QA proved the direct route alone is not reliable
    from the app origin even when the API itself is up; only when
    both routes fail does the honest error state show.
+   SCHEME DETAIL (FIX v128): the /mf/<code> payload is the scheme's
+   FULL NAV history (several hundred KB for an old fund) and the
+   v127 route failed it live while the few-KB search succeeded, so
+   detail takes its own route — direct (30 s), then the folio-proxy
+   Worker first, then the proxy race (30 s) — and a response only
+   counts when it unwraps to a real scheme payload (M.isSchemePayload
+   inside folioProxyJson). Search keeps the v127 route, unchanged.
+   See FIXROUND-V128.md.
    - GET https://api.mfapi.in/mf/search?q=<text>  -> [{schemeCode,
      schemeName}] (verified live 2026-11-16; multi-word queries can
      return [] even for real schemes, so an empty result is retried
@@ -334,17 +342,36 @@
   M.fetchPlan = ["direct", "proxy"];
   M.nextRoute = function (route) { return route === "direct" ? "proxy" : null; };
 
+  /* Scheme DETAIL route plan (FIX v128, pure — harness-tested):
+     "direct" -> "worker" (the folio-proxy Worker, tried on its own
+     first) -> "proxy" (the PROXIES race). The worker leg lives
+     inside window.folioProxyJson (opts.workerFirst), so the module
+     still makes only two calls: fetchDirect, then folioProxyJson. */
+  M.fetchPlanDetail = ["direct", "worker", "proxy"];
+  M.nextRouteDetail = function (route) { return route === "direct" ? "worker" : (route === "worker" ? "proxy" : null); };
+
+  /* A scheme-detail body only counts when it unwraps to the real
+     mfapi shape — an object carrying a NAV data array (the same
+     aliases M.normScheme accepts). Used as folioProxyJson's
+     per-attempt validator on the detail route, so an enveloped or
+     error body returned quickly by one proxy can no longer win the
+     race over a slower route carrying the real payload. */
+  M.isSchemePayload = function (raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+    return Array.isArray(raw.data) || Array.isArray(raw.navs) || Array.isArray(raw.history);
+  };
+
   window.FolioMutualFundsMath = M;
 
   /* ================= fetching (mfapi.in only) ================= */
   var schemeCache = {};    /* code -> {scheme, navDate} — session only */
   var schemeInflight = {}; /* code -> Promise */
 
-  function fetchDirect(url) {
+  function fetchDirect(url, timeoutMs) {
     return new Promise(function (resolve, reject) {
       if (typeof fetch !== "function") { reject(new Error("fetch unavailable")); return; }
       var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
-      var timer = setTimeout(function () { if (ctl) { try { ctl.abort(); } catch (e) {} } }, 15000);
+      var timer = setTimeout(function () { if (ctl) { try { ctl.abort(); } catch (e) {} } }, timeoutMs || 15000);
       fetch(url, ctl ? { signal: ctl.signal } : undefined).then(function (r) {
         clearTimeout(timer);
         if (!r.ok) throw new Error("HTTP " + r.status);
@@ -365,11 +392,32 @@
     return fetchDirect(url).catch(function () { return fetchViaProxy(url); });
   }
   M.fetchJson = fetchJson; /* harness surface */
+  /* Scheme DETAIL fetch (FIX v128) — M.fetchPlanDetail in action.
+     The detail payload is the scheme's full NAV history (several
+     hundred KB for an old fund); the v127 route failed it live on
+     both QA schemes while the few-KB search payload succeeded
+     through the same fallback. Differences from fetchJson: every
+     leg gets 30 s instead of 12–15 s, and the proxy leg asks
+     folioProxyJson for the folio-proxy Worker FIRST plus payload
+     validation (M.isSchemePayload) inside the race, so a wrapped
+     or error body can no longer beat a slower real payload. The
+     honest error state now shows only after direct + worker +
+     every proxy genuinely fail. NAV history is never truncated
+     and never persisted — it stays in schemeCache, session only. */
+  var DETAIL_TIMEOUT_MS = 30000;
+  function fetchDetailJson(url) {
+    return fetchDirect(url, DETAIL_TIMEOUT_MS).catch(function () {
+      if (typeof window === "undefined" || typeof window.folioProxyJson !== "function") return Promise.reject(new Error("proxy route unavailable"));
+      return window.folioProxyJson(url, DETAIL_TIMEOUT_MS, { workerFirst: true, validate: M.isSchemePayload });
+    });
+  }
+  M.fetchDetailJson = fetchDetailJson; /* harness surface */
+  M.DETAIL_TIMEOUT_MS = DETAIL_TIMEOUT_MS;
   function getScheme(code, force) {
     code = String(code);
     if (!force && schemeCache[code]) return Promise.resolve(schemeCache[code].scheme);
     if (!force && schemeInflight[code]) return schemeInflight[code];
-    var p = fetchJson(MF_API + encodeURIComponent(code)).then(function (raw) {
+    var p = fetchDetailJson(MF_API + encodeURIComponent(code)).then(function (raw) {
       var s = M.normScheme(raw);
       delete schemeInflight[code];
       if (!s || !s.navs.length) throw new Error("no NAV data for this scheme");
