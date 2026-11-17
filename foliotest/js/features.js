@@ -5909,6 +5909,7 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
   let pushedEntries = 0; /* v129: modal history entries this manager pushed and has not settled yet */
+  let deadPending = 0;   /* v131: entries left in the stack by tap-closed layers; the popstate handler skips them inside the next real Back press */
   let inPop = false;     /* v129: true while the popstate handler is pruning (those closes were spent by the press itself) */
   const isOpen = m => m && !m.classList.contains("hidden");
   /* v130: sub-layers — a sheet's internal steps (Tools index → a
@@ -5943,9 +5944,7 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
     try { s.close(); } catch (e) {}
     if (i < 0) return;
     if (pushedEntries > 0) pushedEntries--;
-    const sh = document.getElementById("folioShareOverlay");
-    if (sh && !sh.hidden) return; /* a foreign layer owns the top entry right now; ours stays for a later press */
-    try { window.__folioPopSuppress = (window.__folioPopSuppress || 0) + 1; history.back(); } catch (e) {}
+    deadPending++; /* v131: no settle-back — this entry is skipped inside the next Back press (see settleClosed) */
   }
   window.folioSubPush = subPush;
   window.folioSubSwap = subSwap;
@@ -5959,12 +5958,16 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
     if (!total) return;
     pushedEntries = Math.max(0, pushedEntries - total);
     if (wasPop) return;
-    const sh = document.getElementById("folioShareOverlay");
-    if (sh && !sh.hidden) return; /* a foreign layer owns the top entry right now; ours stays for a later press */
-    try {
-      window.__folioPopSuppress = (window.__folioPopSuppress || 0) + total;
-      for (let i = 0; i < total; i++) history.back();
-    } catch (e) {}
+    /* v131: NO history.back() here any more. A settle-back issued now
+       can be jumped over by the pushState of the layer that replaces
+       this one (every More-hub row closes More and opens something
+       else), leaving that layer with no live entry and throwing the
+       user clean out of the app on the next Back or ✕ — the v129/v130
+       exit bug, proven live on foliotest (even More → Help → ✕
+       exited). Instead the closed layer's entries are counted dead
+       here and skipped by the popstate handler inside the next real
+       Back press, so a press still moves exactly one visible step. */
+    deadPending += total;
   }
   function prune() { for (let i = stack.length - 1; i >= 0; i--) if (!isOpen(stack[i])) { const m = stack[i]; stack.splice(i, 1); settleClosed(m); } }
   function top() { prune(); return stack.length ? stack[stack.length - 1] : null; }
@@ -6037,6 +6040,20 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
        (z-index 1400) — this press closes ONLY the palette. */
     const pk = document.getElementById("cmdkPop");
     if (pk && !pk.classList.contains("hidden")) { pk.__folioPopClosed = 1; pk.classList.add("hidden"); return; }
+    /* v131: this press landed on an entry whose layer was already
+       tap-closed (deadPending) — keep stepping within the SAME press
+       until one live layer peels, so a dead entry never eats a press
+       and the user is never thrown out of the app by stale entries.
+       Entries are fungible: only the counts matter, never which
+       physical entry the browser consumed. */
+    if (deadPending > 0) {
+      deadPending--;
+      const vw = document.querySelector(".view:not(.hidden)");
+      if (deadPending > 0 || subStack.length || stack.some(isOpen) || (vw && vw.id !== "view-dashboard")) {
+        try { history.back(); } catch (e) {}
+        return;
+      }
+    }
     /* v130: an internal step of the top sheet owns this press — peel
        exactly that step; the sheet itself stays open. */
     const sub = subStack[subStack.length - 1];
