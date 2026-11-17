@@ -2,6 +2,6 @@
    Loaded by index.html (window.FOLIO_BUILD) and by sw.js (importScripts ->
    self.FOLIO_BUILD), so the About box, the More footer and the service
    worker cache name can never drift apart. */
-var FOLIO_BUILD = { version: "1.128.0", label: "v128", date: "2026-11-16" };
+var FOLIO_BUILD = { version: "1.131.0", label: "v131", date: "2026-11-17" };
 if (typeof window !== "undefined") window.FOLIO_BUILD = FOLIO_BUILD;
 if (typeof self !== "undefined") self.FOLIO_BUILD = FOLIO_BUILD;

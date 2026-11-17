@@ -2602,9 +2602,21 @@ const nseWatch = setInterval(() => { if (currentUser) { clearInterval(nseWatch);
 /* ---------- unbreakable company-modal close (X, backdrop, Esc, phone Back) ---------- */
 window.closeCompanyModal = function () {
   const m = $("stockModal");
+  const wasOpen = !!(m && !m.classList.contains("hidden"));
   if (m) m.classList.add("hidden");
   document.body.style.overflow = "";
   try { lwDispose(); } catch (e) {}
+  /* v129: a close that did NOT come from a Back press hands the stock
+     page's history entry back, so the next Back is never wasted on a
+     dead entry. Pop-initiated closes (the listener above, marked with
+     __folioStockPop, or the v89 manager's __folioPopClosed mark) have
+     already spent the entry — those skip this. */
+  if (wasOpen && !window.__folioStockPop && !(m && m.__folioPopClosed) && window.__folioStockEntry) {
+    window.__folioStockEntry = 0;
+    try { window.__folioPopSuppress = (window.__folioPopSuppress || 0) + 1; history.back(); } catch (e) {}
+  }
+  window.__folioStockPop = 0;
+  if (m) m.__folioPopClosed = 0;
 };
 document.addEventListener("click", e => {
   const t = e.target;
@@ -2613,8 +2625,16 @@ document.addEventListener("click", e => {
   if (cmEl && cmEl.closest("#stockModal")) { e.stopPropagation(); window.closeCompanyModal(); }
 }, true);
 window.addEventListener("popstate", () => {
+  if (window.__folioPopSuppress > 0) return; /* v129: this pop belongs to a layer that closed itself programmatically; the v89 manager accounts for it */
+  const sh = document.getElementById("folioShareOverlay");
+  if (sh && !sh.hidden) return; /* v129: the share studio is the top layer — its own listener owns this press */
+  if (document.getElementById("folioTour")) return; /* v129: the guided tour owns this press */
+  const pk = document.getElementById("cmdkPop");
+  if (pk && !pk.classList.contains("hidden")) return; /* v129: the palette sits above the stock page — the v89 manager closes only it */
+  const openModals = document.querySelectorAll(".modal");
+  for (let i = 0; i < openModals.length; i++) { if (openModals[i].id !== "stockModal" && !openModals[i].classList.contains("hidden")) return; } /* v129: a sheet is layered over the stock page (e.g. the transaction form) — the v89 manager owns this press and closes only that sheet */
   const m = $("stockModal");
-  if (m && !m.classList.contains("hidden")) window.closeCompanyModal();
+  if (m && !m.classList.contains("hidden")) { window.__folioStockPop = 1; window.closeCompanyModal(); }
 });
 const _openStockPrev = openStock;
 openStock = function (sym) {
@@ -2630,9 +2650,14 @@ openStock = function (sym) {
     const vd = $("taVerdict"); if (vd) vd.innerHTML = "";
     const hd = $("taHud"); if (hd) hd.textContent = "Drag on the chart to inspect any day";
   } catch (e) {}
+  const __smEl = $("stockModal");
+  const __wasOpen = !!(__smEl && !__smEl.classList.contains("hidden"));
   const r = _openStockPrev(sym);
   try { stockShareChipUpdate(sym); } catch (e) {}
-  try { history.pushState({ folioStock: 1 }, ""); } catch (e) {}
+  /* v129: exactly one history entry per stock-page session — opening
+     another stock from inside the page (peers, related rows) must not
+     stack extra entries for the Back button to burn through. */
+  if (!__wasOpen) { try { history.pushState({ folioStock: 1 }, ""); window.__folioStockEntry = 1; } catch (e) {} }
   return r;
 };
 
@@ -4757,7 +4782,7 @@ function platPngButtons(root) {
 /* --- Ctrl+K command palette --- */
 function platPalette() {
   let pop = $("cmdkPop");
-  if (pop) { pop.classList.remove("hidden"); $("cmdkInput").value = ""; cmdkRender(""); $("cmdkInput").focus(); return; }
+  if (pop) { pop.classList.remove("hidden"); if (!pop.__folioPushed) { try { history.pushState({ folioModal: "cmdkPop" }, ""); pop.__folioPushed = 1; } catch (e) {} } $("cmdkInput").value = ""; cmdkRender(""); $("cmdkInput").focus(); return; }
   pop = document.createElement("div"); pop.id = "cmdkPop"; pop.className = "cmdk-pop";
   pop.innerHTML = '<div class="cmdk-card"><input id="cmdkInput" type="text" placeholder="Search a stock, or jump to a tab or card…" aria-label="Command palette"><div id="cmdkList" class="cmdk-list"></div></div>';
   document.body.appendChild(pop);
@@ -4767,6 +4792,7 @@ function platPalette() {
     if (e.key === "Escape") pop.classList.add("hidden");
     if (e.key === "Enter") { const first = pop.querySelector("[data-cmdk]"); if (first) first.click(); }
   });
+  if (!pop.__folioPushed) { try { history.pushState({ folioModal: "cmdkPop" }, ""); pop.__folioPushed = 1; } catch (e) {} }
   cmdkRender("");
   $("cmdkInput").focus();
 }
@@ -5882,18 +5908,78 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
 (function () {
   const stack = [];
   const STATIC = { e2eeUnlock: 1, e2eeSetup: 1, quickLock: 1 }; /* security lock screens: Esc/outside/back must never dismiss them */
+  let pushedEntries = 0; /* v129: modal history entries this manager pushed and has not settled yet */
+  let deadPending = 0;   /* v131: entries left in the stack by tap-closed layers; the popstate handler skips them inside the next real Back press */
+  let inPop = false;     /* v129: true while the popstate handler is pruning (those closes were spent by the press itself) */
   const isOpen = m => m && !m.classList.contains("hidden");
-  function prune() { for (let i = stack.length - 1; i >= 0; i--) if (!isOpen(stack[i])) stack.splice(i, 1); }
+  /* v130: sub-layers — a sheet's internal steps (Tools index → a
+     calculator, Portfolio Tools index → a planner, Smart Money home →
+     a fund house, Mutual Funds list → a scheme) each own ONE history
+     entry, so a Back press peels exactly one internal step and never
+     the whole sheet along with it. A module registers a step with
+     folioSubPush (stacked steps) or folioSubSwap (a step that replaces
+     the current step keeps its entry) and settles it with
+     folioSubSettle when the step's own back control is tapped. */
+  const subStack = [];
+  function subPush(owner, closeFn) {
+    const s = { owner: owner, close: closeFn };
+    subStack.push(s);
+    try { history.pushState({ folioSub: 1 }, ""); pushedEntries++; } catch (e) {}
+    return s;
+  }
+  function subSwap(owner, closeFn) {
+    const t = subStack[subStack.length - 1];
+    if (t && t.owner === owner) { t.close = closeFn; return t; }
+    return subPush(owner, closeFn);
+  }
+  function subDiscard(owner) {
+    let n = 0;
+    for (let i = subStack.length - 1; i >= 0; i--) if (subStack[i].owner === owner) { subStack.splice(i, 1); n++; }
+    return n;
+  }
+  function subSettle(s) {
+    if (!s) return;
+    const i = subStack.indexOf(s);
+    if (i >= 0) subStack.splice(i, 1);
+    try { s.close(); } catch (e) {}
+    if (i < 0) return;
+    if (pushedEntries > 0) pushedEntries--;
+    deadPending++; /* v131: no settle-back — this entry is skipped inside the next Back press (see settleClosed) */
+  }
+  window.folioSubPush = subPush;
+  window.folioSubSwap = subSwap;
+  window.folioSubSettle = subSettle;
+  function settleClosed(m) { /* v129+v130: a layer that closes WITHOUT a Back press hands its history entries back (its own + any internal steps it still holds), so the next Back is never spent on a dead entry */
+    if (!m) return;
+    const subN = subDiscard(m);
+    const wasPushed = !!m.__folioPushed; m.__folioPushed = 0;
+    const wasPop = !!m.__folioPopClosed || inPop; m.__folioPopClosed = 0;
+    const total = (wasPushed ? 1 : 0) + subN;
+    if (!total) return;
+    pushedEntries = Math.max(0, pushedEntries - total);
+    if (wasPop) return;
+    /* v131: NO history.back() here any more. A settle-back issued now
+       can be jumped over by the pushState of the layer that replaces
+       this one (every More-hub row closes More and opens something
+       else), leaving that layer with no live entry and throwing the
+       user clean out of the app on the next Back or ✕ — the v129/v130
+       exit bug, proven live on foliotest (even More → Help → ✕
+       exited). Instead the closed layer's entries are counted dead
+       here and skipped by the popstate handler inside the next real
+       Back press, so a press still moves exactly one visible step. */
+    deadPending += total;
+  }
+  function prune() { for (let i = stack.length - 1; i >= 0; i--) if (!isOpen(stack[i])) { const m = stack[i]; stack.splice(i, 1); settleClosed(m); } }
   function top() { prune(); return stack.length ? stack[stack.length - 1] : null; }
   function syncLock() { document.body.style.overflow = stack.some(isOpen) ? "hidden" : ""; }
   function noteOpen(m) {
     if (!stack.includes(m)) {
       stack.push(m);
-      if (!STATIC[m.id] && m.id !== "stockModal") { try { history.pushState({ folioModal: m.id || "m" }, ""); } catch (e) {} }
+      if (!STATIC[m.id] && m.id !== "stockModal") { try { history.pushState({ folioModal: m.id || "m" }, ""); m.__folioPushed = 1; pushedEntries++; } catch (e) {} }
     }
     syncLock();
   }
-  function noteClosed(m) { const i = stack.indexOf(m); if (i >= 0) stack.splice(i, 1); syncLock(); }
+  function noteClosed(m) { const i = stack.indexOf(m); if (i >= 0) stack.splice(i, 1); settleClosed(m); syncLock(); }
   function observe(m) {
     if (!m || m.__folioObs) return; m.__folioObs = 1;
     new MutationObserver(() => { if (isOpen(m)) noteOpen(m); else noteClosed(m); }).observe(m, { attributes: true, attributeFilter: ["class"] });
@@ -5940,17 +6026,56 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
     return r;
   };
   window.addEventListener("popstate", () => {
+    /* v129: a popstate that a layer already claimed for its own
+       programmatic close (settleClosed above, the share studio, the
+       palette, the tour) is not a user Back press — ignore it once
+       per claim, so one close never cascades into a second layer. */
+    if (window.__folioPopSuppress > 0) { window.__folioPopSuppress--; return; }
+    /* v129: foreign top layers own this press — the share studio's
+       and the guided tour's own popstate listeners close them. */
+    const sh = document.getElementById("folioShareOverlay");
+    if (sh && !sh.hidden) return;
+    if (document.getElementById("folioTour")) return;
+    /* v129: the command palette is the topmost layer while it is open
+       (z-index 1400) — this press closes ONLY the palette. */
+    const pk = document.getElementById("cmdkPop");
+    if (pk && !pk.classList.contains("hidden")) { pk.__folioPopClosed = 1; pk.classList.add("hidden"); return; }
+    /* v131: this press landed on an entry whose layer was already
+       tap-closed (deadPending) — keep stepping within the SAME press
+       until one live layer peels, so a dead entry never eats a press
+       and the user is never thrown out of the app by stale entries.
+       Entries are fungible: only the counts matter, never which
+       physical entry the browser consumed. */
+    if (deadPending > 0) {
+      deadPending--;
+      const vw = document.querySelector(".view:not(.hidden)");
+      if (deadPending > 0 || subStack.length || stack.some(isOpen) || (vw && vw.id !== "view-dashboard")) {
+        try { history.back(); } catch (e) {}
+        return;
+      }
+    }
+    /* v130: an internal step of the top sheet owns this press — peel
+       exactly that step; the sheet itself stays open. */
+    const sub = subStack[subStack.length - 1];
+    if (sub) {
+      const tm = top();
+      if (tm && sub.owner === tm) {
+        subStack.pop();
+        if (pushedEntries > 0) pushedEntries--;
+        try { sub.close(); } catch (e) {}
+        return;
+      }
+    }
     const before = stack.length;
-    prune();
+    inPop = true; prune(); inPop = false;
     if (stack.length < before) { syncLock(); return; }
     const m = top();
-    if (m) { closeModal(m); return; }
+    if (m) { m.__folioPopClosed = 1; closeModal(m); return; }
     viewArmed = false;
     const cur = document.querySelector(".view:not(.hidden)");
-    if (cur && cur.id !== "view-dashboard") {
-      switchView("dashboard");
-      try { history.pushState({ folioView: "dashboard" }, ""); viewArmed = true; } catch (e) {}
-    }
+    /* v129: no fresh entry is pushed after landing Home — the next
+       Back leaves the app, so every press moves exactly one step. */
+    if (cur && cur.id !== "view-dashboard") switchView("dashboard");
   });
 
   let swipe = null;
@@ -6164,7 +6289,7 @@ window.openShareSheet = function (opts) {
   if (!shareModLoading) {
     shareModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/share.js?v=5"; sc.async = true;
+      sc.src = "js/share.js?v=6"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("share module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7063,7 +7188,7 @@ window.folioOpenTools = function (opts) {
   if (!toolsModLoading) {
     toolsModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/tools.js?v=1"; sc.async = true;
+      sc.src = "js/tools.js?v=2"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("tools module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7080,7 +7205,7 @@ window.folioOpenPTools = function (opts) {
   if (!ptoolsModLoading) {
     ptoolsModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/ptools.js?v=2"; sc.async = true;
+      sc.src = "js/ptools.js?v=3"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("ptools module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7100,7 +7225,7 @@ function smLoadModule() {
   if (!smModLoading) {
     smModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/smartmoney.js?v=4"; sc.async = true;
+      sc.src = "js/smartmoney.js?v=5"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("smartmoney module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7436,7 +7561,7 @@ window.folioOpenMutualFunds = function (opts) {
   if (!mfModLoading) {
     mfModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/mutualfunds.js?v=3"; sc.async = true;
+      sc.src = "js/mutualfunds.js?v=4"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("mutualfunds module failed to load"));
       document.head.appendChild(sc);
     });
@@ -8412,3 +8537,214 @@ window.folioProxyJson = async function (url, timeoutMs, opts) {
   } finally { ctls.forEach(c => { try { c.abort(); } catch (e) {} }); }
 };
 /* FIX128-END */
+
+/* ================= FIX v129: Phone Polish (WS2 shell, WS3 palette settle, WS5 skip gate) =================
+   Owner's report on v128 (2026-11-17): pages overlap, nothing feels
+   smooth, Back must go back ONE step at a time, and no screen may
+   close or jump by itself. The CSS half of this round is the
+   "FIX v129" layer at the tail of css/style.css; this block is the
+   JS half. The v89 history-settle edits above (settleClosed, the
+   popstate guards, the stock entry) are the WS3 core; what follows
+   here is append-only. */
+
+/* ---- WS2: a lazy sheet's FRAME paints the moment it is tapped ----
+   The seven hub openers wait for their module script before anything
+   appears (tools 43KB … smartmoney 107KB); on a phone connection
+   that gap reads as "stuck", not "loading". folioLoadShell is ONE
+   reusable sheet shown immediately while the module downloads: the
+   section's own name + the shared .ds-spinner (which keeps spinning
+   in every animation mode, Off included). The v89 manager adopts it
+   like any sheet — exactly one history entry; when the real sheet
+   becomes visible the shell closes and hands its entry back through
+   the v89 settle-on-close, so the stack ends with exactly one entry:
+   the real sheet's. If the user leaves the shell first (Back, ✕ or
+   backdrop), the real sheet is suppressed the moment it lands —
+   nothing may pop open by itself after the user has backed out. */
+(function folioV129Shell() {
+  var MODULES = [
+    ["folioOpenTools", "FolioTools", "toolsSheet", "Tools"],
+    ["folioOpenPTools", "FolioPTools", "ptoolsSheet", "Portfolio Tools"],
+    ["folioOpenSmartMoney", "FolioSmartMoney", "smSheet", "Smart Money"],
+    ["folioOpenMarketHub", "FolioMarketHub", "markethubSheet", "Market Hub"],
+    ["folioOpenMutualFunds", "FolioMutualFunds", "mutualfundsSheet", "Mutual Funds"],
+    ["folioOpenCalendar", "FolioCalendar", "calendarSheet", "Calendar"],
+    ["folioOpenLearn", "FolioLearn", "learnSheet", "Learn"]
+  ];
+  var shellEl = null, watch = null, suppressUntil = {};
+  function ensureShell() {
+    if (shellEl) return shellEl;
+    shellEl = document.createElement("div");
+    shellEl.id = "folioLoadShell";
+    shellEl.className = "modal sheet-modal hidden";
+    shellEl.setAttribute("role", "dialog");
+    shellEl.setAttribute("aria-label", "Loading");
+    shellEl.innerHTML = '<div class="modal-card sheet-card folio-load-card">' +
+      '<div class="modal-head"><h3 class="folio-load-title">Loading\u2026</h3>' +
+      '<button type="button" class="icon-btn" data-loadshell-close aria-label="Close">\u2715</button></div>' +
+      '<div class="folio-load-body"><span class="ds-spinner" aria-hidden="true"></span>' +
+      '<p class="muted">One moment \u2014 getting this ready.</p></div></div>';
+    document.body.appendChild(shellEl);
+    shellEl.querySelector("[data-loadshell-close]").addEventListener("click", function () { shellEl.classList.add("hidden"); });
+    return shellEl;
+  }
+  function sweepSuppress() {
+    var now = Date.now(), any = false;
+    Object.keys(suppressUntil).forEach(function (id) {
+      if (suppressUntil[id] < now) { delete suppressUntil[id]; return; }
+      any = true;
+      var s = document.getElementById(id);
+      if (s && !s.classList.contains("hidden")) { s.classList.add("hidden"); delete suppressUntil[id]; }
+    });
+    if (any) setTimeout(sweepSuppress, 150);
+  }
+  function startWatch(sheetId) {
+    if (watch && watch.sheetId !== sheetId) {
+      suppressUntil[watch.sheetId] = Date.now() + 20000; /* a sheet the user no longer waits for must not open by itself */
+      setTimeout(sweepSuppress, 150);
+    }
+    if (watch) clearInterval(watch.iv);
+    var w = watch = { sheetId: sheetId, cancelled: false, started: Date.now(), iv: null };
+    w.iv = setInterval(function () {
+      if (watch !== w) { clearInterval(w.iv); return; }
+      var s = document.getElementById(w.sheetId);
+      if (s && !s.classList.contains("hidden")) {
+        clearInterval(w.iv); watch = null;
+        if (w.cancelled) s.classList.add("hidden");
+        else if (shellEl) shellEl.classList.add("hidden");
+        return;
+      }
+      if (shellEl && shellEl.classList.contains("hidden")) w.cancelled = true;
+      if (Date.now() - w.started > 20000) { clearInterval(w.iv); watch = null; if (shellEl) shellEl.classList.add("hidden"); }
+    }, 150);
+  }
+  MODULES.forEach(function (cfg) {
+    var fname = cfg[0], gname = cfg[1], sheetId = cfg[2], label = cfg[3];
+    var orig = window[fname];
+    if (typeof orig !== "function") return;
+    window[fname] = function (opts) {
+      if (window[gname]) return orig.apply(this, arguments); /* module already here: the real sheet paints at once */
+      if (opts && (opts.silentEval || opts.stockTab)) return orig.apply(this, arguments); /* background / in-page renders show no sheet */
+      var sh = ensureShell();
+      var t = sh.querySelector(".folio-load-title"); if (t) t.textContent = label;
+      sh.classList.remove("hidden");
+      startWatch(sheetId);
+      return orig.apply(this, arguments);
+    };
+  });
+})();
+
+/* ---- WS3: the command palette hands its entry back on tap-close ----
+   platPalette() (edited above) pushes one history entry per open and
+   the v89 popstate handler closes the palette when a Back press pops
+   it (marking __folioPopClosed). This observer covers the palette's
+   own close paths (Esc, backdrop tap, picking a result): the entry
+   is consumed through the shared suppress claim, so the layer under
+   the palette is never closed by the palette closing. */
+(function folioV129PaletteSettle() {
+  new MutationObserver(function () {
+    var pk = document.getElementById("cmdkPop");
+    if (!pk || pk.__folioSettleObs) return;
+    pk.__folioSettleObs = 1;
+    new MutationObserver(function () {
+      if (!pk.classList.contains("hidden")) return;
+      if (!pk.__folioPushed) return;
+      pk.__folioPushed = 0;
+      if (pk.__folioPopClosed) { pk.__folioPopClosed = 0; return; }
+      var sh = document.getElementById("folioShareOverlay");
+      if (sh && !sh.hidden) return;
+      try { window.__folioPopSuppress = (window.__folioPopSuppress || 0) + 1; history.back(); } catch (e) {}
+    }).observe(pk, { attributes: true, attributeFilter: ["class"] });
+  }).observe(document.body, { childList: true });
+})();
+
+/* ---- WS5: Skip password must reach the dashboard, not a dead end ----
+   The protected gate in quickunlock.js wipes the skip record AND
+   forces a full sign-out the first time the device key cannot unlock
+   (its v107 path) — one transient IndexedDB miss (storage pressure,
+   a browser cleanup, a key the browser evicted) permanently kills
+   Skip on this device and lands the user on the sign-in page. This
+   wrap pre-checks the skip state with its OWN IndexedDB read before
+   the original gate runs:
+     "pass" — no skip record, a different account, or the store is
+       unreadable: the original gate runs untouched (it handles all
+       of those safely, without wiping);
+     "go" — skip is on for this account and the sealed secret still
+       decrypts with the device key: the original gate runs (its
+       silent path will succeed), and the per-session 2FA gate flag
+       is set exactly as the skip SETUP itself sets it after its
+       one-time code verification — so the app opens straight to the
+       dashboard, as the Security screen's own copy promises;
+     "dead" — skip is on but the device key is gone or the seal no
+       longer decrypts: the original gate is NOT called (it would
+       wipe the record and sign the user out). The normal vault
+       unlock sheet opens instead, the record stays intact, and a
+       plain message explains the repair (turn Skip off and on again
+       in Profile → Security).
+   The check only READS the existing record and attempts the same
+   decrypt the gate performs. No key material is created, moved or
+   stored here; the vault and its wraps are untouched. */
+(function folioV129QuickGate() {
+  function skipPrecheck() {
+    return new Promise(function (resolve) {
+      var done = false;
+      var finish = function (v) { if (!done) { done = true; resolve(v); } };
+      setTimeout(function () { finish("pass"); }, 2500);
+      try {
+        var rq = indexedDB.open("folio-quickunlock", 1);
+        rq.onerror = function () { finish("pass"); };
+        rq.onsuccess = function () {
+          try {
+            var db = rq.result;
+            var store = db.transaction("kv", "readonly").objectStore("kv");
+            var rec = null, devKey = null, pending = 2;
+            var step = function () { if (--pending === 0) evaluate(); };
+            var g1 = store.get("rec");
+            g1.onsuccess = function () { rec = g1.result || null; step(); };
+            g1.onerror = function () { finish("pass"); };
+            var g2 = store.get("devkey");
+            g2.onsuccess = function () { devKey = g2.result || null; step(); };
+            g2.onerror = function () { finish("pass"); };
+            function evaluate() {
+              try { db.close(); } catch (e) {}
+              var em = "";
+              try { em = (typeof E2 !== "undefined" && E2.pendingUser && E2.pendingUser.email) || (typeof currentUser !== "undefined" && currentUser && currentUser.email) || ""; } catch (e) {}
+              if (!rec || !rec.skip || !em || rec.email !== em) { finish("pass"); return; }
+              if (!devKey) { finish("dead"); return; }
+              if (typeof aesDec !== "function") { finish("pass"); return; }
+              aesDec(devKey, { iv: rec.skip.iv, data: rec.skip.data }).then(function () { finish("go"); }, function () { finish("dead"); });
+            }
+          } catch (e) { finish("pass"); }
+        };
+      } catch (e) { finish("pass"); }
+    });
+  }
+  function install() {
+    var orig = window.quickGate;
+    if (typeof orig !== "function" || orig.__v129Wrapped) return typeof orig === "function";
+    var wrapped = async function () {
+      var verdict = "pass";
+      try { verdict = await skipPrecheck(); } catch (e) {}
+      if (verdict === "go") {
+        try {
+          var em = (typeof E2 !== "undefined" && E2.pendingUser && E2.pendingUser.email) || "";
+          if (em) sessionStorage.setItem("pf_gate_" + em, "1");
+        } catch (e) {}
+        return orig();
+      }
+      if (verdict === "dead") {
+        if (typeof e2eeShowUnlock === "function") e2eeShowUnlock();
+        if (typeof toast === "function") toast("Skip password could not unlock on this device, so nothing was changed. Enter your vault password this time \u2014 to repair Skip, turn it off and on again in Profile \u2192 Security.");
+        return;
+      }
+      return orig();
+    };
+    wrapped.__v129Wrapped = 1;
+    window.quickGate = wrapped;
+    return true;
+  }
+  if (!install()) {
+    var n = 0;
+    var iv = setInterval(function () { n++; if (install() || n > 40) clearInterval(iv); }, 250);
+  }
+})();
+/* FIX129-END */

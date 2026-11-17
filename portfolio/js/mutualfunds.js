@@ -448,6 +448,7 @@
 
   /* ================= sheet ================= */
   var sheetEl = null, loadToken = 0;
+  var subTok = null;                 /* v130: the detail step's history token (modal manager) */
   var view = "home";                 /* "home" | "detail" */
   var curCode = null, curScheme = null, chartRange = "1Y";
   var sipMode = "past";              /* "past" | "proj" */
@@ -561,6 +562,11 @@
   function openDetail(code, force) {
     code = String(code);
     view = "detail"; curCode = code; curScheme = null; projRetSeededFor = null;
+    /* v130: the scheme detail is ONE history step of its own — a Back
+       press returns to the scheme list, a second Back closes the sheet.
+       folioSubSwap keeps the same entry when detail replaces detail
+       (refresh, retry, another scheme). */
+    if (window.folioSubSwap) subTok = window.folioSubSwap(sheetEl, function () { subTok = null; showHomeVisual(); });
     var home = sheetEl.querySelector("#mfHome"), det = sheetEl.querySelector("#mfDetail");
     if (home) home.classList.add("hidden");
     if (det) { det.classList.remove("hidden"); det.innerHTML = '<div class="skel mf-skel-block"></div><div class="skel mf-skel-block"></div>'; }
@@ -575,12 +581,16 @@
       if (det2) det2.innerHTML = '<button type="button" class="mf-back" data-mf-back="1">← All schemes</button>' + errHtml("This scheme", "detail");
     });
   }
-  function showHome() {
+  function showHomeVisual() {
     view = "home"; curCode = null; curScheme = null;
     var home = sheetEl.querySelector("#mfHome"), det = sheetEl.querySelector("#mfDetail");
     if (det) { det.classList.add("hidden"); det.innerHTML = ""; }
     if (home) home.classList.remove("hidden");
     renderSaved(loadToken);
+  }
+  function showHome() { /* in-sheet back controls: settle the detail step's history entry */
+    if (subTok && window.folioSubSettle) window.folioSubSettle(subTok);
+    else showHomeVisual();
   }
 
   function renderDetail() {

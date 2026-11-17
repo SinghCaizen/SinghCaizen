@@ -166,6 +166,12 @@
       else if (r.view === "profile") setScreen(null);  /* hub route: pop any settings screen */
       setHash(r.hash);
     } else if (r.kind === "more") {
+      /* v131: a Back/Forward traversal that merely LANDS on a stale
+         #/more entry (the hub was closed long ago; its entry is dead)
+         must not re-open the hub — the v89 manager owns Back and it
+         never opens layers. Only a fresh hash assignment (deep link,
+         FolioRouter.navigate) opens it. */
+      if (Date.now() - lastPopAt < 1500) { setHash(VIEW_HASH[currentView()] || "#/home"); return; }
       var s = $("moreSheet");
       if (s && s.classList.contains("hidden")) s.classList.remove("hidden");
       setHash("#/more");
@@ -191,6 +197,12 @@
       return r;
     };
   }
+
+  /* v131: when the last popstate happened — applyRoute uses it to
+     tell a traversal landing on #/more apart from a fresh hash
+     assignment to #/more. */
+  var lastPopAt = 0;
+  window.addEventListener("popstate", function () { lastPopAt = Date.now(); });
 
   window.addEventListener("hashchange", function () {
     var r = parse(window.location.hash);

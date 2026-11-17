@@ -666,6 +666,11 @@
     sheetEl.querySelector("#ptBack").classList.add("hidden");
     sheetEl.querySelector(".pt-body").scrollTop = 0;
   }
+  /* v130: the open planner is ONE history step of its own (registered
+     with the modal manager), so a Back press returns to this index and
+     only a second Back closes the sheet. */
+  var subTok = null;
+  function backToIndex() { subTok = null; showIndex(); }
   function showPanel(id) {
     var def = panelById(id); if (!def || !sheetEl) return;
     sheetEl.querySelector("#ptIndex").classList.add("hidden");
@@ -681,9 +686,16 @@
       if (id === "harvest") syncTaxInputs(p);
       def.compute(p);
     } catch (e) { setErr(p, "Something went wrong in this tool — check the numbers and try again."); }
+    if (window.folioSubSwap) subTok = window.folioSubSwap(sheetEl, backToIndex);
   }
   function openPTools(opts) {
     if (!sheetEl) sheetEl = buildSheet();
+    var wasHidden = sheetEl.classList.contains("hidden");
+    /* Same token hygiene as the Tools hub: settle a stale token (or a
+       live one when no planner is requested) so the sheet always
+       reopens at the right depth. */
+    if (subTok && window.folioSubSettle && (wasHidden || !(opts && opts.tool))) window.folioSubSettle(subTok);
+    if (wasHidden) subTok = null;
     sheetEl.classList.remove("hidden");
     if (opts && opts.tool && panelById(opts.tool)) showPanel(opts.tool);
     else showIndex();
@@ -709,7 +721,7 @@
     m.addEventListener("click", function (e) {
       var t = e.target;
       if (t.closest("#ptClose")) { m.classList.add("hidden"); return; }
-      if (t.closest("#ptBack")) { showIndex(); return; }
+      if (t.closest("#ptBack")) { if (subTok && window.folioSubSettle) window.folioSubSettle(subTok); else showIndex(); return; }
       var go = t.closest("[data-pt-go]");
       if (go) { showPanel(go.dataset.ptGo); return; }
       if (t.closest("[data-pt-goal]")) { goGoal(); return; }
