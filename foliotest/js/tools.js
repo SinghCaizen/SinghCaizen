@@ -646,6 +646,11 @@
     sheetEl.querySelector("#tlBack").classList.add("hidden");
     sheetEl.querySelector(".tl-body").scrollTop = 0;
   }
+  /* v130: the open calculator is ONE history step of its own (registered
+     with the modal manager), so a Back press returns to this index and
+     only a second Back closes the sheet. */
+  var subTok = null;
+  function backToIndex() { subTok = null; showIndex(); }
   function showPanel(id) {
     var def = panelById(id); if (!def || !sheetEl) return;
     sheetEl.querySelector("#tlIndex").classList.add("hidden");
@@ -655,9 +660,17 @@
     var p = sheetEl.querySelector('[data-panel="' + id + '"]');
     sheetEl.querySelector(".tl-body").scrollTop = 0;
     try { def.compute(p); } catch (e) { setErr(p, "Something went wrong in this calculator — check the numbers and try again."); }
+    if (window.folioSubSwap) subTok = window.folioSubSwap(sheetEl, backToIndex);
   }
   function openTools(opts) {
     if (!sheetEl) sheetEl = buildSheet();
+    var wasHidden = sheetEl.classList.contains("hidden");
+    /* A token left over from a previous open is stale (the manager
+       discarded it when the sheet closed) — settling it just runs the
+       visual close. A live token with no calculator requested settles
+       for real, so the sheet reopens at its index, one step deep. */
+    if (subTok && window.folioSubSettle && (wasHidden || !(opts && opts.calc))) window.folioSubSettle(subTok);
+    if (wasHidden) subTok = null;
     sheetEl.classList.remove("hidden");
     if (opts && opts.calc && panelById(opts.calc)) showPanel(opts.calc);
     else showIndex();
@@ -672,7 +685,7 @@
     m.addEventListener("click", function (e) {
       var t = e.target;
       if (t.closest("#tlClose")) { m.classList.add("hidden"); return; }
-      if (t.closest("#tlBack")) { showIndex(); return; }
+      if (t.closest("#tlBack")) { if (subTok && window.folioSubSettle) window.folioSubSettle(subTok); else showIndex(); return; }
       var go = t.closest("[data-tl-go]");
       if (go) { showPanel(go.dataset.tlGo); return; }
       var segBtn = t.closest(".ds-seg__btn");

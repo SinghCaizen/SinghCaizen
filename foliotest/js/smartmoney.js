@@ -876,8 +876,15 @@
     sheetEl.querySelector("#smTitle").textContent = titles[name] || "Smart Money";
     sheetEl.querySelector("#smBody").scrollTop = 0;
   }
+  /* v130: every screen step owns ONE history entry (registered with
+     the modal manager), so a Back press peels exactly one screen and
+     never the whole sheet. subToks mirrors S.navStack's pushes. */
+  var subToks = [];
+  function pushSub() {
+    if (window.folioSubPush) subToks.push(window.folioSubPush(sheetEl, function () { subToks.pop(); goBackVisual(); }));
+  }
   function goScreen(name, arg) {
-    if (S.screen !== name) S.navStack.push(S.screen);
+    if (S.screen !== name) { S.navStack.push(S.screen); pushSub(); }
     if (name === "entity") { S.entityId = arg; renderEntity(); }
     if (name === "compare") { renderCompare(); }
     if (name === "matrix") { renderMatrix(); }
@@ -885,10 +892,15 @@
     if (name === "settings") { renderSettings(); }
     showScreen(name);
   }
-  function goBack() {
+  function goBackVisual() {
     var prev = S.navStack.pop() || "home";
     if (prev === "entity" && S.entityId) { renderEntity(); }
     showScreen(prev);
+  }
+  function goBack() { /* the sheet's own back control: settle this step's history entry */
+    var tok = subToks[subToks.length - 1];
+    if (tok && window.folioSubSettle) window.folioSubSettle(tok);
+    else { subToks.pop(); goBackVisual(); }
   }
   function rerender() {
     if (!sheetEl || !S.sheetOpen) return;
@@ -1628,6 +1640,7 @@
     S.sheetOpen = true;
     sheetEl.classList.remove("hidden");
     S.navStack = [];
+    subToks = [];
     if (opts.screen === "sources") { getManifest(null).then(function () { goScreen("sources"); }); showScreen("home"); renderHome(); loadHomeData(); return; }
     showScreen("home");
     renderHome();
@@ -1649,7 +1662,7 @@
       var t = e.target;
       if (t.closest("#smClose")) { m.classList.add("hidden"); S.sheetOpen = false; return; }
       if (t.closest("#smBack")) { goBack(); return; }
-      if (t.closest("#smGear")) { S.navStack.push(S.screen); renderSettings(); showScreen("settings"); return; }
+      if (t.closest("#smGear")) { S.navStack.push(S.screen); pushSub(); renderSettings(); showScreen("settings"); return; }
       var chip = t.closest("[data-sm-chip]");
       if (chip) { S.chip = chip.dataset.smChip; S.feedShown = 60; renderHome(); return; }
       var more = t.closest("[data-sm-more]");

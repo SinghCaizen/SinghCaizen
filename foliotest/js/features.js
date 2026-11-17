@@ -5911,16 +5911,60 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
   let pushedEntries = 0; /* v129: modal history entries this manager pushed and has not settled yet */
   let inPop = false;     /* v129: true while the popstate handler is pruning (those closes were spent by the press itself) */
   const isOpen = m => m && !m.classList.contains("hidden");
-  function settleClosed(m) { /* v129: a layer that closes WITHOUT a Back press hands its history entry back, so the next Back is never spent on a dead entry */
-    if (!m) return;
-    const wasPushed = !!m.__folioPushed; m.__folioPushed = 0;
-    const wasPop = !!m.__folioPopClosed || inPop; m.__folioPopClosed = 0;
-    if (!wasPushed) return;
+  /* v130: sub-layers — a sheet's internal steps (Tools index → a
+     calculator, Portfolio Tools index → a planner, Smart Money home →
+     a fund house, Mutual Funds list → a scheme) each own ONE history
+     entry, so a Back press peels exactly one internal step and never
+     the whole sheet along with it. A module registers a step with
+     folioSubPush (stacked steps) or folioSubSwap (a step that replaces
+     the current step keeps its entry) and settles it with
+     folioSubSettle when the step's own back control is tapped. */
+  const subStack = [];
+  function subPush(owner, closeFn) {
+    const s = { owner: owner, close: closeFn };
+    subStack.push(s);
+    try { history.pushState({ folioSub: 1 }, ""); pushedEntries++; } catch (e) {}
+    return s;
+  }
+  function subSwap(owner, closeFn) {
+    const t = subStack[subStack.length - 1];
+    if (t && t.owner === owner) { t.close = closeFn; return t; }
+    return subPush(owner, closeFn);
+  }
+  function subDiscard(owner) {
+    let n = 0;
+    for (let i = subStack.length - 1; i >= 0; i--) if (subStack[i].owner === owner) { subStack.splice(i, 1); n++; }
+    return n;
+  }
+  function subSettle(s) {
+    if (!s) return;
+    const i = subStack.indexOf(s);
+    if (i >= 0) subStack.splice(i, 1);
+    try { s.close(); } catch (e) {}
+    if (i < 0) return;
     if (pushedEntries > 0) pushedEntries--;
-    if (wasPop) return;
     const sh = document.getElementById("folioShareOverlay");
     if (sh && !sh.hidden) return; /* a foreign layer owns the top entry right now; ours stays for a later press */
     try { window.__folioPopSuppress = (window.__folioPopSuppress || 0) + 1; history.back(); } catch (e) {}
+  }
+  window.folioSubPush = subPush;
+  window.folioSubSwap = subSwap;
+  window.folioSubSettle = subSettle;
+  function settleClosed(m) { /* v129+v130: a layer that closes WITHOUT a Back press hands its history entries back (its own + any internal steps it still holds), so the next Back is never spent on a dead entry */
+    if (!m) return;
+    const subN = subDiscard(m);
+    const wasPushed = !!m.__folioPushed; m.__folioPushed = 0;
+    const wasPop = !!m.__folioPopClosed || inPop; m.__folioPopClosed = 0;
+    const total = (wasPushed ? 1 : 0) + subN;
+    if (!total) return;
+    pushedEntries = Math.max(0, pushedEntries - total);
+    if (wasPop) return;
+    const sh = document.getElementById("folioShareOverlay");
+    if (sh && !sh.hidden) return; /* a foreign layer owns the top entry right now; ours stays for a later press */
+    try {
+      window.__folioPopSuppress = (window.__folioPopSuppress || 0) + total;
+      for (let i = 0; i < total; i++) history.back();
+    } catch (e) {}
   }
   function prune() { for (let i = stack.length - 1; i >= 0; i--) if (!isOpen(stack[i])) { const m = stack[i]; stack.splice(i, 1); settleClosed(m); } }
   function top() { prune(); return stack.length ? stack[stack.length - 1] : null; }
@@ -5993,6 +6037,18 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
        (z-index 1400) — this press closes ONLY the palette. */
     const pk = document.getElementById("cmdkPop");
     if (pk && !pk.classList.contains("hidden")) { pk.__folioPopClosed = 1; pk.classList.add("hidden"); return; }
+    /* v130: an internal step of the top sheet owns this press — peel
+       exactly that step; the sheet itself stays open. */
+    const sub = subStack[subStack.length - 1];
+    if (sub) {
+      const tm = top();
+      if (tm && sub.owner === tm) {
+        subStack.pop();
+        if (pushedEntries > 0) pushedEntries--;
+        try { sub.close(); } catch (e) {}
+        return;
+      }
+    }
     const before = stack.length;
     inPop = true; prune(); inPop = false;
     if (stack.length < before) { syncLock(); return; }
@@ -7115,7 +7171,7 @@ window.folioOpenTools = function (opts) {
   if (!toolsModLoading) {
     toolsModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/tools.js?v=1"; sc.async = true;
+      sc.src = "js/tools.js?v=2"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("tools module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7132,7 +7188,7 @@ window.folioOpenPTools = function (opts) {
   if (!ptoolsModLoading) {
     ptoolsModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/ptools.js?v=2"; sc.async = true;
+      sc.src = "js/ptools.js?v=3"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("ptools module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7152,7 +7208,7 @@ function smLoadModule() {
   if (!smModLoading) {
     smModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/smartmoney.js?v=4"; sc.async = true;
+      sc.src = "js/smartmoney.js?v=5"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("smartmoney module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7488,7 +7544,7 @@ window.folioOpenMutualFunds = function (opts) {
   if (!mfModLoading) {
     mfModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/mutualfunds.js?v=3"; sc.async = true;
+      sc.src = "js/mutualfunds.js?v=4"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("mutualfunds module failed to load"));
       document.head.appendChild(sc);
     });
