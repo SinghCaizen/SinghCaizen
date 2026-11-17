@@ -3682,3 +3682,77 @@ html[data-anim="full"] .insx-line:not([stroke-dasharray]) {
    both widths.) */
 .tl-stats .ds-stat { min-width: 0; padding: 12px 10px; }
 .tl-stats .ds-stat__value { white-space: nowrap; overflow-wrap: normal; font-size: clamp(13px, 4vw, 14.5px); }
+
+/* ================= FIX v129: Phone Polish (WS1 overlap, WS2 smoothness, WS4 common phone issues) =================
+   Owner's report on v128 (2026-11-17): things overlap on some pages,
+   nothing feels smooth, Back must go one step at a time (the JS half
+   of that is in js/features.js), plus the related common phone
+   issues. Append-only layer; every rule below names the defect it
+   fixes. */
+
+/* WS1 — a toast fired while a sheet is open painted UNDER the sheet
+   (.toast z-index 30 vs .modal 1000) and expired unseen. Toasts now
+   sit above sheets (1000) and the lock screens (1350), below the
+   splash (2000) and the update pill (2900). */
+.toast { z-index: 1400; }
+
+/* WS1 — Portfolio Tools stat values carried the same mid-number wrap
+   risk FIX v127/v128 removed for Tools (.pt-stats still had
+   font-size:17px + overflow-wrap:anywhere at the v90 layer). Same
+   treatment, same fit maths: at 360px the value box is ≈138px and
+   the worst realistic string (₹1,00,00,000 ≈ 93px at 14.5px) fits. */
+.pt-stats .ds-stat { min-width: 0; padding: 12px 10px; }
+.pt-stats .ds-stat__value { white-space: nowrap; overflow-wrap: normal; font-size: clamp(13px, 4vw, 14.5px); }
+
+/* WS2 — the capsule's active pill transitioned width and height
+   (layout properties) on every tab change. The pill's position is a
+   transform; its size changes only when the capsule itself resizes,
+   where an instant snap is invisible. Transform + opacity only. */
+.dock-pill { transition: transform var(--dur-3) var(--ease), opacity var(--dur-2) var(--ease) !important; }
+
+/* WS2 — on phones the sheet backdrop's opacity fade re-composited a
+   full-screen backdrop-filter blur on every frame of the open
+   animation — the single biggest sheet-open jank source on mid-range
+   Android. The backdrop now appears at once and only the CARD
+   animates (transform + opacity, unchanged). Desktop keeps the fade. */
+@media (max-width: 768px) {
+  .modal:not(.hidden) { animation: none; }
+}
+
+/* WS2 — the loading shell's body (features.js folioV129Shell): the
+   frame is a normal sheet card; the spinner is the shared .ds-spinner,
+   which keeps turning in every animation mode including Off. */
+.folio-load-body { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px 16px 32px; text-align: center; }
+.folio-load-body .ds-spinner { width: 30px; height: 30px; }
+
+/* WS4 — sheets must not chain their scroll to the page behind them
+   (the page is scroll-locked while a sheet is open, but iOS rubber-
+   banding could still drag the backdrop). */
+.modal-card, .sheet-card { overscroll-behavior: contain; }
+
+/* WS4 — rapid taps must not double-tap-zoom or wait out a tap delay
+   on the app's tappable surfaces. */
+button, a, .ds-row, .mobile-nav-item, [role="button"] { touch-action: manipulation; }
+
+/* WS4 — the watchlist name editor was the last sub-16px input
+   (13px): iOS Safari zooms the page on focus below 16px. */
+.wl-edit input { font-size: 16px; }
+
+/* WS4 — remaining sub-44px targets, raised where the layout has room
+   and extended invisibly (the established ::after pattern) where it
+   does not, so no visible layout moves:
+   - Insights P&L calendar days 38px -> 44px tall (grid just grows);
+   - dashboard card buttons 40px -> 44px;
+   - Smart Money matrix header cells 40px -> 44px;
+   - Market Hub compare-remove × (28px) and the TA zoom buttons
+     (26px) keep their size but gain a 44px invisible hit area;
+   - the DS explainer "i" button keeps its 20px layout footprint
+     (32px box, -6px margin) but becomes a 44px box at -12px margin.
+     (!important because ds.css loads after this file.) */
+.insx-cal-d { min-height: 44px; }
+.dc-btns .mini-btn { min-height: 44px; }
+.sm-mx-h { min-width: 44px; min-height: 44px; }
+.mh-chip button, .ta-zoom button { position: relative; }
+.mh-chip button::after, .ta-zoom button::after { content: ""; position: absolute; inset: -9px; }
+.ds-tip__btn { width: 44px !important; height: 44px !important; margin: -12px !important; }
+/* FIX129-END */

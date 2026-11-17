@@ -911,7 +911,7 @@
     document.body.style.overflow = "";
     window.removeEventListener("popstate", onPop);
     document.removeEventListener("keydown", onKey, true);
-    if (!fromPop) { try { if (history.state && history.state.folioShare) history.back(); } catch (e) {} }
+    if (!fromPop) { try { if (history.state && history.state.folioShare) { window.__folioPopSuppress = (window.__folioPopSuppress || 0) + 1; history.back(); } } catch (e) {} } /* v129: claim the pop so the v89 manager does not also close the layer underneath */
     if (state.lastFocus && state.lastFocus.focus) { try { state.lastFocus.focus(); } catch (e) {} }
   }
 

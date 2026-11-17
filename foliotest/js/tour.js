@@ -63,6 +63,12 @@
   ];
 
   var running = false, idx = 0, els = null, mo = null, navigated = false;
+  /* v129: the tour is a history layer like every other — one Back ends
+     ONLY the tour (the v89 manager and the stock listener stand down
+     while #folioTour exists), and ending it by tap hands its entry
+     back through the shared __folioPopSuppress claim. */
+  var tourFromPop = false, tourEntryLive = false;
+  function onTourPop() { tourFromPop = true; end(false); }
 
   function reduced() { try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; } }
   function visible(elm) {
@@ -168,6 +174,7 @@
   function end(finished) {
     if (!running) return;
     running = false;
+    window.removeEventListener("popstate", onTourPop);
     document.removeEventListener("keydown", onKey, true);
     window.removeEventListener("resize", onResize);
     if (mo) { try { mo.disconnect(); } catch (e) {} mo = null; }
@@ -177,6 +184,11 @@
       try { switchView("dashboard"); } catch (e) {}
     }
     navigated = false;
+    if (!tourFromPop && tourEntryLive) {
+      try { window.__folioPopSuppress = (window.__folioPopSuppress || 0) + 1; history.back(); } catch (e) {}
+    }
+    tourEntryLive = false;
+    tourFromPop = false;
   }
 
   window.folioTourStart = function (manual) {
@@ -194,5 +206,7 @@
     try { localStorage.setItem(FLAG, "1"); } catch (e) {} /* shown once per device */
     build();
     show(0);
+    try { history.pushState({ folioTour: 1 }, ""); tourEntryLive = true; } catch (e) {}
+    window.addEventListener("popstate", onTourPop);
   };
 })();

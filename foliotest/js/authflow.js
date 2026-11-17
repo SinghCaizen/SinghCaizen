@@ -2,9 +2,10 @@
    FOLIO — Phase 3 presentation layer: auth screens, sign-up wizard,
    Security Checkup, first-run panel, tour launcher.
 
-   PRESENTATION ONLY. This file performs NO auth, vault, gate or
-   unlock operation. It never calls doAuth / doGoogleSignIn /
-   doForgot / totp* / e2ee* / quick* functions; it only:
+   PRESENTATION ONLY — with ONE v129 exception (section 6 below).
+   Otherwise this file performs NO auth, vault, gate or unlock
+   operation. It never calls doAuth / doGoogleSignIn / doForgot /
+   totp* / e2ee* / quick* functions; it only:
      - toggles which part of the EXISTING #authForm is visible
        (the sign-up stepper) and mirrors the existing mode label
        on the EXISTING Google button (same id, same handler);
@@ -283,7 +284,7 @@
     if (tourLoading) return;
     tourLoading = true;
     var sc = document.createElement("script");
-    sc.src = "js/tour.js?v=1"; sc.async = true;
+    sc.src = "js/tour.js?v=2"; sc.async = true;
     sc.onload = function () { tourLoading = false; if (typeof window.folioTourStart === "function") window.folioTourStart(!!manual); };
     sc.onerror = function () {
       tourLoading = false;
@@ -318,9 +319,106 @@
     }
   }
 
+  /* ---------------- 6. Google sign-in flow (v129, WS6) ----------------
+     WHY: app.js's doGoogleSignIn always tries a popup first. In the
+     installed app (standalone display mode) and in mobile browsers
+     the popup promise often never settles — the Google window opens
+     in a separate view, the opener link is lost, and the button
+     looks dead (LILA's 2026-11-14 report: initiation healthy, the
+     break is at completion / return). The full-page redirect flow
+     is the reliable path in those environments. So this section
+     rebinds the EXISTING #googleBtn — clone-replace, the codebase's
+     own pattern for dropping a listener — to an environment-aware
+     handler:
+       standalone / mobile / iOS -> redirect first;
+       desktop browser           -> popup first, redirect fallback
+         (app.js's own policy, including its plain-language errors);
+       every path first sets LOCAL persistence, so the session
+         survives the app being closed (WS5), and the redirect path
+         sets the same sessionStorage flag (folio_g_redirect) that
+         app.js's boot handler reads on return — a failed return is
+         explained on the auth screen, never silent.
+     The environment decision is a pure function, exposed as
+     window.__folioGoogleEnv and harness-tested with UA/display
+     fixtures. app.js's getRedirectResult boot consumption is
+     unchanged and still completes the return. */
+  function googleEnv() {
+    var standalone = false;
+    try { standalone = !!((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone === true); } catch (e) {}
+    var ua = "";
+    try { ua = String(window.navigator.userAgent || ""); } catch (e) {}
+    var mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+    return { standalone: standalone, mobile: mobile, redirectFirst: !!(standalone || mobile) };
+  }
+  window.__folioGoogleEnv = googleEnv;
+  var googleBusy = false;
+  function googleBtnLabel(txt) {
+    var gb = el("googleBtn"); if (!gb) return null;
+    for (var i = 0; i < gb.childNodes.length; i++) {
+      var nd = gb.childNodes[i];
+      if (nd.nodeType === 3 && nd.textContent.trim()) { var old = nd.textContent; if (txt != null) nd.textContent = txt; return old; }
+    }
+    return null;
+  }
+  async function folioGoogleSignIn() {
+    if (googleBusy) return;
+    if (typeof authError === "function") authError("");
+    if (typeof FIREBASE_ON === "undefined" || !FIREBASE_ON || typeof firebase === "undefined" || typeof fb === "undefined" || !fb || !fb.auth) {
+      if (typeof authError === "function") authError("Google login starts once the Firebase config is added \u2014 it is on its way. Till then, please use email and password.");
+      return;
+    }
+    googleBusy = true;
+    var gb = el("googleBtn");
+    var oldTxt = googleBtnLabel(" Opening Google\u2026 ");
+    if (gb) gb.disabled = true;
+    var done = function () {
+      googleBusy = false;
+      if (gb) { gb.disabled = false; if (oldTxt != null) googleBtnLabel(oldTxt); }
+    };
+    var provider = new firebase.auth.GoogleAuthProvider();
+    /* The session must live on this device (LOCAL), whichever flow
+       runs — a SESSION-persisted Google sign-in is lost the moment
+       the installed app is closed, which reads as "Skip password
+       did not work" (WS5). */
+    try { await fb.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch (e) {}
+    var goRedirect = async function () {
+      try { sessionStorage.setItem("folio_g_redirect", "1"); } catch (e) {}
+      try { await fb.auth.signInWithRedirect(provider); }
+      catch (e3) {
+        try { sessionStorage.removeItem("folio_g_redirect"); } catch (e4) {}
+        if (typeof authError === "function") authError(typeof friendlyFbError === "function" ? friendlyFbError(e3) : "Google sign-in could not start. Please try again.");
+        done();
+      }
+    };
+    if (googleEnv().redirectFirst) { goRedirect(); return; }
+    try { await fb.auth.signInWithPopup(provider); done(); }
+    catch (e) {
+      var c = (e && e.code) || "";
+      /* Hard configuration problems: say so plainly — a redirect
+         cannot fix them (mirrors app.js's policy). */
+      if (c.indexOf("unauthorized-domain") >= 0 || c.indexOf("operation-not-allowed") >= 0 || c.indexOf("invalid-api-key") >= 0 || c.indexOf("user-disabled") >= 0) {
+        if (typeof authError === "function") authError(typeof friendlyFbError === "function" ? friendlyFbError(e) : "Google sign-in is not available right now.");
+        done(); return;
+      }
+      goRedirect();
+    }
+  }
+  function wireGoogle() {
+    var gb = el("googleBtn");
+    if (!gb || gb.dataset.v129Wired) return;
+    /* app.js bound its handler to this node earlier in the same
+       DOMContentLoaded pass; the clone keeps id, classes, icon and
+       label but drops that listener, so exactly one handler runs. */
+    var clone = gb.cloneNode(true);
+    clone.dataset.v129Wired = "1";
+    if (gb.parentNode) gb.parentNode.replaceChild(clone, gb);
+    clone.addEventListener("click", function () { folioGoogleSignIn(); });
+  }
+
   /* ---------------- boot wiring ---------------- */
   document.addEventListener("DOMContentLoaded", function () {
     wireWizard();
+    wireGoogle();
     wireEye("gateEye", "gatePass");
     wireEye("vaultEye", "vaultPass");
     wireCheckup();
