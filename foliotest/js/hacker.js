@@ -521,7 +521,12 @@
     if (!g) { g = document.createElement("div"); g.id = "hkGreet"; g.className = "hk-greet"; dash.insertBefore(g, dash.firstChild); }
     ssSet("hk_greet", "1");
     var name = "TRADER";
-    try { name = String((state.profile && state.profile.name) || (window.currentUser && currentUser.displayName) || "TRADER").split(" ")[0].toUpperCase() || "TRADER"; } catch (e) {}
+    try {
+      var dn = "";
+      if (typeof displayName === "function") dn = displayName();
+      if (!dn) dn = (state.profile && state.profile.name) || (window.currentUser && currentUser.name) || "";
+      name = String(dn || "TRADER").split(" ")[0].toUpperCase() || "TRADER";
+    } catch (e) {}
     var full = "> WELCOME BACK, " + name;
     if (fx() === "full") {
       var rest = full.slice(2), i = 0;
@@ -572,7 +577,7 @@
   function extendPanel() {
     var panel = $("hkPanel"); if (!panel || panel.dataset.hk2) return;
     panel.dataset.hk2 = "1";
-    var rows = panel.querySelector(".hk-rows"); if (!rows) return;
+    var rows = panel; /* v139 fix: rows are direct children of the panel */
     var srow = document.createElement("div"); srow.className = "hk-row";
     srow.innerHTML = '<span class="hk-row-label">SOUND FX</span><span class="seg seg-small"><button type="button" class="seg-btn" data-sfx-opt="on">ON</button><button type="button" class="seg-btn" data-sfx-opt="off">OFF</button></span>';
     rows.appendChild(srow);
@@ -746,7 +751,7 @@
      "a" (add transaction) cannot hijack the sequence mid-word. */
   var eggBuf = "", eggPrivacy = null, konamiIdx = 0;
   var KONAMI = ["arrowup", "arrowup", "arrowdown", "arrowdown", "arrowleft", "arrowright", "arrowleft", "arrowright", "b", "a"];
-  document.addEventListener("keydown", function (ev) {
+  window.addEventListener("keydown", function (ev) {
     var t = ev.target;
     if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) { eggBuf = ""; konamiIdx = 0; return; }
     if (document.querySelector(".modal:not(.hidden)")) { eggBuf = ""; konamiIdx = 0; return; }

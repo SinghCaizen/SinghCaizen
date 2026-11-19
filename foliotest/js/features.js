@@ -654,6 +654,7 @@ document.addEventListener("keydown", e => {
   const tag = (e.target && e.target.tagName) || "";
   const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (e.target && e.target.isContentEditable);
   if (e.key === "Escape") {
+    const cp = $("cmdkPop"); if (cp) cp.classList.add("hidden");
     document.querySelectorAll(".modal:not(.hidden)").forEach(m => m.classList.add("hidden"));
     document.querySelectorAll(".hold-card.open").forEach(c => c.classList.remove("open"));
     return;
@@ -4772,7 +4773,7 @@ function cmdkRender(q) {
   views.forEach(([v, label]) => { if (!qv || label.toLowerCase().includes(qv)) items.push({ label, run: () => switchView(v) }); });
   if (qv.length >= 2) (window.STOCK_LIST || []).filter(e => e[0].toLowerCase().includes(qv) || e[1].toLowerCase().includes(qv)).slice(0, 7).forEach(e => items.push({ label: "📈 " + e[0] + " — " + e[1], run: () => { if (typeof openStock === "function") openStock(e[0]); } }));
   list.innerHTML = items.length ? items.map((it, i) => '<button type="button" class="cmdk-item" data-cmdk="' + i + '">' + esc(it.label) + "</button>").join("") : '<p class="empty-note">Nothing matches.</p>';
-  list.querySelectorAll("[data-cmdk]").forEach(b => b.addEventListener("click", () => { $("cmdkPop").classList.add("hidden"); items[Number(b.dataset.cmdk)].run(); }));
+  list.querySelectorAll("[data-cmdk]").forEach(b => b.addEventListener("click", () => { const run = items[Number(b.dataset.cmdk)].run; $("cmdkPop").classList.add("hidden"); setTimeout(run, 40); }));
 }
 document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); platPalette(); } });
 /* --- swipe between tabs + pull to refresh --- */
