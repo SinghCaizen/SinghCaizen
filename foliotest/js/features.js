@@ -5878,6 +5878,12 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
        entry whose page is already closed) fall back to Home,
        exactly as the v129 design behaved. */
     const vst = (function () { try { return history.state; } catch (e) { return null; } })();
+    /* v136: a STATELESS entry whose URL names a screen is a fragment
+       navigation (a deep link typed/pasted in this tab fires popstate
+       before hashchange) — the router's hashchange handler owns it.
+       Standing down here keeps the tail from bouncing it Home before
+       the router can apply it (QA round 7, Part 2). */
+    if (!vst && window.location.hash && window.location.hash !== "#/home" && window.location.hash !== "#/") return;
     const VIEWS136 = { dashboard: 1, holdings: 1, watchlist: 1, insights: 1, news: 1, history: 1, profile: 1 };
     const target = (vst && VIEWS136[vst.folioView]) ? vst.folioView : "dashboard";
     const cur = document.querySelector(".view:not(.hidden)");
