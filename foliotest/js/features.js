@@ -7865,16 +7865,15 @@ if (typeof switchView === "function") {
         !(typeof uiBusy === "function" && uiBusy());
     } catch (e) { canVT = false; }
     folioVtArmed = true;
-    if (!canVT) return _switchView7.apply(this, arguments);
-    try {
-      document.documentElement.classList.add("vt-active");
-      const t = document.startViewTransition(() => { _switchView7.apply(this, arguments); });
-      const done = () => { try { document.documentElement.classList.remove("vt-active"); } catch (e) {} };
-      if (t && t.finished && t.finished.then) t.finished.then(done, done); else done();
-    } catch (e) {
-      try { document.documentElement.classList.remove("vt-active"); } catch (x) {}
-      return _switchView7.apply(this, arguments);
-    }
+    /* v136 fix (QA logs, 2026-11-19): startViewTransition defers the
+       real switch to a later task, but the history system around this
+       wrap is synchronous — the router mirror wrote the new hash onto
+       the OLD entry before the arm push ran, and a traversal switch
+       landed after the traversal flag had already been cleared, so it
+       pushed a fresh entry and destroyed the Forward stack. The
+       switch now ALWAYS runs synchronously; the .view-enter CSS
+       animation (scroll-memory wrap) provides the visual transition. */
+    return _switchView7.apply(this, arguments);
   };
 }
 

@@ -245,7 +245,8 @@
        re-applying the route here switched a SECOND time (unguarded),
        whose arm push truncated the Forward stack. Inside the pop
        window, only mirror the hash of the view that is showing. */
-    if (Date.now() - lastPopAt < 1500) { setHash(VIEW_HASH[currentView()] || "#/home"); return; }
+    var rPeek = parse(window.location.hash);
+    if (Date.now() - lastPopAt < 1500 && rPeek && rPeek.kind === "view" && rPeek.view === currentView()) { setHash(VIEW_HASH[currentView()] || "#/home"); return; }
     var r = parse(window.location.hash);
     if (!r) return;
     if (!appShown()) { staleHash = false; pending = r; startRetry(); return; }
