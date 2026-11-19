@@ -8239,3 +8239,16 @@ window.folioProxyJson = async function (url, timeoutMs, opts) {
   }
 })();
 /* FIX129-END */
+
+/* ===== QA-ONLY history logger — foliotest round 3, NEVER for production ===== */
+(function () {
+  var log = []; window.__histLog = log;
+  function vw() { var v = document.querySelector(".view:not(.hidden)"); return v ? v.id : "?"; }
+  function snap(tag) { try { log.push(tag + " | state=" + JSON.stringify(history.state) + " | vw=" + vw() + " | hash=" + location.hash); } catch (e) {} }
+  var _ps = history.pushState.bind(history);
+  history.pushState = function (s, t, u) { var r = _ps(s, t, u); snap("PUSH " + JSON.stringify(s)); return r; };
+  var _rs = history.replaceState.bind(history);
+  history.replaceState = function (s, t, u) { var r = _rs(s, t, u); snap("REPL " + JSON.stringify(s)); return r; };
+  window.addEventListener("popstate", function () { snap("POP-before"); setTimeout(function () { snap("POP-after"); }, 350); }, true);
+  snap("BOOT");
+})();
