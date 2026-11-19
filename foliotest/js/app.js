@@ -620,7 +620,17 @@ function moneyFmt(v) {
 
 /* ================= rendering ================= */
 const PIE = ["#f2f2f2", "#bdbdbd", "#8a8a8a", "#5c5c5c", "#e03131", "#3d3d3d", "#d6d6d6", "#757575", "#a8a8a8", "#2b2b2b"];
-function renderAll() { renderDashboard(); renderHoldings(); renderWatch(); renderHistory(); }
+function renderAll() {
+  renderDashboard();
+  /* v136 (Prompt 1, speed): only the ACTIVE list view re-renders on a
+     data refresh — Holdings / Watchlist / History render fresh when
+     the user switches to them (the v91 render-on-switch wrap), so a
+     price tick no longer rebuilds three hidden screens. */
+  const av = (document.querySelector(".view:not(.hidden)") || {}).id || "";
+  if (av === "view-holdings") renderHoldings();
+  else if (av === "view-watchlist") renderWatch();
+  else if (av === "view-history") renderHistory();
+}
 /* ---------- editing shield ----------
    Background refreshes (price ticks, cloud echoes) must never rebuild
    the screen while the user is editing: a rebuild kills open forms.

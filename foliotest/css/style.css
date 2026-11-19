@@ -3591,3 +3591,13 @@ button, a, .ds-row, .mobile-nav-item, [role="button"] { touch-action: manipulati
 .mh-chip button::after, .ta-zoom button::after { content: ""; position: absolute; inset: -9px; }
 .ds-tip__btn { width: 44px !important; height: 44px !important; margin: -12px !important; }
 /* FIX129-END */
+
+/* ===== v136 phone-perfect pass (Prompt 2 §4): 16px inputs (no iOS
+   zoom on focus) + 44px minimum tap targets on the shared controls.
+   Appended last so it wins over the older base rules it corrects. */
+input { font-size: 16px; }
+.mini-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+.seg-btn { min-height: 44px; }
+.chip { min-height: 44px; display: inline-flex; align-items: center; }
+.watch-x { position: relative; }
+.watch-x::after { content: ""; position: absolute; inset: -8px; }

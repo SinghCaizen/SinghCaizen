@@ -55,12 +55,28 @@
     return v ? v.id.replace(/^view-/, "") : "dashboard";
   }
   function busy() { try { return typeof uiBusy === "function" && uiBusy(); } catch (e) { return false; } }
-  function setHash(h) { try { if (window.location.hash !== h) history.replaceState(null, "", h); } catch (e) {} }
+  function setHash(h) { try { if (window.location.hash !== h) history.replaceState(history.state, "", h); } catch (e) {} }
+  /* v136: tag the boot entry with the view it boots into, so a Back
+     traversal that lands on it knows its screen (the v89 tail reads
+     history.state). Never overwrites an existing folioView tag. */
+  function tagBoot() {
+    try {
+      var st = history.state;
+      if (!st || !st.folioView) history.replaceState({ folioView: currentView() }, "", window.location.hash || VIEW_HASH[currentView()] || "#/home");
+    } catch (e) {}
+  }
   function moreOpen() { var s = $("moreSheet"); return !!(s && !s.classList.contains("hidden")); }
 
   function parse(hash) {
     if (!hash || hash === "#") return null;               /* no route: never a navigation */
     if (hash === "#/") return { kind: "view", view: "dashboard", hash: "#/home" };
+    if (hash === "#/dashboard") return { kind: "view", view: "dashboard", hash: "#/home" };
+    if (hash === "#/profile") return { kind: "view", view: "profile", hash: "#/account" };
+    if (hash.indexOf("#/profile/") === 0) {
+      var pk = hash.slice("#/profile/".length);
+      if (Object.prototype.hasOwnProperty.call(ACC, pk)) return { kind: "view", view: "profile", acc: ACC[pk], hash: "#/account/" + pk };
+      return { kind: "view", view: "profile", hash: "#/account" };
+    }
     if (HASH_VIEW[hash]) return { kind: "view", view: HASH_VIEW[hash], hash: hash };
     if (hash === "#/more") return { kind: "more", hash: hash };
     if (hash.indexOf("#/account/") === 0) {
@@ -251,6 +267,7 @@
         var shown = appShown();
         if (shown && !appWasShown) {
           appWasShown = true;
+          tagBoot();
           if (staleHash) { staleHash = false; pending = null; setHash(VIEW_HASH[currentView()] || "#/home"); }
           else if (pending) applyRoute(pending);
           else setHash(VIEW_HASH[currentView()] || "#/home");
@@ -260,7 +277,7 @@
       }).observe(a, { attributes: true, attributeFilter: ["class"] });
     }
     var r = parse(window.location.hash);
-    if (appShown()) { appWasShown = true; if (r) applyRoute(r); else setHash(VIEW_HASH[currentView()] || "#/home"); }
+    if (appShown()) { appWasShown = true; tagBoot(); if (r) applyRoute(r); else setHash(VIEW_HASH[currentView()] || "#/home"); }
     else if (r) pending = r;
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

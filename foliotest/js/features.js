@@ -5809,11 +5809,20 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
     if (m && m.classList && m.classList.contains("modal") && isOpen(m) && !STATIC[m.id] && top() === m) closeModal(m);
   });
 
-  let viewArmed = false;
+  /* v136: REAL view history (Prompt 1) — every user switch to a
+     different view pushes one { folioView } entry tagged with the
+     view it lands on, so Back/Forward traverse the user's actual
+     screens (the popstate tail below reads the landed entry's
+     state). Traversal-driven switches (viewTraversing) and switches
+     under an open layer (top()) never push. This replaces the v129
+     single-arm design that always landed Back on Home. */
+  let viewTraversing = false;
+  let lastViewName = "dashboard";
   const _sv89 = switchView;
   switchView = function (name) {
     const r = _sv89.apply(this, arguments);
-    if (name && name !== "dashboard" && !viewArmed && !top()) { try { history.pushState({ folioView: name }, ""); viewArmed = true; } catch (e) {} }
+    if (name && name !== lastViewName && !viewTraversing && !top()) { try { history.pushState({ folioView: name }, ""); } catch (e) {} }
+    if (name) lastViewName = name;
     return r;
   };
   window.addEventListener("popstate", () => {
@@ -5862,11 +5871,21 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
     if (stack.length < before) { syncLock(); return; }
     const m = top();
     if (m) { m.__folioPopClosed = 1; closeModal(m); return; }
-    viewArmed = false;
+    /* v136: no layer claimed this press — it is a view traversal.
+       The landed entry's state names the view to show (this makes
+       Back AND Forward follow the user's real screen history).
+       Entries without a folioView tag (the boot entry, a stock
+       entry whose page is already closed) fall back to Home,
+       exactly as the v129 design behaved. */
+    const vst = (function () { try { return history.state; } catch (e) { return null; } })();
+    const VIEWS136 = { dashboard: 1, holdings: 1, watchlist: 1, insights: 1, news: 1, history: 1, profile: 1 };
+    const target = (vst && VIEWS136[vst.folioView]) ? vst.folioView : "dashboard";
     const cur = document.querySelector(".view:not(.hidden)");
-    /* v129: no fresh entry is pushed after landing Home — the next
-       Back leaves the app, so every press moves exactly one step. */
-    if (cur && cur.id !== "view-dashboard") switchView("dashboard");
+    if (cur && cur.id !== "view-" + target) {
+      viewTraversing = true;
+      try { switchView(target); } catch (e) {}
+      viewTraversing = false;
+    }
   });
 
   let swipe = null;
