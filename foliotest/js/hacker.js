@@ -1031,7 +1031,7 @@
      its box so the cards join the view's own masonry columns directly. */
   function flattenInsights() {
     if (window.innerWidth < 1024) return;
-    ["insXWrap", "planWrap"].forEach(function (id) {
+    ["insXWrap", "planWrap", "anaWrap"].forEach(function (id) {
       var w = $(id);
       if (!w) return;
       w.querySelectorAll(".panel").forEach(function (p) { if (p.style.marginBottom !== "14px") p.style.marginBottom = "14px"; });

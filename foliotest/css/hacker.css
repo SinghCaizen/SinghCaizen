@@ -519,7 +519,8 @@ html[data-skin][data-anim="full"] .cmp-svg { animation: hkDrawIn .6s ease both; 
   html[data-skin] #view-dashboard > #dashChips,
   html[data-skin] #view-dashboard > .stat-grid,
   html[data-skin] #view-dashboard > .dash-chips,
-  html[data-skin] #view-insights > .dash-chips { column-span: all; }
+  html[data-skin] #view-insights > .dash-chips,
+  html[data-skin] #view-insights > #anaJump { column-span: all; }
 }
 
 /* search + action rows: one row, equal heights */
