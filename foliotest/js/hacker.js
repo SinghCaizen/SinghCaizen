@@ -1050,10 +1050,11 @@
         " parent=" + (wrap.parentElement ? (wrap.parentElement.id || wrap.parentElement.className) : "?");
       var arr = [];
       try { arr = JSON.parse(localStorage.getItem("folio_actlog") || "[]"); } catch (e) {}
-      arr.unshift({ t: Date.now(), msg: msg });
-      try { localStorage.setItem("folio_actlog", JSON.stringify(arr.slice(0, 60))); } catch (e) {}
-      var list = document.getElementById("hkLogList");
-      if (list) { var d = document.createElement("div"); d.textContent = "[diag] " + msg; list.prepend(d); }
+      arr.push({ t: Date.now(), m: msg });
+      while (arr.length > 60) arr.shift();
+      try { localStorage.setItem("folio_actlog", JSON.stringify(arr)); } catch (e) {}
+      var list = document.getElementById("hkLogBody");
+      if (list) { var d = document.createElement("div"); d.className = "hk-log-line"; d.textContent = "[diag] " + msg; list.prepend(d); }
     } catch (e) {}
   }
   setTimeout(diag, 5000);
