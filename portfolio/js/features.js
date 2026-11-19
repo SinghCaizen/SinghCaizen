@@ -68,6 +68,7 @@ const RANGE_CFG = {
 };
 const histCache = {};
 const histReval = {};
+const histFailAt = {};   /* v138: when each cache key last failed (negative-cache TTL) */
 function histCk(ck) { const i = String(ck).indexOf("|"); return i > 0 ? symHash(String(ck).slice(0, i)) + String(ck).slice(i) : String(ck); }
 function histLsGet(ck) {
   try { const o = JSON.parse(localStorage.getItem("folio_hist_" + histCk(ck)) || "null"); return o && o.data ? o : null; } catch (e) { return null; }
@@ -117,12 +118,16 @@ async function fetchHistoryNet(sym, rangeKey, ck) {
       } catch (e2) {}
     }
     if (!(ck in histCache)) histCache[ck] = null;
+    histFailAt[ck] = Date.now();
     return null;
   }
 }
 async function fetchHistory(sym, rangeKey) {
   const ck = sym + "|" + rangeKey;
-  if (ck in histCache) return histCache[ck];
+  if (ck in histCache && histCache[ck] !== null) return histCache[ck];
+  /* v138: a cached failure expires after 45 s — one flaky moment used
+     to poison the symbol for the whole session. */
+  if (ck in histCache && histCache[ck] === null && Date.now() - (histFailAt[ck] || 0) < 45000) return null;
   /* Stale-while-revalidate: a saved series (≤7 days old) paints instantly;
      fresh data is fetched in the background and swapped into the caches. */
   const saved = histLsGet(ck);
@@ -2635,11 +2640,22 @@ async function renderInsPeriod() {
   const totPct = totStart ? totChange / totStart * 100 : 0;
   const tfName = { "1D": "Today (1D)", "1W": "1 Week", "1M": "1 Month", "3M": "3 Months", "6M": "6 Months", "1Y": "1 Year", "ALL": "All Time" }[tf];
   const alpha = niftyRet !== null ? totPct - niftyRet : null;
+  /* v138 honesty gate: when NO holding has a live price, the old code
+     printed a fake "₹0 (+0.00%)" change plus a meaningless Alpha.
+     Say so plainly instead. */
+  const noDataCount = changes.filter(c => c.noData).length;
+  if (changes.length && noDataCount === changes.length) {
+    box.innerHTML = '<p class="empty-note">Current prices could not load right now, so period change is unavailable — it will appear once prices load.</p>';
+    if (mov) mov.innerHTML = "";
+    if (hea) hea.innerHTML = "";
+    if (sec) sec.innerHTML = "";
+    return;
+  }
   box.innerHTML = '<div class="stat-chips">' +
     '<span class="chip">' + tfName + ' Change <b class="' + (totChange >= 0 ? "gain" : "loss") + '">' + inr(totChange) + " (" + pct(totPct) + ')</b></span>' +
     (maxFall && maxFall.rs < -1 ? '<span class="chip">Max Fall in Period <b class="loss">' + inr(maxFall.rs) + " (" + pct(maxFall.pct) + ')</b> from the period high</span>' : "") +
     (alpha !== null ? '<span class="chip">Alpha vs NIFTY 50 <b class="' + (alpha >= 0 ? "gain" : "loss") + '">' + pct(alpha) + '</b> (NIFTY ' + pct(niftyRet) + ' in the same window)</span>' : '<span class="chip">NIFTY comparison unavailable right now</span>') +
-    '<span class="chip">Basis: your current quantities × free daily prices</span></div>';
+    '<span class="chip">Basis: your current quantities × free daily prices</span>' + (noDataCount ? '<span class="chip">' + noDataCount + ' excluded — price unavailable</span>' : "") + '</div>';
   if (mov) {
     const ok = changes.filter(c => !c.noData);
     const best = ok.length ? ok.reduce((a, b) => b.change > a.change ? b : a) : null;
@@ -5540,13 +5556,28 @@ async function folioCompareRender() {
   const body = panel.querySelector(".cmp-body");
   const sel = (folioProf().cmpSel || []).filter(s => mySyms().has(s));
   if (sel.length < 2) { body.innerHTML = '<p class="empty-note">Pick 2–4 stocks above to compare their returns.</p>'; return; }
-  const colors = ["#2962ff", "#ff6d00", "#089981", "#f23645"];
-  const series = [];
-  for (const sym of sel) {
-    const h = await fetchHistory(sym, "1y");
-    if (h && h.points && h.points.length > 20) series.push({ sym: sym, pts: h.points });
+  const csx = getComputedStyle(document.documentElement);
+  const colors = [csx.getPropertyValue("--accent").trim() || "#00ff66", csx.getPropertyValue("--accent-2").trim() || "#19e3ff", csx.getPropertyValue("--warn").trim() || "#ffb000", csx.getPropertyValue("--loss").trim() || "#ff3b5c"];
+  async function loadSeries() {
+    const hs = await Promise.all(sel.map(s2 => fetchHistory(s2, "1y")));
+    const out = [];
+    hs.forEach((h, i) => { if (h && h.points && h.points.length > 20) out.push({ sym: sel[i], pts: h.points }); });
+    return out;
   }
-  if (series.length < 2) { body.innerHTML = '<p class="empty-note">Price history could not load for these stocks right now.</p>'; return; }
+  let series = await loadSeries();
+  if (series.length < 2) {
+    /* v138: one automatic retry with backoff, bypassing the negative
+       cache, before the panel gives up. */
+    await new Promise(r => setTimeout(r, 1200));
+    sel.forEach(s2 => { const ck = s2 + "|1y"; delete histCache[ck]; delete histFailAt[ck]; });
+    series = await loadSeries();
+  }
+  if (series.length < 2) {
+    body.innerHTML = '<p class="empty-note">Price history could not load for these stocks right now. <button type="button" class="mini-btn" id="cmpRetryBtn">Retry</button></p>';
+    const rb = $("cmpRetryBtn");
+    if (rb) rb.addEventListener("click", () => { sel.forEach(s2 => { const ck = s2 + "|1y"; delete histCache[ck]; delete histFailAt[ck]; }); folioCompareRender(); });
+    return;
+  }
   const cutoff = Date.now() - cmpRange * 86400000;
   const norm = series.map(s => { const seg = s.pts.filter(p => p.t >= cutoff); const base = seg.length ? seg[0].c : s.pts[0].c; return { sym: s.sym, vals: seg.map(p => ({ t: p.t, v: base ? (p.c / base - 1) * 100 : 0 })) }; });
   const all = norm.flatMap(s => s.vals.map(x => x.v));
@@ -6104,7 +6135,7 @@ window.openShareSheet = function (opts) {
   if (!shareModLoading) {
     shareModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/share.js?v=7"; sc.async = true;
+      sc.src = "js/share.js?v=8"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("share module failed to load"));
       document.head.appendChild(sc);
     });
@@ -6120,7 +6151,7 @@ window.openReportSheet = function () {
   if (!reportModLoading) {
     reportModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/report.js?v=5"; sc.async = true;
+      sc.src = "js/report.js?v=6"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("report module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7037,7 +7068,7 @@ window.folioOpenMarketHub = function (opts) {
   if (!mhModLoading) {
     mhModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/markethub.js?v=4"; sc.async = true;
+      sc.src = "js/markethub.js?v=5"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("markethub module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7349,7 +7380,7 @@ window.folioNseHolidays = function () {
   if (!calMhLoading) {
     calMhLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/markethub.js?v=4"; sc.async = true;
+      sc.src = "js/markethub.js?v=5"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("markethub module failed to load"));
       document.head.appendChild(sc);
     });

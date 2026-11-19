@@ -518,11 +518,17 @@ async function fetchTO(url, ms, register) {
 }
 async function fetchOne(sym) {
   const manual = state.manualPrices && state.manualPrices[sym];
-  const proxies = [
+  /* v138: the app's own folio-proxy Worker races FIRST (the pattern
+     features.js has used all along) — the public proxies alone were
+     failing on the owner's network, leaving every price empty and
+     the portfolio silently valued at cost. */
+  const proxies = [];
+  if (window.FOLIO_WORKER_URL) proxies.push(u => window.FOLIO_WORKER_URL + "?url=" + encodeURIComponent(u));
+  proxies.push(
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
     u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
     u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
-  ];
+  );
   const urls = [yahooUrl(sym), yahooUrl(sym).replace("query1.finance.yahoo.com", "query2.finance.yahoo.com")];
   /* Proxy racing: every route runs in parallel (3.5s cap each) — the first
      valid answer wins, so one slow proxy can never hold up a price. */
@@ -574,6 +580,17 @@ async function refreshPrices() {
     const batch = list.slice(i, i + 4);
     const res = await Promise.all(batch.map(fetchOne));
     res.forEach((r, k) => { if (r) prices[batch[k]] = r; });
+  }
+  /* v138: one backoff retry for symbols every route missed — a single
+     flaky moment must not leave the portfolio priced at cost. */
+  const missing = list.filter(s2 => !prices[s2]);
+  if (missing.length) {
+    await new Promise(r => setTimeout(r, 1200));
+    for (let i = 0; i < missing.length; i += 4) {
+      const batch = missing.slice(i, i + 4);
+      const res = await Promise.all(batch.map(fetchOne));
+      res.forEach((r, k) => { if (r) prices[batch[k]] = r; });
+    }
   }
   refreshing = false;
   savePricesLS();
