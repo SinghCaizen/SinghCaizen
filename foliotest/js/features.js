@@ -663,10 +663,12 @@ document.addEventListener("keydown", e => {
   if (anyModal) return;
   if (e.altKey) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() !== "k") return;
-  if (e.key === "/" || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k")) {
+  if (e.key === "/") {
+    /* v139: "/" opens the command palette (LILA's order); Ctrl+K is
+       handled by the palette's own listener — neither jumps to the
+       watchlist search any more. */
     e.preventDefault();
-    switchView("watchlist");
-    setTimeout(() => { const i = $("watchInput"); if (i) i.focus(); }, 60);
+    platPalette();
   } else if (e.key.toLowerCase() === "n" || e.key.toLowerCase() === "a") {
     if (typeof openTxn === "function") openTxn("BUY");
   } else if (["1", "2", "3", "4", "5", "6", "7"].includes(e.key)) {
@@ -4773,12 +4775,6 @@ function cmdkRender(q) {
   list.querySelectorAll("[data-cmdk]").forEach(b => b.addEventListener("click", () => { $("cmdkPop").classList.add("hidden"); items[Number(b.dataset.cmdk)].run(); }));
 }
 document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); platPalette(); } });
-document.addEventListener("keydown", e => {
-  if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
-  const a = document.activeElement;
-  if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA" || a.tagName === "SELECT" || a.isContentEditable)) return;
-  e.preventDefault(); platPalette();
-});
 /* --- swipe between tabs + pull to refresh --- */
 (function () {
   const ORDER = ["dashboard", "holdings", "watchlist", "insights"]; /* v113: swipe follows the capsule order, More excluded (audit 3.2n); also fixes the dead "watch" entry (no #view-watch ever existed) */

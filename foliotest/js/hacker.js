@@ -734,24 +734,46 @@
     var t = ev.target;
     if (t && t.type === "checkbox" && sfx.on && AC) { if (t.checked) Snd.togOn(); else Snd.togOff(); }
   });
-  var lastKeyTick = 0, eggBuf = "", konamiIdx = 0;
-  var KONAMI = ["arrowup", "arrowup", "arrowdown", "arrowdown", "arrowleft", "arrowright", "arrowleft", "arrowright", "b", "a"];
+  var lastKeyTick = 0;
   document.addEventListener("keydown", function (ev) {
     var t = ev.target;
     var typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
     if (typing && t.type !== "checkbox" && t.type !== "radio" && t.type !== "range") {
       if (Date.now() - lastKeyTick > 50) { lastKeyTick = Date.now(); if (sfx.on && AC) Snd.key(); }
-      eggBuf = ""; konamiIdx = 0;
-      return;
-    }
-    var k = (ev.key || "").toLowerCase();
-    if (k === KONAMI[konamiIdx]) { konamiIdx++; if (konamiIdx === KONAMI.length) { konamiIdx = 0; eggParty(); } }
-    else konamiIdx = k === KONAMI[0] ? 1 : 0;
-    if (k.length === 1) {
-      eggBuf = (eggBuf + k).slice(-24);
-      if (eggBuf.slice(-6) === "matrix") { eggBuf = ""; eggParty(); }
     }
   });
+  /* Capture phase: runs BEFORE the app's single-key shortcut handler, so
+     "a" (add transaction) cannot hijack the sequence mid-word. */
+  var eggBuf = "", eggPrivacy = null, konamiIdx = 0;
+  var KONAMI = ["arrowup", "arrowup", "arrowdown", "arrowdown", "arrowleft", "arrowright", "arrowleft", "arrowright", "b", "a"];
+  document.addEventListener("keydown", function (ev) {
+    var t = ev.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) { eggBuf = ""; konamiIdx = 0; return; }
+    if (document.querySelector(".modal:not(.hidden)")) { eggBuf = ""; konamiIdx = 0; return; }
+    var k = (ev.key || "").toLowerCase();
+    /* Konami: only the final b/a are swallowed, and only mid-sequence. */
+    if (k === KONAMI[konamiIdx]) {
+      if (konamiIdx >= 8) ev.stopPropagation();
+      konamiIdx++;
+      if (konamiIdx === KONAMI.length) { konamiIdx = 0; eggParty(); return; }
+    } else konamiIdx = k === KONAMI[0] ? 1 : 0;
+    if (k.length !== 1) { if (k !== "shift") eggBuf = ""; return; }
+    var cand = eggBuf + k;
+    if ("matrix".indexOf(cand) === 0) {
+      if (cand === "m") { eggPrivacy = document.body.classList.contains("privacy-on"); eggBuf = "m"; return; }
+      ev.stopPropagation();
+      eggBuf = cand;
+      if (cand === "matrix") {
+        eggBuf = "";
+        if (eggPrivacy !== null && document.body.classList.contains("privacy-on") !== eggPrivacy && window.togglePrivacy) togglePrivacy();
+        eggPrivacy = null;
+        eggParty();
+      }
+    } else {
+      eggBuf = k === "m" ? "m" : "";
+      if (k === "m") eggPrivacy = document.body.classList.contains("privacy-on");
+    }
+  }, true);
   function eggParty() {
     if (window.__hkRainParty) __hkRainParty(10);
     if (window.toast) toast("MATRIX MODE: 10S");
