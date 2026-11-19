@@ -1033,12 +1033,20 @@
     if (window.innerWidth < 1024) return;
     ["insXWrap", "planWrap"].forEach(function (id) {
       var w = $(id);
-      if (!w || w.dataset.hkFlat) return;
+      if (!w) return;
+      w.querySelectorAll(".panel").forEach(function (p) { if (p.style.marginBottom !== "14px") p.style.marginBottom = "14px"; });
+      if (w.dataset.hkFlat) return;
       if (!w.querySelector(".panel")) return;
       w.dataset.hkFlat = "1";
       w.style.setProperty("display", "contents");
-      w.querySelectorAll(".panel").forEach(function (p) { p.style.marginBottom = "14px"; });
     });
+  }
+  var flatObs = null;
+  function watchFlatten() {
+    var view = $("view-insights");
+    if (!view || flatObs) return;
+    flatObs = new MutationObserver(function () { flattenInsights(); });
+    flatObs.observe(view, { childList: true });
   }
 
   /* ---------------- boot ------------------------------------------- */
@@ -1047,6 +1055,7 @@
     watchLayers3();
     decorateNotes(document);
     flattenInsights();
+    watchFlatten();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot3);
   else boot3();
