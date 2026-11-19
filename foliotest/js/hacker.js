@@ -393,7 +393,7 @@
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return false;
-      AC = new Ctx(); master = AC.createGain(); master.gain.value = sfx.vol * 0.5; master.connect(AC.destination);
+      AC = new Ctx(); master = AC.createGain(); master.gain.value = sfx.vol * 0.9; master.connect(AC.destination);
       return true;
     } catch (e) { return false; }
   }
@@ -418,23 +418,23 @@
     } catch (e) {}
   }
   var Snd = {
-    tap: function () { tone(950, 0.045, "square", 0.10); buzz10(); },
-    tick: function () { tone(720, 0.07, "square", 0.12, 0, 1180); buzz10(); },
-    open: function () { tone(280, 0.16, "sine", 0.16, 0, 720); },
-    close: function () { tone(720, 0.14, "sine", 0.13, 0, 260); },
-    togOn: function () { tone(660, 0.06, "square", 0.12); tone(990, 0.08, "square", 0.12, 0.055); },
-    togOff: function () { tone(990, 0.06, "square", 0.11); tone(620, 0.08, "square", 0.11, 0.055); },
-    ok: function () { tone(880, 0.07, "square", 0.13); tone(1318, 0.10, "square", 0.13, 0.07); },
-    err: function () { tone(150, 0.20, "sawtooth", 0.14); },
-    warn: function () { tone(392, 0.10, "square", 0.13); tone(392, 0.12, "square", 0.13, 0.13); },
-    chirp: function () { tone(1250, 0.05, "sine", 0.10); tone(1560, 0.05, "sine", 0.10, 0.05); tone(1870, 0.06, "sine", 0.10, 0.10); },
-    chord: function () { tone(523, 0.22, "sine", 0.13); tone(659, 0.22, "sine", 0.12, 0.07); tone(784, 0.26, "sine", 0.13, 0.14); tone(1046, 0.30, "sine", 0.11, 0.21); },
-    power: function () { tone(640, 0.28, "sine", 0.14, 0, 110); },
-    key: function () { tone(1350, 0.018, "square", 0.035); }
+    tap: function () { tone(950, 0.05, "square", 0.20); buzz10(); },
+    tick: function () { tone(720, 0.07, "square", 0.22, 0, 1180); buzz10(); },
+    open: function () { tone(280, 0.16, "sine", 0.26, 0, 720); },
+    close: function () { tone(720, 0.14, "sine", 0.22, 0, 260); },
+    togOn: function () { tone(660, 0.06, "square", 0.20); tone(990, 0.08, "square", 0.20, 0.055); },
+    togOff: function () { tone(990, 0.06, "square", 0.19); tone(620, 0.08, "square", 0.19, 0.055); },
+    ok: function () { tone(880, 0.07, "square", 0.24); tone(1318, 0.10, "square", 0.24, 0.07); },
+    err: function () { tone(150, 0.20, "sawtooth", 0.26); },
+    warn: function () { tone(392, 0.10, "square", 0.22); tone(392, 0.12, "square", 0.22, 0.13); },
+    chirp: function () { tone(1250, 0.05, "sine", 0.18); tone(1560, 0.05, "sine", 0.18, 0.05); tone(1870, 0.06, "sine", 0.18, 0.10); },
+    chord: function () { tone(523, 0.22, "sine", 0.22); tone(659, 0.22, "sine", 0.20, 0.07); tone(784, 0.26, "sine", 0.22, 0.14); tone(1046, 0.30, "sine", 0.18, 0.21); },
+    power: function () { tone(640, 0.28, "sine", 0.24, 0, 110); },
+    key: function () { tone(1350, 0.018, "square", 0.06); }
   };
   window.HkSfx = {
     setOn: function (v) { sfx.on = !!v; saveSfx(); if (sfx.on) { acInit(); Snd.ok(); } },
-    setVol: function (v) { sfx.vol = Math.min(1, Math.max(0, Number(v) || 0)); if (master) master.gain.value = sfx.vol * 0.5; saveSfx(); },
+    setVol: function (v) { sfx.vol = Math.min(1, Math.max(0, Number(v) || 0)); if (master) master.gain.value = sfx.vol * 0.9; saveSfx(); },
     isOn: function () { return sfx.on; },
     play: function (name) { if (Snd[name]) Snd[name](); }
   };
@@ -722,6 +722,8 @@
 
   /* ---------------- global gesture / key wiring ------------------ */
   document.addEventListener("pointerdown", function () { lastGesture = Date.now(); if (sfx.on) acInit(); }, true);
+  document.addEventListener("pointerup", function () { if (sfx.on) acInit(); }, true);
+  document.addEventListener("click", function () { if (sfx.on) acInit(); }, true);
   document.addEventListener("keydown", function () { lastGesture = Date.now(); }, true);
   document.addEventListener("click", function (ev) {
     var t = ev.target;
