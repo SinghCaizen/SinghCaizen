@@ -638,7 +638,12 @@
         else missing.push(sym);
       });
       if (!series.length) {
-        body2.innerHTML = '<p class="mh-note">Price history could not load for the picked stocks right now.</p>';
+        body2.innerHTML = '<p class="mh-note">Price history could not load for the picked stocks right now. <button type="button" class="mini-btn" id="mhCmpRetry">Retry</button></p>';
+        var rb2 = body2.querySelector("#mhCmpRetry");
+        if (rb2) rb2.addEventListener("click", function () {
+          try { syms.forEach(function (s2) { delete histCache[s2 + "|" + rk]; }); } catch (e) {}
+          drawCompare();
+        });
         return;
       }
       var all = [];

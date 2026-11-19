@@ -122,7 +122,18 @@
       panelTint: "rgba(200,200,200,0.08)", strokeTint: "rgba(200,200,200,0.40)", gradStops: ["#232323", "#454545", "#6e6e6e"] },
     { id: "gold", name: "Gold", accent: "#e3c565", accentSoft: "#f0d47a", gain: "#4caf6d", loss: "#e05b4b",
       accentL: "#8a6d14", gainL: "#2e7d46", lossL: "#c23a2a",
-      panelTint: "rgba(201,162,39,0.10)", strokeTint: "rgba(201,162,39,0.55)", gradStops: ["#3a2c07", "#8a5a16", "#c9a227"] }
+      panelTint: "rgba(201,162,39,0.10)", strokeTint: "rgba(201,162,39,0.55)", gradStops: ["#3a2c07", "#8a5a16", "#c9a227"] },
+    /* v137 hacker skin card themes — the default follows the app skin
+       when the user has not saved a card theme of their own. */
+    { id: "matrix", name: "Matrix", accent: "#00ff66", accentSoft: "#66ff9e", gain: "#00ff66", loss: "#ff3860",
+      accentL: "#00b34a", gainL: "#00b34a", lossL: "#c21847",
+      panelTint: "rgba(0,255,102,0.10)", strokeTint: "rgba(0,255,102,0.50)", gradStops: ["#02150a", "#063d1e", "#00ff66"] },
+    { id: "cyan", name: "Cyber Cyan", accent: "#00e5ff", accentSoft: "#7df3ff", gain: "#00ff9d", loss: "#ff3860",
+      accentL: "#0091b3", gainL: "#00b36b", lossL: "#c21847",
+      panelTint: "rgba(0,229,255,0.10)", strokeTint: "rgba(0,229,255,0.50)", gradStops: ["#02141a", "#063a4d", "#00e5ff"] },
+    { id: "amber", name: "Amber Terminal", accent: "#ffb300", accentSoft: "#ffd35c", gain: "#8dff4a", loss: "#ff4040",
+      accentL: "#b37e00", gainL: "#4da317", lossL: "#c22e2e",
+      panelTint: "rgba(255,179,0,0.10)", strokeTint: "rgba(255,179,0,0.50)", gradStops: ["#1a1002", "#4d3206", "#ffb300"] }
   ];
   var BG_MODES = [
     { id: "solid",    label: "Solid" },
@@ -805,7 +816,7 @@
       open: true, type: type, range: range, symbol: symbol,
       size: pref.size || "square",
       style: pref.style || (isLightTheme() ? "minimal" : "classic"),
-      theme: pref.theme || "emerald",
+      theme: pref.theme || (document.documentElement.getAttribute("data-skin") || "emerald"),
       bgMode: pref.bgMode || "gradient",
       wrappedPeriod: "month", wrappedIdx: 0, wrappedSet: null,
       hideAmounts: true,               // spec default ON

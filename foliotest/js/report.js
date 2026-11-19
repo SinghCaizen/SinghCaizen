@@ -23,6 +23,9 @@
 (function () {
   "use strict";
 
+  /* v137 hacker skin: the report accent follows the app skin. */
+  var HK_ACC = ({ matrix: "#00b34a", cyan: "#0091b3", amber: "#b37e00" })[document.documentElement.getAttribute("data-skin")] || "#00b34a";
+
   var SECTIONS = [
     ["summary", "Executive summary"],
     ["holdings", "Holdings table"],
@@ -114,9 +117,9 @@
     if (!sheetEl) return;
     sheetEl.querySelectorAll(".rep-preset").forEach(function (b) {
       var on = b.dataset.preset === repPreset;
-      b.style.background = on ? "#b8912a" : "transparent";
+      b.style.background = on ? HK_ACC : "transparent";
       b.style.color = on ? "#ffffff" : "inherit";
-      b.style.borderColor = on ? "#b8912a" : "#c9c2ae";
+      b.style.borderColor = on ? HK_ACC : "#c9c2ae";
     });
   }
   function repApplySections(idList) {
@@ -576,10 +579,10 @@
         g.stroke(); g.setLineDash([]);
       }
       drawLine(INV, "#9a9a9a", [7, 5]);
-      drawLine(V, "#b8912a", null);
+      drawLine(V, HK_ACC, null);
       g.fillStyle = "#9a9a9a"; g.fillRect(W - 178, 2, 16, 3.4);
       g.fillStyle = "#6b6b6b"; g.textAlign = "left"; g.fillText("Invested", W - 158, 8);
-      g.fillStyle = "#b8912a"; g.fillRect(W - 92, 2, 16, 3.4);
+      g.fillStyle = HK_ACC; g.fillRect(W - 92, 2, 16, 3.4);
       g.fillStyle = "#6b6b6b"; g.fillText("Value", W - 72, 8);
       g.fillStyle = "#6b6b6b";
       [0, Math.floor((axis.length - 1) / 2), axis.length - 1].forEach(function (i) {
