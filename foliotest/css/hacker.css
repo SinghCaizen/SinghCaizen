@@ -511,13 +511,15 @@ html[data-skin][data-anim="full"] .cmp-svg { animation: hkDrawIn .6s ease both; 
   html[data-skin] #view-insights { columns: 2; column-gap: 14px; }
   html[data-skin] #view-dashboard > .panel,
   html[data-skin] #view-insights > .panel { margin-bottom: 14px; break-inside: avoid; }
-  html[data-skin] #view-dashboard > :not(.panel),
-  html[data-skin] #view-insights > :not(.panel) { column-span: all; }
-  /* NO mid-flow spanners: any full-width card makes the columns wait for the
-     taller neighbour and leaves a dead gap. Only the dashboard stats strip
-     spans — it is the first panel, so nothing waits above it. Tables scroll
-     inside their own half-width panels instead. */
-  html[data-skin] #view-dashboard > .panel:has(.ds-stat-grid) { column-span: all; }
+  /* Spanners are named one by one: a blanket :not(.panel) span made every
+     injected divider div break the column flow into row-pairs (dead gaps).
+     Only the true top bars span; everything else flows and packs. */
+  html[data-skin] #view-dashboard > #hkGreet,
+  html[data-skin] #view-dashboard > #hkTape,
+  html[data-skin] #view-dashboard > #dashChips,
+  html[data-skin] #view-dashboard > .stat-grid,
+  html[data-skin] #view-dashboard > .dash-chips,
+  html[data-skin] #view-insights > .dash-chips { column-span: all; }
 }
 
 /* search + action rows: one row, equal heights */
