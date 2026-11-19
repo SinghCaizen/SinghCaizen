@@ -84,6 +84,19 @@
     });
     syncSkinUI();
     try { if (window.FolioMotion && FolioMotion.apply) FolioMotion.apply(); } catch (e) {}
+    syncFxSeg();
+  }
+
+  function syncFxSeg() {
+    var panel = document.getElementById("hkPanel");
+    if (!panel) return;
+    var stored = null;
+    try { stored = localStorage.getItem("folio_anim"); } catch (e) {}
+    if (stored === "full" || stored === "reduced" || stored === "off") return; /* folioAnimApply already syncs explicit settings */
+    var eff = fx();
+    panel.querySelectorAll("[data-anim-opt]").forEach(function (b) {
+      b.classList.toggle("active", b.getAttribute("data-anim-opt") === eff);
+    });
   }
 
   /* ---------------- boot sequence in the splash ---------------- */
@@ -92,6 +105,7 @@
     if (!sp || sp.dataset.hkBoot) return;
     sp.dataset.hkBoot = "1";
     if (fx() === "off") return;
+    try { if (getComputedStyle(sp).display === "none") return; } catch (e) {}
     var box = document.createElement("div");
     box.id = "hkBoot"; sp.appendChild(box);
     var lines = ["> INITIALIZING FOLIO", "> LOADING VAULT", "> SECURE CONNECTION OK"];
@@ -236,6 +250,7 @@
       var r = orig.apply(this, arguments);
       try {
         ensurePanel();
+        syncFxSeg();
         var v = document.getElementById("view-" + name);
         typeTitle(v);
         if (fx() === "full") {
@@ -328,6 +343,10 @@
     wrapSwitchArm();
     rainSync();
     document.addEventListener("visibilitychange", rainSync);
+    document.addEventListener("click", function (ev) {
+      var t = ev.target && ev.target.closest ? ev.target.closest("[data-anim-opt]") : null;
+      if (t) { setTimeout(rainSync, 80); setTimeout(rainSync, 450); setTimeout(syncFxSeg, 120); }
+    });
     setInterval(rainSync, 4000);                 /* safety: keep rain state honest */
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
