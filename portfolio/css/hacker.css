@@ -467,3 +467,132 @@ html[data-skin] .cmdk-item:hover, html[data-skin] .cmdk-item:focus { background:
 
 /* bottom nav clearance — the dock can never cover the last card */
 html[data-skin] main { padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }
+
+/* ================= v141 layout + darkness pack ================= */
+/* consistent card padding, no stretched gaps */
+html[data-skin] .view > .panel { padding: 14px; }
+@media (min-width: 768px) { html[data-skin] .view > .panel { padding: 16px; } }
+html[data-skin] .stat-card { padding: 12px; }
+
+/* card headers: title on its own line when real controls exist */
+html[data-skin] .panel-head { flex-wrap: wrap; row-gap: 6px; }
+html[data-skin] .panel-head:has(> .seg, > select, > .mini-btn, > .btn, > .bench-toggle, > .cap-chips) > h2 { flex: 1 1 100%; }
+
+/* more horizontal strips: scrollable with a fading edge */
+html[data-skin] .dash-chips,
+html[data-skin] .entry-tabs,
+html[data-skin] .auth-tabs,
+html[data-skin] .panel-head .seg {
+  flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; padding-bottom: 2px;
+  mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+}
+html[data-skin] .dash-chips::-webkit-scrollbar,
+html[data-skin] .entry-tabs::-webkit-scrollbar,
+html[data-skin] .auth-tabs::-webkit-scrollbar,
+html[data-skin] .panel-head .seg::-webkit-scrollbar { display: none; }
+html[data-skin] .dash-chips > *,
+html[data-skin] .panel-head .seg > * { flex: 0 0 auto; }
+
+/* charts fill their card, dead gaps removed, draw-in reveal */
+html[data-skin] .chart-svg,
+html[data-skin] .insx-chart,
+html[data-skin] .cmp-svg { width: 100%; height: auto; display: block; }
+html[data-skin] .chart-panel .panel-head { margin-bottom: 4px; }
+@keyframes hkDrawIn { from { clip-path: inset(0 100% 0 0); opacity: .35; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+html[data-skin][data-anim="full"] .chart-svg,
+html[data-skin][data-anim="full"] .insx-chart,
+html[data-skin][data-anim="full"] .cmp-svg { animation: hkDrawIn .6s ease both; }
+
+/* PC card grid: 2 columns, equal-height rows, wide panels span all */
+@media (min-width: 1024px) {
+  /* masonry columns: cards pack tightly, no row-height dead space */
+  html[data-skin] #view-dashboard,
+  html[data-skin] #view-insights { display: block; columns: 2; column-gap: 14px; }
+  html[data-skin] #view-dashboard > .panel,
+  html[data-skin] #view-insights > .panel { margin-bottom: 14px; break-inside: avoid; }
+  /* Spanners are named one by one: a blanket :not(.panel) span made every
+     injected divider div break the column flow into row-pairs (dead gaps).
+     Only the true top bars span; everything else flows and packs. */
+  html[data-skin] #view-dashboard > #hkGreet,
+  html[data-skin] #view-dashboard > #hkTape,
+  html[data-skin] #view-dashboard > #dashChips,
+  html[data-skin] #view-dashboard > .stat-grid,
+  html[data-skin] #view-dashboard > .dash-chips,
+  html[data-skin] #view-insights > .dash-chips,
+  html[data-skin] #view-insights > #anaJump { column-span: all; }
+}
+
+/* search + action rows: one row, equal heights */
+html[data-skin] #watchForm { display: flex; gap: 8px; align-items: stretch; }
+html[data-skin] #watchForm input { flex: 1; min-height: 44px; }
+html[data-skin] #watchForm button { min-height: 44px; }
+
+/* the darkness dip + emerge */
+#hkDip {
+  position: fixed; inset: 0; background: #000; opacity: 0;
+  pointer-events: none; z-index: 1190; transition: opacity .07s linear;
+}
+#hkDip.on { opacity: .94; }
+#hkDip.out { transition: opacity .2s ease; }
+@keyframes hkEmerge { from { opacity: .08; transform: scale(.965); } to { opacity: 1; transform: scale(1); } }
+html[data-skin][data-anim="full"] .hk-emerge { animation: hkEmerge .26s cubic-bezier(.2,.7,.3,1) both; }
+html[data-skin][data-anim="full"] .modal-card.hk-emerge,
+html[data-skin][data-anim="full"] .sheet.hk-emerge { box-shadow: 0 0 26px var(--hk-glow); }
+
+/* tap glitch + ripple (hosts need clipping) */
+@keyframes hkTapGlitch { 0% { transform: translate(0); } 25% { transform: translate(1px, -1px); } 55% { transform: translate(-1px, 1px); } 100% { transform: translate(0); } }
+html[data-skin][data-anim="full"] .hk-tapfx { animation: hkTapGlitch .16s steps(2) 1; }
+html[data-skin] .btn, html[data-skin] .mini-btn, html[data-skin] .seg-btn, html[data-skin] .chip { position: relative; overflow: hidden; }
+.hk-rip {
+  position: absolute; border-radius: 50%; background: var(--accent);
+  opacity: .32; transform: scale(0); pointer-events: none;
+  animation: hkRip .45s ease-out both; z-index: 0;
+}
+@keyframes hkRip { to { transform: scale(2.6); opacity: 0; } }
+
+/* active tab + primary buttons: neon pulse */
+html[data-skin][data-anim="full"] .btn-gold { animation: hkPulse 2.4s ease-in-out infinite; }
+
+/* long hints: clamped with a "?" toggle */
+.hk-note-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hk-note-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; margin-top: 4px; border-radius: 50%;
+  border: 1px solid var(--line-strong); background: var(--panel-2);
+  color: var(--accent); font-size: 11px; cursor: pointer; padding: 0;
+}
+
+/* P&L flash on price updates */
+@keyframes hkFlashGain { 0% { box-shadow: 0 0 0 rgba(0,255,102,0); } 30% { box-shadow: 0 0 18px rgba(0,255,102,.55); } 100% { box-shadow: 0 0 0 rgba(0,255,102,0); } }
+@keyframes hkFlashLoss { 0% { box-shadow: 0 0 0 rgba(255,59,92,0); } 30% { box-shadow: 0 0 18px rgba(255,59,92,.55); } 100% { box-shadow: 0 0 0 rgba(255,59,92,0); } }
+html[data-skin][data-anim="full"] .hk-flash-gain { animation: hkFlashGain .8s ease both; }
+html[data-skin][data-anim="full"] .hk-flash-loss { animation: hkFlashLoss .8s ease both; }
+
+/* entrance from darkness: cards also start slightly scaled */
+html[data-skin][data-anim="full"] .hk-in { transform: translateY(12px) scale(.985); }
+
+/* ================= v142 sweep fixes ================= */
+html[data-skin] .hist-filter {
+  flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; padding-bottom: 2px;
+  mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+}
+html[data-skin] .hist-filter::-webkit-scrollbar { display: none; }
+html[data-skin] .hist-filter > * { flex: 0 0 auto; }
+html[data-skin] .insx-note, html[data-skin] .price-meta { overflow-wrap: break-word; max-width: 100%; }
+html[data-skin] .empty-note, html[data-skin] .empty-state { padding-left: 12px; padding-right: 12px; overflow-wrap: break-word; }
+html[data-skin] #watchForm input::placeholder,
+html[data-skin] #view-watchlist input::placeholder,
+html[data-skin] #view-holdings input::placeholder { font-size: 13px; }
+
+/* ================= v148 insights masonry =================
+   #insXWrap / #planWrap are grid wrappers inside the view: span them full
+   width and give THEM the masonry columns, so their panels pack at half
+   width with no row-height voids. */
+html[data-skin] #view-insights > #insXWrap,
+html[data-skin] #view-insights > #planWrap {
+  column-span: all; display: block; columns: 2; column-gap: 14px;
+}
+html[data-skin] #insXWrap > .panel,
+html[data-skin] #planWrap > .panel { break-inside: avoid; margin-bottom: 14px; }
