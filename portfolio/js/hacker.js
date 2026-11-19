@@ -24,7 +24,7 @@
   /* ---------------- theme switching ---------------- */
   function syncSkinUI() {
     var s = skin(), i, b = document.getElementById("themeBtn");
-    if (b) b.textContent = ">_ " + (s === "matrix" ? "MATRIX" : s === "cyan" ? "CYAN" : "AMBER");
+    if (b) b.textContent = (s === "matrix" ? "MATRIX" : s === "cyan" ? "CYAN" : "AMBER");
     var btns = document.querySelectorAll("[data-skin-opt]");
     for (i = 0; i < btns.length; i++) btns[i].classList.toggle("active", btns[i].getAttribute("data-skin-opt") === s);
     rainColor();
@@ -396,7 +396,7 @@
   /* ---------------- sound engine (Web Audio, synthesized) -------- */
   var AC = null, master = null;
   var sfx = { on: true, vol: 0.5 };
-  try { var savedSfx = JSON.parse(localStorage.getItem("folio_sfx") || "null"); if (savedSfx) { sfx.on = savedSfx.on !== false; sfx.vol = typeof savedSfx.vol === "number" ? Math.min(1, Math.max(0, savedSfx.vol)) : 0.5; } } catch (e) {}
+  try { var savedSfx = JSON.parse(localStorage.getItem("folio_sfx") || "null"); if (savedSfx) { sfx.on = savedSfx.on !== false; sfx.vol = typeof savedSfx.vol === "number" ? Math.min(1, Math.max(0, savedSfx.vol)) : 0.5; sfx.explicit = savedSfx.explicit === true; if (savedSfx.on === false && savedSfx.explicit !== true) sfx.on = true; } } catch (e) {}
   var lastGesture = 0;
   function saveSfx() { try { localStorage.setItem("folio_sfx", JSON.stringify(sfx)); } catch (e) {} syncSfxUI(); }
   function acInit() {
@@ -460,7 +460,7 @@
     }
   };
   window.HkSfx = {
-    setOn: function (v) { sfx.on = !!v; saveSfx(); if (sfx.on) { acInit(); Snd.ok(); } },
+    setOn: function (v) { sfx.on = !!v; sfx.explicit = true; saveSfx(); if (sfx.on) { acInit(); Snd.ok(); } },
     setVol: function (v) { sfx.vol = Math.min(1, Math.max(0, Number(v) || 0)); if (master) master.gain.value = sfx.vol * 0.9; saveSfx(); },
     isOn: function () { return sfx.on; },
     play: function (name) { if (Snd[name]) Snd[name](); }
@@ -634,7 +634,7 @@
     }
     if (!$("hkCmdBtn")) {
       var k = document.createElement("button");
-      k.type = "button"; k.id = "hkCmdBtn"; k.className = "theme-btn hk-head-btn"; k.textContent = ">_ CMD";
+      k.type = "button"; k.id = "hkCmdBtn"; k.className = "theme-btn hk-head-btn"; k.textContent = "CMD";
       k.title = "Command palette (Ctrl+K or /)"; k.setAttribute("aria-label", "Open command palette");
       k.addEventListener("click", function () { if (typeof window.platPalette === "function") platPalette(); });
       tb.parentNode.insertBefore(k, tb);
@@ -745,6 +745,7 @@
   function watchLayers() {
     if (watchLayers.done || !document.body) return;
     watchLayers.done = true;
+    watchLayers.states = new WeakMap();
     var mo = new MutationObserver(function (muts) {
       for (var i = 0; i < muts.length; i++) {
         var m = muts[i];
@@ -754,10 +755,13 @@
         }
         var el = m.target;
         if (!el.classList || !(el.classList.contains("modal") || el.classList.contains("sheet") || el.id === "cmdkPop")) continue;
+        var hid = el.classList.contains("hidden");
+        if (watchLayers.states.get(el) === hid) continue;
+        watchLayers.states.set(el, hid);
         if (Date.now() - modalSndAt < 200) continue;
         modalSndAt = Date.now();
         if (!sfx.on || !AC || Date.now() - lastGesture > 6000) continue;
-        if (el.classList.contains("hidden")) Snd.close(); else Snd.open();
+        if (hid) Snd.close(); else Snd.open();
       }
     });
     mo.observe(document.body, { attributes: true, attributeFilter: ["class"], subtree: true, childList: true });
@@ -950,7 +954,7 @@
   }
 
   /* ---------------- layers (modal / sheet / palette) -------------- */
-  var layerAt = 0;
+  var layerStable = new WeakMap();
   function watchLayers3() {
     if (watchLayers3.done || !document.body) return;
     watchLayers3.done = true;
@@ -958,12 +962,22 @@
       for (var i = 0; i < muts.length; i++) {
         var el = muts[i].target;
         if (!el.classList || !(el.classList.contains("modal") || el.classList.contains("sheet") || el.id === "cmdkPop")) continue;
-        if (Date.now() - layerAt < 150) continue;
-        layerAt = Date.now();
-        if (el.classList.contains("hidden")) { dipFlash(); continue; }
-        var card = el.querySelector(".modal-card, .sheet, .cmdk-card") || el;
-        emerge(card);
-        decorateNotes(el);
+        (function (el) {
+          var rec = layerStable.get(el) || {};
+          if (rec.timer) clearTimeout(rec.timer);
+          rec.timer = setTimeout(function () {
+            var hid = el.classList.contains("hidden");
+            if (rec.stable === hid) return;
+            rec.stable = hid;
+            var isSheet = el.classList.contains("sheet-modal") || el.classList.contains("sheet");
+            if (hid) { if (!isSheet) dipFlash(); return; }
+            document.body.classList.remove("hk-head-hide");
+            var card = el.querySelector(".modal-card, .sheet-card, .cmdk-card") || el;
+            emerge(card);
+            decorateNotes(el);
+          }, 260);
+          layerStable.set(el, rec);
+        })(el);
       }
     });
     mo.observe(document.body, { attributes: true, attributeFilter: ["class"], subtree: true });
@@ -1013,6 +1027,31 @@
       el.parentNode.insertBefore(b, el.nextSibling);
     });
   }
+
+  /* ---------------- hide the header while scrolling (phone) ------- */
+  var headHidden = false, lastY = 0;
+  document.addEventListener("scroll", function (ev) {
+    if (window.innerWidth > 700) return;
+    var app = $("appView");
+    if (!app || app.classList.contains("hidden")) return;
+    if (document.querySelector(".modal:not(.hidden)")) { if (headHidden) { headHidden = false; document.body.classList.remove("hk-head-hide"); } return; }
+    var t = ev.target;
+    var y = (t && t !== document && typeof t.scrollTop === "number") ? t.scrollTop : (window.scrollY || document.documentElement.scrollTop || 0);
+    if (y > 90 && y - lastY > 6 && !headHidden) { headHidden = true; document.body.classList.add("hk-head-hide"); }
+    else if ((y < 60 || lastY - y > 6) && headHidden) { headHidden = false; document.body.classList.remove("hk-head-hide"); }
+    lastY = y;
+  }, { passive: true, capture: true });
+
+  /* ---------------- one-time hint when sound is off ---------------- */
+  document.addEventListener("pointerdown", function () {
+    try {
+      if (sessionStorage.getItem("hk_sfx_hint")) return;
+      if (window.HkSfx && !HkSfx.isOn()) {
+        sessionStorage.setItem("hk_sfx_hint", "1");
+        setTimeout(function () { if (window.toast) toast("SOUND IS OFF — TAP ♪ IN HEADER"); }, 600);
+      }
+    } catch (e) {}
+  }, true);
 
   /* ---------------- boot tone on the first tap --------------------- */
   var bootToneDone = false;

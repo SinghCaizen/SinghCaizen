@@ -596,3 +596,23 @@ html[data-skin] #view-insights > #planWrap {
 }
 html[data-skin] #insXWrap > .panel,
 html[data-skin] #planWrap > .panel { break-inside: avoid; margin-bottom: 14px; }
+
+/* ================= v154: header fit + hide-on-scroll, solid layers ============ */
+html[data-skin] .topbar { transition: transform .22s ease, opacity .22s ease; }
+body.hk-head-hide .topbar { transform: translateY(-110%); opacity: 0; pointer-events: none; }
+/* layers fully opaque — no page ghosting through sheets or modals */
+html[data-skin] .modal .sheet-card,
+html[data-skin] .modal .modal-card { background: #070d09 !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+/* sheets fade in — no scale, no glow pulse (that read as blinking) */
+html[data-skin][data-anim="full"] .sheet-card.hk-emerge { animation: hkEmergeFade .22s ease both; box-shadow: var(--sh-2); }
+@keyframes hkEmergeFade { from { opacity: .3; } to { opacity: 1; } }
+/* phone header: every control fits on one line */
+@media (max-width: 560px) {
+  html[data-skin] .topbar { padding: .5rem .55rem; gap: 6px; }
+  html[data-skin] .topbar-right { gap: 6px; min-width: 0; }
+  html[data-skin] .folio-logo-top { height: 24px; width: auto; }
+  html[data-skin] .theme-btn, html[data-skin] .hk-head-btn { padding: 6px 7px; font-size: 11px; letter-spacing: 0; white-space: nowrap; }
+  html[data-skin] #themeBtn { max-width: 96px; overflow: hidden; text-overflow: ellipsis; }
+  html[data-skin] .user-chip { padding: 4px 6px; min-width: 0; }
+  html[data-skin] .chip-name { max-width: 52px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
