@@ -506,16 +506,15 @@ html[data-skin][data-anim="full"] .cmp-svg { animation: hkDrawIn .6s ease both; 
 
 /* PC card grid: 2 columns, equal-height rows, wide panels span all */
 @media (min-width: 1024px) {
+  /* masonry columns: cards pack tightly, no row-height dead space */
   html[data-skin] #view-dashboard,
-  html[data-skin] #view-insights {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-content: start; align-items: start;
-  }
+  html[data-skin] #view-insights { columns: 2; column-gap: 14px; }
   html[data-skin] #view-dashboard > .panel,
-  html[data-skin] #view-insights > .panel { margin-bottom: 0; }
+  html[data-skin] #view-insights > .panel { margin-bottom: 14px; break-inside: avoid; }
   html[data-skin] #view-dashboard > :not(.panel),
-  html[data-skin] #view-insights > :not(.panel) { grid-column: 1 / -1; }
+  html[data-skin] #view-insights > :not(.panel) { column-span: all; }
   html[data-skin] #view-dashboard > .panel:has(.ds-stat-grid, .heat-grid, table, .insx-table-wrap),
-  html[data-skin] #view-insights > .panel:has(table, .insx-table-wrap, .cap-grid, .heat-grid) { grid-column: 1 / -1; }
+  html[data-skin] #view-insights > .panel:has(table, .insx-table-wrap, .cap-grid, .heat-grid) { column-span: all; }
 }
 
 /* search + action rows: one row, equal heights */
