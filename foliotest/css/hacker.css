@@ -513,8 +513,10 @@ html[data-skin][data-anim="full"] .cmp-svg { animation: hkDrawIn .6s ease both; 
   html[data-skin] #view-insights > .panel { margin-bottom: 14px; break-inside: avoid; }
   html[data-skin] #view-dashboard > :not(.panel),
   html[data-skin] #view-insights > :not(.panel) { column-span: all; }
-  html[data-skin] #view-dashboard > .panel:has(.ds-stat-grid, .heat-grid, table, .insx-table-wrap),
-  html[data-skin] #view-insights > .panel:has(table, .insx-table-wrap, .cap-grid, .heat-grid) { column-span: all; }
+  /* only genuinely wide content spans both columns — every span breaks the
+     column flow into a segment, so sparing use keeps the packing tight */
+  html[data-skin] #view-dashboard > .panel:has(.ds-stat-grid, table, .insx-table-wrap),
+  html[data-skin] #view-insights > .panel:has(table, .insx-table-wrap, .insx-cal-grid) { column-span: all; }
 }
 
 /* search + action rows: one row, equal heights */
