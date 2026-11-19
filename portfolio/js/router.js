@@ -7,7 +7,7 @@
      whole existing chain on every navigation, so every wrapper
      side-effect keeps firing — folioView tracking + footer scope
      (features 198), PNG buttons (T4), scroll memory + view-enter +
-     body[data-view] + legal link (T6), deals render + news-seen
+     body[data-view] + legal link (T6), news-seen
      marker (folioC), the v89 history arm, render-on-switch (v91),
      analytics mount (ana), e2ee/quick/skip security-row refreshes.
    - History has ONE owner: the v89 modal/view history system.
@@ -33,8 +33,8 @@
   "use strict";
   function $(id) { return document.getElementById(id); }
 
-  var VIEW_HASH = { dashboard: "#/home", holdings: "#/holdings", watchlist: "#/watchlist", insights: "#/insights", news: "#/news", history: "#/history", deals: "#/deals", profile: "#/account" };
-  var HASH_VIEW = { "#/home": "dashboard", "#/holdings": "holdings", "#/watchlist": "watchlist", "#/insights": "insights", "#/news": "news", "#/history": "history", "#/deals": "deals", "#/account": "profile" };
+  var VIEW_HASH = { dashboard: "#/home", holdings: "#/holdings", watchlist: "#/watchlist", insights: "#/insights", news: "#/news", history: "#/history", profile: "#/account" };
+  var HASH_VIEW = { "#/home": "dashboard", "#/holdings": "holdings", "#/watchlist": "watchlist", "#/insights": "insights", "#/news": "news", "#/history": "history", "#/account": "profile" };
   /* #/account/<key> -> index of the section panel inside #view-profile
      (static DOM order: 0 account card, 1 Personal Info, 2 Security,
      3 Data & Vault, 4 Danger Zone — the same order the profile
@@ -55,12 +55,47 @@
     return v ? v.id.replace(/^view-/, "") : "dashboard";
   }
   function busy() { try { return typeof uiBusy === "function" && uiBusy(); } catch (e) { return false; } }
-  function setHash(h) { try { if (window.location.hash !== h) history.replaceState(null, "", h); } catch (e) {} }
+  function viewForHash(h) {
+    for (var v in VIEW_HASH) if (VIEW_HASH[v] === h) return v;
+    if (h && h.indexOf("#/account") === 0) return "profile";
+    return null;
+  }
+  function setHash(h) {
+    try {
+      if (window.location.hash === h) return;
+      var st = history.state, v = viewForHash(h);
+      /* v136 fix (QA log, 2026-11-19): preserving a STALE folioView
+         state while changing the URL rewrote other entries into
+         mismatched state/URL pairs (a holdings entry ended up tagged
+         #/insights; the insights entry got rewritten to holdings),
+         which stalled Back and truncated the Forward stack. A mirror
+         write must always produce a CONSISTENT entry: if the kept
+         state names a different view than the hash, retag it. */
+      if (v && st && st.folioView && st.folioView !== v) st = { folioView: v };
+      history.replaceState(st, "", h);
+    } catch (e) {}
+  }
+  /* v136: tag the boot entry with the view it boots into, so a Back
+     traversal that lands on it knows its screen (the v89 tail reads
+     history.state). Never overwrites an existing folioView tag. */
+  function tagBoot() {
+    try {
+      var st = history.state;
+      if (!st) history.replaceState({ folioView: currentView() }, "", window.location.hash || VIEW_HASH[currentView()] || "#/home");
+    } catch (e) {}
+  }
   function moreOpen() { var s = $("moreSheet"); return !!(s && !s.classList.contains("hidden")); }
 
   function parse(hash) {
     if (!hash || hash === "#") return null;               /* no route: never a navigation */
     if (hash === "#/") return { kind: "view", view: "dashboard", hash: "#/home" };
+    if (hash === "#/dashboard") return { kind: "view", view: "dashboard", hash: "#/home" };
+    if (hash === "#/profile") return { kind: "view", view: "profile", hash: "#/account" };
+    if (hash.indexOf("#/profile/") === 0) {
+      var pk = hash.slice("#/profile/".length);
+      if (Object.prototype.hasOwnProperty.call(ACC, pk)) return { kind: "view", view: "profile", acc: ACC[pk], hash: "#/account/" + pk };
+      return { kind: "view", view: "profile", hash: "#/account" };
+    }
     if (HASH_VIEW[hash]) return { kind: "view", view: HASH_VIEW[hash], hash: hash };
     if (hash === "#/more") return { kind: "more", hash: hash };
     if (hash.indexOf("#/account/") === 0) {
@@ -156,7 +191,6 @@
     if (busy()) { pending = r; startRetry(); return; }
     pending = null;
     if (r.kind === "view") {
-      if (r.view === "deals") { try { if (typeof folioEnsureDealsView === "function") folioEnsureDealsView(); } catch (e) {} }
       if (currentView() !== r.view) {
         if (r.acc != null) keepHashOnce = true;
         try { switchView(r.view); } catch (e) {}
@@ -205,6 +239,14 @@
   window.addEventListener("popstate", function () { lastPopAt = Date.now(); });
 
   window.addEventListener("hashchange", function () {
+    /* v136 fix: a Back/Forward traversal across entries with
+       different hashes fires popstate AND hashchange. The v89
+       popstate tail has already switched to the landed entry's view;
+       re-applying the route here switched a SECOND time (unguarded),
+       whose arm push truncated the Forward stack. Inside the pop
+       window, only mirror the hash of the view that is showing. */
+    var rPeek = parse(window.location.hash);
+    if (Date.now() - lastPopAt < 1500 && rPeek && rPeek.kind === "view" && rPeek.view === currentView()) { setHash(VIEW_HASH[currentView()] || "#/home"); return; }
     var r = parse(window.location.hash);
     if (!r) return;
     if (!appShown()) { staleHash = false; pending = r; startRetry(); return; }
@@ -252,6 +294,7 @@
         var shown = appShown();
         if (shown && !appWasShown) {
           appWasShown = true;
+          tagBoot();
           if (staleHash) { staleHash = false; pending = null; setHash(VIEW_HASH[currentView()] || "#/home"); }
           else if (pending) applyRoute(pending);
           else setHash(VIEW_HASH[currentView()] || "#/home");
@@ -261,7 +304,7 @@
       }).observe(a, { attributes: true, attributeFilter: ["class"] });
     }
     var r = parse(window.location.hash);
-    if (appShown()) { appWasShown = true; if (r) applyRoute(r); else setHash(VIEW_HASH[currentView()] || "#/home"); }
+    if (appShown()) { appWasShown = true; tagBoot(); if (r) applyRoute(r); else setHash(VIEW_HASH[currentView()] || "#/home"); }
     else if (r) pending = r;
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

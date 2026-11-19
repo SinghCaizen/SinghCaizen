@@ -1,6 +1,6 @@
 /* ================= FOLIO MARKET HUB (Phase 6C) =================
    Lazy module — loaded on first open via window.folioOpenMarketHub()
-   in features.js (same contract as tools.js / ptools.js / smartmoney.js).
+   in features.js (same contract as tools.js / ptools.js).
    NOT in SW CORE. Nothing in this module runs at app startup.
 
    DATA: free Yahoo Finance chart data ONLY, fetched through the app's

@@ -971,7 +971,6 @@ function renderInsights(d) {
     $("insScoreNum").textContent = "–";
     ["insDivScore", "insMomScore", "insRiskScore", "insQualScore"].forEach(id => { const e = $(id); if (e) { e.textContent = "–"; e.className = ""; } });
     const arc = $("insGaugeArc"); if (arc) arc.style.strokeDashoffset = "326.7";
-    renderInsViz(d); renderInsPerf(d);
     insKey = ""; insDiv = insMom = insRisk = insQual = null;
     return;
   }
@@ -1021,8 +1020,6 @@ function renderInsights(d) {
 
   renderSignalsSync(d);
   renderCapGrid();
-  renderInsViz(d);
-  renderInsPerf(d);
   updateGauge();
   const key = rows.map(r => r.sym).join(",");
   if (key !== insKey) { insKey = key; loadInsScores(d); }
@@ -1146,94 +1143,6 @@ document.addEventListener("DOMContentLoaded", () => {
     insCapFilter = c.dataset.cap;
     chips.querySelectorAll(".chip").forEach(x => x.classList.toggle("active", x === c));
     renderCapGrid();
-  }));
-});
-
-/* ---------- insights visuals: donuts, heatmap, portfolio graph ---------- */
-function donutInto(svgEl, legendEl, items, centerLabel) {
-  if (!svgEl || !legendEl) return;
-  const total = items.reduce((s, x) => s + x.value, 0);
-  if (!total) { svgEl.innerHTML = ""; legendEl.innerHTML = '<p class="empty-note">No data yet.</p>'; return; }
-  const R = 80, C = 2 * Math.PI * R;
-  let acc = 0, parts = "";
-  items.forEach(x => {
-    const frac = x.value / total;
-    const len = Math.max(0, frac * C - 2);
-    parts += '<circle cx="100" cy="100" r="' + R + '" fill="none" stroke="' + x.color + '" stroke-width="26" stroke-dasharray="' + len.toFixed(1) + ' ' + C.toFixed(1) + '" stroke-dashoffset="' + (-acc * C).toFixed(1) + '" transform="rotate(-90 100 100)"/>';
-    acc += frac;
-  });
-  svgEl.innerHTML = parts +
-    '<text x="100" y="95" text-anchor="middle" fill="var(--muted)" font-size="10.5" letter-spacing="1.5">' + centerLabel + '</text>' +
-    '<text x="100" y="116" text-anchor="middle" fill="var(--text)" font-size="14.5" font-weight="bold">' + inr(total) + '</text>';
-  legendEl.innerHTML = items.map(x => '<div class="donut-leg-row"><span class="donut-dot" style="background:' + x.color + '"></span><span class="donut-leg-name">' + esc(x.label) + '</span><b>' + (x.value / total * 100).toFixed(1) + '%</b></div>').join("");
-}
-function renderInsViz(d) {
-  const s1 = $("insDonutStock");
-  if (s1) {
-    const items = [...d.rows].sort((a, b) => b.cur - a.cur).map((r, i) => ({ label: r.sym, value: r.cur, color: PIE[i % PIE.length] }));
-    donutInto(s1, $("insDonutStockLegend"), items, "TOTAL VALUE");
-    const secMap = {};
-    d.rows.forEach(r => {
-      const k = r.sector || "Other";
-      if (!secMap[k]) secMap[k] = { label: k, value: 0, color: PIE[Object.keys(secMap).length % PIE.length] };
-      secMap[k].value += r.cur;
-    });
-    donutInto($("insDonutSector"), $("insDonutSectorLegend"), Object.values(secMap).sort((a, b) => b.value - a.value), "BY SECTOR");
-  }
-  const heat = $("insHeat");
-  if (heat) {
-    if (!d.rows.length) { heat.innerHTML = '<p class="empty-note">Add stocks — the heatmap shows today\'s move of every holding at one glance.</p>'; return; }
-    const rows = [...d.rows].sort((a, b) => b.cur - a.cur);
-    heat.innerHTML = rows.map(r => {
-      const dayPct = (r.ltp !== null && r.prevClose) ? (r.ltp - r.prevClose) / r.prevClose * 100 : null;
-      let bg, fg;
-      if (dayPct === null || Math.abs(dayPct) <= 0.01) { bg = "var(--panel-2)"; fg = "var(--text)"; }
-      else if (dayPct > 0) { bg = "linear-gradient(135deg, #059669, #10b981)"; fg = "#ffffff"; }
-      else { bg = "linear-gradient(135deg, #dc2626, #ef4444)"; fg = "#ffffff"; }
-      const flex = Math.max(1, (d.value ? r.cur / d.value : 0) * 10).toFixed(2);
-      return '<button type="button" class="heat-tile" data-heat2="' + esc(r.sym) + '" style="flex:' + flex + ' 1 100px;background:' + bg + ';color:' + fg + '">' +
-        '<span class="heat-sym">' + esc(r.sym) + '</span>' +
-        '<span class="heat-pct">' + (dayPct === null ? "—" : pct(dayPct) + " today") + '</span>' +
-        '<span class="heat-val">' + inr(r.cur) + '</span></button>';
-    }).join("");
-    heat.querySelectorAll("[data-heat2]").forEach(b => b.addEventListener("click", () => openStock(b.dataset.heat2)));
-  }
-}
-let insPerfRange = "6mo", insPerfKey = "";
-async function renderInsPerf(d) {
-  const box = $("insPerfBox");
-  if (!box) return;
-  if (!d.rows.length) { box.innerHTML = '<p class="empty-note">Add stocks — your portfolio graph will appear here.</p>'; $("insPerfMeta").textContent = ""; return; }
-  const key = insPerfRange + "|" + d.rows.map(r => r.sym + ":" + r.qty).join(",");
-  if (key === insPerfKey) return;
-  insPerfKey = key;
-  box.innerHTML = '<p class="empty-note">Building your graph…</p>';
-  const hists = await Promise.all(d.rows.map(r => fetchHistory(r.sym, insPerfRange)));
-  const series = {};
-  const allTs = new Set();
-  hists.forEach((h, i) => { if (h) { series[d.rows[i].sym] = new Map(h.points.map(p => [p.t, p.c])); h.points.forEach(p => allTs.add(p.t)); } });
-  const ts = [...allTs].sort((a, b) => a - b);
-  if (ts.length < 2) { box.innerHTML = '<p class="empty-note">Graph data could not load right now.</p>'; return; }
-  const lastClose = {};
-  const vals = ts.map(t => {
-    let v = 0;
-    d.rows.forEach(r => {
-      const m = series[r.sym];
-      if (m) { if (m.has(t)) lastClose[r.sym] = m.get(t); if (lastClose[r.sym]) v += r.qty * lastClose[r.sym]; }
-    });
-    return v;
-  }).filter(v => v > 0);
-  if (vals.length < 2) { box.innerHTML = '<p class="empty-note">Not enough data for a graph yet.</p>'; return; }
-  box.innerHTML = lineChartSvg(vals, 200);
-  const chg = (vals[vals.length - 1] - vals[0]) / vals[0] * 100;
-  $("insPerfMeta").innerHTML = "Portfolio value: " + inr(vals[0]) + " → <b>" + inr(vals[vals.length - 1]) + "</b> · <span class=\"" + (chg >= 0 ? "gain" : "loss") + "\">" + pct(chg) + "</span> over this period (at today's quantities, approximate).";
-}
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll("#insPerfSeg .seg-btn").forEach(b => b.addEventListener("click", () => {
-    insPerfRange = b.dataset.r;
-    document.querySelectorAll("#insPerfSeg .seg-btn").forEach(x => x.classList.toggle("active", x === b));
-    insPerfKey = "";
-    renderInsPerf(enriched());
   }));
 });
 
@@ -5099,10 +5008,9 @@ document.body.dataset.view = "dashboard";
    do not appear — no invented data, ever.
    ================================================================ */
 const P7_RAW = "https://raw.githubusercontent.com/SinghCaizen/SinghCaizen/";
-let p7Inv = null, p7Fund = null, p7LoadTried = false;
+let p7Fund = null, p7LoadTried = false;
 async function p7Load() {
   if (p7LoadTried) return; p7LoadTried = true;
-  try { const r = await fetch(P7_RAW + "main/portfolio/data/investors.json", { cache: "no-store" }); if (r.ok) p7Inv = await r.json(); } catch (e) {}
   try { const r = await fetch(P7_RAW + "data/portfolio/data/fundamentals.json", { cache: "no-store" }); if (r.ok) { const j = await r.json(); p7Fund = j && j.data ? j.data : null; } } catch (e) {}
 }
 function p7QualityScore(f) {
@@ -5132,12 +5040,6 @@ async function p7EnhanceOverview() {
     const q = p7QualityScore(f);
     if (q) html += '<p class="sx-note">Quality score ' + q.pts + "/" + q.max + " — computed on this device from: " + q.parts.join(" · ") + ". Information only, not a recommendation.</p>";
     html += "</div>";
-  }
-  if (p7Inv && Array.isArray(p7Inv.investors)) {
-    const holders = p7Inv.investors.filter(inv => (inv.holdings || []).some(h => h.sym === sxSym));
-    if (holders.length) {
-      html += '<div class="sx-blk"><div class="sx-blk-t">Smart Money — who else holds this</div>' + holders.map(inv => { const h = inv.holdings.find(x => x.sym === sxSym); return '<div class="sm-row"><b>' + esc(inv.name) + '</b><span class="sx-note">' + esc(h.note || "") + "</span></div>"; }).join("") + '<p class="sx-note">From the hand-checked investors file (' + esc(p7Inv.asOf || "") + ') — ' + esc(p7Inv.preparedBy || "verify before relying on it") + ".</p></div>";
-    }
   }
   try {
     const news = await fetchNews(sxSym + " share", 6);
@@ -5213,11 +5115,7 @@ function folioMerges() {
     }
   }
   const ap = $("allocPanel"); if (ap && allocViewMode === "bars") ap.classList.add("alloc-bars");
-  const sb = $("sectorBars"); if (sb) { const p = sb.closest(".panel"); if (p) p.classList.add("merged-away"); }
-  const pie = folioPanelByTitle("ALLOCATION — PIE CHARTS", true); if (pie) pie.classList.add("merged-away");
   const cap = folioPanelByTitle("MARKET CAP CLASSIFICATION", true); if (cap) cap.classList.add("merged-away");
-  const pg = folioPanelByTitle("PORTFOLIO GRAPH", true); if (pg) pg.classList.add("merged-away");
-  const hm = folioPanelByTitle("HEATMAP", true); if (hm) hm.classList.add("merged-away");
   const scorePanel = $("insScoreNum") ? $("insScoreNum").closest(".panel") : null;
   if (scorePanel && scorePanel.dataset.merged !== "health") {
     const h2 = scorePanel.querySelector(".panel-head h2");
@@ -5405,109 +5303,6 @@ function folioDownload(name, text, type) {
 }
 function mySyms() { const s = new Set(); try { enriched().rows.forEach(r => s.add(r.sym)); } catch (e) {} (state.watch || []).forEach(w => s.add(w.sym)); return s; }
 function fmtCr(v) { return Number.isFinite(v) ? "₹" + (v / 1e7).toFixed(2) + " Cr" : "—"; }
-/* ---------- Big Deals ---------- */
-let folioDeals = null, folioDealsTried = false;
-async function folioLoadDeals() {
-  if (folioDeals || folioDealsTried) return folioDeals;
-  folioDealsTried = true;
-  const j = await folioDataJson("deals.json");
-  if (j && Array.isArray(j.data) && j.data.length) { folioDeals = j.data.filter(r => r && typeof r.sym === "string" && r.sym && isFinite(Number(r.qty)) && isFinite(Number(r.price))).map(r => ({ sym: r.sym, client: r.client == null ? "" : String(r.client), side: r.side, qty: Number(r.qty), price: Number(r.price), d: r.d == null ? "" : String(r.d) })); if (folioDeals.length) { try { folioOnDeals(); } catch (e) {} } else folioDeals = null; }
-  return folioDeals;
-}
-function dealThr() { const p = folioProf(); return Number(p.dealThresholdCr) > 0 ? Number(p.dealThresholdCr) : 1; }
-function folioSpotted() {
-  const names = folioProf().dealWatchNames || [];
-  if (!folioDeals || !names.length) return [];
-  const out = [];
-  folioDeals.forEach(r => { const cl = (r.client || "").toLowerCase(); names.forEach(n => { if (n && cl.includes(n.toLowerCase())) out.push({ name: n, r: r }); }); });
-  return out.slice(0, 8);
-}
-function dealRowHtml(r, big) {
-  return '<div class="deal-row' + (big ? " deal-big" : "") + '"><span class="news-chip">' + esc(r.sym) + '</span><span class="deal-main"><b>' + esc(r.client) + '</b> · <span class="' + (r.side === "BUY" ? "pos" : "neg") + '">' + r.side + "</span> " + Number(r.qty).toLocaleString("en-IN") + " @ " + inr2(r.price) + '</span><span class="deal-val">' + fmtCr(r.qty * r.price) + " · " + fmtDate(r.d) + "</span></div>";
-}
-function folioOnDeals() {
-  const card = document.querySelector(".more-sheet-card");
-  if (card && !card.querySelector('[data-more-view="deals"]')) {
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "more-row"; b.dataset.moreView = "deals";
-    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/><path d="M12 3v12"/><path d="M4 21h16"/></svg><span>Big Deals</span>';
-    const prof = card.querySelector('[data-more-view="profile"]');
-    if (prof) card.insertBefore(b, prof); else card.appendChild(b);
-  }
-  folioRenderDealsCard();
-  folioChanged();
-}
-function folioRenderDealsCard() {
-  if (!folioDeals) return;
-  const _mdr = $("moreDealsRow"); if (_mdr) _mdr.hidden = false; /* v113: More-hub Big Deals row shows only when deal data exists (R12) */
-  const view = $("view-dashboard"); if (!view) return;
-  let panel = $("dealsCard");
-  if (!panel) {
-    panel = document.createElement("div");
-    panel.className = "panel"; panel.id = "dealsCard";
-    panel.innerHTML = '<div class="panel-head"><h2>Big Deals on my stocks</h2><button type="button" class="mini-btn" data-deals-all="1">See all deals</button></div><div class="deal-spotted"></div><div class="deal-list"></div><p class="price-meta">Reported bulk/block deals only · highlight above ' + dealThr() + " Cr (editable in the Deals view)</p>";
-    const anchor = $("allocPanel") || view.querySelector(".panel");
-    if (anchor && anchor.after) anchor.after(panel); else view.appendChild(panel);
-  }
-  const mine = mySyms();
-  const rows = folioDeals.filter(r => mine.has(r.sym)).slice(0, 10);
-  const list = panel.querySelector(".deal-list");
-  list.innerHTML = rows.length ? rows.map(r => dealRowHtml(r, r.qty * r.price >= dealThr() * 1e7)).join("") : '<p class="empty-note">No reported bulk/block deals on your stocks in the saved window yet.</p>';
-  const spot = folioSpotted().filter(s => mine.has(s.r.sym));
-  panel.querySelector(".deal-spotted").innerHTML = spot.map(s => '<p class="spot-line">Spotted: <b>' + esc(s.name) + "</b> " + (s.r.side === "BUY" ? "bought" : "sold") + " " + esc(s.r.sym) + " · " + fmtCr(s.r.qty * s.r.price) + " · " + fmtDate(s.r.d) + "</p>").join("");
-}
-function folioEnsureDealsView() {
-  if ($("view-deals")) return;
-  const sec = document.createElement("section");
-  sec.id = "view-deals"; sec.className = "view hidden";
-  sec.innerHTML = '<div class="panel"><div class="panel-head"><h2>Big Deals</h2><span class="price-meta">NSE reported bulk &amp; block deals · last 60 days</span></div>' +
-    '<div class="insx-setrow"><label>Search <input id="dealSearch" type="search" placeholder="Stock or client name"></label>' +
-    '<label>Highlight above (₹ Cr) <input id="dealThr" type="number" min="0" step="0.5" value="' + dealThr() + '"></label></div>' +
-    '<div class="insx-setrow"><label>Famous investors watch <input id="dealWatchIn" type="text" placeholder="Type a name, e.g. a fund or investor"></label><button type="button" class="btn" id="dealWatchAdd">Add name</button></div>' +
-    '<div id="dealWatchChips" class="stat-chips"></div><div id="dealSpotted"></div><div id="dealTable" style="margin-top:10px"></div>' +
-    '<p class="price-meta">These are reported deals only, as published by the exchange. A name in the watch list is matched against the client name printed in the deal.</p></div>';
-  document.querySelector("main").appendChild(sec);
-  $("dealSearch").addEventListener("input", folioDeb(folioRenderDeals, 300));
-  $("dealThr").addEventListener("change", () => { const p = folioProf(); p.dealThresholdCr = Number($("dealThr").value) || 1; persist(); folioRenderDeals(); folioRenderDealsCard(); });
-  $("dealWatchAdd").addEventListener("click", () => {
-    const v = $("dealWatchIn").value.trim(); if (!v) return;
-    const p = folioProf(); p.dealWatchNames = p.dealWatchNames || [];
-    if (!p.dealWatchNames.some(n => n.toLowerCase() === v.toLowerCase())) p.dealWatchNames.push(v);
-    $("dealWatchIn").value = ""; persist(); folioRenderDeals(); folioRenderDealsCard();
-  });
-}
-function folioRenderDeals() {
-  folioEnsureDealsView();
-  const chips = $("dealWatchChips"), p = folioProf();
-  chips.innerHTML = (p.dealWatchNames || []).map(n => '<span class="chip">' + esc(n) + ' <button type="button" class="chip-x" data-unwatch-name="' + esc(n) + '" aria-label="Remove">×</button></span>').join("");
-  chips.querySelectorAll("[data-unwatch-name]").forEach(b => b.addEventListener("click", () => { p.dealWatchNames = (p.dealWatchNames || []).filter(n => n !== b.dataset.unwatchName); persist(); folioRenderDeals(); folioRenderDealsCard(); }));
-  const spot = folioSpotted();
-  $("dealSpotted").innerHTML = spot.map(s => '<p class="spot-line">Spotted: <b>' + esc(s.name) + "</b> " + (s.r.side === "BUY" ? "bought" : "sold") + " " + esc(s.r.sym) + " · " + Number(s.r.qty).toLocaleString("en-IN") + " @ " + inr2(s.r.price) + " · " + fmtCr(s.r.qty * s.r.price) + " · " + fmtDate(s.r.d) + "</p>").join("");
-  const box = $("dealTable");
-  if (!folioDeals) { box.innerHTML = '<p class="empty-note">Deal data has not arrived yet. Folio checks the exchange files every day; when the first file lands, deals will appear here — nothing is shown until real data exists.</p>'; return; }
-  const q = ($("dealSearch").value || "").trim().toLowerCase();
-  const rows = folioDeals.filter(r => !q || r.sym.toLowerCase().includes(q) || (r.client || "").toLowerCase().includes(q)).slice(0, 300);
-  if (!rows.length) { box.innerHTML = '<p class="empty-note">No deals match your search.</p>'; return; }
-  box.innerHTML = '<div class="table-scroll"><table class="folio-table"><thead><tr><th>Date</th><th>Stock</th><th>Client</th><th>B/S</th><th>Qty</th><th>Price</th><th>Value</th></tr></thead><tbody>' +
-    rows.map(r => '<tr class="' + (r.qty * r.price >= dealThr() * 1e7 ? "deal-big" : "") + '"><td>' + fmtDate(r.d) + "</td><td><b>" + esc(r.sym) + "</b></td><td>" + esc(r.client) + '</td><td class="' + (r.side === "BUY" ? "pos" : "neg") + '">' + r.side + "</td><td>" + Number(r.qty).toLocaleString("en-IN") + "</td><td>" + inr2(r.price) + "</td><td>" + fmtCr(r.qty * r.price) + "</td></tr>").join("") + "</tbody></table></div>";
-}
-document.addEventListener("click", e => { if (e.target.closest("[data-deals-all]")) switchView("deals"); });
-const _lcsC = loadCompanySheet;
-loadCompanySheet = async function (sym) {
-  const r = await _lcsC.apply(this, arguments);
-  try {
-    if (!folioDeals) { folioLoadDeals(); return r; }
-    const rows = folioDeals.filter(x => x.sym === baseTicker(sym)).slice(0, 6);
-    const ab = $("sxAbout");
-    if (rows.length && ab && !ab.querySelector(".sheet-deals")) {
-      const div = document.createElement("div");
-      div.className = "sheet-deals";
-      div.innerHTML = "<h3>Big Deals (reported)</h3>" + rows.map(x => dealRowHtml(x, x.qty * x.price >= dealThr() * 1e7)).join("") + '<p class="price-meta">Reported bulk/block deals only.</p>';
-      ab.appendChild(div);
-    }
-  } catch (e) {}
-  return r;
-};
 /* ---------- What Changed Today ---------- */
 function folioChanged() {
   const view = $("view-dashboard"); if (!view || !currentUser) return;
@@ -5532,7 +5327,6 @@ function folioChanged() {
   if (dayBase) { const pd = dayPnl / dayBase * 100; lines.push("Portfolio " + (pd >= 0 ? "+" : "") + pd.toFixed(1) + "% today"); }
   if (drag && drag.dp < 0) { amtLine = lines.length; lines.push("Biggest drag: " + drag.sym + " (" + inrShort(drag.dp) + ")"); }
   if (nearLow) lines.push(nearLow + (nearLow === 1 ? " stock" : " stocks") + " near 52W low");
-  if (folioDeals) { const today = new Date().toISOString().slice(0, 10); const mine = mySyms(); const todays = folioDeals.filter(x => x.d === today && mine.has(x.sym)); if (todays.length) lines.push(todays.length + " big deal" + (todays.length > 1 ? "s" : "") + " on " + todays[0].sym + (todays.length > 1 ? " & others" : "") + " today"); }
   if (!lines.length) { strip.classList.add("hidden"); return; }
   strip.classList.remove("hidden");
   strip.innerHTML = '<span class="cs-title">What changed today</span>' + lines.map((l, i) => '<span class="cs-line' + (i === amtLine ? " cs-amt" : "") + '">' + esc(l) + "</span>").join("");
@@ -5578,7 +5372,6 @@ function folioNewsRender() {
 const _svC = switchView;
 switchView = function (name) {
   _svC(name);
-  if (name === "deals") { try { folioRenderDeals(); } catch (e) {} }
   if (name === "news") setTimeout(() => { try { localStorage.setItem("folio_news_seen", String(Date.now())); } catch (e) {} }, 2500);
 };
 
@@ -5606,7 +5399,7 @@ function folioEventsPanel() {
     panel = document.createElement("div");
     panel.className = "panel"; panel.id = "evCalPanel";
     panel.innerHTML = '<div class="panel-head"><h2>Upcoming events for my stocks</h2><span class="seg seg-small"><button type="button" class="seg-btn active" data-evcal="list">List</button><button type="button" class="seg-btn" data-evcal="month">Month</button></span></div><div class="evcal-body"><div class="skel" style="height:54px"></div></div><div class="panel-foot"><button type="button" class="mini-btn" data-evcal-ics="1">Add to phone calendar (.ics)</button></div>';
-    const anchor = $("dealsCard") || $("allocPanel") || view.querySelector(".panel");
+    const anchor = $("allocPanel") || view.querySelector(".panel");
     if (anchor && anchor.after) anchor.after(panel); else view.appendChild(panel);
     panel.querySelectorAll("[data-evcal]").forEach(b => b.addEventListener("click", () => { evCalMode = b.dataset.evcal; panel.querySelectorAll("[data-evcal]").forEach(x => x.classList.toggle("active", x === b)); folioEventsRender(); }));
     panel.querySelector("[data-evcal-ics]").addEventListener("click", folioEventsIcs);
@@ -5893,7 +5686,6 @@ async function folioFiiLine() {
 if (typeof renderMood === "function") { const _rmC2 = renderMood; renderMood = async function () { const r = await _rmC2.apply(this, arguments); try { await folioFiiLine(); } catch (e) {} return r; }; }
 /* ---------- setups ---------- */
 function folioSetupsC() {
-  folioLoadDeals();
   folioChanged();
   folioNewsSetup();
   folioEventsPanel();
@@ -5913,8 +5705,7 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
   let inPop = false;     /* v129: true while the popstate handler is pruning (those closes were spent by the press itself) */
   const isOpen = m => m && !m.classList.contains("hidden");
   /* v130: sub-layers — a sheet's internal steps (Tools index → a
-     calculator, Portfolio Tools index → a planner, Smart Money home →
-     a fund house, Mutual Funds list → a scheme) each own ONE history
+     calculator, Portfolio Tools index → a planner, Mutual Funds list → a scheme) each own ONE history
      entry, so a Back press peels exactly one internal step and never
      the whole sheet along with it. A module registers a step with
      folioSubPush (stacked steps) or folioSubSwap (a step that replaces
@@ -6018,11 +5809,20 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
     if (m && m.classList && m.classList.contains("modal") && isOpen(m) && !STATIC[m.id] && top() === m) closeModal(m);
   });
 
-  let viewArmed = false;
+  /* v136: REAL view history (Prompt 1) — every user switch to a
+     different view pushes one { folioView } entry tagged with the
+     view it lands on, so Back/Forward traverse the user's actual
+     screens (the popstate tail below reads the landed entry's
+     state). Traversal-driven switches (viewTraversing) and switches
+     under an open layer (top()) never push. This replaces the v129
+     single-arm design that always landed Back on Home. */
+  let viewTraversing = false;
+  let lastViewName = "dashboard";
   const _sv89 = switchView;
   switchView = function (name) {
     const r = _sv89.apply(this, arguments);
-    if (name && name !== "dashboard" && !viewArmed && !top()) { try { history.pushState({ folioView: name }, ""); viewArmed = true; } catch (e) {} }
+    if (name && name !== lastViewName && !viewTraversing && !top()) { try { history.pushState({ folioView: name }, "", (window.FolioRouter && window.FolioRouter.hashFor(name)) || ""); } catch (e) {} }
+    if (name) lastViewName = name;
     return r;
   };
   window.addEventListener("popstate", () => {
@@ -6071,11 +5871,27 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
     if (stack.length < before) { syncLock(); return; }
     const m = top();
     if (m) { m.__folioPopClosed = 1; closeModal(m); return; }
-    viewArmed = false;
+    /* v136: no layer claimed this press — it is a view traversal.
+       The landed entry's state names the view to show (this makes
+       Back AND Forward follow the user's real screen history).
+       Entries without a folioView tag (the boot entry, a stock
+       entry whose page is already closed) fall back to Home,
+       exactly as the v129 design behaved. */
+    const vst = (function () { try { return history.state; } catch (e) { return null; } })();
+    /* v136: a STATELESS entry whose URL names a screen is a fragment
+       navigation (a deep link typed/pasted in this tab fires popstate
+       before hashchange) — the router's hashchange handler owns it.
+       Standing down here keeps the tail from bouncing it Home before
+       the router can apply it (QA round 7, Part 2). */
+    if (!vst && window.location.hash && window.location.hash !== "#/home" && window.location.hash !== "#/") return;
+    const VIEWS136 = { dashboard: 1, holdings: 1, watchlist: 1, insights: 1, news: 1, history: 1, profile: 1 };
+    const target = (vst && VIEWS136[vst.folioView]) ? vst.folioView : "dashboard";
     const cur = document.querySelector(".view:not(.hidden)");
-    /* v129: no fresh entry is pushed after landing Home — the next
-       Back leaves the app, so every press moves exactly one step. */
-    if (cur && cur.id !== "view-dashboard") switchView("dashboard");
+    if (cur && cur.id !== "view-" + target) {
+      viewTraversing = true;
+      try { switchView(target); } catch (e) {}
+      viewTraversing = false;
+    }
   });
 
   let swipe = null;
@@ -6116,7 +5932,6 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
         else if (act === "sharecard") { if (window.openShareSheet) window.openShareSheet({ type: "summary" }); }
         else if (act === "tools") { if (window.folioOpenTools) window.folioOpenTools(); }
         else if (act === "ptools") { if (window.folioOpenPTools) window.folioOpenPTools(); }
-        else if (act === "smartmoney") { if (window.folioOpenSmartMoney) window.folioOpenSmartMoney(); }
         else if (act === "markethub") { if (window.folioOpenMarketHub) window.folioOpenMarketHub(); }
         else if (act === "mutualfunds") { if (window.folioOpenMutualFunds) window.folioOpenMutualFunds(); }
         else if (act === "calendar") { if (window.folioOpenCalendar) window.folioOpenCalendar(); }
@@ -6289,7 +6104,7 @@ window.openShareSheet = function (opts) {
   if (!shareModLoading) {
     shareModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/share.js?v=6"; sc.async = true;
+      sc.src = "js/share.js?v=7"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("share module failed to load"));
       document.head.appendChild(sc);
     });
@@ -6305,7 +6120,7 @@ window.openReportSheet = function () {
   if (!reportModLoading) {
     reportModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/report.js?v=4"; sc.async = true;
+      sc.src = "js/report.js?v=5"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("report module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7214,301 +7029,6 @@ window.folioOpenPTools = function (opts) {
     .catch(() => { ptoolsModLoading = null; toast("Portfolio Tools could not load — check your connection and try again."); });
 };
 
-/* ================= SMART MONEY — PART 1 (pipeline data): lazy-loaded smartmoney.js + entry points =================
-   Nothing here runs data work at startup: the loader fires only on an
-   explicit open (Insights card / More row / stock tab / Data Sources
-   link), plus ONE idle, cache-only alert evaluation when — and only
-   when — the user has turned Smart Money alerts on. */
-let smModLoading = null;
-function smLoadModule() {
-  if (window.FolioSmartMoney) return Promise.resolve();
-  if (!smModLoading) {
-    smModLoading = new Promise((res, rej) => {
-      const sc = document.createElement("script");
-      sc.src = "js/smartmoney.js?v=5"; sc.async = true;
-      sc.onload = () => res(); sc.onerror = () => rej(new Error("smartmoney module failed to load"));
-      document.head.appendChild(sc);
-    });
-    smModLoading.catch(() => { smModLoading = null; });
-  }
-  return smModLoading;
-}
-window.folioOpenSmartMoney = function (opts) {
-  opts = opts || {};
-  smLoadModule().then(() => {
-    if (!window.FolioSmartMoney) return;
-    if (opts.silentEval) { window.FolioSmartMoney.evaluateCached({ notify: true }); return; }
-    if (opts.stockTab) { window.FolioSmartMoney.renderOwners(opts.stockTab, opts.el); return; }
-    window.FolioSmartMoney.open(opts);
-  }).catch(() => { toast("Smart Money could not load — check your connection and try again."); });
-};
-
-/* Insights entry card — a plain decorator child of #view-insights (not a
-   folioMerges panel, no h2 element), inserted first so Smart Money is
-   one tap from the Insights top. The meta line stays neutral until the
-   module has loaded real manifest data (paintEntryMeta). */
-(function smInsightsEntry() {
-  const view = $("view-insights"); if (!view || $("smEntry")) return;
-  const d = document.createElement("div");
-  d.className = "panel sm-entry"; d.id = "smEntry";
-  d.innerHTML = '<button type="button" class="sm-entry-btn" id="smEntryBtn">' +
-    '<span class="sm-entry-main"><span class="sm-entry-title">Smart Money</span>' +
-    '<span class="sm-entry-sub">Which mutual funds hold your stocks, who is entering or exiting — from public monthly disclosures, compared on your device.</span>' +
-    '<span class="sm-entry-meta" id="smEntryMeta">Tap to explore</span></span>' +
-    '<span class="sm-entry-chev" aria-hidden="true">›</span></button>';
-  view.insertBefore(d, view.firstChild);
-  d.querySelector("#smEntryBtn").addEventListener("click", () => { if (window.folioOpenSmartMoney) window.folioOpenSmartMoney(); });
-})();
-
-/* Data Sources & Credits — reachable from Profile's System Health row
-   (same after-the-row insertion pattern as the sysPerf line). */
-(function smHealthLink() {
-  const hi = $("healthInfo"); if (!hi || $("smSourcesBtn")) return;
-  const row = hi.closest(".setting-row") || hi;
-  const b = document.createElement("button");
-  b.type = "button"; b.id = "smSourcesBtn"; b.className = "mini-btn"; b.style.marginTop = "8px";
-  b.textContent = "Data sources & status";
-  b.addEventListener("click", () => { if (window.folioOpenSmartMoney) window.folioOpenSmartMoney({ screen: "sources" }); });
-  row.after(b);
-})();
-
-/* Stock sheet — "Who Owns It" tab: one additive tab button + pane inside
-   the existing #sheetX, added by wrapping sxEnsure; tab switching rides
-   the shipped sxSetTab (wrapped) so .on state, .sx-away and the other
-   panes behave exactly as for Peers/Indicators. */
-function smSxTabEnsure() {
-  const box = $("sheetX"); if (!box || $("sxOwners")) return;
-  const tabs = box.querySelector(".sheet-tabs"); if (!tabs) return;
-  const b = document.createElement("button");
-  b.type = "button"; b.className = "insx-chip"; b.dataset.sxTab = "owners"; b.textContent = "Who Owns It";
-  tabs.appendChild(b);
-  b.addEventListener("click", () => sxSetTab("owners"));
-  const pane = document.createElement("div");
-  pane.id = "sxOwners"; pane.className = "hidden";
-  box.appendChild(pane);
-}
-if (typeof sxEnsure === "function") {
-  const _sxEnsureSM = sxEnsure;
-  sxEnsure = function () { const r = _sxEnsureSM.apply(this, arguments); try { smSxTabEnsure(); } catch (e) {} return r; };
-}
-if (typeof sxSetTab === "function") {
-  const _sxSetTabSM = sxSetTab;
-  sxSetTab = function (tab) {
-    const r = _sxSetTabSM(tab);
-    try {
-      const pane = $("sxOwners");
-      if (pane) {
-        pane.classList.toggle("hidden", tab !== "owners");
-        if (tab === "owners" && typeof sxSym !== "undefined" && sxSym && window.folioOpenSmartMoney) {
-          window.folioOpenSmartMoney({ stockTab: sxSym, el: pane });
-        }
-      }
-    } catch (e) {}
-    return r;
-  };
-}
-
-/* Smart Money alerts join the Insights Signals card through the same
-   wrap pattern the Targets & SL card uses — the module paints its own
-   group after every signals render; nothing is painted when the module
-   has not loaded or there are no alerts. */
-let smEvalKicked = false;
-if (typeof renderSignalsSync === "function") {
-  const _rssSM = renderSignalsSync;
-  renderSignalsSync = function (d) {
-    const r = _rssSM.apply(this, arguments);
-    try {
-      if (window.FolioSmartMoney && window.FolioSmartMoney.paintSignals) window.FolioSmartMoney.paintSignals();
-      /* One-shot: if alerts are on but the module has not loaded yet this
-         session, evaluate silently from cache so the Signals group and
-         any notification are not held hostage to opening Smart Money. */
-      if (!smEvalKicked && !window.FolioSmartMoney && typeof state !== "undefined" && state && state.profile) {
-        const sm = state.profile.smartmoney;
-        if (sm && sm.alerts && (sm.alerts.mfChange || sm.alerts.followMoves || sm.alerts.deals)) {
-          smEvalKicked = true;
-          if (window.folioOpenSmartMoney) window.folioOpenSmartMoney({ silentEval: true });
-        }
-      }
-    } catch (e) {}
-    return r;
-  };
-}
-
-/* App-open alert evaluation: idle, cache-only, and ONLY when the user
-   has opted in — with every alert toggle off (the default) this hook
-   costs one settings read and nothing else. No bell is added (the
-   owner's standing order); alerts surface in the Signals card, the
-   Smart Money home strip and, if permitted, a browser notification
-   while the app is open. */
-window.addEventListener("load", () => {
-  setTimeout(() => {
-    try {
-      if (!currentUser || typeof state === "undefined" || !state || !state.profile) return;
-      const sm = state.profile.smartmoney;
-      if (!sm || !sm.alerts || !(sm.alerts.mfChange || sm.alerts.followMoves || sm.alerts.deals)) return;
-      const ric = window.requestIdleCallback || (cb => setTimeout(cb, 1500));
-      ric(() => { if (window.folioOpenSmartMoney) window.folioOpenSmartMoney({ silentEval: true }); });
-    } catch (e) {}
-  }, 1600);
-});
-
-/* ================= SMART MONEY — PART 2: data hooks + stock-chart overlay =================
-   The hooks are the ONLY bridge report.js / share.js use to reach
-   Smart Money data: each quietly lazy-loads smartmoney.js (user-
-   initiated surfaces only — report sheet, share sheet, chart toggle)
-   and delegates to its Part 1 loaders. Nothing here fetches data
-   itself, and nothing runs at startup. */
-window.folioSmartMoneyForReport = function () {
-  return smLoadModule()
-    .then(() => (window.FolioSmartMoney && window.FolioSmartMoney.forReport) ? window.FolioSmartMoney.forReport() : null)
-    .catch(() => null);
-};
-window.folioSmartMoneyGates = function () {
-  return smLoadModule()
-    .then(() => (window.FolioSmartMoney && window.FolioSmartMoney.gates) ? window.FolioSmartMoney.gates() : null)
-    .catch(() => null);
-};
-window.folioSmartMoneyOverlay = function (sym) {
-  return smLoadModule()
-    .then(() => (window.FolioSmartMoney && window.FolioSmartMoney.stockOverlayData) ? window.FolioSmartMoney.stockOverlayData(sym) : null)
-    .catch(() => null);
-};
-
-/* "Institutional activity" toggle — a fourth row inside the chart's
-   existing Indicators sheet (#lwIndSheet), default OFF, persisted in
-   state.profile.smartmoney.chartOverlay (the insX-style settings
-   object Part 1 owns). When OFF, the renderLW wrap below returns
-   before touching anything and the chart is byte-identical. */
-function smOverlayOn() {
-  try { return !!(typeof state !== "undefined" && state && state.profile && state.profile.smartmoney && state.profile.smartmoney.chartOverlay); }
-  catch (e) { return false; }
-}
-function smSyncSmLegend() {
-  const lg = $("lwSmLegend"), bar = $("lwBar");
-  if (!lg) return;
-  const show = smOverlayOn() && bar && !bar.classList.contains("hidden");
-  lg.classList.toggle("hidden", !show);
-}
-(function smLwToggleInit() {
-  const sheet = $("lwIndSheet");
-  if (!sheet || $("lwSmInst")) return;
-  const lab = document.createElement("label");
-  lab.className = "bench-toggle sm-lw-toggle";
-  lab.innerHTML = '<input type="checkbox" id="lwSmInst"> Institutional activity ' +
-    '<button type="button" class="sm-lw-info" id="lwSmInfo" aria-label="About institutional activity markers">i</button>' +
-    '<span class="sm-lw-note" id="lwSmNote"></span>';
-  sheet.appendChild(lab);
-  const bar = $("lwBar");
-  if (bar && !$("lwSmLegend")) {
-    const lg = document.createElement("div");
-    lg.id = "lwSmLegend";
-    lg.className = "price-meta sm-lw-legend hidden";
-    lg.textContent = "Markers: green ● = mutual funds raised their combined holding that month · red ● = cut it · ▲▼ = bulk/block deal (green buy, red sell). Fund changes are inferred from monthly scheme disclosures.";
-    bar.insertAdjacentElement("afterend", lg);
-  }
-  const cb = $("lwSmInst");
-  if (!cb) return;
-  try { cb.checked = smOverlayOn(); } catch (e) {}
-  cb.addEventListener("change", () => {
-    try {
-      if (typeof state !== "undefined" && state) {
-        if (!state.profile || typeof state.profile !== "object") state.profile = {};
-        if (!state.profile.smartmoney || typeof state.profile.smartmoney !== "object") state.profile.smartmoney = {};
-        state.profile.smartmoney.chartOverlay = !!cb.checked;
-        persist();
-      }
-    } catch (e) {}
-    smSyncSmLegend();
-    renderLW();
-  });
-  const info = $("lwSmInfo");
-  if (info) info.addEventListener("click", (e) => {
-    e.preventDefault(); e.stopPropagation();
-    toast("Institutional activity: at each month-end where the change was material (2% or more of the funds' combined shares, or an entry/exit), a round marker shows whether mutual funds together raised or cut their holding in this stock — inferred from monthly scheme disclosures, so a split or bonus can distort share counts. Arrow markers show bulk/block deals when that data is available. Off by default; with it off, the chart is exactly as before.");
-  });
-})();
-
-/* Bars for marker snapping — the SAME sources renderLW paints from
-   (fetchMaster daily ranges, the 12h-cached fetchOHLC for 5y/max), so
-   a marker always lands on a bar the chart actually drew. */
-async function smOverlayBars(sym) {
-  const DAILY = { "7d15m": 7, "1mo": 31, "3mo": 92, "6mo": 183, "1y": 366 };
-  if (DAILY[stockRange]) {
-    const mst = await fetchMaster(sym);
-    if (!mst || !mst.ohlc) return [];
-    return stockRange === "1y" ? mst.ohlc : mst.ohlc.filter(b => b.t >= Date.now() - DAILY[stockRange] * 86400000);
-  }
-  if (stockRange === "5y" || stockRange === "max") {
-    try { return await fetchOHLC(sym, stockRange === "5y" ? "5y" : "max", stockRange === "5y" ? "1wk" : "1mo"); }
-    catch (e) { return []; }
-  }
-  return [];
-}
-
-async function smApplyOverlay() {
-  if (!smOverlayOn()) return; /* OFF: base renderLW output stands untouched */
-  if (typeof lwSeries === "undefined" || !lwSeries || !lwSeries.setMarkers) return;
-  const sym = stockSym;
-  if (!sym) return;
-  const tok = lwTok;
-  const data = await window.folioSmartMoneyOverlay(sym);
-  if (!data || tok !== lwTok || stockSym !== sym) return;
-  const note = $("lwSmNote");
-  if (note) {
-    note.textContent = !data.mfAvailable
-      ? "Smart Money data is not available yet."
-      : (!data.dealsAvailable ? "Bulk/block deals are not available yet — showing fund holding changes only." : "");
-  }
-  if (!data.mfAvailable && !data.dealsAvailable) return;
-  let bars = [];
-  try { bars = await smOverlayBars(sym); } catch (e) { bars = []; }
-  if (!bars.length || tok !== lwTok || stockSym !== sym) return;
-  const barDays = [...new Set(bars.map(b => dayStr(b.t)))].sort();
-  const SM = window.FolioSmartMoneyMath;
-  if (!SM || !SM.overlayMarkers) return;
-  const raw = SM.overlayMarkers(data.history || [], data.deals || null, barDays);
-  if (!raw.length) return; /* nothing material: the base txn markers stand as-is */
-  /* The user's own transaction markers, recomputed EXACTLY as
-     renderLW builds them, so merging never alters their look. */
-  const txn = (state.txns || []).filter(t => t.sym === sym && t.type !== "DIV")
-    .map(t => ({ time: t.date, position: t.type === "BUY" ? "belowBar" : "aboveBar", color: t.type === "BUY" ? "#089981" : "#f23645", shape: t.type === "BUY" ? "arrowUp" : "arrowDown", text: t.type + " @ " + inr2(t.price) }));
-  let smMarks = raw.map(m => {
-    if (m.kind === "deal") {
-      return m.cls === "sell"
-        ? { time: m.time, position: "aboveBar", color: "#f23645", shape: "arrowDown", text: "Deal sell" }
-        : { time: m.time, position: "belowBar", color: "#089981", shape: "arrowUp", text: "Deal buy" };
-    }
-    if (m.cls === "increased" || m.cls === "new") {
-      return { time: m.time, position: "belowBar", color: "#0a7d4f", shape: "circle", text: m.cls === "new" ? "MF new entry" : "MF increased" };
-    }
-    return { time: m.time, position: "aboveBar", color: "#c23327", shape: "circle", text: m.cls === "exited" ? "MF exited" : "MF reduced" };
-  });
-  /* Cap the TOTAL at 300 markers: transactions always survive; the
-     Smart Money markers are stride-decimated (newest always kept). */
-  const room = 300 - txn.length;
-  if (smMarks.length > room) {
-    if (room <= 0) smMarks = [];
-    else {
-      const step = Math.ceil(smMarks.length / room);
-      const keep = smMarks.filter((_, i) => i % step === 0);
-      if (keep[keep.length - 1] !== smMarks[smMarks.length - 1]) keep.push(smMarks[smMarks.length - 1]);
-      smMarks = keep.slice(0, room);
-    }
-  }
-  const all = txn.concat(smMarks);
-  all.sort((a, b) => a.time < b.time ? -1 : 1);
-  try { lwSeries.setMarkers(all); } catch (e) {}
-}
-if (typeof renderLW === "function") {
-  const _renderLWBaseSM2 = renderLW;
-  renderLW = async function () {
-    const r = await _renderLWBaseSM2.apply(this, arguments);
-    try { smSyncSmLegend(); } catch (e) {}
-    try { await smApplyOverlay(); } catch (e) {}
-    return r;
-  };
-}
-
 /* ================= MARKET HUB (Phase 6C): lazy-loaded markethub.js + entry points ================= */
 let mhModLoading = null;
 window.folioOpenMarketHub = function (opts) {
@@ -7517,7 +7037,7 @@ window.folioOpenMarketHub = function (opts) {
   if (!mhModLoading) {
     mhModLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/markethub.js?v=3"; sc.async = true;
+      sc.src = "js/markethub.js?v=4"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("markethub module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7829,7 +7349,7 @@ window.folioNseHolidays = function () {
   if (!calMhLoading) {
     calMhLoading = new Promise((res, rej) => {
       const sc = document.createElement("script");
-      sc.src = "js/markethub.js?v=3"; sc.async = true;
+      sc.src = "js/markethub.js?v=4"; sc.async = true;
       sc.onload = () => res(); sc.onerror = () => rej(new Error("markethub module failed to load"));
       document.head.appendChild(sc);
     });
@@ -7884,7 +7404,6 @@ function folioCmdkActions(env) {
     { id: "export-csv", icon: "⬇", label: "Export data (CSV)", keys: "export csv download backup data", run: function () { call("exportCsv"); } },
     { id: "open-tools", icon: "🧮", label: "Open Calculators & Tools", keys: "tools calculators sip lumpsum fire brokerage xirr goal", run: function () { call("openTools"); } },
     { id: "open-ptools", icon: "📊", label: "Open Portfolio Tools", keys: "portfolio tools rebalance what-if tax harvesting simulator", run: function () { call("openPTools"); } },
-    { id: "open-smartmoney", icon: "🏦", label: "Open Smart Money", keys: "smart money funds institutions fii mf holdings who owns", run: function () { call("openSmartMoney"); } },
     { id: "open-markethub", icon: "📈", label: "Open Market Hub", keys: "market hub indices nifty sensex gold dollar crude compare movers", run: function () { call("openMarketHub"); } },
     { id: "open-mutualfunds", icon: "◉", label: "Open Mutual Funds", keys: "mutual funds mf nav schemes sip returns", run: function () { call("openMutualFunds"); } },
     { id: "open-calendar", icon: "📅", label: "Open Calendar", keys: "calendar holidays ex-dividend splits events dates", run: function () { call("openCalendar"); } },
@@ -8008,7 +7527,6 @@ function cmdk6Env() {
     exportCsv: function () { const b = $("exportBtn"); if (b) { b.click(); return; } if (typeof exportCsv === "function") exportCsv(); },
     openTools: function () { if (window.folioOpenTools) window.folioOpenTools(); },
     openPTools: function () { if (window.folioOpenPTools) window.folioOpenPTools(); },
-    openSmartMoney: function () { if (window.folioOpenSmartMoney) window.folioOpenSmartMoney(); },
     openMarketHub: function () { if (window.folioOpenMarketHub) window.folioOpenMarketHub(); },
     openMutualFunds: function () { if (window.folioOpenMutualFunds) window.folioOpenMutualFunds(); },
     openCalendar: function () { if (window.folioOpenCalendar) window.folioOpenCalendar(); },
@@ -8353,16 +7871,15 @@ if (typeof switchView === "function") {
         !(typeof uiBusy === "function" && uiBusy());
     } catch (e) { canVT = false; }
     folioVtArmed = true;
-    if (!canVT) return _switchView7.apply(this, arguments);
-    try {
-      document.documentElement.classList.add("vt-active");
-      const t = document.startViewTransition(() => { _switchView7.apply(this, arguments); });
-      const done = () => { try { document.documentElement.classList.remove("vt-active"); } catch (e) {} };
-      if (t && t.finished && t.finished.then) t.finished.then(done, done); else done();
-    } catch (e) {
-      try { document.documentElement.classList.remove("vt-active"); } catch (x) {}
-      return _switchView7.apply(this, arguments);
-    }
+    /* v136 fix (QA logs, 2026-11-19): startViewTransition defers the
+       real switch to a later task, but the history system around this
+       wrap is synchronous — the router mirror wrote the new hash onto
+       the OLD entry before the arm push ran, and a traversal switch
+       landed after the traversal flag had already been cleared, so it
+       pushed a fresh entry and destroyed the Forward stack. The
+       switch now ALWAYS runs synchronously; the .view-enter CSS
+       animation (scroll-memory wrap) provides the visual transition. */
+    return _switchView7.apply(this, arguments);
   };
 }
 
@@ -8415,24 +7932,9 @@ document.addEventListener("click", e => {
 window.FolioMotion = { resolve: folioAnimResolve, effective: folioAnimEffective, apply: folioAnimApply, set: folioAnimSet, countValue: folioCountValue, flipPlan: folioFlipPlan };
 
 /* ================= FIX v127 (FIX127-BEGIN) =================
-   Two repairs from the v126 foliotest QA round (FIXROUND-V127.md):
-
-   1) Big Deals crash. app.js switchView(name) runs
-      $("view-" + name).classList.remove("hidden") UNGUARDED, and
-      #view-deals is created lazily by folioEnsureDealsView() — which
-      the old chain only reached AFTER the switch (the Task C wrap
-      calls folioRenderDeals() post-switch, and the More-hub handler
-      at folioSetupsC-era line ~5244 calls switchView("deals")
-      directly). The deals data file has never existed, so nothing
-      pre-created the view: the first tap hid every view, then threw
-      on the missing element -> error boundary + blank screen.
-      This wrap (the outermost features.js wrap; router.js still
-      wraps outside this file and already ensured for hash routes)
-      creates the view BEFORE the switch chain runs. folioRenderDeals
-      itself renders the honest "data has not arrived yet" state when
-      folioDeals is null, and folioLoadDeals now normalises rows at
-      load (string sym/client/date, numeric qty/price), so 404 /
-      empty / malformed data files cannot throw downstream either.
+   1) Big Deals crash — the Deals view was removed entirely in the
+   v136 cleanup, so the pre-create guard that lived here is gone
+   with it; no view is lazily created any more.
 
    2) window.folioProxyJson(url, timeoutMs): a generic JSON fetch
       through the app's existing proxy race — the PROXIES list
@@ -8443,11 +7945,6 @@ window.FolioMotion = { resolve: folioAnimResolve, effective: folioAnimEffective,
       (whose direct browser fetch can fail on CORS even though the
       API itself is up). fetchChartValidated() cannot serve this —
       it hard-validates a Yahoo chart payload shape. */
-const _svFix127 = switchView;
-switchView = function (name) {
-  if (name === "deals") { try { folioEnsureDealsView(); } catch (e) {} }
-  return _svFix127.apply(this, arguments);
-};
 window.folioProxyJson = async function (url, timeoutMs) {
   const ctls = [];
   try {
@@ -8548,8 +8045,8 @@ window.folioProxyJson = async function (url, timeoutMs, opts) {
    here is append-only. */
 
 /* ---- WS2: a lazy sheet's FRAME paints the moment it is tapped ----
-   The seven hub openers wait for their module script before anything
-   appears (tools 43KB … smartmoney 107KB); on a phone connection
+   The hub openers wait for their module script before anything
+   appears (some modules are over 100KB); on a phone connection
    that gap reads as "stuck", not "loading". folioLoadShell is ONE
    reusable sheet shown immediately while the module downloads: the
    section's own name + the shared .ds-spinner (which keeps spinning
@@ -8564,7 +8061,6 @@ window.folioProxyJson = async function (url, timeoutMs, opts) {
   var MODULES = [
     ["folioOpenTools", "FolioTools", "toolsSheet", "Tools"],
     ["folioOpenPTools", "FolioPTools", "ptoolsSheet", "Portfolio Tools"],
-    ["folioOpenSmartMoney", "FolioSmartMoney", "smSheet", "Smart Money"],
     ["folioOpenMarketHub", "FolioMarketHub", "markethubSheet", "Market Hub"],
     ["folioOpenMutualFunds", "FolioMutualFunds", "mutualfundsSheet", "Mutual Funds"],
     ["folioOpenCalendar", "FolioCalendar", "calendarSheet", "Calendar"],

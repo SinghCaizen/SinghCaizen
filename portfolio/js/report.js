@@ -42,7 +42,6 @@
     ["anaIncome", "Income — dividends"],
     ["anaTrades", "Trades — statistics"],
     ["anaScen", "Scenarios"],
-    ["smartmoney", "Smart money in my holdings"],
     ["methodology", "Methodology & formulas (appendix)"]
   ];
   var WEBSITE = "https://singhcaizen.github.io/SinghCaizen/";
@@ -67,13 +66,6 @@
     var p = String(ds).split("-");
     if (p.length !== 3) return String(ds);
     return Number(p[2]) + " " + (M[Number(p[1]) - 1] || "") + " " + p[0];
-  }
-  function monthYearLabel(iso) { /* "YYYY-MM" or "YYYY-MM-DD" -> "Oct 2026" (Smart Money as-of stamps) */
-    if (!iso) return "—";
-    var M = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    var p = String(iso).split("-");
-    if (p.length < 2) return String(iso);
-    return (M[Number(p[1]) - 1] || "") + " " + p[0];
   }
   function truncToWidth(doc, s, maxW) {
     s = String(s == null ? "" : s);
@@ -165,8 +157,7 @@
       '<p class="auth-note" style="margin:.6rem 0 .2rem"><b>Customize sections</b></p>' +
       SECTIONS.map(function (s) {
         return '<label style="display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer">' +
-          '<input type="checkbox" class="rep-sec" data-sec="' + s[0] + '" style="width:19px;height:19px;flex:0 0 auto"> ' + s[1] +
-          (s[0] === "smartmoney" ? ' <span id="repSmNote" style="font-size:12px;opacity:.75"></span>' : "") + "</label>";
+          '<input type="checkbox" class="rep-sec" data-sec="' + s[0] + '" style="width:19px;height:19px;flex:0 0 auto"> ' + s[1] + "</label>";
       }).join("") +
       '<p class="auth-note">The methodology &amp; disclaimer page is always included.</p>' +
       '<p class="auth-note" id="repProgress" style="min-height:1.2em"></p>' +
@@ -211,23 +202,6 @@
     repInitSheetState();
     setProgress("", false);
     sheetEl.classList.remove("hidden");
-    /* Smart Money section note: label the checkbox with the dataset's
-       real availability (checked lazily, only when this sheet opens —
-       the same honest-state pattern as the section itself). */
-    try {
-      var smNoteEl = sheetEl.querySelector("#repSmNote");
-      if (smNoteEl && typeof window !== "undefined" && typeof window.folioSmartMoneyGates === "function") {
-        smNoteEl.textContent = "(checking data…)";
-        window.folioSmartMoneyGates().then(function (g) {
-          if (!sheetEl) return;
-          var n = sheetEl.querySelector("#repSmNote");
-          if (!n) return;
-          n.textContent = (g && g.mf && g.mf.ok) ? "(monthly fund data available)" : "(data not available yet)";
-        }).catch(function () {});
-      } else if (smNoteEl) {
-        smNoteEl.textContent = "(data not available yet)";
-      }
-    } catch (e) {}
   }
 
   async function onDownload() {
@@ -397,21 +371,7 @@
       } catch (e) { divEst = null; }
       await tick();
     }
-    /* Smart Money: read ONLY through the Part 1 hook
-       (window.folioSmartMoneyForReport — features.js lazy-loads the
-       Smart Money module and assembles the bundle from its cached
-       loaders). This module never fetches Smart Money data itself.
-       Any failure leaves sm null and the section prints its honest
-       "not available yet" line. */
-    var sm = null;
-    if (opts.secs.smartmoney) {
-      progress("Reading smart money data...");
-      try {
-        if (typeof window !== "undefined" && typeof window.folioSmartMoneyForReport === "function") sm = await window.folioSmartMoneyForReport();
-      } catch (e) { sm = null; }
-      await tick();
-    }
-    return { d: d, series: series, histMap: histMap, niftyHist: niftyHist, periods: periods, ana: ana, divEst: divEst, sm: sm };
+    return { d: d, series: series, histMap: histMap, niftyHist: niftyHist, periods: periods, ana: ana, divEst: divEst };
   }
 
   /* ================= PDF builder ================= */
@@ -1333,60 +1293,6 @@
           fanChart(mc.bands["5"] || mc.bands["3"] || mc.bands["1"]);
           note("Across " + (mc.paths || 1000) + " simulated futures, built by reshuffling your own daily returns of the last year (bootstrap), starting from today's value. The bands are the 5th-95th and 25th-75th percentile ranges; the line is the median. A simulation, not a prediction.");
         }
-      }
-      await tick();
-    }
-
-    /* ---------- Smart money in my holdings (Part 2) ----------
-       Data arrives pre-assembled via data.sm (the Part 1 hook's
-       bundle). Fund-side figures are public disclosure data and print
-       plainly; the one figure that is the reader's own money — the
-       overlap — goes through M() like every other section, so the
-       Hide-amounts setting governs it exactly the same way. */
-    if (secs.smartmoney) {
-      heading("Smart Money in My Holdings", "Which mutual funds hold your stocks and what they changed last month — public disclosures, inferred activity. Not investment advice.");
-      var smD = data.sm || null;
-      if (!smD || !smD.mfAvailable) {
-        note("Smart money data is not available yet — see Data Sources in the app.");
-      } else {
-        kv("Mutual fund disclosures as of", monthYearLabel(smD.mfAsOf));
-        if (smD.overlap) kv("Your money in stocks funds also hold", M(smD.overlap.value) + "  ·  " + smD.overlap.count + " of your stocks");
-        if (smD.myStocks && smD.myStocks.length) {
-          subHead("Your stocks — who holds them");
-          table([
-            { h: "Stock", w: 46, val: function (r) { return r.sym; }, bold: true },
-            { h: "Houses", w: 20, align: "right", val: function (r) { return String(r.houses); } },
-            { h: "Schemes", w: 30, align: "right", val: function (r) { return r.schemesNow + " (was " + r.schemesPrev + ")"; } },
-            { h: "MF % of shares", w: 32, align: "right", val: function (r) { return r.mfPct != null ? r.mfPct.toFixed(2) + "%" : "—"; } },
-            { h: "Latest change", w: 54, val: function (r) { return r.direction; }, color: function (r) { return (r.direction === "Increased" || r.direction === "New entry") ? GAIN : (r.direction === "Reduced" || r.direction === "Exited") ? LOSS : INK; } }
-          ], smD.myStocks, 5.6);
-        } else {
-          note("No covered mutual fund disclosure rows for your stocks in the latest month.");
-        }
-        var smNotable = [];
-        (smD.feed || []).forEach(function (g) {
-          var when = monthYearLabel(smD.mfAsOf);
-          if (g.counts && g.counts["new"] > 0) smNotable.push(g.houseName + " entered " + g.sym + " with " + g.counts["new"] + " new scheme" + (g.counts["new"] === 1 ? "" : "s") + " (" + when + ").");
-          if (g.counts && g.counts.exited > 0) smNotable.push(g.houseName + " exited " + g.sym + " completely — " + g.counts.exited + " scheme" + (g.counts.exited === 1 ? "" : "s") + " sold out (" + when + ").");
-          else if (g.netPct != null && g.netPct >= 10) smNotable.push(g.houseName + " increased its " + g.sym + " holding sharply — about " + g.netPct.toFixed(0) + "% more shares than the month before (" + when + ").");
-        });
-        if (smNotable.length) {
-          subHead("Notable changes in your stocks");
-          smNotable.slice(0, 10).forEach(function (line) { para("•  " + line, 9.5, INK, 1.5); });
-          if (smNotable.length > 10) note("…and " + (smNotable.length - 10) + " more — see Smart Money in the app for the full feed.");
-          note("Bought / sold is inferred from the change between two monthly scheme disclosures; a split or bonus can also change share counts.");
-        }
-        if (smD.fiiAvailable && smD.flows && smD.flows.months && smD.flows.months.length) {
-          subHead("Foreign investor flows — monthly (NSDL)");
-          var smFlowRows = smD.flows.months.slice(-6).slice().reverse();
-          table([
-            { h: "Month", w: 62, val: function (r) { return monthYearLabel(r.month); }, bold: true },
-            { h: "Net FII investment", w: 60, align: "right", val: function (r) { return (r.net >= 0 ? "+" : "−") + "₹" + Math.round(Math.abs(r.net)).toLocaleString("en-IN") + " Cr"; }, color: function (r) { return r.net >= 0 ? GAIN : LOSS; } },
-            { h: "Direction", w: 60, val: function (r) { return r.net >= 0 ? "Net buying" : "Net selling"; } }
-          ], smFlowRows, 5.6);
-          note("FII only, for the whole market, published monthly by NSDL with a lag. Daily FII/DII figures are published only through an exchange API the free data pipeline cannot reach, so they are not shown rather than estimated.");
-        }
-        note("Source: AMFI, AMC disclosures, NSDL. Data as of " + monthYearLabel(smD.mfAsOf) + ". Fund holdings are public data; the overlap line above is your own money and follows this report's Hide-amounts setting. Not investment advice.");
       }
       await tick();
     }
