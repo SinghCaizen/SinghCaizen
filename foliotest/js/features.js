@@ -8240,11 +8240,27 @@ window.folioProxyJson = async function (url, timeoutMs, opts) {
 })();
 /* FIX129-END */
 
-/* ===== QA-ONLY history logger — foliotest round 3, NEVER for production ===== */
+/* ===== QA-ONLY history logger v2 (UI panel) — foliotest only, NEVER production ===== */
 (function () {
   var log = []; window.__histLog = log;
+  var pre = null;
   function vw() { var v = document.querySelector(".view:not(.hidden)"); return v ? v.id : "?"; }
-  function snap(tag) { try { log.push(tag + " | state=" + JSON.stringify(history.state) + " | vw=" + vw() + " | hash=" + location.hash); } catch (e) {} }
+  function render() { if (pre) pre.textContent = log.join("\n"); }
+  function snap(tag) { try { log.push(tag + " | state=" + JSON.stringify(history.state) + " | vw=" + vw() + " | hash=" + location.hash); if (log.length > 60) log.splice(0, log.length - 60); render(); } catch (e) {} }
+  function mount() {
+    if (document.getElementById("__histPanel")) return;
+    var wrap = document.createElement("div");
+    wrap.id = "__histPanel";
+    wrap.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#111;color:#0f0;font:10px/1.5 monospace;max-height:38vh;overflow:auto;padding:4px;";
+    var btn = document.createElement("button");
+    btn.textContent = "CLR LOG"; btn.style.cssText = "background:#333;color:#fff;padding:6px 10px;margin-bottom:4px;";
+    btn.addEventListener("click", function () { log.length = 0; render(); });
+    pre = document.createElement("pre"); pre.style.cssText = "white-space:pre-wrap;margin:0;";
+    wrap.appendChild(btn); wrap.appendChild(pre);
+    document.body.appendChild(wrap);
+    render();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount); else mount();
   var _ps = history.pushState.bind(history);
   history.pushState = function (s, t, u) { var r = _ps(s, t, u); snap("PUSH " + JSON.stringify(s)); return r; };
   var _rs = history.replaceState.bind(history);
