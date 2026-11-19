@@ -1,3 +1,0 @@
-# Pinned for GitHub Actions (ubuntu runner, Python 3.12).
-# Everything else in the pipeline is Python standard library only.
-openpyxl==3.1.2
