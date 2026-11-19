@@ -142,6 +142,23 @@ async function fetchHistory(sym, rangeKey) {
   return fetchHistoryNet(sym, rangeKey, ck);
 }
 
+/* v139: annualised-number display rules. Under a year old, annualising
+   is meaningless, so the absolute return shows with a <1Y tag; beyond
+   ±500% the annualised figure is noise and is hidden. */
+function folioXirrText(x, d) {
+  if (x === null || !isFinite(x)) return "\u2014";
+  let firstBuy = null;
+  (state.txns || []).forEach(t => { if (t.type === "BUY" && (!firstBuy || t.date < firstBuy)) firstBuy = t.date; });
+  const ageDays = firstBuy ? (Date.now() - new Date(firstBuy + "T00:00:00")) / 86400000 : 9999;
+  if (ageDays < 365) return pct(d && d.invested ? d.totalPnl / d.invested * 100 : 0) + ' <span class="lt1y">&lt;1Y</span>';
+  if (Math.abs(x * 100) > 500) return "\u2014";
+  return pct(x * 100).replace("+", x >= 0 ? "+" : "");
+}
+function insxAnnCell(r, v) {
+  if (r.days < 365) return r.abs == null ? "—" : (Math.abs(r.abs) < 0.05 ? 0 : r.abs).toFixed(1) + ' <span class="lt1y">&lt;1Y</span>';
+  return v == null || Math.abs(v) > 500 ? "—" : (Math.abs(v) < 0.05 ? 0 : v).toFixed(1);
+}
+
 /* ---------- line chart (SVG) ---------- */
 function lineChartSvg(values, height) {
   if (!values || values.length < 2) return '<p class="empty-note">Not enough data for a chart.</p>';
@@ -570,7 +587,7 @@ function softPricePaint() {
     const sp = $("stPnl"); if (sp) sp.className = "stat-value " + (d.totalPnl >= 0 ? "gain" : "loss");
     const spp = $("stPnlPct");
     if (spp) { spp.textContent = pct(d.invested ? d.totalPnl / d.invested * 100 : 0) + " overall" + (document.body.classList.contains("privacy-on") ? "" : " \u00b7 today " + moneyFmt(d.dayPnl)); spp.className = "stat-sub " + (d.dayPnl >= 0 ? "gain" : "loss"); }
-    const sx = $("stXirr"); if (sx) { const x = portfolioXirr(d.value); sx.textContent = x === null ? "\u2014" : pct(x * 100).replace("+", x >= 0 ? "+" : ""); }
+    const sx = $("stXirr"); if (sx) { const x = portfolioXirr(d.value); sx.innerHTML = folioXirrText(x, d); }
     const sr = $("stRealised"); if (sr) sr.textContent = "Booked profit so far: " + inr(d.realisedTotal) + (d.divTotal ? " \u00b7 Dividends: " + inr(d.divTotal) : "");
   } catch (e) {}
   const sorted = [...d.rows].filter(r_ => r_.ltp !== null);
@@ -637,6 +654,7 @@ document.addEventListener("keydown", e => {
   const tag = (e.target && e.target.tagName) || "";
   const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (e.target && e.target.isContentEditable);
   if (e.key === "Escape") {
+    const cp = $("cmdkPop"); if (cp) cp.classList.add("hidden");
     document.querySelectorAll(".modal:not(.hidden)").forEach(m => m.classList.add("hidden"));
     document.querySelectorAll(".hold-card.open").forEach(c => c.classList.remove("open"));
     return;
@@ -646,10 +664,12 @@ document.addEventListener("keydown", e => {
   if (anyModal) return;
   if (e.altKey) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() !== "k") return;
-  if (e.key === "/" || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k")) {
+  if (e.key === "/") {
+    /* v139: "/" opens the command palette (LILA's order); Ctrl+K is
+       handled by the palette's own listener — neither jumps to the
+       watchlist search any more. */
     e.preventDefault();
-    switchView("watchlist");
-    setTimeout(() => { const i = $("watchInput"); if (i) i.focus(); }, 60);
+    platPalette();
   } else if (e.key.toLowerCase() === "n" || e.key.toLowerCase() === "a") {
     if (typeof openTxn === "function") openTxn("BUY");
   } else if (["1", "2", "3", "4", "5", "6", "7"].includes(e.key)) {
@@ -3683,8 +3703,12 @@ function insxRenderScore() {
     cfs.push({ date: today, amount: val });
     cfs.sort((a, b) => a.date - b.date);
     let xr = null; try { const r = xirr(cfs); if (r != null && isFinite(r)) xr = r * 100; } catch (e) {}
+    /* v139: absolute (non-annualised) return from the same cashflows,
+       shown with a <1Y tag while the holding is under a year old. */
+    let absRet = null;
+    { let buys = 0, outs = 0; cfs.forEach(c => { if (c.amount < 0) buys += -c.amount; else outs += c.amount; }); if (buys > 0) absRet = (outs - buys) / buys * 100; }
     const dayChg = p && p.prevClose ? (p.price / p.prevClose - 1) * 100 : null;
-    return { sym: h.sym, cagr, xirr: xr, days, weight: val / totalVal * 100, divYield: buyCostBySym[h.sym] ? (divsBySym[h.sym] || 0) / buyCostBySym[h.sym] * 100 : 0, dayChg, val };
+    return { sym: h.sym, cagr, xirr: xr, abs: absRet, days, weight: val / totalVal * 100, divYield: buyCostBySym[h.sym] ? (divsBySym[h.sym] || 0) / buyCostBySym[h.sym] * 100 : 0, dayChg, val };
   });
   const filtered = rows.filter(r => !insXQuery || r.sym.toLowerCase().includes(insXQuery));
   const sorted = [...filtered].sort((a, b) => { const k = insXSortK; const av = a[k], bv = b[k]; if (av == null) return 1; if (bv == null) return -1; return (av - bv) * insXSortDir; });
@@ -3692,7 +3716,7 @@ function insxRenderScore() {
   box.innerHTML = head +
     '<input type="search" id="insxScoreQ" class="insx-search" placeholder="Search a stock…" value="' + esc(insXQuery) + '">' +
     '<div class="insx-table-wrap"><table class="insx-table"><thead><tr><th data-insx-sort="sym2">Stock</th>' + th("cagr", "CAGR %") + th("xirr", "XIRR %") + th("days", "Days held") + th("weight", "Weight %") + th("divYield", "Div yield on cost %") + th("dayChg", "Day %") + "</tr></thead><tbody>" +
-    sorted.map(r => "<tr><td>" + esc(r.sym) + "</td><td>" + (r.cagr == null ? "—" : (Math.abs(r.cagr) < 0.05 ? 0 : r.cagr).toFixed(1)) + "</td><td>" + (r.xirr == null ? "—" : (Math.abs(r.xirr) < 0.05 ? 0 : r.xirr).toFixed(1)) + "</td><td>" + r.days + "</td><td>" + r.weight.toFixed(1) + "</td><td>" + r.divYield.toFixed(2) + "</td><td class=\"" + (r.dayChg == null ? "" : r.dayChg >= 0 ? "pos" : "neg") + '">' + (r.dayChg == null ? "—" : insxPct(r.dayChg, 2)) + "</td></tr>").join("") +
+    sorted.map(r => "<tr><td>" + esc(r.sym) + "</td><td>" + insxAnnCell(r, r.cagr) + "</td><td>" + insxAnnCell(r, r.xirr) + "</td><td>" + r.days + "</td><td>" + r.weight.toFixed(1) + "</td><td>" + r.divYield.toFixed(2) + "</td><td class=\"" + (r.dayChg == null ? "" : r.dayChg >= 0 ? "pos" : "neg") + '">' + (r.dayChg == null ? "—" : insxPct(r.dayChg, 2)) + "</td></tr>").join("") +
     "</tbody></table></div>" +
     (sorted.length ? "" : '<p class="empty-note">No stock matches your search.</p>') +
     '<p class="insx-note">Tap a column heading to sort. CAGR covers the shares you still hold; XIRR covers every rupee in and out of that stock.</p>';
@@ -4110,10 +4134,14 @@ function sxRenderPosition(sym) {
   cfs.push({ date: new Date(), amount: val }); cfs.sort((a, b) => a.date - b.date);
   let xr = null; try { const r = xirr(cfs); if (r != null && isFinite(r)) xr = r * 100; } catch (e) {}
   const pnl = val - h.invested;
+  /* v139: under a year, annualised XIRR is meaningless — show the
+     absolute return with a <1Y tag; cap impossible values. */
+  const daysHeld = h.firstDate ? Math.max(1, Math.round((Date.now() - new Date(h.firstDate + "T00:00:00")) / 86400000)) : 9999;
+  const xrTxt = daysHeld < 365 ? insxPct(h.invested ? pnl / h.invested * 100 : null) + ' <span class="lt1y">&lt;1Y</span>' : (xr == null || Math.abs(xr) > 500 ? "—" : xr.toFixed(1) + "%");
   box.innerHTML = '<div class="sx-strip"><h4>My Position</h4><div class="sx-cells">' +
     '<span>Qty <b>' + h.qty + '</b></span><span>Avg Buy <b>' + inr2(h.avg) + '</b></span><span>Current Value <b>' + insxAmt(val) + '</b></span>' +
     '<span>P&amp;L <b class="' + (pnl >= 0 ? "pos" : "neg") + '">' + insxAmt(pnl) + " (" + insxPct(h.invested ? pnl / h.invested * 100 : null) + ')</b></span>' +
-    '<span>XIRR <b>' + (xr == null ? "—" : xr.toFixed(1) + "%") + '</b></span><span>Weight <b>' + (val / total * 100).toFixed(1) + '%</b></span></div></div>';
+    '<span>XIRR <b>' + xrTxt + '</b></span><span>Weight <b>' + (val / total * 100).toFixed(1) + '%</b></span></div></div>';
 }
 function sxRenderStats(sym, master) {
   const box = $("sxStats"); if (!box) return;
@@ -4724,11 +4752,28 @@ function platPalette() {
 function cmdkRender(q) {
   const list = $("cmdkList"); if (!list) return;
   const items = [];
+  const cmd = (label, run) => items.push({ label, run });
+  /* v139 hacker commands: theme / sound / privacy / refresh / add / help,
+     plus goto and search prefixes stripped before matching. */
+  const qv = q.replace(/^(goto|go|search|find)\s+/, "");
+  if (q.indexOf("theme") === 0) {
+    [["matrix", "🟢 Theme: Matrix Green"], ["cyan", "🔵 Theme: Cyber Cyan"], ["amber", "🟠 Theme: Amber Terminal"]].forEach(([t, label]) => {
+      const rest = q.slice(5).trim();
+      if (!rest || t.indexOf(rest) === 0) cmd(label, () => { if (window.FolioSkin) FolioSkin.set(t); });
+    });
+  }
+  if ("sound on".indexOf(q) === 0 && q.length >= 5) cmd("🔊 Sound: On", () => { if (window.HkSfx) HkSfx.setOn(true); });
+  if ("sound off".indexOf(q) === 0 && q.length >= 5) cmd("🔇 Sound: Off", () => { if (window.HkSfx) HkSfx.setOn(false); });
+  if ("privacy on".indexOf(q) === 0 && q.length >= 7) cmd("👁 Privacy: On", () => { if (!document.body.classList.contains("privacy-on") && window.togglePrivacy) togglePrivacy(); });
+  if ("privacy off".indexOf(q) === 0 && q.length >= 7) cmd("👁 Privacy: Off", () => { if (document.body.classList.contains("privacy-on") && window.togglePrivacy) togglePrivacy(); });
+  if ("refresh prices".indexOf(q) === 0 && q.length >= 3) cmd("↻ Refresh prices", () => { if (typeof refreshPrices === "function") refreshPrices(); });
+  if ("add stock".indexOf(q) === 0 && q.length >= 3) cmd("➕ Add stock / transaction", () => { if (typeof openTxn === "function") openTxn("BUY", "", ""); });
+  if (q === "help") cmd("❓ Commands: goto <tab> · add stock · search <symbol> · theme matrix/cyan/amber · sound on/off · privacy on/off · refresh", () => {});
   const views = [["dashboard", "🏠 Dashboard"], ["holdings", "💼 Holdings"], ["watch", "★ Watchlist"], ["insights", "📊 Insights"], ["history", "🕘 History"], ["news", "📰 News"], ["profile", "👤 My Profile"]];
-  views.forEach(([v, label]) => { if (!q || label.toLowerCase().includes(q)) items.push({ label, run: () => switchView(v) }); });
-  if (q.length >= 2) (window.STOCK_LIST || []).filter(e => e[0].toLowerCase().includes(q) || e[1].toLowerCase().includes(q)).slice(0, 7).forEach(e => items.push({ label: "📈 " + e[0] + " — " + e[1], run: () => { if (typeof openStock === "function") openStock(e[0]); } }));
+  views.forEach(([v, label]) => { if (!qv || label.toLowerCase().includes(qv)) items.push({ label, nav: true, run: () => switchView(v) }); });
+  if (qv.length >= 2) (window.STOCK_LIST || []).filter(e => e[0].toLowerCase().includes(qv) || e[1].toLowerCase().includes(qv)).slice(0, 7).forEach(e => items.push({ label: "📈 " + e[0] + " — " + e[1], run: () => { if (typeof openStock === "function") openStock(e[0]); } }));
   list.innerHTML = items.length ? items.map((it, i) => '<button type="button" class="cmdk-item" data-cmdk="' + i + '">' + esc(it.label) + "</button>").join("") : '<p class="empty-note">Nothing matches.</p>';
-  list.querySelectorAll("[data-cmdk]").forEach(b => b.addEventListener("click", () => { $("cmdkPop").classList.add("hidden"); items[Number(b.dataset.cmdk)].run(); }));
+  list.querySelectorAll("[data-cmdk]").forEach(b => b.addEventListener("click", () => { const it = items[Number(b.dataset.cmdk)]; $("cmdkPop").classList.add("hidden"); setTimeout(it.run, 40); if (it.nav) setTimeout(it.run, 400); }));
 }
 document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); platPalette(); } });
 /* --- swipe between tabs + pull to refresh --- */

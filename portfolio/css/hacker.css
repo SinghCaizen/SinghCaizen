@@ -364,3 +364,106 @@ html[data-skin] .panel-head h2 {
 html[data-skin] #appView { padding-bottom: calc(104px + env(safe-area-inset-bottom, 0px)); }
 html[data-anim="full"][data-skin] .stat-grid .stat-card:first-child .stat-value { animation: hkPulse 2.6s ease-in-out infinite; }
 @keyframes hkPulse { 0%, 100% { text-shadow: 0 0 10px var(--hk-glow); } 50% { text-shadow: 0 0 20px var(--hk-glow), 0 0 34px var(--hk-glow); } }
+
+/* ================= v139 additions ================= */
+/* status bar under the header */
+html[data-skin] .hk-status {
+  display: flex; flex-wrap: wrap; gap: .35rem .6rem; align-items: center;
+  padding: .38rem .9rem; border-bottom: 1px solid var(--border);
+  background: var(--panel); color: var(--muted);
+  font-size: 10.5px; letter-spacing: .08em; white-space: nowrap; overflow-x: auto; scrollbar-width: none;
+}
+html[data-skin] .hk-status::-webkit-scrollbar { display: none; }
+html[data-skin] .hk-st-sep { color: var(--line-strong); }
+html[data-skin] #hkStSys { color: var(--accent); }
+
+/* holdings ticker tape (dashboard) */
+html[data-skin] .hk-tape {
+  overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-card);
+  background: var(--panel); margin-bottom: .8rem; padding: .42rem 0;
+  mask-image: linear-gradient(to right, transparent 0, #000 3%, #000 97%, transparent 100%);
+}
+html[data-skin] .hk-tape-track {
+  display: inline-flex; gap: 1.4rem; white-space: nowrap; will-change: transform;
+  animation: hkTapeMove 30s linear infinite; font-size: 11.5px; padding-left: 1.4rem;
+}
+html[data-skin] .hk-tape:hover .hk-tape-track { animation-play-state: paused; }
+@keyframes hkTapeMove { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+html[data-skin] .hk-tape-item b { color: var(--text); }
+html[data-skin] .hk-tape-item i { font-style: normal; }
+html[data-skin] .hk-tape-sep { color: var(--line-strong); }
+html[data-skin][data-anim="off"] .hk-tape-track { animation: none; }
+
+/* dashboard greeting */
+html[data-skin] .hk-greet {
+  color: var(--accent); font-size: 13px; letter-spacing: .1em;
+  padding: .1rem .1rem .6rem; text-shadow: 0 0 8px var(--hk-glow);
+}
+
+/* activity log */
+html[data-skin] .hk-log {
+  max-height: 190px; overflow-y: auto; margin-bottom: .6rem;
+  border: 1px solid var(--border); border-radius: var(--r-sm); padding: .5rem .6rem; background: var(--input);
+}
+html[data-skin] .hk-log-line { font-size: 10.5px; color: var(--muted); line-height: 1.75; letter-spacing: .03em; }
+html[data-skin] .hk-log-empty { font-size: 10.5px; color: var(--muted); margin: 0; }
+
+/* sound controls */
+html[data-skin] .hk-vol { flex: 1; accent-color: var(--accent); min-height: 28px; }
+html[data-skin] .hk-head-btn { margin-right: .4rem; }
+
+/* <1Y tag for non-annualised returns */
+.lt1y {
+  font-size: .74em; color: var(--warn, #ffb000); border: 1px solid currentColor;
+  padding: 0 3px; border-radius: 2px; white-space: nowrap; vertical-align: 1px; letter-spacing: .04em;
+}
+
+/* entrance choreography — transform/opacity only, once per element */
+html[data-skin][data-anim="full"] .hk-in { opacity: 0; transform: translateY(12px); }
+html[data-skin][data-anim="full"] .hk-in.hk-on { opacity: 1; transform: none; transition: opacity .5s ease, transform .5s ease; }
+html[data-skin][data-anim="reduced"] .hk-in { opacity: 0; }
+html[data-skin][data-anim="reduced"] .hk-in.hk-on { opacity: 1; transition: opacity .25s ease; }
+
+/* chart draw-in */
+@keyframes hkChartIn { from { opacity: 0; transform: translateY(5px) scale(.995); } to { opacity: 1; transform: none; } }
+html[data-skin][data-anim="full"] .chart-svg,
+html[data-skin][data-anim="full"] .cmp-svg { animation: hkChartIn .55s ease both; transform-origin: 50% 100%; }
+
+/* big P&L neon pulse */
+html[data-skin][data-anim="full"] #stPnl.gain,
+html[data-skin][data-anim="full"] #stPnl.loss { animation: hkPulse 2.6s ease-in-out infinite; }
+
+/* logo glitch on hover / tap */
+html[data-skin][data-anim="full"] .folio-logo:hover,
+html[data-skin][data-anim="full"] .folio-logo:active { animation: hkGlitch .3s steps(2) 2; }
+
+/* neon scrollbar */
+html[data-skin] ::-webkit-scrollbar { width: 9px; height: 9px; }
+html[data-skin] ::-webkit-scrollbar-track { background: var(--bg); }
+html[data-skin] ::-webkit-scrollbar-thumb { background: var(--line-strong); border: 2px solid var(--bg); border-radius: 2px; }
+html[data-skin] ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+html[data-skin] { scrollbar-color: var(--line-strong) var(--bg); scrollbar-width: thin; }
+
+/* tab/chip rows: scrollable with a fading right edge */
+html[data-skin] .cap-chips,
+html[data-skin] .tax-tabs,
+html[data-skin] .sheet-tabs {
+  flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; padding-bottom: 2px;
+  mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent 100%);
+}
+html[data-skin] .cap-chips::-webkit-scrollbar,
+html[data-skin] .tax-tabs::-webkit-scrollbar,
+html[data-skin] .sheet-tabs::-webkit-scrollbar { display: none; }
+html[data-skin] .cap-chips .chip,
+html[data-skin] .tax-tabs .chip,
+html[data-skin] .sheet-tabs > * { flex: 0 0 auto; }
+
+/* command palette — terminal skin */
+html[data-skin] .cmdk-card { background: var(--panel); border: 1px solid var(--accent); border-radius: 3px; box-shadow: var(--glow); }
+html[data-skin] #cmdkInput { background: var(--input); color: var(--text); caret-color: var(--accent); border-bottom: 1px solid var(--border); }
+html[data-skin] .cmdk-item { color: var(--text); }
+html[data-skin] .cmdk-item:hover, html[data-skin] .cmdk-item:focus { background: var(--accent-soft); }
+
+/* bottom nav clearance — the dock can never cover the last card */
+html[data-skin] main { padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }

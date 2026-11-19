@@ -166,8 +166,19 @@
   var rainCv = null, rainCtx = null, rainCols = [], rainRun = false, rainFrame = 0, rainCol = "#00ff66";
   function rainColor() { rainCol = accent(); }
   var rainBand = false;
+  var rainPartyUntil = 0;
+  window.__hkRainParty = function (sec) {
+    if (fx() === "off") return;
+    rainPartyUntil = Date.now() + (sec || 10) * 1000;
+    if (rainBand) { rainBand = false; }
+    rainSetup(); rainResize();
+    if (!rainRun) { rainRun = true; requestAnimationFrame(rainStep); }
+    setTimeout(rainSync, (sec || 10) * 1000 + 400);
+  };
   function rainWanted() {
-    if (fx() !== "full" || document.hidden) return false;
+    if (document.hidden) return false;
+    if (Date.now() < rainPartyUntil) { if (rainBand) { rainBand = false; rainResize(); } return fx() !== "off"; }
+    if (fx() !== "full") return false;
     var auth = document.getElementById("authView");
     if (auth && !auth.classList.contains("hidden")) { if (rainBand) { rainBand = false; rainResize(); } return true; }
     var app = document.getElementById("appView");
@@ -189,7 +200,7 @@
   function rainResize() {
     if (!rainCv) return;
     rainCv.width = Math.min(window.innerWidth, 1440);
-    rainCv.height = rainBand ? 260 : window.innerHeight;
+    rainCv.height = rainBand && Date.now() >= rainPartyUntil ? 260 : window.innerHeight;
     var n = Math.ceil(rainCv.width / 20);
     rainCols = [];
     for (var i = 0; i < n; i++) rainCols.push({ y: Math.random() * -40, s: .4 + Math.random() * .9 });
@@ -208,7 +219,7 @@
     rainCtx.fillStyle = rainCol;
     for (var i = 0; i < rainCols.length; i++) {
       var c = rainCols[i], x = i * 20, y = c.y * 20;
-      rainCtx.globalAlpha = .10 + Math.random() * .22;
+      rainCtx.globalAlpha = Date.now() < rainPartyUntil ? .30 + Math.random() * .30 : .10 + Math.random() * .22;
       rainCtx.fillText(KATA.charAt((Math.random() * KATA.length) | 0), x, y);
       c.y += c.s;
       if (y > h && Math.random() > .976) c.y = Math.random() * -24;
@@ -216,7 +227,11 @@
     rainCtx.globalAlpha = 1;
   }
   function rainSync() {
-    if (fx() === "full") {
+    if (fx() === "off") {
+      if (rainCv && rainCv.parentNode) { rainRun = false; rainCv.parentNode.removeChild(rainCv); rainCv = null; rainCtx = null; }
+      return;
+    }
+    if (fx() === "full" || Date.now() < rainPartyUntil) {
       rainSetup();
       if (!rainRun) { rainRun = true; requestAnimationFrame(rainStep); }
     } else if (rainCv && rainCv.parentNode) {
@@ -351,4 +366,451 @@
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
+})();
+
+/* ================================================================
+   v139 — sounds, status bar, holdings ticker, activity log,
+   dashboard greeting, entrance choreography, terminal toasts,
+   easter-egg rain. Everything obeys the Effects setting and only
+   ever DECORATES the app: no feature, calculation or data changes.
+   ================================================================ */
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  function fx() { try { return window.FolioMotion ? FolioMotion.effective() : "full"; } catch (e) { return "full"; } }
+  function escT(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function ssSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+
+  /* ---------------- sound engine (Web Audio, synthesized) -------- */
+  var AC = null, master = null;
+  var sfx = { on: true, vol: 0.5 };
+  try { var savedSfx = JSON.parse(localStorage.getItem("folio_sfx") || "null"); if (savedSfx) { sfx.on = savedSfx.on !== false; sfx.vol = typeof savedSfx.vol === "number" ? Math.min(1, Math.max(0, savedSfx.vol)) : 0.5; } } catch (e) {}
+  var lastGesture = 0;
+  function saveSfx() { try { localStorage.setItem("folio_sfx", JSON.stringify(sfx)); } catch (e) {} syncSfxUI(); }
+  function acInit() {
+    if (AC) { if (AC.state === "suspended") AC.resume(); return true; }
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return false;
+      AC = new Ctx(); master = AC.createGain(); master.gain.value = sfx.vol * 0.5; master.connect(AC.destination);
+      return true;
+    } catch (e) { return false; }
+  }
+  function tone(freq, dur, type, vol, delay, slideTo) {
+    if (!sfx.on || !AC || AC.state !== "running") return;
+    try {
+      var t0 = AC.currentTime + (delay || 0);
+      var o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "square"; o.frequency.setValueAtTime(freq, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.001, vol), t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(master); o.start(t0); o.stop(t0 + dur + 0.05);
+    } catch (e) {}
+  }
+  var lastVib = 0;
+  function buzz10() {
+    try {
+      if (typeof folioHapticsOn === "function" && !folioHapticsOn()) return;
+      if (navigator.vibrate && Date.now() - lastVib > 90) { lastVib = Date.now(); navigator.vibrate(10); }
+    } catch (e) {}
+  }
+  var Snd = {
+    tap: function () { tone(950, 0.045, "square", 0.10); buzz10(); },
+    tick: function () { tone(720, 0.07, "square", 0.12, 0, 1180); buzz10(); },
+    open: function () { tone(280, 0.16, "sine", 0.16, 0, 720); },
+    close: function () { tone(720, 0.14, "sine", 0.13, 0, 260); },
+    togOn: function () { tone(660, 0.06, "square", 0.12); tone(990, 0.08, "square", 0.12, 0.055); },
+    togOff: function () { tone(990, 0.06, "square", 0.11); tone(620, 0.08, "square", 0.11, 0.055); },
+    ok: function () { tone(880, 0.07, "square", 0.13); tone(1318, 0.10, "square", 0.13, 0.07); },
+    err: function () { tone(150, 0.20, "sawtooth", 0.14); },
+    warn: function () { tone(392, 0.10, "square", 0.13); tone(392, 0.12, "square", 0.13, 0.13); },
+    chirp: function () { tone(1250, 0.05, "sine", 0.10); tone(1560, 0.05, "sine", 0.10, 0.05); tone(1870, 0.06, "sine", 0.10, 0.10); },
+    chord: function () { tone(523, 0.22, "sine", 0.13); tone(659, 0.22, "sine", 0.12, 0.07); tone(784, 0.26, "sine", 0.13, 0.14); tone(1046, 0.30, "sine", 0.11, 0.21); },
+    power: function () { tone(640, 0.28, "sine", 0.14, 0, 110); },
+    key: function () { tone(1350, 0.018, "square", 0.035); }
+  };
+  window.HkSfx = {
+    setOn: function (v) { sfx.on = !!v; saveSfx(); if (sfx.on) { acInit(); Snd.ok(); } },
+    setVol: function (v) { sfx.vol = Math.min(1, Math.max(0, Number(v) || 0)); if (master) master.gain.value = sfx.vol * 0.5; saveSfx(); },
+    isOn: function () { return sfx.on; },
+    play: function (name) { if (Snd[name]) Snd[name](); }
+  };
+
+  /* ---------------- activity log (real events only) -------------- */
+  var LOG_KEY = "folio_actlog";
+  function logEvent(msg) {
+    try {
+      var arr = JSON.parse(localStorage.getItem(LOG_KEY) || "[]");
+      arr.push({ t: Date.now(), m: msg });
+      while (arr.length > 60) arr.shift();
+      localStorage.setItem(LOG_KEY, JSON.stringify(arr));
+    } catch (e) {}
+    renderLog();
+  }
+  function renderLog() {
+    var body = $("hkLogBody"); if (!body) return;
+    var arr = []; try { arr = JSON.parse(localStorage.getItem(LOG_KEY) || "[]"); } catch (e) {}
+    if (!arr.length) { body.innerHTML = '<p class="hk-log-empty">// NO EVENTS RECORDED YET</p>'; return; }
+    body.innerHTML = arr.slice(-30).reverse().map(function (e) {
+      return '<div class="hk-log-line">[' + new Date(e.t).toLocaleTimeString("en-GB") + "] " + escT(e.m) + "</div>";
+    }).join("");
+  }
+
+  /* ---------------- status bar ----------------------------------- */
+  var lastSyncTs = 0;
+  function buildStatus() {
+    if ($("hkStatus")) return;
+    var app = $("appView"); if (!app) return;
+    var bar = document.createElement("div");
+    bar.id = "hkStatus"; bar.className = "hk-status";
+    bar.innerHTML = '<span id="hkStSys">SYS: ONLINE</span><span class="hk-st-sep">|</span><span>PRICES: DELAYED 15M</span><span class="hk-st-sep">|</span><span id="hkStSync">LAST SYNC: --:--:--</span><span class="hk-st-sep">|</span><span id="hkStVault">VAULT: —</span>';
+    var head = app.querySelector(".topbar") || app.firstElementChild;
+    if (head && head.parentNode) head.parentNode.insertBefore(bar, head.nextSibling);
+    else app.insertBefore(bar, app.firstChild);
+  }
+  function updateStatus() {
+    var sys = $("hkStSys"), sync = $("hkStSync"), vault = $("hkStVault");
+    if (sys) sys.textContent = "SYS: " + (navigator.onLine ? "ONLINE" : "OFFLINE");
+    if (sync) sync.textContent = "LAST SYNC: " + (lastSyncTs ? new Date(lastSyncTs).toLocaleTimeString("en-GB") : "--:--:--");
+    if (vault) {
+      var locked = false;
+      try { locked = !!(window.e2eeNeedsUnlock && e2eeNeedsUnlock()); } catch (e) {}
+      vault.textContent = "VAULT: " + (locked ? "LOCKED" : "UNLOCKED");
+    }
+  }
+
+  /* ---------------- holdings ticker tape ------------------------- */
+  var tapeBuiltAt = 0;
+  function buildTape() {
+    var dash = $("view-dashboard"); if (!dash) return;
+    var tape = $("hkTape");
+    if (!tape) {
+      tape = document.createElement("div");
+      tape.id = "hkTape"; tape.className = "hk-tape hidden";
+      tape.innerHTML = '<div class="hk-tape-track" id="hkTapeTrack"></div>';
+      dash.insertBefore(tape, dash.firstChild);
+    }
+    if (Date.now() - tapeBuiltAt < 4000 && !tape.classList.contains("hidden")) return;
+    var rows = [];
+    try { rows = enriched().rows.filter(function (r) { return r.ltp != null; }); } catch (e) {}
+    if (!rows.length) { tape.classList.add("hidden"); return; }
+    tapeBuiltAt = Date.now();
+    var html = rows.map(function (r) {
+      var p = null; try { p = priceOf(r.sym); } catch (e) {}
+      var day = p && p.prevClose ? (p.price / p.prevClose - 1) * 100 : null;
+      var cls = day == null ? "" : day >= 0 ? "gain" : "loss";
+      var arrow = day == null ? "" : day >= 0 ? "▲" : "▼";
+      return '<span class="hk-tape-item"><b>' + escT(r.sym) + "</b> " + inr2(r.ltp) + (day == null ? "" : ' <i class="' + cls + '">' + arrow + Math.abs(day).toFixed(2) + "%</i>") + "</span>";
+    }).join('<span class="hk-tape-sep">//</span>');
+    var track = $("hkTapeTrack");
+    if (track) {
+      track.innerHTML = html + '<span class="hk-tape-sep">//</span>' + html + '<span class="hk-tape-sep">//</span>';
+      track.style.animationDuration = Math.max(16, rows.length * 5) + "s";
+    }
+    tape.classList.remove("hidden");
+  }
+
+  /* ---------------- dashboard greeting (once per session) -------- */
+  function greet() {
+    var dash = $("view-dashboard"); if (!dash) return;
+    if (ssGet("hk_greet")) return;
+    var g = $("hkGreet");
+    if (!g) { g = document.createElement("div"); g.id = "hkGreet"; g.className = "hk-greet"; dash.insertBefore(g, dash.firstChild); }
+    ssSet("hk_greet", "1");
+    var name = "TRADER";
+    try {
+      var dn = "";
+      if (typeof displayName === "function") dn = displayName();
+      if (!dn) dn = (state.profile && state.profile.name) || (window.currentUser && currentUser.name) || "";
+      name = String(dn || "TRADER").split(" ")[0].toUpperCase() || "TRADER";
+    } catch (e) {}
+    if (name === "TRADER") g.dataset.fallback = "1"; else delete g.dataset.fallback;
+    var full = "> WELCOME BACK, " + name;
+    if (fx() === "full") {
+      var rest = full.slice(2), i = 0;
+      g.textContent = "> _";
+      var step = function () {
+        if (!g.isConnected) return;
+        i++;
+        g.textContent = "> " + rest.slice(0, i) + "_";
+        if (i < rest.length) setTimeout(step, 34);
+      };
+      setTimeout(step, 120);
+    } else {
+      g.textContent = full + (fx() === "off" ? "" : "_");
+    }
+  }
+
+  /* ---------------- entrance choreography (once per element) ----- */
+  var io = null;
+  function entranceScan(viewName) {
+    if (fx() === "off" || viewName === "profile") return;
+    var view = viewName ? $("view-" + viewName) : document.querySelector(".view:not(.hidden)");
+    if (!view) return;
+    var els = view.querySelectorAll(".panel:not([data-hk-seen]), .stat-card:not([data-hk-seen])");
+    if (!els.length) return;
+    if (!("IntersectionObserver" in window)) return;
+    if (!io) {
+      io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("hk-on"); io.unobserve(en.target); } });
+      }, { threshold: 0.05 });
+    }
+    var idx = 0;
+    els.forEach(function (el) {
+      el.setAttribute("data-hk-seen", "1");
+      el.classList.add("hk-in");
+      el.style.transitionDelay = Math.min(idx++, 8) * 45 + "ms";
+      io.observe(el);
+      setTimeout(function () { el.classList.add("hk-on"); }, 1800); /* safety: never leave a card hidden */
+    });
+  }
+
+  /* ---------------- profile panel: sounds + activity log --------- */
+  function syncMuteBtn() { var b = $("hkMuteBtn"); if (b) b.textContent = sfx.on ? "♪ ON" : "♪ OFF"; }
+  function syncSfxUI() {
+    document.querySelectorAll("[data-sfx-opt]").forEach(function (b) { b.classList.toggle("active", (b.getAttribute("data-sfx-opt") === "on") === sfx.on); });
+    var v = $("hkVol"); if (v && document.activeElement !== v) v.value = Math.round(sfx.vol * 100);
+    syncMuteBtn();
+  }
+  function extendPanel() {
+    var panel = $("hkPanel"); if (!panel || panel.dataset.hk2) return;
+    panel.dataset.hk2 = "1";
+    var rows = panel; /* v139 fix: rows are direct children of the panel */
+    var srow = document.createElement("div"); srow.className = "hk-row";
+    srow.innerHTML = '<span class="hk-row-label">SOUND FX</span><span class="seg seg-small"><button type="button" class="seg-btn" data-sfx-opt="on">ON</button><button type="button" class="seg-btn" data-sfx-opt="off">OFF</button></span>';
+    rows.appendChild(srow);
+    var vrow = document.createElement("div"); vrow.className = "hk-row";
+    vrow.innerHTML = '<span class="hk-row-label">VOLUME</span><input type="range" id="hkVol" class="hk-vol" min="0" max="100" step="5" value="' + Math.round(sfx.vol * 100) + '" aria-label="Sound volume">';
+    rows.appendChild(vrow);
+    srow.querySelectorAll("[data-sfx-opt]").forEach(function (b) { b.addEventListener("click", function () { HkSfx.setOn(b.getAttribute("data-sfx-opt") === "on"); }); });
+    var vol = vrow.querySelector("#hkVol");
+    vol.addEventListener("input", function () { HkSfx.setVol(vol.value / 100); });
+    vol.addEventListener("change", function () { if (sfx.on) { acInit(); Snd.ok(); } });
+    syncSfxUI();
+    var lp = document.createElement("section");
+    lp.className = "hk-panel"; lp.id = "hkLogPanel";
+    lp.innerHTML = '<div class="hk-panel-head">&gt; ACTIVITY LOG_</div><div id="hkLogBody" class="hk-log"></div><button type="button" class="mini-btn" id="hkLogClear">CLEAR LOG</button>';
+    panel.parentNode.insertBefore(lp, panel.nextSibling);
+    lp.querySelector("#hkLogClear").addEventListener("click", function () { try { localStorage.removeItem(LOG_KEY); } catch (e) {} renderLog(); });
+    renderLog();
+  }
+  function buildHeaderBtns() {
+    var tb = $("themeBtn"); if (!tb || !tb.parentNode) return;
+    if (!$("hkMuteBtn")) {
+      var b = document.createElement("button");
+      b.type = "button"; b.id = "hkMuteBtn"; b.className = "theme-btn hk-head-btn"; b.setAttribute("aria-label", "Toggle sounds");
+      b.addEventListener("click", function () { HkSfx.setOn(!sfx.on); if (window.toast) toast(sfx.on ? "SOUND: ON" : "SOUND: OFF"); });
+      tb.parentNode.insertBefore(b, tb);
+    }
+    if (!$("hkCmdBtn")) {
+      var k = document.createElement("button");
+      k.type = "button"; k.id = "hkCmdBtn"; k.className = "theme-btn hk-head-btn"; k.textContent = ">_ CMD";
+      k.title = "Command palette (Ctrl+K or /)"; k.setAttribute("aria-label", "Open command palette");
+      k.addEventListener("click", function () { if (typeof window.platPalette === "function") platPalette(); });
+      tb.parentNode.insertBefore(k, tb);
+    }
+    syncMuteBtn();
+  }
+
+  /* ---------------- wrappers: sounds + log + status -------------- */
+  function wrapToast2() {
+    if (typeof window.toast !== "function" || window.toast.__hk2) return;
+    var orig = window.toast;
+    var w = function (msg, undoFn) {
+      var m = String(msg == null ? "" : msg);
+      try {
+        if (sfx.on && AC && Date.now() - lastGesture < 4000) {
+          if (/error|could not|failed|invalid|not recognised|enter a valid/i.test(m)) Snd.err();
+          else if (/delet|remov/i.test(m)) Snd.warn();
+          else if (/saved|added|updated|imported|created|refreshed/i.test(m)) Snd.ok();
+        }
+        if (/transaction.*added|entry updated/i.test(m)) logEvent("TRANSACTION SAVED");
+        else if (/deleted/i.test(m)) logEvent("RECORD DELETED");
+      } catch (e) {}
+      var out = m;
+      if (out && out.charAt(0) !== ">") out = (/^(error|could not|failed|invalid)/i.test(m) ? "> ERROR: " : "> ") + out;
+      return orig.call(this, out, undoFn);
+    };
+    w.__hk2 = true;
+    window.toast = w;
+  }
+  var lastAutoLogAt = 0;
+  function wrapRefresh2() {
+    if (typeof window.refreshPrices !== "function" || window.refreshPrices.__hk2) return;
+    var orig = window.refreshPrices;
+    var w = async function () {
+      var userInit = Date.now() - lastGesture < 2500;
+      var r = await orig.apply(this, arguments);
+      try {
+        lastSyncTs = Date.now(); updateStatus();
+        var n = 0; try { n = Object.keys(prices || {}).length; } catch (e) {}
+        if (userInit) { if (sfx.on && AC) Snd.chirp(); logEvent("PRICES REFRESHED (" + n + " SYMBOLS)"); }
+        else if (Date.now() - lastAutoLogAt > 10 * 60 * 1000) { lastAutoLogAt = Date.now(); logEvent("PRICES AUTO-REFRESHED (" + n + " SYMBOLS)"); }
+        buildTape();
+      } catch (e) {}
+      return r;
+    };
+    w.__hk2 = true;
+    window.refreshPrices = w;
+  }
+  function wrapShowApp2() {
+    if (typeof window.showApp !== "function" || window.showApp.__hk2) return;
+    var orig = window.showApp;
+    var w = function () {
+      var r = orig.apply(this, arguments);
+      try {
+        if (!ssGet("hk_sess_log")) { ssSet("hk_sess_log", "1"); logEvent("SESSION STARTED"); }
+        if (sfx.on && AC && Date.now() - lastGesture < 20000) Snd.chord();
+        setTimeout(function () { buildStatus(); updateStatus(); buildTape(); greet(); entranceScan("dashboard"); }, 400);
+      } catch (e) {}
+      return r;
+    };
+    w.__hk2 = true; w.__hkApp = true;
+    window.showApp = w;
+  }
+  function wrapSwitchView2() {
+    if (typeof window.switchView !== "function" || window.switchView.__hk2) return;
+    var orig = window.switchView;
+    var w = function (name) {
+      var r = orig.apply(this, arguments);
+      try {
+        if (sfx.on && AC && Date.now() - lastGesture < 1500) Snd.tick();
+        entranceScan(name);
+        if (name === "profile") { extendPanel(); renderLog(); }
+        if (name === "dashboard") { buildTape(); greet(); }
+        updateStatus();
+      } catch (e) {}
+      return r;
+    };
+    w.__hk2 = true; w.__hk = true;
+    window.switchView = w;
+  }
+  function wrapSkinLog() {
+    if (window.FolioSkin && FolioSkin.set && !FolioSkin.set.__hk2) {
+      var os = FolioSkin.set;
+      var w = function (s) { var r = os.apply(this, arguments); try { logEvent("THEME CHANGED → " + String(s).toUpperCase()); } catch (e) {} return r; };
+      w.__hk2 = true;
+      FolioSkin.set = w;
+    }
+  }
+
+  /* ---------------- layer sounds + error buzz -------------------- */
+  var modalSndAt = 0;
+  function watchLayers() {
+    if (watchLayers.done || !document.body) return;
+    watchLayers.done = true;
+    var mo = new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) {
+        var m = muts[i];
+        if (m.type === "childList") {
+          m.addedNodes.forEach(function (n) { if (n.id === "folioErrBanner" && sfx.on && AC) Snd.err(); });
+          continue;
+        }
+        var el = m.target;
+        if (!el.classList || !(el.classList.contains("modal") || el.classList.contains("sheet") || el.id === "cmdkPop")) continue;
+        if (Date.now() - modalSndAt < 200) continue;
+        modalSndAt = Date.now();
+        if (!sfx.on || !AC || Date.now() - lastGesture > 6000) continue;
+        if (el.classList.contains("hidden")) Snd.close(); else Snd.open();
+      }
+    });
+    mo.observe(document.body, { attributes: true, attributeFilter: ["class"], subtree: true, childList: true });
+  }
+
+  /* ---------------- global gesture / key wiring ------------------ */
+  document.addEventListener("pointerdown", function () { lastGesture = Date.now(); if (sfx.on) acInit(); }, true);
+  document.addEventListener("keydown", function () { lastGesture = Date.now(); }, true);
+  document.addEventListener("click", function (ev) {
+    var t = ev.target;
+    /* sign-out: power-down + log */
+    var btn = t && t.closest ? t.closest("button, a") : null;
+    if (btn) {
+      var txt = (btn.textContent || "").trim().toLowerCase();
+      if (txt === "sign out" || txt === "log out" || txt === "logout") { if (sfx.on && AC) Snd.power(); logEvent("LOGGED OUT"); }
+    }
+    if (!sfx.on || !AC) return;
+    if (t.closest && t.closest(".dock-btn")) return; /* switchView plays the tick */
+    var el = t.closest ? t.closest("button, .chip, select, a.btn") : null;
+    if (el && !el.disabled) Snd.tap();
+  });
+  document.addEventListener("change", function (ev) {
+    var t = ev.target;
+    if (t && t.type === "checkbox" && sfx.on && AC) { if (t.checked) Snd.togOn(); else Snd.togOff(); }
+  });
+  var lastKeyTick = 0;
+  document.addEventListener("keydown", function (ev) {
+    var t = ev.target;
+    var typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+    if (typing && t.type !== "checkbox" && t.type !== "radio" && t.type !== "range") {
+      if (Date.now() - lastKeyTick > 50) { lastKeyTick = Date.now(); if (sfx.on && AC) Snd.key(); }
+    }
+  });
+  /* Capture phase: runs BEFORE the app's single-key shortcut handler, so
+     "a" (add transaction) cannot hijack the sequence mid-word. */
+  var eggBuf = "", eggPrivacy = null, konamiIdx = 0;
+  var KONAMI = ["arrowup", "arrowup", "arrowdown", "arrowdown", "arrowleft", "arrowright", "arrowleft", "arrowright", "b", "a"];
+  window.addEventListener("keydown", function (ev) {
+    var t = ev.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) { eggBuf = ""; konamiIdx = 0; return; }
+    if (document.querySelector(".modal:not(.hidden)")) { eggBuf = ""; konamiIdx = 0; return; }
+    var k = (ev.key || "").toLowerCase();
+    /* Konami: only the final b/a are swallowed, and only mid-sequence. */
+    if (k === KONAMI[konamiIdx]) {
+      if (konamiIdx >= 8) ev.stopPropagation();
+      konamiIdx++;
+      if (konamiIdx === KONAMI.length) { konamiIdx = 0; eggParty(); return; }
+    } else konamiIdx = k === KONAMI[0] ? 1 : 0;
+    if (k.length !== 1) { if (k !== "shift") eggBuf = ""; return; }
+    var cand = eggBuf + k;
+    if ("matrix".indexOf(cand) === 0) {
+      if (cand === "m") { eggPrivacy = document.body.classList.contains("privacy-on"); eggBuf = "m"; return; }
+      ev.stopPropagation();
+      eggBuf = cand;
+      if (cand === "matrix") {
+        eggBuf = "";
+        if (eggPrivacy !== null && document.body.classList.contains("privacy-on") !== eggPrivacy && window.togglePrivacy) togglePrivacy();
+        eggPrivacy = null;
+        eggParty();
+      }
+    } else {
+      eggBuf = k === "m" ? "m" : "";
+      if (k === "m") eggPrivacy = document.body.classList.contains("privacy-on");
+    }
+  }, true);
+  function eggParty() {
+    if (window.__hkRainParty) __hkRainParty(10);
+    if (window.toast) toast("MATRIX MODE: 10S");
+    logEvent("EASTER EGG: MATRIX MODE");
+  }
+
+  /* ---------------- boot ------------------------------------------ */
+  function boot2() {
+    wrapToast2(); wrapRefresh2(); wrapShowApp2(); wrapSwitchView2(); wrapSkinLog();
+    buildHeaderBtns(); extendPanel(); buildStatus(); updateStatus(); watchLayers();
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot2);
+  else boot2();
+  var tries2 = 0;
+  var iv2 = setInterval(function () { tries2++; boot2(); if (tries2 > 24) clearInterval(iv2); }, 500);
+  setInterval(function () {
+    var app = $("appView");
+    if (app && !app.classList.contains("hidden")) { buildStatus(); updateStatus(); }
+  }, 1000);
+  setInterval(function () {
+    try {
+      var p = $("hkPanel");
+      if (p && !p.querySelector("[data-sfx-opt]")) { delete p.dataset.hk2; extendPanel(); }
+      var g = $("hkGreet");
+      if (g && g.dataset.fallback === "1") {
+        var dn = "";
+        if (typeof displayName === "function") dn = displayName();
+        if (!dn) dn = (state.profile && state.profile.name) || (window.currentUser && currentUser.name) || "";
+        dn = String(dn || "").split(" ")[0].toUpperCase();
+        if (dn) { g.textContent = "> WELCOME BACK, " + dn + (fx() === "off" ? "" : "_"); delete g.dataset.fallback; }
+      }
+    } catch (e) {}
+  }, 2000);
 })();

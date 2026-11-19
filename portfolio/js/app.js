@@ -715,7 +715,9 @@ function renderDashboard() {
     $("stPnlPct").className = "stat-sub " + (d.dayPnl >= 0 ? "gain" : "loss");
   } else { $("stInvested").textContent = "—"; $("stValue").textContent = "—"; $("stPnl").textContent = "—"; $("stPnlPct").textContent = ""; }
   const x = d.rows.length ? portfolioXirr(d.value) : null;
-  $("stXirr").textContent = x === null ? "—" : pct(x * 100).replace("+", x >= 0 ? "+" : "");
+  /* v139: same <1Y / cap rule as the scorecard (folioXirrText lives in
+     features.js; renderDashboard only runs after full boot). */
+  $("stXirr").innerHTML = x === null ? "—" : (typeof folioXirrText === "function" ? folioXirrText(x, d) : pct(x * 100).replace("+", x >= 0 ? "+" : ""));
   $("stRealised").textContent = d.rows.length ? "Booked profit so far: " + inr(d.realisedTotal) + (d.divTotal ? " · Dividends: " + inr(d.divTotal) : "") : "";
   $("dashEmpty").classList.toggle("hidden", d.rows.length > 0);
   if (d.rows.length) dashAnimated = true;
