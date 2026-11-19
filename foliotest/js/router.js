@@ -55,14 +55,33 @@
     return v ? v.id.replace(/^view-/, "") : "dashboard";
   }
   function busy() { try { return typeof uiBusy === "function" && uiBusy(); } catch (e) { return false; } }
-  function setHash(h) { try { if (window.location.hash !== h) history.replaceState(history.state, "", h); } catch (e) {} }
+  function viewForHash(h) {
+    for (var v in VIEW_HASH) if (VIEW_HASH[v] === h) return v;
+    if (h && h.indexOf("#/account") === 0) return "profile";
+    return null;
+  }
+  function setHash(h) {
+    try {
+      if (window.location.hash === h) return;
+      var st = history.state, v = viewForHash(h);
+      /* v136 fix (QA log, 2026-11-19): preserving a STALE folioView
+         state while changing the URL rewrote other entries into
+         mismatched state/URL pairs (a holdings entry ended up tagged
+         #/insights; the insights entry got rewritten to holdings),
+         which stalled Back and truncated the Forward stack. A mirror
+         write must always produce a CONSISTENT entry: if the kept
+         state names a different view than the hash, retag it. */
+      if (v && st && st.folioView && st.folioView !== v) st = { folioView: v };
+      history.replaceState(st, "", h);
+    } catch (e) {}
+  }
   /* v136: tag the boot entry with the view it boots into, so a Back
      traversal that lands on it knows its screen (the v89 tail reads
      history.state). Never overwrites an existing folioView tag. */
   function tagBoot() {
     try {
       var st = history.state;
-      if (!st || !st.folioView) history.replaceState({ folioView: currentView() }, "", window.location.hash || VIEW_HASH[currentView()] || "#/home");
+      if (!st) history.replaceState({ folioView: currentView() }, "", window.location.hash || VIEW_HASH[currentView()] || "#/home");
     } catch (e) {}
   }
   function moreOpen() { var s = $("moreSheet"); return !!(s && !s.classList.contains("hidden")); }
@@ -220,6 +239,13 @@
   window.addEventListener("popstate", function () { lastPopAt = Date.now(); });
 
   window.addEventListener("hashchange", function () {
+    /* v136 fix: a Back/Forward traversal across entries with
+       different hashes fires popstate AND hashchange. The v89
+       popstate tail has already switched to the landed entry's view;
+       re-applying the route here switched a SECOND time (unguarded),
+       whose arm push truncated the Forward stack. Inside the pop
+       window, only mirror the hash of the view that is showing. */
+    if (Date.now() - lastPopAt < 1500) { setHash(VIEW_HASH[currentView()] || "#/home"); return; }
     var r = parse(window.location.hash);
     if (!r) return;
     if (!appShown()) { staleHash = false; pending = r; startRetry(); return; }

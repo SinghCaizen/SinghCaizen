@@ -5821,7 +5821,7 @@ const FOLIO_BUILT = window.FOLIO_BUILD ? new Date(window.FOLIO_BUILD.date + "T00
   const _sv89 = switchView;
   switchView = function (name) {
     const r = _sv89.apply(this, arguments);
-    if (name && name !== lastViewName && !viewTraversing && !top()) { try { history.pushState({ folioView: name }, ""); } catch (e) {} }
+    if (name && name !== lastViewName && !viewTraversing && !top()) { try { history.pushState({ folioView: name }, "", (window.FolioRouter && window.FolioRouter.hashFor(name)) || ""); } catch (e) {} }
     if (name) lastViewName = name;
     return r;
   };
