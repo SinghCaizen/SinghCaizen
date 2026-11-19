@@ -1035,3 +1035,27 @@
   var tries3 = 0;
   var iv3 = setInterval(function () { tries3++; boot3(); if (tries3 > 16) clearInterval(iv3); }, 500);
 })();
+
+/* v149 DIAG (foliotest only, removed before production): report the insights
+   wrapper's computed layout into the Activity Log where QA can read it. */
+(function () {
+  function diag() {
+    try {
+      var wrap = document.getElementById("insXWrap");
+      var view = document.getElementById("view-insights");
+      if (!wrap || !view) return;
+      var cs = getComputedStyle(wrap), vs = getComputedStyle(view);
+      var msg = "DIAG wrap display=" + cs.display + " span=" + cs.columnSpan + " cols=" + cs.columnCount +
+        " wrapW=" + wrap.offsetWidth + " view display=" + vs.display + " cols=" + vs.columnCount + " viewW=" + view.offsetWidth +
+        " parent=" + (wrap.parentElement ? (wrap.parentElement.id || wrap.parentElement.className) : "?");
+      var arr = [];
+      try { arr = JSON.parse(localStorage.getItem("folio_actlog") || "[]"); } catch (e) {}
+      arr.unshift({ t: Date.now(), msg: msg });
+      try { localStorage.setItem("folio_actlog", JSON.stringify(arr.slice(0, 60))); } catch (e) {}
+      var list = document.getElementById("hkLogList");
+      if (list) { var d = document.createElement("div"); d.textContent = "[diag] " + msg; list.prepend(d); }
+    } catch (e) {}
+  }
+  setTimeout(diag, 5000);
+  setTimeout(diag, 12000);
+})();
