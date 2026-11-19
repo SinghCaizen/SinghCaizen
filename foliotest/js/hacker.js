@@ -108,7 +108,7 @@
     try { if (getComputedStyle(sp).display === "none") return; } catch (e) {}
     var box = document.createElement("div");
     box.id = "hkBoot"; sp.appendChild(box);
-    var lines = ["> INITIALIZING FOLIO", "> LOADING VAULT", "> SECURE CONNECTION OK"];
+    var lines = ["> INITIALIZING FOLIO...", "> DECRYPTING VAULT...", "> ACCESS GRANTED"];
     if (fx() === "reduced") { box.textContent = lines.join("\n"); return; }
     var li = 0, ci = 0, done = "";
     (function tick() {
@@ -163,7 +163,7 @@
   }
 
   /* ---------------- matrix rain ---------------- */
-  var rainCv = null, rainCtx = null, rainCols = [], rainRun = false, rainFrame = 0, rainCol = "#00ff66";
+  var rainCv = null, rainCtx = null, rainCols = [], rainRun = false, rainFrame = 0, rainCol = "#00ff66", rainDim = false;
   function rainColor() { rainCol = accent(); }
   var rainBand = false;
   var rainPartyUntil = 0;
@@ -184,8 +184,13 @@
     var app = document.getElementById("appView");
     if (app && !app.classList.contains("hidden")) {
       var dash = document.getElementById("view-dashboard");
-      if (dash && !dash.classList.contains("hidden")) { if (!rainBand) { rainBand = true; rainResize(); } return true; }
+      if (dash && !dash.classList.contains("hidden")) { if (!rainBand) { rainBand = true; rainResize(); } rainDim = false; return true; }
+      /* v141: rain behind every view, dimmed outside login/dashboard */
+      if (rainBand) { rainBand = false; rainResize(); }
+      rainDim = true;
+      return true;
     }
+    rainDim = false;
     return false;
   }
   function rainSetup() {
@@ -219,7 +224,7 @@
     rainCtx.fillStyle = rainCol;
     for (var i = 0; i < rainCols.length; i++) {
       var c = rainCols[i], x = i * 20, y = c.y * 20;
-      rainCtx.globalAlpha = Date.now() < rainPartyUntil ? .30 + Math.random() * .30 : .10 + Math.random() * .22;
+      rainCtx.globalAlpha = Date.now() < rainPartyUntil ? .30 + Math.random() * .30 : (rainDim ? .05 + Math.random() * .10 : .10 + Math.random() * .22);
       rainCtx.fillText(KATA.charAt((Math.random() * KATA.length) | 0), x, y);
       c.y += c.s;
       if (y > h && Math.random() > .976) c.y = Math.random() * -24;
@@ -243,6 +248,7 @@
 
   /* ---------------- typewriter view titles + dock glitch ---------------- */
   var typerId = 0;
+  var GLYPHS = "!<>-_\\/[]{}=+*^?#0101";
   function typeTitle(viewEl) {
     if (fx() !== "full" || !viewEl) return;
     var h = viewEl.querySelector(".panel-head h2") || viewEl.querySelector("h2");
@@ -250,12 +256,17 @@
     var full = h.dataset.hkText || h.textContent.trim();
     if (!full || full.length > 42) return;
     h.dataset.hkText = full;
-    var my = ++typerId, i = 0;
+    var my = ++typerId, frame = 0;
+    var total = Math.max(6, Math.round(full.length * 0.9));
     (function tick() {
       if (my !== typerId || !document.body.contains(h)) return;
-      i++;
-      h.textContent = full.slice(0, i);
-      if (i < full.length) setTimeout(tick, 14);
+      frame++;
+      var cut = Math.floor(full.length * frame / total);
+      var out = full.slice(0, cut);
+      for (var j = cut; j < full.length; j++) out += full.charAt(j) === " " ? " " : GLYPHS.charAt((Math.random() * GLYPHS.length) | 0);
+      h.textContent = out;
+      if (frame < total) setTimeout(tick, 24);
+      else h.textContent = full;
     })();
   }
   function wrapSwitchView() {
@@ -430,7 +441,23 @@
     chirp: function () { tone(1250, 0.05, "sine", 0.18); tone(1560, 0.05, "sine", 0.18, 0.05); tone(1870, 0.06, "sine", 0.18, 0.10); },
     chord: function () { tone(523, 0.22, "sine", 0.22); tone(659, 0.22, "sine", 0.20, 0.07); tone(784, 0.26, "sine", 0.22, 0.14); tone(1046, 0.30, "sine", 0.18, 0.21); },
     power: function () { tone(640, 0.28, "sine", 0.24, 0, 110); },
-    key: function () { tone(1350, 0.018, "square", 0.06); }
+    key: function () { tone(1350, 0.018, "square", 0.06); },
+    up: function () { tone(587, 0.07, "sine", 0.20); tone(880, 0.10, "sine", 0.20, 0.06); },
+    down: function () { tone(392, 0.07, "sine", 0.19); tone(262, 0.11, "sine", 0.19, 0.06); },
+    boot: function () { tone(196, 0.30, "sine", 0.20, 0, 784); tone(392, 0.18, "sine", 0.14, 0.16); tone(784, 0.22, "sine", 0.14, 0.26); },
+    burst: function () {
+      if (!sfx.on || !AC || AC.state !== "running") return;
+      try {
+        var len = Math.floor(AC.sampleRate * 0.07);
+        var buf = AC.createBuffer(1, len, AC.sampleRate);
+        var d = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+        var src = AC.createBufferSource(); src.buffer = buf;
+        var f = AC.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 1800; f.Q.value = 0.8;
+        var g = AC.createGain(); g.gain.value = 0.16;
+        src.connect(f); f.connect(g); g.connect(master); src.start();
+      } catch (e) {}
+    }
   };
   window.HkSfx = {
     setOn: function (v) { sfx.on = !!v; saveSfx(); if (sfx.on) { acInit(); Snd.ok(); } },
@@ -637,13 +664,29 @@
     w.__hk2 = true;
     window.toast = w;
   }
-  var lastAutoLogAt = 0;
+  var lastAutoLogAt = 0, prevDayPnl = null;
   function wrapRefresh2() {
     if (typeof window.refreshPrices !== "function" || window.refreshPrices.__hk2) return;
     var orig = window.refreshPrices;
     var w = async function () {
       var userInit = Date.now() - lastGesture < 2500;
       var r = await orig.apply(this, arguments);
+      try {
+        var nowPnl = null;
+        try { nowPnl = enriched().dayPnl; } catch (e) {}
+        if (userInit && sfx.on && AC && prevDayPnl !== null && typeof nowPnl === "number" && nowPnl !== prevDayPnl) {
+          if (nowPnl > prevDayPnl) Snd.up(); else Snd.down();
+          var sv = $("stValue");
+          var card = sv ? sv.closest(".stat-card, .panel") : null;
+          if (card) {
+            card.classList.remove("hk-flash-gain", "hk-flash-loss");
+            void card.offsetWidth;
+            card.classList.add(nowPnl > prevDayPnl ? "hk-flash-gain" : "hk-flash-loss");
+            setTimeout(function () { card.classList.remove("hk-flash-gain", "hk-flash-loss"); }, 800);
+          }
+        }
+        if (typeof nowPnl === "number") prevDayPnl = nowPnl;
+      } catch (e) {}
       try {
         lastSyncTs = Date.now(); updateStatus();
         var n = 0; try { n = Object.keys(prices || {}).length; } catch (e) {}
@@ -815,4 +858,174 @@
       }
     } catch (e) {}
   }, 2000);
+})();
+
+/* ================================================================
+   v141 — "emerging from darkness" transitions, tap ripple/glitch,
+   long-note "?" toggles, boot tone. Transform/opacity only; every
+   effect obeys the Effects setting (Full / Light / Off).
+   ================================================================ */
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  function fx() { try { return window.FolioMotion ? FolioMotion.effective() : "full"; } catch (e) { return "full"; } }
+
+  /* ---------------- the darkness dip ------------------------------ */
+  var dipEl = null;
+  function ensureDip() {
+    if (dipEl) return dipEl;
+    dipEl = document.createElement("div");
+    dipEl.id = "hkDip";
+    dipEl.setAttribute("aria-hidden", "true");
+    document.body.appendChild(dipEl);
+    return dipEl;
+  }
+  function dipSwap(swapFn) {
+    if (fx() === "off" || document.hidden) { swapFn(); return; }
+    var d = ensureDip();
+    d.classList.remove("out");
+    d.classList.add("on");
+    var hold = fx() === "full" ? 80 : 50;
+    setTimeout(function () {
+      try { swapFn(); } catch (e) {}
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          d.classList.add("out");
+          d.classList.remove("on");
+          setTimeout(function () { d.classList.remove("out"); }, 280);
+        });
+      });
+    }, hold);
+  }
+  function dipFlash() {
+    if (fx() === "off" || document.hidden) return;
+    var d = ensureDip();
+    d.classList.remove("out");
+    d.classList.add("on");
+    setTimeout(function () {
+      d.classList.add("out");
+      d.classList.remove("on");
+      setTimeout(function () { d.classList.remove("out"); }, 280);
+    }, 90);
+  }
+  function emerge(el) {
+    if (!el || fx() !== "full") return;
+    el.classList.remove("hk-emerge");
+    void el.offsetWidth;
+    el.classList.add("hk-emerge");
+    setTimeout(function () { el.classList.remove("hk-emerge"); }, 420);
+  }
+  function visibleViewName() {
+    var v = document.querySelector(".view:not(.hidden)");
+    return v ? v.id.replace("view-", "") : null;
+  }
+
+  /* ---------------- view switches emerge from darkness ------------ */
+  var bootedAt = Date.now();
+  function wrapSwitchView3() {
+    if (typeof window.switchView !== "function" || window.switchView.__hk3) return;
+    var orig = window.switchView;
+    var w = function (name) {
+      var cur = visibleViewName();
+      var self = this, args = arguments;
+      if (fx() === "off" || !name || name === cur || Date.now() - bootedAt < 900) {
+        return orig.apply(self, args);
+      }
+      dipSwap(function () {
+        orig.apply(self, args);
+        var v = $("view-" + name);
+        emerge(v);
+        if (window.HkSfx && HkSfx.isOn()) HkSfx.play("burst");
+        decorateNotes(v);
+      });
+    };
+    w.__hk3 = true; w.__hk2 = true; w.__hk = true;
+    window.switchView = w;
+  }
+
+  /* ---------------- layers (modal / sheet / palette) -------------- */
+  var layerAt = 0;
+  function watchLayers3() {
+    if (watchLayers3.done || !document.body) return;
+    watchLayers3.done = true;
+    var mo = new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) {
+        var el = muts[i].target;
+        if (!el.classList || !(el.classList.contains("modal") || el.classList.contains("sheet") || el.id === "cmdkPop")) continue;
+        if (Date.now() - layerAt < 150) continue;
+        layerAt = Date.now();
+        if (el.classList.contains("hidden")) { dipFlash(); continue; }
+        var card = el.querySelector(".modal-card, .sheet, .cmdk-card") || el;
+        emerge(card);
+        decorateNotes(el);
+      }
+    });
+    mo.observe(document.body, { attributes: true, attributeFilter: ["class"], subtree: true });
+  }
+
+  /* ---------------- tap glitch + ripple ---------------------------- */
+  document.addEventListener("pointerdown", function (ev) {
+    if (fx() !== "full") return;
+    var t = ev.target && ev.target.closest ? ev.target.closest(".btn, .mini-btn, .seg-btn, .chip") : null;
+    if (!t || t.disabled) return;
+    t.classList.remove("hk-tapfx");
+    void t.offsetWidth;
+    t.classList.add("hk-tapfx");
+    setTimeout(function () { t.classList.remove("hk-tapfx"); }, 220);
+    if (t.closest(".dock, .samsung-bottom-capsule")) return;
+    try {
+      var r = t.getBoundingClientRect();
+      if (r.width < 8 || r.height < 8) return;
+      var s = document.createElement("span");
+      s.className = "hk-rip";
+      var size = Math.max(r.width, r.height);
+      s.style.width = s.style.height = size + "px";
+      s.style.left = (ev.clientX - r.left - size / 2) + "px";
+      s.style.top = (ev.clientY - r.top - size / 2) + "px";
+      t.appendChild(s);
+      setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 480);
+    } catch (e) {}
+  }, true);
+
+  /* ---------------- long hints collapse into a "?" toggle --------- */
+  function decorateNotes(root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll(".price-meta, .insx-note, .auth-note, .panel-note").forEach(function (el) {
+      if (el.dataset.hkNote || el.textContent.trim().length < 150) return;
+      el.dataset.hkNote = "1";
+      el.classList.add("hk-note-clamp");
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "hk-note-btn";
+      b.textContent = "?";
+      b.title = "Show / hide the full note";
+      b.setAttribute("aria-label", "Toggle full note");
+      b.addEventListener("click", function () {
+        var clamped = el.classList.toggle("hk-note-clamp");
+        b.textContent = clamped ? "?" : "–";
+      });
+      el.parentNode.insertBefore(b, el.nextSibling);
+    });
+  }
+
+  /* ---------------- boot tone on the first tap --------------------- */
+  var bootToneDone = false;
+  document.addEventListener("pointerdown", function () {
+    if (bootToneDone) return;
+    bootToneDone = true;
+    if (Date.now() - bootedAt < 45000 && window.HkSfx && HkSfx.isOn()) {
+      setTimeout(function () { HkSfx.play("boot"); }, 60);
+    }
+  }, true);
+
+  /* ---------------- boot ------------------------------------------- */
+  function boot3() {
+    wrapSwitchView3();
+    watchLayers3();
+    decorateNotes(document);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot3);
+  else boot3();
+  var tries3 = 0;
+  var iv3 = setInterval(function () { tries3++; boot3(); if (tries3 > 16) clearInterval(iv3); }, 500);
 })();
