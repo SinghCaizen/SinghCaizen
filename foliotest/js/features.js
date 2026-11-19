@@ -8245,18 +8245,20 @@ window.folioProxyJson = async function (url, timeoutMs, opts) {
 })();
 /* FIX129-END */
 
-/* ===== QA-ONLY history logger v2 (UI panel) — foliotest only, NEVER production ===== */
+/* ===== QA-ONLY history logger v3 (stack traces) — foliotest only, NEVER production ===== */
 (function () {
   var log = []; window.__histLog = log;
   var pre = null;
   function vw() { var v = document.querySelector(".view:not(.hidden)"); return v ? v.id : "?"; }
   function render() { if (pre) pre.textContent = log.join("\n"); }
-  function snap(tag) { try { log.push(tag + " | state=" + JSON.stringify(history.state) + " | vw=" + vw() + " | hash=" + location.hash); if (log.length > 60) log.splice(0, log.length - 60); render(); } catch (e) {} }
+  function via() { try { var s = (new Error().stack || "").split("\n").slice(2, 5).map(function (l) { var m = l.match(/at\s+([^\s(]+)/); return m ? m[1] : "?"; }).join("<"); return viaCache[viaCache.length - 1] === s ? "" : s; } catch (e) { return "?"; } }
+  var viaCache = [];
+  function snap(tag, withStack) { try { var line = tag + " | state=" + JSON.stringify(history.state) + " | vw=" + vw() + " | hash=" + location.hash; if (withStack) { var s = ""; try { s = (new Error().stack || "").split("\n").slice(2, 6).map(function (l) { var m = l.match(/at\s+([^\s(]+)/); return m ? m[1] : l.trim().slice(0, 24); }).join(" < "); } catch (e) {} line += " | via " + s; } log.push(line); if (log.length > 60) log.splice(0, log.length - 60); render(); } catch (e) {} }
   function mount() {
     if (document.getElementById("__histPanel")) return;
     var wrap = document.createElement("div");
     wrap.id = "__histPanel";
-    wrap.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#111;color:#0f0;font:10px/1.5 monospace;max-height:38vh;overflow:auto;padding:4px;";
+    wrap.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#111;color:#0f0;font:10px/1.5 monospace;max-height:44vh;overflow:auto;padding:4px;";
     var btn = document.createElement("button");
     btn.textContent = "CLR LOG"; btn.style.cssText = "background:#333;color:#fff;padding:6px 10px;margin-bottom:4px;";
     btn.addEventListener("click", function () { log.length = 0; render(); });
@@ -8267,9 +8269,11 @@ window.folioProxyJson = async function (url, timeoutMs, opts) {
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount); else mount();
   var _ps = history.pushState.bind(history);
-  history.pushState = function (s, t, u) { var r = _ps(s, t, u); snap("PUSH " + JSON.stringify(s)); return r; };
+  history.pushState = function (s, tg, u) { var r = _ps(s, tg, u); snap("PUSH " + JSON.stringify(s)); return r; };
   var _rs = history.replaceState.bind(history);
-  history.replaceState = function (s, t, u) { var r = _rs(s, t, u); snap("REPL " + JSON.stringify(s)); return r; };
+  history.replaceState = function (s, tg, u) { var r = _rs(s, tg, u); snap("REPL " + JSON.stringify(s), true); return r; };
+  var _bk = history.back.bind(history);
+  history.back = function () { snap("HISTORY.BACK()", true); return _bk(); };
   window.addEventListener("popstate", function () { snap("POP-before"); setTimeout(function () { snap("POP-after"); }, 350); }, true);
   snap("BOOT");
 })();
