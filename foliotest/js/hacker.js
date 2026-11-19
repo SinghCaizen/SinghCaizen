@@ -1024,39 +1024,33 @@
     }
   }, true);
 
+  /* ---------------- insights: flatten the grid wrappers -------------
+     The insx panels live inside #insXWrap / #planWrap grid wrappers whose
+     row layout leaves dead gaps that stylesheet rules could not reliably
+     beat. Once a wrapper has rendered its cards, display:contents removes
+     its box so the cards join the view's own masonry columns directly. */
+  function flattenInsights() {
+    if (window.innerWidth < 1024) return;
+    ["insXWrap", "planWrap"].forEach(function (id) {
+      var w = $(id);
+      if (!w || w.dataset.hkFlat) return;
+      if (!w.querySelector(".panel")) return;
+      w.dataset.hkFlat = "1";
+      w.style.setProperty("display", "contents");
+      w.querySelectorAll(".panel").forEach(function (p) { p.style.marginBottom = "14px"; });
+    });
+  }
+
   /* ---------------- boot ------------------------------------------- */
   function boot3() {
     wrapSwitchView3();
     watchLayers3();
     decorateNotes(document);
+    flattenInsights();
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot3);
   else boot3();
   var tries3 = 0;
-  var iv3 = setInterval(function () { tries3++; boot3(); if (tries3 > 16) clearInterval(iv3); }, 500);
+  var iv3 = setInterval(function () { tries3++; boot3(); if (tries3 > 40) clearInterval(iv3); }, 500);
 })();
 
-/* v149 DIAG (foliotest only, removed before production): report the insights
-   wrapper's computed layout into the Activity Log where QA can read it. */
-(function () {
-  function diag() {
-    try {
-      var wrap = document.getElementById("insXWrap");
-      var view = document.getElementById("view-insights");
-      if (!wrap || !view) return;
-      var cs = getComputedStyle(wrap), vs = getComputedStyle(view);
-      var msg = "DIAG wrap display=" + cs.display + " span=" + cs.columnSpan + " cols=" + cs.columnCount +
-        " wrapW=" + wrap.offsetWidth + " view display=" + vs.display + " cols=" + vs.columnCount + " viewW=" + view.offsetWidth +
-        " parent=" + (wrap.parentElement ? (wrap.parentElement.id || wrap.parentElement.className) : "?");
-      var arr = [];
-      try { arr = JSON.parse(localStorage.getItem("folio_actlog") || "[]"); } catch (e) {}
-      arr.push({ t: Date.now(), m: msg });
-      while (arr.length > 60) arr.shift();
-      try { localStorage.setItem("folio_actlog", JSON.stringify(arr)); } catch (e) {}
-      var list = document.getElementById("hkLogBody");
-      if (list) { var d = document.createElement("div"); d.className = "hk-log-line"; d.textContent = "[diag] " + msg; list.prepend(d); }
-    } catch (e) {}
-  }
-  setTimeout(diag, 5000);
-  setTimeout(diag, 12000);
-})();
