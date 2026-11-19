@@ -508,7 +508,7 @@ html[data-skin][data-anim="full"] .cmp-svg { animation: hkDrawIn .6s ease both; 
 @media (min-width: 1024px) {
   /* masonry columns: cards pack tightly, no row-height dead space */
   html[data-skin] #view-dashboard,
-  html[data-skin] #view-insights { columns: 2; column-gap: 14px; }
+  html[data-skin] #view-insights { display: block; columns: 2; column-gap: 14px; }
   html[data-skin] #view-dashboard > .panel,
   html[data-skin] #view-insights > .panel { margin-bottom: 14px; break-inside: avoid; }
   /* Spanners are named one by one: a blanket :not(.panel) span made every
