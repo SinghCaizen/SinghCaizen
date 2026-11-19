@@ -77,28 +77,12 @@
     { id: "dip",       label: "Biggest fall",           group: "stocks" },
     { id: "heatToday", label: "Today's heatmap",        group: "stocks" },
     { id: "wrapped",   label: "Wrapped (5-card set)",   group: "wrapped" },
-    /* Smart Money (Part 2): data comes ONLY via the Part 1 hook
-       (window.folioSmartMoneyForReport / folioSmartMoneyGates) — this
-       module never fetches Smart Money data itself. Types whose
-       dataset is unavailable are hidden by refreshSmPicker(); the
-       deal type stays visible but disabled while deals are gated off. */
-    { id: "sm_whoowns",    label: "Who owns this stock",          group: "smartmoney" },
-    { id: "sm_fundact",    label: "Fund house activity",          group: "smartmoney" },
-    { id: "sm_deal",       label: "Bulk / block deal",            group: "smartmoney" },
-    { id: "sm_accum",      label: "Funds accumulating",           group: "smartmoney" },
-    { id: "sm_portfolio",  label: "Smart money in my portfolio",  group: "smartmoney" },
-    { id: "sm_leaderboard", label: "Top MF buys & sells",         group: "smartmoney" },
-    { id: "sm_flows",      label: "FII flows — monthly (NSDL)",   group: "smartmoney" },
-    { id: "sm_trend",      label: "Ownership trend",              group: "smartmoney" }
   ];
   var TYPE_GROUPS = [
     { id: "portfolio", label: "Portfolio" },
     { id: "stocks",    label: "Stocks" },
-    { id: "wrapped",   label: "Wrapped" },
-    { id: "smartmoney", label: "Smart Money" }
+    { id: "wrapped",   label: "Wrapped" }
   ];
-  var SM_TYPES = { sm_whoowns: 1, sm_fundact: 1, sm_deal: 1, sm_accum: 1, sm_portfolio: 1, sm_leaderboard: 1, sm_flows: 1, sm_trend: 1 };
-  var SM_STOCK_TYPES = ["sm_whoowns", "sm_trend"];
 
   /* Palette — the app's own theme colours (css/style.css :root). */
   var PAL = { gold: "#c9a227", goldSoft: "#e3c565", gain: "#4caf6d", loss: "#e05b4b", redWarm: "#b3392f" };
@@ -220,35 +204,6 @@
       } catch (e) { return Promise.resolve(null); }
     }
     return analyticsPromise;
-  }
-  /* Smart Money (Part 2): the Part 1 data hook, guarded + cached like
-     gAnalytics(). Resolves to the bundle assembled by smartmoney.js
-     ({ mfAvailable, myStocks, feed, leaderboards, flows, houses,
-     overlap, stockFile, houseFile, ... }) or null when the pipeline
-     has not published / the module is unavailable. A miss is NOT
-     cached, so a later open can retry after the hook loads. */
-  var smBundlePromise = null;
-  function gSmartMoney() {
-    if (!smBundlePromise) {
-      try {
-        if (typeof window !== "undefined" && typeof window.folioSmartMoneyForReport === "function") {
-          smBundlePromise = Promise.resolve(window.folioSmartMoneyForReport()).then(function (b) {
-            if (!b) smBundlePromise = null;
-            return b;
-          }).catch(function () { smBundlePromise = null; return null; });
-        } else return Promise.resolve(null); /* hook not loaded yet — do not cache the miss */
-      } catch (e) { return Promise.resolve(null); }
-    }
-    return smBundlePromise;
-  }
-  /* Followed fund houses, read through the same global-scope probe
-     gAppTxns uses (this module's own `state` shadows the app's). */
-  function gSmFollows() {
-    try {
-      var probe = new Function("return (typeof state !== 'undefined' && state && state.profile && state.profile.smartmoney && Array.isArray(state.profile.smartmoney.follows)) ? state.profile.smartmoney.follows : null;");
-      var f = probe();
-      return Array.isArray(f) ? f : [];
-    } catch (e) { return []; }
   }
   function gAppTxns() {
     try {
@@ -660,7 +615,6 @@
           '<div class="fsh-sec"><span id="fshTypePLbl">Card type · Portfolio</span><div class="fsh-seg" id="fshTypeSegP" role="group" aria-labelledby="fshTypePLbl"></div></div>' +
           '<div class="fsh-sec"><span id="fshTypeSLbl">Card type · Stocks</span><div class="fsh-seg" id="fshTypeSegS" role="group" aria-labelledby="fshTypeSLbl"></div></div>' +
           '<div class="fsh-sec"><span id="fshTypeWLbl">Card type · Wrapped</span><div class="fsh-seg" id="fshTypeSegW" role="group" aria-labelledby="fshTypeWLbl"></div></div>' +
-          '<div class="fsh-sec" id="fshSmSec"><span id="fshTypeMLbl">Card type · Smart Money</span><div class="fsh-seg" id="fshTypeSegM" role="group" aria-labelledby="fshTypeMLbl"></div></div>' +
           '<div class="fsh-sec" id="fshRangeSec"><span id="fshRangeLbl">Period</span><div class="fsh-seg" id="fshRangeSeg" role="group" aria-labelledby="fshRangeLbl"></div></div>' +
           '<div class="fsh-sec" id="fshWrapSec"><span id="fshWrapLbl2">Wrapped period</span><div class="fsh-seg" id="fshWrapSeg" role="group" aria-labelledby="fshWrapLbl2"></div></div>' +
           '<div class="fsh-sec" id="fshStockSec"><span id="fshStockLbl">Stock</span><select class="fsh-select" id="fshStockSel" aria-labelledby="fshStockLbl"></select></div>' +
@@ -672,7 +626,6 @@
             '<label class="fsh-toggle"><input type="checkbox" id="fshHideAmt"> Hide amounts — show percentages only</label>' +
             '<label class="fsh-toggle"><input type="checkbox" id="fshHideQty"> Hide quantities and invested value</label>' +
             '<label class="fsh-toggle"><input type="checkbox" id="fshShowDate"> Show date</label>' +
-            '<label class="fsh-toggle" id="fshSmNamesRow"><input type="checkbox" id="fshSmNames"> Show my stock names (Smart Money portfolio card)</label>' +
           '</div>' +
         '</div>' +
         '<div class="fsh-actions">' +
@@ -689,8 +642,7 @@
       ov: ov, sheet: ov.querySelector(".fsh-sheet"), canvas: ov.querySelector("#fshCanvas"),
       loading: ov.querySelector("#fshLoading"),
       suggest: ov.querySelector("#fshSuggest"),
-      typeSegs: { portfolio: ov.querySelector("#fshTypeSegP"), stocks: ov.querySelector("#fshTypeSegS"), wrapped: ov.querySelector("#fshTypeSegW"), smartmoney: ov.querySelector("#fshTypeSegM") },
-      smSec: ov.querySelector("#fshSmSec"), smNamesRow: ov.querySelector("#fshSmNamesRow"), smNames: ov.querySelector("#fshSmNames"),
+      typeSegs: { portfolio: ov.querySelector("#fshTypeSegP"), stocks: ov.querySelector("#fshTypeSegS"), wrapped: ov.querySelector("#fshTypeSegW") },
       rangeSec: ov.querySelector("#fshRangeSec"), rangeSeg: ov.querySelector("#fshRangeSeg"),
       wrapSec: ov.querySelector("#fshWrapSec"), wrapSeg: ov.querySelector("#fshWrapSeg"),
       wrapNav: ov.querySelector("#fshWrapNav"), wrapLbl: ov.querySelector("#fshWrapLbl"),
@@ -740,11 +692,6 @@
         queueRender(false);
       });
     });
-    if (dom.smNames) dom.smNames.addEventListener("change", function () {
-      state.smNames = !!dom.smNames.checked;
-      savePref();
-      queueRender(true);
-    });
     dom.wrapPrev.addEventListener("click", function () { stepWrapped(-1); });
     dom.wrapNext.addEventListener("click", function () { stepWrapped(1); });
     dom.shareBtn.addEventListener("click", doShare);
@@ -791,8 +738,7 @@
     setSeg(dom.wrapSeg, state.wrappedPeriod);
     var needsRange = ["period", "gainers", "stock", "growth", "star", "podium", "dip", "alpha"].indexOf(state.type) >= 0;
     dom.rangeSec.style.display = needsRange ? "" : "none";
-    dom.stockSec.style.display = (state.type === "stock" || SM_STOCK_TYPES.indexOf(state.type) >= 0) ? "" : "none";
-    if (dom.smNamesRow) dom.smNamesRow.style.display = state.type === "sm_portfolio" ? "" : "none";
+    dom.stockSec.style.display = (state.type === "stock") ? "" : "none";
     var isWrapped = state.type === "wrapped";
     dom.wrapSec.style.display = isWrapped ? "" : "none";
     dom.wrapNav.hidden = !isWrapped;
@@ -832,15 +778,14 @@
         theme: THEMES.some(function (t) { return t.id === p.theme; }) ? p.theme : null,
         style: STYLES.some(function (s) { return s.id === p.style; }) ? p.style : null,
         size: SIZES[p.size] ? p.size : null,
-        bgMode: BG_MODES.some(function (b) { return b.id === p.bgMode; }) ? p.bgMode : null,
-        smNames: p.smNames === true
+        bgMode: BG_MODES.some(function (b) { return b.id === p.bgMode; }) ? p.bgMode : null
       };
     } catch (e) { return null; }
   }
   function savePref() {
     if (!state) return;
     try {
-      localStorage.setItem("folio_share_pref", JSON.stringify({ theme: state.theme, style: state.style, size: state.size, bgMode: state.bgMode, smNames: !!state.smNames }));
+      localStorage.setItem("folio_share_pref", JSON.stringify({ theme: state.theme, style: state.style, size: state.size, bgMode: state.bgMode }));
     } catch (e) {}
   }
 
@@ -867,13 +812,10 @@
       hideQty: true,                   // spec default ON
       showDate: true,
       appPrivacy: privacy,
-      smCtx: opts.sm || null,          // Smart Money entry-point context { houseId, deal }
-      smNames: false,                  // Smart Money portfolio card: stock names only when allowed
       model: null, modelKey: "", shareText: "",
       lastFocus: document.activeElement
     };
     if (privacy) { state.hideAmounts = true; state.hideQty = true; }
-    state.smNames = privacy ? false : !!pref.smNames; /* Privacy Mode forces names off */
     /* stock picker */
     dom.stockSel.innerHTML = "";
     rows.forEach(function (r) {
@@ -881,21 +823,12 @@
       o.value = r.sym; o.textContent = r.sym + (stockName(r.sym) ? " — " + stockName(r.sym) : "");
       dom.stockSel.appendChild(o);
     });
-    /* Smart Money stock cards can target a watched (not held) stock —
-       make sure the picker can represent it. */
-    if (SM_STOCK_TYPES.indexOf(type) >= 0 && symbol && !rows.some(function (r) { return r.sym === symbol; })) {
-      var ox = document.createElement("option");
-      ox.value = symbol; ox.textContent = symbol + (stockName(symbol) ? " — " + stockName(symbol) : "");
-      dom.stockSel.appendChild(ox);
-    }
     if (symbol) dom.stockSel.value = symbol;
     dom.hideAmt.checked = state.hideAmounts; dom.hideQty.checked = state.hideQty; dom.showDate.checked = state.showDate;
     dom.hideAmt.disabled = privacy; dom.hideQty.disabled = privacy;
-    if (dom.smNames) { dom.smNames.checked = state.smNames; dom.smNames.disabled = privacy; }
     dom.suggest.innerHTML = "";
     buildSuggestions();
     syncControls();
-    refreshSmPicker();
     dom.ov.hidden = false;
     document.body.style.overflow = "hidden";
     try { history.pushState({ folioShare: 1 }, ""); } catch (e) {}
@@ -931,336 +864,8 @@
   }
   function socialFooter() { return socialEntries(); }
 
-  /* ================================================================
-     SMART MONEY CARD TYPES (Part 2) — models for the eight sm_ types.
-     Data comes ONLY from gSmartMoney() (the Part 1 hook's bundle) and
-     its per-file accessors; this module fetches nothing itself. Every
-     model carries sourceLine (drawn by drawFooter above the standard
-     disclaimer) and uses inferred wording for fund activity. The
-     portfolio card never prints a rupee amount — percentages, scheme
-     counts and (only when the user allows) stock names only; Privacy
-     Mode forces names off in openSheet.
-     ================================================================ */
-  function smMonthText(iso) {
-    if (!iso) return "";
-    var p = String(iso).split("-");
-    if (p.length >= 2 && /^\d{4}$/.test(p[0])) {
-      var mn = MONTH_SHORT[Number(p[1]) - 1];
-      if (mn) return p.length >= 3 && p[2] ? Number(p[2]) + " " + mn + " " + p[0] : mn + " " + p[0];
-    }
-    return String(iso);
-  }
-  function smSourceLine(bundle, kind) {
-    var asOf = kind === "fii" ? bundle.fiiAsOf : (kind === "deal" ? bundle.dealsAsOf : bundle.mfAsOf);
-    return "Source: AMFI, AMC disclosures, NSDL. Data as of " + (smMonthText(asOf) || "the latest disclosure") + ".";
-  }
-  function smEmpty(base, msg) { base.empty = msg; return base; }
-  function smFmtShares(n) {
-    if (n == null || !isFinite(n)) return "—";
-    if (Math.abs(n) >= 1e7) return (n / 1e7).toFixed(2) + " Cr sh";
-    if (Math.abs(n) >= 1e5) return (n / 1e5).toFixed(1) + " L sh";
-    return Math.round(n).toLocaleString("en-IN") + " sh";
-  }
-  /* Mirrors of smartmoney.js' stockTotals/stockDirection (this module
-     stays independent of the SM module's load state, like it mirrors
-     the Insights maths elsewhere). */
-  function smTotalsOf(file) {
-    var t = { schemesNow: 0, schemesPrev: 0, houses: {}, sharesNow: 0, sharesPrev: 0, houseCount: 0 };
-    (file.schemes || []).forEach(function (s) {
-      if ((s.shares || 0) > 0) { t.schemesNow++; t.sharesNow += s.shares; if (s.house) t.houses[s.house] = 1; }
-      if ((s.prevShares || 0) > 0) { t.schemesPrev++; t.sharesPrev += s.prevShares; }
-    });
-    t.houseCount = Object.keys(t.houses).length;
-    return t;
-  }
-  function smDirectionOf(t) {
-    if (t.schemesPrev === 0 && t.schemesNow > 0) return "New entry";
-    if (t.schemesNow === 0 && t.schemesPrev > 0) return "Exited";
-    if (t.sharesPrev > 0) {
-      var p = (t.sharesNow - t.sharesPrev) / t.sharesPrev * 100;
-      if (p >= 0.5) return "Increased";
-      if (p <= -0.5) return "Reduced";
-      return "Little change";
-    }
-    return "—";
-  }
-  var SM_MF_MISSING = "Mutual fund data is not available yet — see Data Sources in the app.";
-
-  function smBuildWhoOwns(base, bundle) {
-    if (!bundle.mfAvailable) return smEmpty(base, SM_MF_MISSING);
-    var sym = state.symbol;
-    if (!sym) return smEmpty(base, "Pick a stock first.");
-    return Promise.resolve(bundle.stockFile(sym)).then(function (file) {
-      var none = "No covered mutual fund held " + sym + " in the latest disclosure month (" + smMonthText(bundle.mfAsOf) + ").";
-      if (!file || !(file.schemes || []).length) return smEmpty(base, none);
-      var t = smTotalsOf(file);
-      if (!t.schemesNow && !t.schemesPrev) return smEmpty(base, none);
-      var byHouse = {};
-      file.schemes.forEach(function (s) {
-        var hid = s.house || s.houseName || "?";
-        var g = byHouse[hid] || (byHouse[hid] = { name: s.houseName || hid, now: 0, prev: 0 });
-        g.now += s.shares || 0; g.prev += s.prevShares || 0;
-      });
-      var holders = Object.keys(byHouse).map(function (k) { return byHouse[k]; })
-        .filter(function (g) { return g.now > 0; })
-        .sort(function (a, b) { return b.now - a.now; }).slice(0, 3)
-        .map(function (g) {
-          var net = g.now - g.prev;
-          return { name: g.name, held: smFmtShares(g.now), change: net === 0 ? "steady" : (net > 0 ? "▲ " : "▼ ") + smFmtShares(Math.abs(net)), tone: net > 0 ? "gain" : (net < 0 ? "loss" : "") };
-        });
-      base.typeLabel = "WHO OWNS THIS STOCK";
-      base.title = sym + (file.name ? " — " + file.name : "");
-      base.subtitle = "Mutual fund holders · " + smMonthText(file.asOf || bundle.mfAsOf) + " disclosures";
-      base.heroSub = t.houseCount + " fund houses · " + smDirectionOf(t) + " vs last month (inferred)";
-      base.chips = [
-        { label: "Schemes", value: t.schemesNow + " (was " + t.schemesPrev + ")" },
-        { label: "Fund shares", value: smFmtShares(t.sharesNow) }
-      ];
-      if (file.mfPct != null) {
-        base.heroText = file.mfPct.toFixed(1) + "%";
-        base.heroLabel = "of shares held by mutual funds";
-        /* The painter draws the MF bar AND the holder rows — drawCard
-           gives a custom block the whole content area. */
-        base.custom = { kind: "smOwnBar", pct: file.mfPct, holders: holders };
-      } else {
-        base.heroText = String(t.schemesNow);
-        base.heroLabel = "schemes hold this stock";
-        base.listTitle = "TOP FUND HOLDERS";
-        base.rows = holders.map(function (h) { return { left: h.name, sub: h.held + " held", right: h.change, color: h.tone || undefined }; });
-      }
-      base.shareText = "Who owns " + sym + ": " + (file.mfPct != null ? file.mfPct.toFixed(1) + "% with mutual funds, " : "") + t.schemesNow + " schemes across " + t.houseCount + " houses — " + smDirectionOf(t).toLowerCase() + " last month (inferred from disclosures)";
-      return base;
-    });
-  }
-
-  function smBuildTrend(base, bundle) {
-    if (!bundle.mfAvailable) return smEmpty(base, SM_MF_MISSING);
-    var sym = state.symbol;
-    if (!sym) return smEmpty(base, "Pick a stock first.");
-    return Promise.resolve(bundle.stockFile(sym)).then(function (file) {
-      var hist = (file && file.history) || [];
-      var useShares = hist.some(function (h) { return h.totalShares != null; });
-      var vals = hist.map(function (h) { return useShares ? h.totalShares : h.schemeCount; });
-      if (hist.length < 2 || vals.some(function (v) { return v == null; })) {
-        return smEmpty(base, "Not enough monthly history for " + sym + " yet — the trend needs at least two disclosure months.");
-      }
-      var first = hist[0], last = hist[hist.length - 1];
-      base.typeLabel = "OWNERSHIP TREND";
-      base.title = sym + (file.name ? " — " + file.name : "");
-      base.subtitle = "Mutual fund holding trend · monthly disclosures";
-      base.heroText = last.schemeCount != null ? String(last.schemeCount) : "—";
-      base.heroLabel = "schemes hold it now";
-      base.heroSub = "Was " + (first.schemeCount != null ? first.schemeCount : "—") + " schemes in " + smMonthText(first.month) + " · latest " + smMonthText(last.month);
-      base.series = vals;
-      base.seriesLabel = useShares ? "Shares held by mutual funds" : "Schemes holding the stock";
-      base.shareText = sym + " ownership trend: " + (last.schemeCount != null ? last.schemeCount : "—") + " MF schemes hold it (" + smMonthText(last.month) + "), from " + (first.schemeCount != null ? first.schemeCount : "—") + " in " + smMonthText(first.month);
-      return base;
-    });
-  }
-
-  function smBuildFundAct(base, bundle) {
-    if (!bundle.mfAvailable) return smEmpty(base, SM_MF_MISSING);
-    var houses = bundle.houses || [];
-    var followed = gSmFollows().filter(function (id) { return houses.some(function (h) { return h.id === id; }); });
-    var houseId = (state.smCtx && state.smCtx.houseId) || followed[0] || (houses[0] && houses[0].id) || null;
-    if (!houseId) return smEmpty(base, "No fund house data yet.");
-    return Promise.resolve(bundle.houseFile(houseId)).then(function (f) {
-      if (!f) return smEmpty(base, "This house's monthly disclosure is not available yet.");
-      var h = houses.filter(function (x) { return x.id === houseId; })[0];
-      var name = f.name || (h && h.name) || houseId;
-      var a = f.activity || { newEntries: [], exits: [], increases: [], decreases: [] };
-      var buys = (a.increases || []).concat(a.newEntries || []);
-      var sells = (a.decreases || []).concat(a.exits || []);
-      if (!buys.length && !sells.length) return smEmpty(base, name + " reported no equity activity in the latest disclosure month.");
-      base.typeLabel = "FUND HOUSE ACTIVITY";
-      base.title = name;
-      base.subtitle = "Monthly activity · " + smMonthText(f.asOf || bundle.mfAsOf) + " · inferred from disclosures";
-      base.twoCol = {
-        leftTitle: "BOUGHT / GAINED", rightTitle: "REDUCED / EXITED",
-        left: buys.slice(0, 6).map(function (r) {
-          return { left: r.sym, right: r.schemes != null ? r.schemes + " sch" : "", color: "gain", sub: (a.newEntries || []).indexOf(r) >= 0 ? "new entry" : "increased" };
-        }),
-        right: sells.slice(0, 6).map(function (r) {
-          return { left: r.sym, right: r.schemes != null ? r.schemes + " sch" : "", color: "loss", sub: (a.exits || []).indexOf(r) >= 0 ? "exited" : "reduced" };
-        })
-      };
-      base.chips = [
-        { label: "New entries", value: String((a.newEntries || []).length) },
-        { label: "Full exits", value: String((a.exits || []).length) }
-      ];
-      base.shareText = name + " in " + smMonthText(f.asOf || bundle.mfAsOf) + ": " + (a.newEntries || []).length + " new entries, " + (a.exits || []).length + " full exits (inferred from scheme disclosures)";
-      return base;
-    });
-  }
-
-  function smBuildDeal(base, bundle) {
-    if (!bundle.dealsAvailable) return smEmpty(base, "Bulk and block deal data is not available yet — the free pipeline cannot reach the exchange deal files today.");
-    var deal = state.smCtx && state.smCtx.deal;
-    if (!deal || !deal.sym) return smEmpty(base, "Open a stock's Who Owns It tab and tap Share on a deal to build this card.");
-    var buy = String(deal.side || "").toUpperCase() !== "SELL";
-    var qtyTxt = deal.qty != null ? Math.round(deal.qty).toLocaleString("en-IN") + " shares" : "—";
-    base.typeLabel = String(deal.type || "bulk").toUpperCase() + " DEAL";
-    base.title = deal.sym;
-    base.subtitle = (deal.client || "Institutional client") + " · " + smMonthText(deal.date);
-    base.heroText = (buy ? "BOUGHT " : "SOLD ") + qtyTxt;
-    base.heroLabel = buy ? "in one bulk/block deal" : "in one bulk/block deal";
-    if (deal.price != null) base.heroSub = "at " + fmtInr2(deal.price) + " per share";
-    base.listTitle = "DEAL DETAILS";
-    base.rows = [
-      { left: "Client", sub: "", right: deal.client || "—" },
-      { left: "Side", sub: "", right: buy ? "Buy" : "Sell", color: buy ? "gain" : "loss" },
-      { left: "Date", sub: "", right: smMonthText(deal.date) || "—" }
-    ];
-    base.shareText = deal.sym + ": " + (buy ? "bulk/block buy of " : "bulk/block sale of ") + qtyTxt + " by " + (deal.client || "a client") + " (" + smMonthText(deal.date) + ")";
-    return base;
-  }
-
-  function smBuildAccum(base, bundle) {
-    if (!bundle.mfAvailable) return smEmpty(base, SM_MF_MISSING);
-    var lb = bundle.leaderboards;
-    var rows = (lb && lb.accumulation) || [];
-    if (!rows.length) return smEmpty(base, "No multi-fund accumulation data in the latest disclosure month.");
-    base.typeLabel = "FUNDS ACCUMULATING";
-    base.title = "Funds accumulating together";
-    base.subtitle = "Stocks the most fund houses added to · " + smMonthText(lb.asOf || bundle.mfAsOf);
-    base.heroText = rows[0].sym;
-    base.heroLabel = "most widely accumulated";
-    base.heroSub = rows[0].houses != null ? rows[0].houses + " fund houses added or raised it" : "";
-    if (rows[0].spark && rows[0].spark.length > 1) { base.series = rows[0].spark; base.seriesLabel = rows[0].sym + " — accumulation, recent months"; }
-    base.listTitle = "ACCUMULATION LEADERBOARD";
-    base.rows = rows.slice(0, 6).map(function (r) {
-      return { left: r.sym, sub: r.name || "", right: (r.houses != null ? r.houses + " houses" : "") + (r.schemes != null ? " · " + r.schemes + " sch" : ""), color: "gain" };
-    });
-    base.shareText = "Funds are accumulating " + rows[0].sym + " together (" + (rows[0].houses != null ? rows[0].houses + " houses" : "many houses") + ") — inferred from monthly disclosures";
-    return base;
-  }
-
-  function smBuildLeaderboard(base, bundle) {
-    if (!bundle.mfAvailable) return smEmpty(base, SM_MF_MISSING);
-    var lb = bundle.leaderboards;
-    if (!lb || (!lb.netBuys.length && !lb.netSells.length)) return smEmpty(base, "Leaderboards are empty for the latest disclosure month.");
-    var fmtCr = function (v) { return v != null ? "₹" + Math.round(v).toLocaleString("en-IN") + " Cr est." : "—"; };
-    base.typeLabel = "TOP MF BUYS & SELLS";
-    base.title = "Top MF buys & sells";
-    base.subtitle = smMonthText(lb.asOf || bundle.mfAsOf) + " · estimated from share changes × price";
-    base.twoCol = {
-      leftTitle: "TOP NET BUYS (GAINERS)", rightTitle: "TOP NET SELLS",
-      left: lb.netBuys.slice(0, 5).map(function (r) { return { left: r.sym, sub: r.name || "", right: fmtCr(r.valueCr), color: "gain" }; }),
-      right: lb.netSells.slice(0, 5).map(function (r) { return { left: r.sym, sub: r.name || "", right: fmtCr(r.valueCr), color: "loss" }; })
-    };
-    base.shareText = "Top MF net buy of " + smMonthText(lb.asOf || bundle.mfAsOf) + ": " + (lb.netBuys[0] ? lb.netBuys[0].sym : "—") + " (estimated, inferred from disclosures)";
-    return base;
-  }
-
-  function smBuildPortfolio(base, bundle, d) {
-    if (!bundle.mfAvailable) return smEmpty(base, SM_MF_MISSING);
-    var stocks = (bundle.myStocks || []).filter(function (s) { return s.schemesNow > 0 || s.schemesPrev > 0; });
-    if (!stocks.length) return smEmpty(base, "No covered mutual fund held your stocks in the latest disclosure month (" + smMonthText(bundle.mfAsOf) + ").");
-    var names = !!state.smNames && !state.appPrivacy;
-    base.typeLabel = "SMART MONEY IN MY PORTFOLIO";
-    base.title = "Smart money in my portfolio";
-    base.subtitle = "Mutual fund presence in my holdings · " + smMonthText(bundle.mfAsOf);
-    if (bundle.overlap) {
-      base.heroText = bundle.overlap.pct.toFixed(1) + "%";
-      base.heroLabel = "of my portfolio is in stocks funds also hold";
-    } else {
-      base.heroText = String(stocks.length);
-      base.heroLabel = "of my stocks are held by mutual funds";
-    }
-    base.listTitle = names ? "MY STOCKS THAT FUNDS HOLD" : "MY HOLDINGS THAT FUNDS HOLD";
-    base.rows = stocks.slice(0, 6).map(function (s, i) {
-      return {
-        left: names ? s.sym : "Holding " + "ABCDEFGH".charAt(i),
-        sub: s.houses + " houses · " + s.schemesNow + " schemes",
-        right: s.mfPct != null ? s.mfPct.toFixed(1) + "% with funds" : s.direction,
-        color: (s.direction === "Increased" || s.direction === "New entry") ? "gain" : (s.direction === "Reduced" || s.direction === "Exited") ? "loss" : undefined
-      };
-    });
-    base.chips = [{ label: "Stocks covered", value: stocks.length + " of " + ((d && d.rows) ? d.rows.length : stocks.length) }];
-    base.shareText = "Smart money in my portfolio: mutual funds hold " + stocks.length + " of my stocks (" + smMonthText(bundle.mfAsOf) + " disclosures, inferred)";
-    return base;
-  }
-
-  function smBuildFlows(base, bundle) {
-    if (!bundle.fiiAvailable || !bundle.flows || !(bundle.flows.months || []).length) {
-      return smEmpty(base, "NSDL monthly FII flow data is not available yet.");
-    }
-    var months = bundle.flows.months.slice(-8);
-    var last = months[months.length - 1];
-    var crTxt = function (v) { return (v >= 0 ? "+" : "−") + "₹" + Math.round(Math.abs(v)).toLocaleString("en-IN") + " Cr"; };
-    base.typeLabel = "FII FLOWS — MONTHLY (NSDL)";
-    base.title = "Foreign investor flows";
-    base.subtitle = "Monthly net FII investment · NSDL · published with a lag";
-    base.heroText = crTxt(last.net);
-    base.heroLabel = smMonthText(last.month) + (last.net >= 0 ? " net buying" : " net selling");
-    base.heroSub = "FII only, whole market. Daily FII/DII figures are not available in free data.";
-    base.custom = { kind: "smBars", bars: months.map(function (m) { return { label: smMonthText(m.month), value: m.net }; }) };
-    base.shareText = "FII flows, " + smMonthText(last.month) + ": " + crTxt(last.net) + " net — monthly NSDL data, published with a lag";
-    return base;
-  }
-
-  function buildSmModel(d) {
-    var base = { typeLabel: "", social: socialFooter(), date: state.showDate ? dateLine() : "" };
-    return gSmartMoney().then(function (bundle) {
-      if (!bundle) return smEmpty(base, "Smart Money data is not available yet — the pipeline has not published. See Data Sources in the app for status.");
-      base.sourceLine = smSourceLine(bundle, state.type === "sm_flows" ? "fii" : (state.type === "sm_deal" ? "deal" : "mf"));
-      if (state.type === "sm_whoowns") return smBuildWhoOwns(base, bundle);
-      if (state.type === "sm_trend") return smBuildTrend(base, bundle);
-      if (state.type === "sm_fundact") return smBuildFundAct(base, bundle);
-      if (state.type === "sm_deal") return smBuildDeal(base, bundle);
-      if (state.type === "sm_accum") return smBuildAccum(base, bundle);
-      if (state.type === "sm_leaderboard") return smBuildLeaderboard(base, bundle);
-      if (state.type === "sm_portfolio") return smBuildPortfolio(base, bundle, d);
-      if (state.type === "sm_flows") return smBuildFlows(base, bundle);
-      return smEmpty(base, "This Smart Money card is not available.");
-    }).catch(function () { return smEmpty(base, "Smart Money data could not be loaded right now."); });
-  }
-
-  /* Picker gating: Smart Money types appear only when their dataset
-     is live (checked through the Part 1 gates hook, once per open).
-     The deal type is the one exception — its seg button supports a
-     real disabled state, so it stays visible with its reason, the
-     same pattern as the report sheet's section note. If the whole MF
-     dataset is unavailable, the Smart Money section hides entirely
-     and a pre-selected SM type falls back to the summary card (the
-     builders still gate authoritatively if data vanishes). */
-  function refreshSmPicker() {
-    if (!dom || !dom.typeSegs || !dom.typeSegs.smartmoney) return;
-    var seg = dom.typeSegs.smartmoney;
-    var btns = {};
-    Array.prototype.forEach.call(seg.children, function (b) { btns[b.dataset.val] = b; });
-    Object.keys(btns).forEach(function (k) { btns[k].style.display = "none"; });
-    function unavailable() {
-      if (dom.smSec) dom.smSec.style.display = "none";
-      if (state && SM_TYPES[state.type]) { state.type = "summary"; syncControls(); queueRender(true); }
-    }
-    if (typeof window === "undefined" || typeof window.folioSmartMoneyGates !== "function") { unavailable(); return; }
-    window.folioSmartMoneyGates().then(function (g) {
-      if (!state || !state.open || !dom) return;
-      if (!g || !g.mf || !g.mf.ok) { unavailable(); return; }
-      if (dom.smSec) dom.smSec.style.display = "";
-      ["sm_whoowns", "sm_fundact", "sm_accum", "sm_portfolio", "sm_leaderboard", "sm_trend"].forEach(function (id) {
-        if (btns[id]) btns[id].style.display = "";
-      });
-      if (btns.sm_flows) btns.sm_flows.style.display = (g.fii && g.fii.ok) ? "" : "none";
-      if (btns.sm_deal) {
-        btns.sm_deal.style.display = "";
-        if (g.deals && g.deals.ok) {
-          btns.sm_deal.disabled = false;
-          btns.sm_deal.textContent = "Bulk / block deal";
-          btns.sm_deal.removeAttribute("title");
-        } else {
-          btns.sm_deal.disabled = true;
-          btns.sm_deal.textContent = "Bulk / block deal — not available yet";
-          btns.sm_deal.title = "Bulk and block deal data is not available yet — the free pipeline cannot reach the exchange deal files today.";
-        }
-      }
-    }).catch(function () {});
-  }
-
   function buildModel() {
     var d = gEnriched();
-    if (SM_TYPES[state.type]) return buildSmModel(d);
     if (!d || !d.rows || !d.rows.length) {
       return Promise.resolve({ empty: "Add stocks to Folio first — your share card will appear here.", typeLabel: "FOLIO", social: socialFooter() });
     }
@@ -2009,10 +1614,7 @@
   function dataKey() {
     return [state.type, state.range, state.symbol, state.type === "wrapped" ? state.wrappedPeriod : ""].join("|")
       + "|" + state.hideAmounts + "|" + state.hideQty + "|" + state.showDate
-      + "|" + (state.smNames ? 1 : 0)
-      + "|" + (state.smCtx && state.smCtx.houseId ? state.smCtx.houseId : "")
-      + "|" + (state.smCtx && state.smCtx.deal ? state.smCtx.deal.sym + "@" + state.smCtx.deal.date : "");
-  }
+;  }
 
   function scheduleRender(needsData) {
     if (!state || !state.open) return;
@@ -2139,13 +1741,6 @@
     g.fillStyle = st.muted;
     g.fillText(DISCLAIMER, W / 2, gridTop - 18 * fs);
     var contentBottom = gridTop - 18 * fs - 30 * fs; /* content must end above this y */
-    /* Smart Money source line (additive: only SM models set
-       sourceLine, so every pre-existing card's layout is unchanged) */
-    if (model.sourceLine) {
-      g.font = "500 " + Math.round(21 * fs) + "px " + f;
-      g.fillText(truncTo(g, model.sourceLine, W - pad * 2), W / 2, contentBottom - 4 * fs);
-      contentBottom -= 34 * fs;
-    }
     return contentBottom;
   }
 
@@ -2177,81 +1772,6 @@
     if (cu.kind === "grades") return drawGrades(g, cu, x, y, w, h, st, fs);
     if (cu.kind === "podium") return drawPodium(g, cu, x, y, w, h, st, fs);
     if (cu.kind === "checks") return drawChecks(g, cu, x, y, w, h, st, fs);
-    if (cu.kind === "smOwnBar") return drawSmOwnBar(g, cu, x, y, w, h, st, fs);
-    if (cu.kind === "smBars") return drawSmBars(g, cu, x, y, w, h, st, fs);
-  }
-
-  /* Smart Money: MF ownership bar + the top-3 holder rows beneath it
-     (a custom block owns the whole content area in drawCard, so the
-     holders ride inside this painter). */
-  function drawSmOwnBar(g, cu, x, y, w, h, st, fs) {
-    var pct = Math.max(0, Math.min(100, cu.pct || 0));
-    var barH = 54 * fs;
-    rr(g, x, y, w, barH, barH / 2);
-    g.fillStyle = st.panel; g.fill();
-    g.strokeStyle = st.stroke; g.lineWidth = 1.2 * fs; g.stroke();
-    if (pct > 0) {
-      g.save();
-      rr(g, x, y, w, barH, barH / 2); g.clip();
-      g.fillStyle = st.accent;
-      g.fillRect(x, y, w * pct / 100, barH);
-      g.restore();
-    }
-    g.textAlign = "left"; g.fillStyle = st.text;
-    g.font = "700 " + Math.round(24 * fs) + "px " + BODY_FONT;
-    g.fillText("Mutual funds " + pct.toFixed(1) + "%", x, y + barH + 38 * fs);
-    g.textAlign = "right"; g.fillStyle = st.muted;
-    g.fillText("Others " + (100 - pct).toFixed(1) + "%", x + w, y + barH + 38 * fs);
-    g.textAlign = "left";
-    var holders = cu.holders || [];
-    if (holders.length) {
-      var ly = y + barH + 84 * fs;
-      g.fillStyle = st.muted; g.font = "700 " + Math.round(21 * fs) + "px " + BODY_FONT;
-      g.fillText("TOP FUND HOLDERS", x, ly);
-      holders.forEach(function (hd, i) {
-        var yy = ly + 46 * fs + i * 58 * fs;
-        if (yy > y + h) return;
-        g.fillStyle = st.text; g.font = "700 " + Math.round(26 * fs) + "px " + BODY_FONT;
-        g.fillText(truncTo(g, hd.name, w * 0.5), x, yy);
-        g.fillStyle = st.muted; g.font = "500 " + Math.round(22 * fs) + "px " + BODY_FONT;
-        g.fillText(hd.held + " held", x + w * 0.54, yy);
-        g.textAlign = "right"; g.fillStyle = semColor(st, hd.tone || undefined);
-        g.font = "700 " + Math.round(24 * fs) + "px " + BODY_FONT;
-        g.fillText(hd.change, x + w, yy);
-        g.textAlign = "left";
-      });
-    }
-  }
-
-  /* Smart Money: diverging monthly bars (NSDL FII net flows, ₹ Cr) —
-     green right of the zero line, red left, value at the row's end. */
-  function drawSmBars(g, cu, x, y, w, h, st, fs) {
-    var bars = cu.bars || [];
-    if (!bars.length) return;
-    var maxAbs = 0;
-    bars.forEach(function (b) { if (Math.abs(b.value) > maxAbs) maxAbs = Math.abs(b.value); });
-    if (!maxAbs) maxAbs = 1;
-    var labelW = 122 * fs, valW = 176 * fs;
-    var plotX = x + labelW, plotW = w - labelW - valW;
-    var zeroX = plotX + plotW / 2;
-    var rowH = Math.min(64 * fs, h / bars.length);
-    var barH = Math.min(30 * fs, rowH * 0.52);
-    g.strokeStyle = st.stroke; g.lineWidth = 1.2 * fs;
-    g.beginPath(); g.moveTo(zeroX, y); g.lineTo(zeroX, y + rowH * bars.length); g.stroke();
-    bars.forEach(function (b, i) {
-      var cy = y + i * rowH + rowH / 2;
-      g.textAlign = "left"; g.fillStyle = st.muted;
-      g.font = "600 " + Math.round(22 * fs) + "px " + BODY_FONT;
-      g.fillText(truncTo(g, b.label, labelW - 10 * fs), x, cy + 8 * fs);
-      var bw = Math.max(2, Math.abs(b.value) / maxAbs * (plotW / 2));
-      g.fillStyle = semColor(st, b.value >= 0 ? "gain" : "loss");
-      if (b.value >= 0) g.fillRect(zeroX, cy - barH / 2, bw, barH);
-      else g.fillRect(zeroX - bw, cy - barH / 2, bw, barH);
-      g.fillStyle = st.text;
-      g.font = "700 " + Math.round(23 * fs) + "px " + BODY_FONT;
-      g.fillText((b.value >= 0 ? "+" : "−") + "₹" + Math.round(Math.abs(b.value)).toLocaleString("en-IN") + " Cr", zeroX + plotW / 2 + 12 * fs, cy + 8 * fs);
-    });
-    g.textAlign = "left";
   }
 
   function drawDonut(g, cu, x, y, w, h, st, fs) {

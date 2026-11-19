@@ -694,7 +694,7 @@ function renderDashboard() {
   if (d.rows.length) dashAnimated = true;
   // donut (hover any slice or name to inspect)
   const svg = $("donut"); const legend = $("donutLegend");
-  if (!d.rows.length || d.value <= 0) { svg.innerHTML = ""; legend.innerHTML = ""; $("sectorBars").innerHTML = ""; $("pnlBars").innerHTML = ""; }
+  if (!d.rows.length || d.value <= 0) { svg.innerHTML = ""; legend.innerHTML = ""; $("pnlBars").innerHTML = ""; }
   else {
     const dmode = window.__donutMode || "stock";
     let slices;
@@ -738,11 +738,6 @@ function renderDashboard() {
     };
     svg.querySelectorAll(".seg").forEach(p => { p.addEventListener("mouseenter", () => setCenter(p.dataset.sym)); p.addEventListener("click", () => setCenter(p.dataset.sym)); p.addEventListener("mouseleave", () => setCenter(null)); });
     legend.querySelectorAll(".legend-item").forEach(el2 => { el2.addEventListener("mouseenter", () => setCenter(el2.dataset.sym)); el2.addEventListener("click", () => setCenter(el2.dataset.sym)); el2.addEventListener("mouseleave", () => setCenter(null)); });
-    // sector bars
-    const secMap = {};
-    d.rows.forEach(r_ => { const s = r_.sector || "Other"; secMap[s] = (secMap[s] || 0) + r_.cur; });
-    const secs = Object.entries(secMap).sort((a, b) => b[1] - a[1]);
-    $("sectorBars").innerHTML = secs.map((sv, i) => `<div class="bar-row"><span class="bar-name">${esc(sv[0])}</span><div class="bar-track"><div class="bar-fill" style="width:${(sv[1] / d.value * 100).toFixed(1)}%;background:${PIE[i % PIE.length]}"></div></div><span class="bar-val">${inr(sv[1])} · ${(sv[1] / d.value * 100).toFixed(1)}%</span></div>`).join("");
     // profit/loss bars (zero in the middle)
     const maxAbs = Math.max(...d.rows.map(r_ => Math.abs(r_.pnl)), 1);
     $("pnlBars").innerHTML = [...d.rows].sort((a, b) => b.pnl - a.pnl).map(r_ => {

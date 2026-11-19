@@ -7,7 +7,7 @@
      whole existing chain on every navigation, so every wrapper
      side-effect keeps firing — folioView tracking + footer scope
      (features 198), PNG buttons (T4), scroll memory + view-enter +
-     body[data-view] + legal link (T6), deals render + news-seen
+     body[data-view] + legal link (T6), news-seen
      marker (folioC), the v89 history arm, render-on-switch (v91),
      analytics mount (ana), e2ee/quick/skip security-row refreshes.
    - History has ONE owner: the v89 modal/view history system.
@@ -33,8 +33,8 @@
   "use strict";
   function $(id) { return document.getElementById(id); }
 
-  var VIEW_HASH = { dashboard: "#/home", holdings: "#/holdings", watchlist: "#/watchlist", insights: "#/insights", news: "#/news", history: "#/history", deals: "#/deals", profile: "#/account" };
-  var HASH_VIEW = { "#/home": "dashboard", "#/holdings": "holdings", "#/watchlist": "watchlist", "#/insights": "insights", "#/news": "news", "#/history": "history", "#/deals": "deals", "#/account": "profile" };
+  var VIEW_HASH = { dashboard: "#/home", holdings: "#/holdings", watchlist: "#/watchlist", insights: "#/insights", news: "#/news", history: "#/history", profile: "#/account" };
+  var HASH_VIEW = { "#/home": "dashboard", "#/holdings": "holdings", "#/watchlist": "watchlist", "#/insights": "insights", "#/news": "news", "#/history": "history", "#/account": "profile" };
   /* #/account/<key> -> index of the section panel inside #view-profile
      (static DOM order: 0 account card, 1 Personal Info, 2 Security,
      3 Data & Vault, 4 Danger Zone — the same order the profile
@@ -156,7 +156,6 @@
     if (busy()) { pending = r; startRetry(); return; }
     pending = null;
     if (r.kind === "view") {
-      if (r.view === "deals") { try { if (typeof folioEnsureDealsView === "function") folioEnsureDealsView(); } catch (e) {} }
       if (currentView() !== r.view) {
         if (r.acc != null) keepHashOnce = true;
         try { switchView(r.view); } catch (e) {}
