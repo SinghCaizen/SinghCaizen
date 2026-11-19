@@ -584,3 +584,14 @@ html[data-skin] .empty-note, html[data-skin] .empty-state { padding-left: 12px; 
 html[data-skin] #watchForm input::placeholder,
 html[data-skin] #view-watchlist input::placeholder,
 html[data-skin] #view-holdings input::placeholder { font-size: 13px; }
+
+/* ================= v148 insights masonry =================
+   #insXWrap / #planWrap are grid wrappers inside the view: span them full
+   width and give THEM the masonry columns, so their panels pack at half
+   width with no row-height voids. */
+html[data-skin] #view-insights > #insXWrap,
+html[data-skin] #view-insights > #planWrap {
+  column-span: all; display: block; columns: 2; column-gap: 14px;
+}
+html[data-skin] #insXWrap > .panel,
+html[data-skin] #planWrap > .panel { break-inside: avoid; margin-bottom: 14px; }
