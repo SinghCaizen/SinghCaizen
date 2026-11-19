@@ -24,7 +24,7 @@
   /* ---------------- theme switching ---------------- */
   function syncSkinUI() {
     var s = skin(), i, b = document.getElementById("themeBtn");
-    if (b) b.textContent = ">_ " + (s === "matrix" ? "MATRIX" : s === "cyan" ? "CYAN" : "AMBER");
+    if (b) b.textContent = (s === "matrix" ? "MATRIX" : s === "cyan" ? "CYAN" : "AMBER");
     var btns = document.querySelectorAll("[data-skin-opt]");
     for (i = 0; i < btns.length; i++) btns[i].classList.toggle("active", btns[i].getAttribute("data-skin-opt") === s);
     rainColor();
@@ -1030,16 +1030,17 @@
 
   /* ---------------- hide the header while scrolling (phone) ------- */
   var headHidden = false, lastY = 0;
-  window.addEventListener("scroll", function () {
+  document.addEventListener("scroll", function (ev) {
     if (window.innerWidth > 700) return;
     var app = $("appView");
     if (!app || app.classList.contains("hidden")) return;
     if (document.querySelector(".modal:not(.hidden)")) { if (headHidden) { headHidden = false; document.body.classList.remove("hk-head-hide"); } return; }
-    var y = window.scrollY || document.documentElement.scrollTop || 0;
+    var t = ev.target;
+    var y = (t && t !== document && typeof t.scrollTop === "number") ? t.scrollTop : (window.scrollY || document.documentElement.scrollTop || 0);
     if (y > 90 && y - lastY > 6 && !headHidden) { headHidden = true; document.body.classList.add("hk-head-hide"); }
     else if ((y < 60 || lastY - y > 6) && headHidden) { headHidden = false; document.body.classList.remove("hk-head-hide"); }
     lastY = y;
-  }, { passive: true });
+  }, { passive: true, capture: true });
 
   /* ---------------- one-time hint when sound is off ---------------- */
   document.addEventListener("pointerdown", function () {
