@@ -4770,10 +4770,10 @@ function cmdkRender(q) {
   if ("add stock".indexOf(q) === 0 && q.length >= 3) cmd("➕ Add stock / transaction", () => { if (typeof openTxn === "function") openTxn("BUY", "", ""); });
   if (q === "help") cmd("❓ Commands: goto <tab> · add stock · search <symbol> · theme matrix/cyan/amber · sound on/off · privacy on/off · refresh", () => {});
   const views = [["dashboard", "🏠 Dashboard"], ["holdings", "💼 Holdings"], ["watch", "★ Watchlist"], ["insights", "📊 Insights"], ["history", "🕘 History"], ["news", "📰 News"], ["profile", "👤 My Profile"]];
-  views.forEach(([v, label]) => { if (!qv || label.toLowerCase().includes(qv)) items.push({ label, run: () => switchView(v) }); });
+  views.forEach(([v, label]) => { if (!qv || label.toLowerCase().includes(qv)) items.push({ label, nav: true, run: () => switchView(v) }); });
   if (qv.length >= 2) (window.STOCK_LIST || []).filter(e => e[0].toLowerCase().includes(qv) || e[1].toLowerCase().includes(qv)).slice(0, 7).forEach(e => items.push({ label: "📈 " + e[0] + " — " + e[1], run: () => { if (typeof openStock === "function") openStock(e[0]); } }));
   list.innerHTML = items.length ? items.map((it, i) => '<button type="button" class="cmdk-item" data-cmdk="' + i + '">' + esc(it.label) + "</button>").join("") : '<p class="empty-note">Nothing matches.</p>';
-  list.querySelectorAll("[data-cmdk]").forEach(b => b.addEventListener("click", () => { const run = items[Number(b.dataset.cmdk)].run; $("cmdkPop").classList.add("hidden"); setTimeout(run, 40); }));
+  list.querySelectorAll("[data-cmdk]").forEach(b => b.addEventListener("click", () => { const it = items[Number(b.dataset.cmdk)]; $("cmdkPop").classList.add("hidden"); setTimeout(it.run, 40); if (it.nav) setTimeout(it.run, 400); }));
 }
 document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); platPalette(); } });
 /* --- swipe between tabs + pull to refresh --- */

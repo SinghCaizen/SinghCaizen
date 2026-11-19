@@ -527,6 +527,7 @@
       if (!dn) dn = (state.profile && state.profile.name) || (window.currentUser && currentUser.name) || "";
       name = String(dn || "TRADER").split(" ")[0].toUpperCase() || "TRADER";
     } catch (e) {}
+    if (name === "TRADER") g.dataset.fallback = "1"; else delete g.dataset.fallback;
     var full = "> WELCOME BACK, " + name;
     if (fx() === "full") {
       var rest = full.slice(2), i = 0;
@@ -798,4 +799,18 @@
     var app = $("appView");
     if (app && !app.classList.contains("hidden")) { buildStatus(); updateStatus(); }
   }, 1000);
+  setInterval(function () {
+    try {
+      var p = $("hkPanel");
+      if (p && !p.querySelector("[data-sfx-opt]")) { delete p.dataset.hk2; extendPanel(); }
+      var g = $("hkGreet");
+      if (g && g.dataset.fallback === "1") {
+        var dn = "";
+        if (typeof displayName === "function") dn = displayName();
+        if (!dn) dn = (state.profile && state.profile.name) || (window.currentUser && currentUser.name) || "";
+        dn = String(dn || "").split(" ")[0].toUpperCase();
+        if (dn) { g.textContent = "> WELCOME BACK, " + dn + (fx() === "off" ? "" : "_"); delete g.dataset.fallback; }
+      }
+    } catch (e) {}
+  }, 2000);
 })();
