@@ -885,7 +885,7 @@
     var d = ensureDip();
     d.classList.remove("out");
     d.classList.add("on");
-    var hold = fx() === "full" ? 80 : 50;
+    var hold = fx() === "full" ? 60 : 40;
     setTimeout(function () {
       try { swapFn(); } catch (e) {}
       requestAnimationFrame(function () {
@@ -937,6 +937,12 @@
         emerge(v);
         if (window.HkSfx && HkSfx.isOn()) HkSfx.play("burst");
         decorateNotes(v);
+        try {
+          v.querySelectorAll(".dash-chips, .cap-chips, .tax-tabs, .sheet-tabs, .hist-filter, .stat-chips").forEach(function (strip) {
+            var act = strip.querySelector(".active");
+            if (act && strip.scrollWidth > strip.clientWidth + 4) act.scrollIntoView({ block: "nearest", inline: "nearest" });
+          });
+        } catch (e) {}
       });
     };
     w.__hk3 = true; w.__hk2 = true; w.__hk = true;
