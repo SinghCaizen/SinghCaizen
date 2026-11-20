@@ -584,14 +584,28 @@ async function resolveSymbol(sym, nameHint) {
     const tc = q.toLowerCase().replace(/(^|\s)([a-z])/g, (m, a, b) => a + b.toUpperCase());
     if (tc !== q) queries.push(tc);
   }
+  const searchRoutes = [];
+  if (window.FOLIO_WORKER_URL) searchRoutes.push(u => window.FOLIO_WORKER_URL + "?url=" + encodeURIComponent(u));
+  searchRoutes.push(
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
+    u => u
+  );
   for (const q of queries) {
+    let j = null;
+    const su = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q);
+    for (const route of searchRoutes) {
+      try {
+        const res = await fetchTO(route(su), 5000);
+        if (!res.ok) continue;
+        j = await res.json();
+        if (j && Array.isArray(j.quotes)) break;
+        j = null;
+      } catch (e) { j = null; }
+    }
+    if (!j) continue;
     try {
-      const su = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q);
-      const proxied = window.FOLIO_WORKER_URL ? window.FOLIO_WORKER_URL + "?url=" + encodeURIComponent(su) : su;
-      const res = await fetchTO(proxied, 6000);
-      if (!res.ok) continue;
-      const j = await res.json();
-      const quotes = (j && j.quotes) || [];
+      const quotes = j.quotes || [];
       for (const cand of quotes) {
         if (!cand || cand.quoteType !== "EQUITY" || !cand.symbol) continue;
         if (cand.exchange !== "NSI" && cand.exchange !== "BSE") continue;
