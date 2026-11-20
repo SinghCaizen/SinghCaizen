@@ -592,29 +592,35 @@ async function resolveSymbol(sym, nameHint) {
     u => u
   );
   for (const q of queries) {
-    let j = null;
-    const su = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q);
-    for (const route of searchRoutes) {
+    let cands = [];
+    /* primary: the app's own Yahoo suggest — the exact search the
+       Add-Stock box uses, proven in this browser */
+    if (typeof window.__yahooSuggest === "function") {
       try {
-        const res = await fetchTO(route(su), 5000);
-        if (!res.ok) continue;
-        j = await res.json();
-        if (j && Array.isArray(j.quotes)) break;
-        j = null;
-      } catch (e) { j = null; }
+        const out = await window.__yahooSuggest(q);
+        (out || []).forEach(x => { if (x && x[0]) cands.push({ symbol: String(x[0]), longname: x[1] || "" }); });
+      } catch (e) {}
     }
-    if (!j) continue;
-    try {
-      const quotes = j.quotes || [];
-      for (const cand of quotes) {
-        if (!cand || cand.quoteType !== "EQUITY" || !cand.symbol) continue;
-        if (cand.exchange !== "NSI" && cand.exchange !== "BSE") continue;
-        const nm = squashName(cand.longname || cand.shortname || "");
-        const want = squashName(q);
-        /* accept only when the company's name actually matches the query */
-        if (nm && want && (nm.indexOf(want) === 0 || want.indexOf(nm) === 0)) { folioLog("RESOLVE " + sym + " -> " + cand.symbol); return cand.symbol.replace(/\.(NS|BO)$/, ""); }
+    if (!cands.length) {
+      const su = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q);
+      for (const route of searchRoutes) {
+        try {
+          const res = await fetchTO(route(su), 5000);
+          if (!res.ok) continue;
+          const j = await res.json();
+          if (j && Array.isArray(j.quotes)) {
+            j.quotes.forEach(c => { if (c && c.quoteType === "EQUITY" && c.symbol && (c.exchange === "NSI" || c.exchange === "BSE")) cands.push({ symbol: String(c.symbol).replace(/\.(NS|BO)$/, ""), longname: c.longname || c.shortname || "" }); });
+            break;
+          }
+        } catch (e) {}
       }
-    } catch (e) {}
+    }
+    const want = squashName(q);
+    for (const cand of cands) {
+      const nm = squashName(cand.longname || "");
+      /* accept only when the company's name actually matches the query */
+      if (nm && want && (nm.indexOf(want) === 0 || want.indexOf(nm) === 0)) { folioLog("RESOLVE " + sym + " -> " + cand.symbol); return cand.symbol; }
+    }
   }
   folioLog("RESOLVE " + sym + " -> NONE");
   return null;
