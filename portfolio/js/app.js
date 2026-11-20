@@ -516,53 +516,133 @@ async function fetchTO(url, ms, register) {
   try { return await fetch(url, { cache: "no-store", signal: ctl.signal }); }
   finally { clearTimeout(to); }
 }
-async function fetchOne(sym) {
-  const manual = state.manualPrices && state.manualPrices[sym];
-  /* v138: the app's own folio-proxy Worker races FIRST (the pattern
-     features.js has used all along) — the public proxies alone were
-     failing on the owner's network, leaving every price empty and
-     the portfolio silently valued at cost. */
-  const proxies = [];
-  if (window.FOLIO_WORKER_URL) proxies.push(u => window.FOLIO_WORKER_URL + "?url=" + encodeURIComponent(u));
-  proxies.push(
+/* v156: gentle fetching. The old version raced 8 parallel requests per
+   symbol (2 hosts x 4 proxies) in batches of 4 — Yahoo throttles that
+   burst, so random symbols came back empty and were valued at cost.
+   Now: ONE Worker request first (it is fast and reliable), public-proxy
+   race only as a fallback, .BO after .NS, and — when a "symbol" is
+   really a company name typed into the symbol field (an import once
+   produced VEDANTAOILANDGAS) — a Yahoo search resolves the real ticker
+   (VOGL) and the alias is remembered on this device. */
+const folioAlias = (() => { try { return JSON.parse(localStorage.getItem("folio_sym_alias") || "{}"); } catch (e) { return {}; } })();
+function saveAlias() { try { localStorage.setItem("folio_sym_alias", JSON.stringify(folioAlias)); } catch (e) {} }
+async function fetchChart(url, proxyFn, ms, ctls) {
+  const res = await fetchTO(proxyFn(url), ms || 6000, ctls);
+  if (!res.ok) throw new Error("bad route");
+  const j = await res.json();
+  const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
+  if (!meta || !meta.regularMarketPrice) throw new Error("no data");
+  let spark = [];
+  try { const q = j.chart.result[0].indicators.quote[0].close || []; spark = q.filter(v => typeof v === "number"); } catch (e) {}
+  const prev = spark.length > 1 ? spark[spark.length - 2] : (meta.chartPreviousClose || meta.regularMarketPrice);
+  return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
+}
+async function fetchChain(sym) {
+  const plain = sym.indexOf(".") < 0 && sym.charAt(0) !== "^";
+  const urls = [yahooUrl(sym)];
+  if (plain) urls.push(yahooUrl(sym).replace(".NS", ".BO"));
+  /* 1) the app's own Worker, one request at a time (both Yahoo hosts) */
+  if (window.FOLIO_WORKER_URL) {
+    const w = u => window.FOLIO_WORKER_URL + "?url=" + encodeURIComponent(u);
+    const wurls = [];
+    urls.forEach(u => { wurls.push(u); wurls.push(u.replace("query1.finance.yahoo.com", "query2.finance.yahoo.com")); });
+    for (const u of wurls) { try { return await fetchChart(u, w, 6000); } catch (e) {} }
+  }
+  /* 2) public proxies race (the pre-v156 behaviour) */
+  const publics = [
     u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
     u => "https://api.cors.lol/?url=" + encodeURIComponent(u),
     u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u)
+  ];
+  for (const base of urls) {
+    const all = [base, base.replace("query1.finance.yahoo.com", "query2.finance.yahoo.com")];
+    const ctls = [];
+    const attempts = [];
+    for (const u of all) for (const p of publics) attempts.push(fetchChart(u, p, 4500, ctls));
+    try { return await Promise.any(attempts); } catch (e) { /* this exchange failed */ } finally { ctls.forEach(c => { try { c.abort(); } catch (e) {} }); }
+  }
+  return null;
+}
+function folioLog(m) { try { const a = JSON.parse(localStorage.getItem("folio_actlog") || "[]"); a.push({ t: Date.now(), m: m }); while (a.length > 60) a.shift(); localStorage.setItem("folio_actlog", JSON.stringify(a)); } catch (e) {} }
+function squashName(s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/(LIMITED|LTD)$/, ""); }
+function spacedVariant(sym) {
+  const words = ["INDUSTRIES", "CHEMICALS", "TEXTILES", "FINANCE", "CAPITAL", "HOUSING", "PHARMA", "HOTELS", "MOTORS", "ENERGY", "POWER", "STEEL", "CEMENT", "FOODS", "INDIA", "INDIAN", "BANK", "AUTO", "TECH", "AGRO", "LIFE", "HEALTH", "SOLAR", "GREEN", "OIL", "GAS", "AND"];
+  let out = sym;
+  for (const w of words) out = out.split(w).join(" " + w + " ");
+  return out.replace(/\s+/g, " ").trim();
+}
+async function resolveSymbol(sym, nameHint) {
+  const queries = [];
+  if (nameHint && nameHint.toUpperCase() !== sym) queries.push(nameHint);
+  queries.push(sym);
+  const sv = spacedVariant(sym);
+  if (sv && sv.toUpperCase() !== sym) queries.push(sv);
+  /* Yahoo search is case-sensitive in practice: an ALL-CAPS query finds
+     nothing, the Title Case form finds the company — try both. */
+  const titled = queries.slice();
+  for (const q of titled) {
+    const tc = q.toLowerCase().replace(/(^|\s)([a-z])/g, (m, a, b) => a + b.toUpperCase());
+    if (tc !== q) queries.push(tc);
+  }
+  const searchRoutes = [];
+  if (window.FOLIO_WORKER_URL) searchRoutes.push(u => window.FOLIO_WORKER_URL + "?url=" + encodeURIComponent(u));
+  searchRoutes.push(
+    u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+    u => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
+    u => u
   );
-  const urls = [yahooUrl(sym), yahooUrl(sym).replace("query1.finance.yahoo.com", "query2.finance.yahoo.com")];
-  /* Proxy racing: every route runs in parallel (3.5s cap each) — the first
-     valid answer wins, so one slow proxy can never hold up a price. */
-  const attempts = [];
-  const ctls = [];
-  for (const url of urls) for (const p of proxies) {
-    attempts.push((async () => {
-      const res = await fetchTO(p(url), 3500, ctls);
-      if (!res.ok) throw new Error("bad route");
-      const j = await res.json();
-      const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
-      if (!meta || !meta.regularMarketPrice) throw new Error("no data");
-      let spark = [];
-      try { const q = j.chart.result[0].indicators.quote[0].close || []; spark = q.filter(v => typeof v === "number"); } catch (e) {}
-      const prev = spark.length > 1 ? spark[spark.length - 2] : (meta.chartPreviousClose || meta.regularMarketPrice);
-      return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
-    })());
+  for (const q of queries) {
+    let cands = [];
+    /* primary: the app's own Yahoo suggest — the exact search the
+       Add-Stock box uses, proven in this browser */
+    if (typeof window.__yahooSuggest === "function") {
+      try {
+        const out = await window.__yahooSuggest(q);
+        (out || []).forEach(x => { if (x && x[0]) cands.push({ symbol: String(x[0]), longname: x[1] || "" }); });
+      } catch (e) {}
+    }
+    if (!cands.length) {
+      const su = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q);
+      for (const route of searchRoutes) {
+        try {
+          const res = await fetchTO(route(su), 5000);
+          if (!res.ok) continue;
+          const j = await res.json();
+          if (j && Array.isArray(j.quotes)) {
+            j.quotes.forEach(c => { if (c && c.quoteType === "EQUITY" && c.symbol && (c.exchange === "NSI" || c.exchange === "BSE")) cands.push({ symbol: String(c.symbol).replace(/\.(NS|BO)$/, ""), longname: c.longname || c.shortname || "" }); });
+            break;
+          }
+        } catch (e) {}
+      }
+    }
+    const want = squashName(q);
+    for (const cand of cands) {
+      const nm = squashName(cand.longname || "");
+      /* accept only when the company's name actually matches the query */
+      if (nm && want && (nm.indexOf(want) === 0 || want.indexOf(nm) === 0)) { folioLog("RESOLVE " + sym + " -> " + cand.symbol); return cand.symbol; }
+    }
   }
-  try { return await Promise.any(attempts); } catch (e) { /* every NSE route failed */ } finally { ctls.forEach(c => { try { c.abort(); } catch (e) {} }); }
-  if (sym.indexOf(".") < 0 && sym.charAt(0) !== "^") {
-    const ctls2 = [];
-    const boAttempts = proxies.map(p => (async () => {
-      const res = await fetchTO(p(yahooUrl(sym).replace(".NS", ".BO")), 3500, ctls2);
-      if (!res.ok) throw new Error("bad route");
-      const j = await res.json();
-      const meta = j && j.chart && j.chart.result && j.chart.result[0] && j.chart.result[0].meta;
-      if (!meta || !meta.regularMarketPrice) throw new Error("no data");
-      let spark = [];
-      try { const q = j.chart.result[0].indicators.quote[0].close || []; spark = q.filter(v => typeof v === "number"); } catch (e2) {}
-      const prev = spark.length > 1 ? spark[spark.length - 2] : (meta.chartPreviousClose || meta.regularMarketPrice);
-      return { price: meta.regularMarketPrice, prevClose: prev, ts: Date.now(), manual: false, spark: spark };
-    })());
-    try { return await Promise.any(boAttempts); } catch (e) { /* BSE failed too */ } finally { ctls2.forEach(c => { try { c.abort(); } catch (e) {} }); }
+  folioLog("RESOLVE " + sym + " -> NONE");
+  return null;
+}
+const folioResolveTried = new Set();
+/* Verified name-as-symbol pairs (checked against Yahoo's own company
+   data) — a floor that needs no network search at all. */
+const BUILTIN_ALIAS = { "VEDANTAOILANDGAS": "VOGL" };
+async function fetchOne(sym, nameHint) {
+  const manual = state.manualPrices && state.manualPrices[sym];
+  const target = folioAlias[sym] || BUILTIN_ALIAS[sym] || sym;
+  let r = await fetchChain(target);
+  if (!r && target === sym && sym.indexOf(".") < 0 && sym.charAt(0) !== "^" && !folioResolveTried.has(sym)) {
+    folioResolveTried.add(sym);
+    const resolved = await resolveSymbol(sym, nameHint);
+    if (resolved && resolved !== sym) {
+      r = await fetchChain(resolved);
+      if (r) { folioAlias[sym] = resolved; saveAlias(); folioLog("ALIAS OK " + sym + " = " + resolved); }
+      else folioLog("ALIAS FETCH FAIL " + sym + " = " + resolved);
+    }
   }
+  if (r) return r;
   if (manual) return { price: Number(manual), prevClose: Number(manual), ts: Date.now(), manual: true, spark: [] };
   return null;
 }
@@ -570,27 +650,29 @@ let refreshing = false;
 async function refreshPrices() {
   if (refreshing || !currentUser) return;
   const syms = new Set();
-  computeHoldings().holdings.forEach(h => syms.add(h.sym));
-  state.watch.forEach(w => syms.add(w.sym));
+  const nameMap = {};
+  computeHoldings().holdings.forEach(h => { syms.add(h.sym); if (h.name) nameMap[h.sym] = h.name; });
+  state.watch.forEach(w => { syms.add(w.sym); if (w.name) nameMap[w.sym] = w.name; });
   if (!syms.size) { if (window.__folioSoftTick && typeof softPricePaint === "function") softPricePaint(); else renderAll(); return; }
   refreshing = true;
   $("priceMeta").textContent = "Fetching prices…";
   const list = [...syms];
-  for (let i = 0; i < list.length; i += 4) {
-    const batch = list.slice(i, i + 4);
-    const res = await Promise.all(batch.map(fetchOne));
-    res.forEach((r, k) => { if (r) prices[batch[k]] = r; });
-  }
-  /* v138: one backoff retry for symbols every route missed — a single
-     flaky moment must not leave the portfolio priced at cost. */
-  const missing = list.filter(s2 => !prices[s2]);
-  if (missing.length) {
-    await new Promise(r => setTimeout(r, 1200));
-    for (let i = 0; i < missing.length; i += 4) {
-      const batch = missing.slice(i, i + 4);
-      const res = await Promise.all(batch.map(fetchOne));
+  const fetchBatch = async (arr) => {
+    for (let i = 0; i < arr.length; i += 4) {
+      const batch = arr.slice(i, i + 4);
+      const res = await Promise.all(batch.map(s2 => fetchOne(s2, nameMap[s2])));
       res.forEach((r, k) => { if (r) prices[batch[k]] = r; });
     }
+  };
+  await fetchBatch(list);
+  if (Object.keys(prices).length) renderAfterPrices();
+  /* v156: staggered retry passes for whatever the network dropped —
+     a throttled moment must not leave holdings valued at cost. */
+  for (const wait of [1200, 3000, 6000]) {
+    const missing = list.filter(s2 => !prices[s2]);
+    if (!missing.length) break;
+    await new Promise(r => setTimeout(r, wait));
+    await fetchBatch(missing);
   }
   refreshing = false;
   savePricesLS();
