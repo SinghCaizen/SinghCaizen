@@ -563,6 +563,7 @@ async function fetchChain(sym) {
   }
   return null;
 }
+function folioLog(m) { try { const a = JSON.parse(localStorage.getItem("folio_actlog") || "[]"); a.push({ t: Date.now(), m: m }); while (a.length > 60) a.shift(); localStorage.setItem("folio_actlog", JSON.stringify(a)); } catch (e) {} }
 function squashName(s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/(LIMITED|LTD)$/, ""); }
 function spacedVariant(sym) {
   const words = ["INDUSTRIES", "CHEMICALS", "TEXTILES", "FINANCE", "CAPITAL", "HOUSING", "PHARMA", "HOTELS", "MOTORS", "ENERGY", "POWER", "STEEL", "CEMENT", "FOODS", "INDIA", "INDIAN", "BANK", "AUTO", "TECH", "AGRO", "LIFE", "HEALTH", "SOLAR", "GREEN", "OIL", "GAS", "AND"];
@@ -597,10 +598,11 @@ async function resolveSymbol(sym, nameHint) {
         const nm = squashName(cand.longname || cand.shortname || "");
         const want = squashName(q);
         /* accept only when the company's name actually matches the query */
-        if (nm && want && (nm.indexOf(want) === 0 || want.indexOf(nm) === 0)) return cand.symbol.replace(/\.(NS|BO)$/, "");
+        if (nm && want && (nm.indexOf(want) === 0 || want.indexOf(nm) === 0)) { folioLog("RESOLVE " + sym + " -> " + cand.symbol); return cand.symbol.replace(/\.(NS|BO)$/, ""); }
       }
     } catch (e) {}
   }
+  folioLog("RESOLVE " + sym + " -> NONE");
   return null;
 }
 const folioResolveTried = new Set();
@@ -613,7 +615,8 @@ async function fetchOne(sym, nameHint) {
     const resolved = await resolveSymbol(sym, nameHint);
     if (resolved && resolved !== sym) {
       r = await fetchChain(resolved);
-      if (r) { folioAlias[sym] = resolved; saveAlias(); }
+      if (r) { folioAlias[sym] = resolved; saveAlias(); folioLog("ALIAS OK " + sym + " = " + resolved); }
+      else folioLog("ALIAS FETCH FAIL " + sym + " = " + resolved);
     }
   }
   if (r) return r;
