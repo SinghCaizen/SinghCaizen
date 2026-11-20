@@ -576,6 +576,13 @@ async function resolveSymbol(sym, nameHint) {
   queries.push(sym);
   const sv = spacedVariant(sym);
   if (sv && sv.toUpperCase() !== sym) queries.push(sv);
+  /* Yahoo search is case-sensitive in practice: an ALL-CAPS query finds
+     nothing, the Title Case form finds the company — try both. */
+  const titled = queries.slice();
+  for (const q of titled) {
+    const tc = q.toLowerCase().replace(/(^|\s)([a-z])/g, (m, a, b) => a + b.toUpperCase());
+    if (tc !== q) queries.push(tc);
+  }
   for (const q of queries) {
     try {
       const su = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q);
