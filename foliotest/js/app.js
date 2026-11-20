@@ -541,10 +541,12 @@ async function fetchChain(sym) {
   const plain = sym.indexOf(".") < 0 && sym.charAt(0) !== "^";
   const urls = [yahooUrl(sym)];
   if (plain) urls.push(yahooUrl(sym).replace(".NS", ".BO"));
-  /* 1) the app's own Worker, one request at a time */
+  /* 1) the app's own Worker, one request at a time (both Yahoo hosts) */
   if (window.FOLIO_WORKER_URL) {
     const w = u => window.FOLIO_WORKER_URL + "?url=" + encodeURIComponent(u);
-    for (const u of urls) { try { return await fetchChart(u, w, 6000); } catch (e) {} }
+    const wurls = [];
+    urls.forEach(u => { wurls.push(u); wurls.push(u.replace("query1.finance.yahoo.com", "query2.finance.yahoo.com")); });
+    for (const u of wurls) { try { return await fetchChart(u, w, 6000); } catch (e) {} }
   }
   /* 2) public proxies race (the pre-v156 behaviour) */
   const publics = [
@@ -562,10 +564,18 @@ async function fetchChain(sym) {
   return null;
 }
 function squashName(s) { return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/(LIMITED|LTD)$/, ""); }
+function spacedVariant(sym) {
+  const words = ["INDUSTRIES", "CHEMICALS", "TEXTILES", "FINANCE", "CAPITAL", "HOUSING", "PHARMA", "HOTELS", "MOTORS", "ENERGY", "POWER", "STEEL", "CEMENT", "FOODS", "INDIA", "INDIAN", "BANK", "AUTO", "TECH", "AGRO", "LIFE", "HEALTH", "SOLAR", "GREEN", "OIL", "GAS", "AND"];
+  let out = sym;
+  for (const w of words) out = out.split(w).join(" " + w + " ");
+  return out.replace(/\s+/g, " ").trim();
+}
 async function resolveSymbol(sym, nameHint) {
   const queries = [];
   if (nameHint && nameHint.toUpperCase() !== sym) queries.push(nameHint);
   queries.push(sym);
+  const sv = spacedVariant(sym);
+  if (sv && sv.toUpperCase() !== sym) queries.push(sv);
   for (const q of queries) {
     try {
       const su = "https://query2.finance.yahoo.com/v1/finance/search?q=" + encodeURIComponent(q);
@@ -622,9 +632,10 @@ async function refreshPrices() {
     }
   };
   await fetchBatch(list);
-  /* v156: two staggered retry passes for whatever the network dropped —
+  if (Object.keys(prices).length) renderAfterPrices();
+  /* v156: staggered retry passes for whatever the network dropped —
      a throttled moment must not leave holdings valued at cost. */
-  for (const wait of [1200, 3000]) {
+  for (const wait of [1200, 3000, 6000]) {
     const missing = list.filter(s2 => !prices[s2]);
     if (!missing.length) break;
     await new Promise(r => setTimeout(r, wait));
