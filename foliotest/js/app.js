@@ -626,9 +626,12 @@ async function resolveSymbol(sym, nameHint) {
   return null;
 }
 const folioResolveTried = new Set();
+/* Verified name-as-symbol pairs (checked against Yahoo's own company
+   data) — a floor that needs no network search at all. */
+const BUILTIN_ALIAS = { "VEDANTAOILANDGAS": "VOGL" };
 async function fetchOne(sym, nameHint) {
   const manual = state.manualPrices && state.manualPrices[sym];
-  const target = folioAlias[sym] || sym;
+  const target = folioAlias[sym] || BUILTIN_ALIAS[sym] || sym;
   let r = await fetchChain(target);
   if (!r && target === sym && sym.indexOf(".") < 0 && sym.charAt(0) !== "^" && !folioResolveTried.has(sym)) {
     folioResolveTried.add(sym);
