@@ -82,7 +82,9 @@ function defaultState() {
     hideDownload: true, lastOpen: null, recent: {},
     backupBannerOff: 0, localModeAck: false,
     taskDone: {}, dayDonePlan: {}, movedTasks: {}, catchup: {},
-    dayNotes: {}, resStars: [], lastResource: null
+    dayNotes: {}, resStars: [], lastResource: null,
+    drafts: {}, selfChecks: {}, scoreLog: [], errorLog: {},
+    learn3: {}, taskNotes: {}, dayUi: {}, answersShown: {}
   };
 }
 let S = defaultState();
@@ -105,7 +107,7 @@ window.applyCloudState = function (cloudState) {
   applyTheme(); applyFont();
   renderSidebarProgress();
   showView(currentView || 'home');
-  toast('Cloud progress load ho gaya ☁️✓');
+  toast('Cloud progress load ho gaya.');
 };
 window.getLocalState = function () { return S; };
 window.setSavedStatus = function (text, isCloud, blocked) {
@@ -119,7 +121,7 @@ window.setSavedStatus = function (text, isCloud, blocked) {
 window.setSyncBlocked = function (blocked) {
   const box = $('#syncFixBox');
   if (box) box.hidden = !blocked;
-  if (blocked) window.setSavedStatus('⚠ Sync blocked — rules', false, true);
+  if (blocked) window.setSavedStatus('Sync blocked — rules', false, true);
 };
 
 /* ---------------- Plan + Resources data ---------------- */
@@ -280,7 +282,7 @@ function renderSidebarProgress() {
   $('#sideProgressText').textContent = 'Band 8 plan: ' + all.done + ' / ' + all.total + ' tasks (' + Math.round(all.pct * 100) + '%)';
   $('#sideProgressBar').style.width = Math.round(all.pct * 100) + '%';
   const st = planStreak();
-  $('#sideStreakText').textContent = '🔥 Streak ' + st.streak + ' din · Best ' + st.best;
+  $('#sideStreakText').textContent = 'Streak ' + st.streak + ' din · Best ' + st.best;
 }
 
 /* ---------------- Viewer overlay (sab files site ke andar) ---------------- */
@@ -320,6 +322,10 @@ function loadViewerFrame() {
   frame.src = src;
 }
 $('#viewerRetry').addEventListener('click', loadViewerFrame);
+$('#viewerFull').addEventListener('click', () => {
+  const o = $('#viewerOverlay');
+  if (o.requestFullscreen) o.requestFullscreen();
+});
 function closeViewer() {
   $('#viewerOverlay').hidden = true;
   $('#viewerFrame').src = 'about:blank';
@@ -342,22 +348,58 @@ function wireStars(root) {
     b.textContent = S.resStars.includes(id) ? '★' : '☆';
   }));
 }
-function typeIcon(t) { return { pdf: '📄', audio: '🎧', video: '🎬', doc: '📝' }[t] || '📁'; }
+/* ---------- Inline SVG icon set (Lucide style, 1.75 stroke) ---------- */
+const ICON_PATHS = {
+  home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+  cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  star: '<path d="M12 2.5 15 8.6l6.7 1-4.8 4.7 1.1 6.7L12 17.9 6 21l1.1-6.7L2.3 9.6l6.7-1z"/>',
+  book: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>',
+  bookOpen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  note: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/>',
+  chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 15v3"/><path d="M12 10v8"/><path d="M17 6v12"/>',
+  user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/>',
+  target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  pin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>',
+  film: '<rect x="2" y="2" width="20" height="20" rx="2"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/>',
+  head: '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M21 14h-3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2z"/><path d="M3 14v-2a9 9 0 0 1 18 0v2"/>',
+  pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  mic: '<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/>',
+  ruler: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z"/><path d="m7.5 10.5 2 2"/><path d="m10.5 7.5 2 2"/><path d="m13.5 4.5 2 2"/>',
+  type: '<path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M9 19h6"/>',
+  play: '<path d="m6 4 14 8-14 8z"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  chevL: '<path d="m15 18-6-6 6-6"/>',
+  chevR: '<path d="m9 18 6-6-6-6"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  timer: '<line x1="9" y1="2" x2="15" y2="2"/><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5"/>',
+  alert: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  leaf: '<path d="M5 19c8 0 14-6 14-14-8 0-14 6-14 14z"/><path d="M5 19c3-6 7-10 11-12"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  max: '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>',
+  bkm: '<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>'
+};
+function icon(name, cls) {
+  return '<svg class="ic ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICON_PATHS[name] || '') + '</svg>';
+}
+function typeIcon(t) { return icon({ pdf: 'note', audio: 'head', video: 'film', doc: 'note' }[t] || 'note', 'sm'); }
 function skillIcon(s) {
-  return { Listening: '🎧', Reading: '📖', Writing: '✍️', Speaking: '🗣️', Grammar: '📐', Vocabulary: '🔤', Mixed: '🎯' }[s] || '🎯';
+  return icon({ Listening: 'head', Reading: 'bookOpen', Writing: 'pen', Speaking: 'mic', Grammar: 'ruler', Vocabulary: 'type', Mixed: 'target' }[s] || 'target', 'sm');
 }
 
 /* =====================================================================
    HOME — TODAY DASHBOARD
    ===================================================================== */
 const MOTIVES = [
-  'Chhota kadam roz, bada result saal ke ant me. 🌱',
-  'Band 8 sapna nahi, roz ka system hai. Aaj ke tasks khatm karo. 💪',
-  'Consistency hi asli talent hai. Bas aaj ka kaam. 🎯',
-  'Kal ki chinta chhodo, aaj ka page kholo. 📖',
+  'Chhota kadam roz, bada result saal ke ant me. ',
+  'Band 8 sapna nahi, roz ka system hai. Aaj ke tasks khatm karo. ',
+  'Consistency hi asli talent hai. Bas aaj ka kaam. ',
+  'Kal ki chinta chhodo, aaj ka page kholo. ',
   'Har din 2 ghante — yehi tumhari superpower hai. ⏰',
-  'Galtiyaan error log me, seekh dimaag me. ✍️',
-  'Slow progress bhi progress hai. Rukna mana hai. 🚶'
+  'Galtiyaan error log me, seekh dimaag me. ️',
+  'Slow progress bhi progress hai. Rukna mana hai. '
 ];
 function taskRowHTML(date, t, mini) {
   const r = resOf(t);
@@ -373,7 +415,7 @@ function wireTaskList(root, date, rerender) {
   $$('[data-task-check]', root).forEach(cb => cb.addEventListener('change', () => {
     S.taskDone[taskKey(date, cb.dataset.taskCheck)] = cb.checked ? 1 : 0;
     if (!cb.checked) delete S.taskDone[taskKey(date, cb.dataset.taskCheck)];
-    if (cb.checked && isDayDone(date) && !S.dayDonePlan[date]) celebrate();
+    if (cb.checked && isDayDone(date)) toast('Aaj ke saare tasks ho gaye.');
     save();
     rerender();
     renderSidebarProgress();
@@ -390,7 +432,7 @@ function renderHome() {
   if (!PLAN) { box.innerHTML = '<p class="muted">Plan load ho raha hai…</p>'; return; }
   if (!day) {
     const first = DAYS[0], last = DAYS[DAYS.length - 1];
-    $('#todayTitle').textContent = t < (first && first.date) ? 'Plan ' + fmtDateShort(first.date) + ' se shuru hota hai' : 'Plan poora ho gaya 🎉';
+    $('#todayTitle').textContent = t < (first && first.date) ? 'Plan ' + fmtDateShort(first.date) + ' se shuru hota hai' : 'Plan poora ho gaya';
     $('#todayGoal').textContent = t < (first && first.date)
       ? 'Kal Day 1 hai — Diagnostic Week. Aaj aaram se site ghuma lo, Important wala hissa dekh lo.'
       : '365 din ka safar khatm. Ab sirf revision aur exam!';
@@ -401,7 +443,7 @@ function renderHome() {
   } else {
     $('#btnStartToday').style.display = '';
     $('#todayTitle').textContent = 'Day ' + day.dayNumber + ' of 365 · ' + parseDate(t).toLocaleDateString('en-IN', { weekday: 'long' });
-    $('#todayGoal').textContent = '🎯 ' + day.goal;
+    $('#todayGoal').textContent = day.goal;
     const tasks = dayTasks(t);
     $('#todayMeta').textContent = day.theme + ' · ' + day.estimatedMinutes + ' min · ' + tasks.length + ' tasks';
     box.innerHTML = tasks.map(x => taskRowHTML(t, x)).join('') || '<p class="muted">Aaj koi task nahi hai.</p>';
@@ -440,7 +482,7 @@ function renderHome() {
   if (missed.length && day) {
     const note = document.createElement('p');
     note.className = 'muted';
-    note.innerHTML = '⚠️ ' + missed.length + ' purane din adhoore hain. Plan me jaakar <strong>Catch up</strong> se unke tasks aage ke buffer din me daal do.';
+    note.innerHTML = '<strong>Note:</strong> ' + missed.length + ' purane din adhoore hain. Plan me jaakar <strong>Catch up</strong> se unke tasks aage ke buffer din me daal do.';
     box.appendChild(note);
   }
 }
@@ -494,7 +536,7 @@ function renderPlanView() {
 
   if (planNav.level === 'year') {
     back.hidden = true;
-    crumbs.innerHTML = '<span class="here">🗓️ Year Plan</span>';
+    crumbs.innerHTML = '<span class="here">' + icon('cal') + ' Year Plan</span>';
     const months = monthsOfPlan();
     body.innerHTML = '<h1>Year Plan — Nov 2026 to Nov 2027</h1>' +
       '<p class="muted">365 din · ' + DAYS.reduce((a, d) => a + d.tasks.length, 0) + ' tasks · Target Band 8. Kisi month par tap karo.</p>' +
@@ -563,7 +605,7 @@ function renderPlanView() {
           '<p class="dc-goal">' + esc(d.goal) + '</p>' +
           '<p class="dc-icons">' + icons + '</p>' +
           '<p class="muted">' + d.tasks.length + ' tasks · ~' + d.estimatedMinutes + ' min · ' + p.done + '/' + p.total + ' done</p>' +
-          '<span class="dc-status">' + (st === 'done' ? '✅ Done' : st === 'today' ? '📍 Today' : st === 'missed' ? '⚠️ Missed' : st === 'rest' ? '🌿 Rest / light' : 'Upcoming') + '</span>' +
+          '<span class="dc-status">' + (st === 'done' ? icon('check','sm') + ' Done' : st === 'today' ? icon('pin','sm') + ' Today' : st === 'missed' ? icon('alert','sm') + ' Missed' : st === 'rest' ? icon('leaf','sm') + ' Rest / light' : 'Upcoming') + '</span>' +
           (st === 'missed' ? '<button class="btn btn-small" data-catchup="' + d.date + '">↪ Catch up</button>' : '') +
           '</article>';
       }).join('') + '</div>';
@@ -612,9 +654,212 @@ $('#btnJumpTodayTop').addEventListener('click', () => {
   if (DAY_BY_DATE[t]) openDay(t);
   else showView('plan');
 });
+
+/* =====================================================================
+   DAY WORKSPACE (v6) — focused page: sirf aaj ka kaam, type-wise layout
+   ===================================================================== */
+const BAND_TABLES = {
+  Listening: [[39, 9], [37, 8.5], [35, 8], [32, 7.5], [30, 7], [26, 6.5], [23, 6], [18, 5.5], [16, 5], [13, 4.5], [10, 4], [0, 2.5]],
+  Reading: [[39, 9], [37, 8.5], [35, 8], [33, 7.5], [30, 7], [27, 6.5], [23, 6], [19, 5.5], [15, 5], [13, 4.5], [10, 4], [0, 2.5]]
+};
+function bandFor(skill, raw, total) {
+  const table = BAND_TABLES[skill] || BAND_TABLES.Listening;
+  const scaled = Math.round((raw / Math.max(1, total)) * 40);
+  for (const [min, band] of table) if (scaled >= min) return band;
+  return 2.5;
+}
+/* ---------- timers (state survives re-render) ---------- */
+const WS_TIMERS = {};
+function timerHTML(id, seconds, label) {
+  if (!WS_TIMERS[id]) WS_TIMERS[id] = { left: seconds, total: seconds, running: false, iv: null };
+  const t = WS_TIMERS[id];
+  return '<div class="timer-row"><span class="timer-chip tnum' + (t.running ? ' running' : '') + '" data-timer-chip="' + id + '">' + fmtTime(t.left) + '</span>' +
+    '<button class="btn btn-small" data-timer-btn="' + id + '">' + (t.running ? 'Pause' : 'Start') + '</button>' +
+    '<button class="btn btn-small" data-timer-reset="' + id + '">Reset</button>' +
+    '<span class="muted">' + label + '</span></div>';
+}
+function wireTimers(root) {
+  $$('[data-timer-btn]', root).forEach(b => b.addEventListener('click', () => {
+    const t = WS_TIMERS[b.dataset.timerBtn]; if (!t) return;
+    if (t.running) { clearInterval(t.iv); t.running = false; }
+    else {
+      t.running = true;
+      t.iv = setInterval(() => {
+        t.left = Math.max(0, t.left - 1);
+        const chip = document.querySelector('[data-timer-chip="' + b.dataset.timerBtn + '"]');
+        if (chip) { chip.textContent = fmtTime(t.left); chip.classList.add('running'); }
+        if (t.left <= 0) { clearInterval(t.iv); t.running = false; toast('Time khatm.'); const bb = document.querySelector('[data-timer-btn="' + b.dataset.timerBtn + '"]'); if (bb) bb.textContent = 'Start'; if (chip) chip.classList.remove('running'); }
+      }, 1000);
+    }
+    b.textContent = t.running ? 'Pause' : 'Start';
+    const chip = document.querySelector('[data-timer-chip="' + b.dataset.timerBtn + '"]');
+    if (chip) chip.classList.toggle('running', t.running);
+  }));
+  $$('[data-timer-reset]', root).forEach(b => b.addEventListener('click', () => {
+    const t = WS_TIMERS[b.dataset.timerReset]; if (!t) return;
+    clearInterval(t.iv); t.running = false; t.left = t.total;
+    const chip = document.querySelector('[data-timer-chip="' + b.dataset.timerReset + '"]');
+    if (chip) { chip.textContent = fmtTime(t.left); chip.classList.remove('running'); }
+    const bb = document.querySelector('[data-timer-btn="' + b.dataset.timerReset + '"]');
+    if (bb) bb.textContent = 'Start';
+  }));
+}
+/* ---------- frames (lazy: src tab lagta hai jab task current ho) ---------- */
+function wsFrameHTML(res, cls) {
+  if (!res) return '<p class="muted">Is task ke liye koi file linked nahi hai.</p>';
+  const src = isDrive(res.url) ? drivePreview(res.url) : res.url;
+  return '<div class="ws-frame ' + (cls || '') + '"><iframe title="' + esc(res.title) + '" data-wsrc="' + esc(src) + '" allow="autoplay; fullscreen" allowfullscreen loading="lazy"></iframe><div class="popout-shield"></div></div>' +
+    '<p class="muted" style="margin:.35rem 0 0">' + typeIcon(res.type) + ' ' + esc(res.title) + (res.split ? ' · ' + esc(res.split) : '') + '</p>';
+}
+function activateFrames(scope) {
+  $$('iframe[data-wsrc]', scope).forEach(f => { if (!f.src || f.src === 'about:blank') f.src = f.dataset.wsrc; });
+}
+/* ---------- IndexedDB: speaking recordings (sirf is device par) ---------- */
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('noor-classroom', 1);
+    rq.onupgradeneeded = () => { rq.result.createObjectStore('recordings'); };
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function idbPut(key, val) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('recordings', 'readwrite'); tx.objectStore('recordings').put(val, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+async function idbGet(key) { const db = await idbOpen(); return new Promise((res, rej) => { const rq = db.transaction('recordings').objectStore('recordings').get(key); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => rej(rq.error); }); }
+async function idbDel(key) { const db = await idbOpen(); return new Promise((res, rej) => { const tx = db.transaction('recordings', 'readwrite'); tx.objectStore('recordings').delete(key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); }
+
+/* ---------- per-task workspace builders ---------- */
+function questionsBook() {
+  return RES.find(r => /40 ielts listening tests/i.test(r.title)) || RES.find(r => /listening/i.test(r.title) && r.type === 'pdf' && r.bucket === 'CORE');
+}
+function wsListening(date, t, r) {
+  const q = questionsBook();
+  const ansRes = (t.transcriptId && RES_BY_ID[t.transcriptId]) || q;
+  const shown = !!S.answersShown[date];
+  const ui = S.dayUi[date] || {};
+  const tab = ui.tab || 'audio';
+  let h = '<div class="ws"><div class="timer-row"><label class="switch-row"><span class="switch"><input type="checkbox" data-exam-mode="' + t.id + '"><span class="tr"></span></span> Exam mode</label>' +
+    '<span data-exam-slot="' + t.id + '"></span></div>' +
+    '<div class="ws-tabs" role="tablist">' +
+    ['audio', 'questions', 'answers'].map(x => '<button class="ws-tab' + (tab === x ? ' is-active' : '') + '" data-wtab="' + x + '">' + (x === 'audio' ? 'Audio' : x === 'questions' ? 'Questions' : 'Answers') + '</button>').join('') + '</div>' +
+    '<div class="ws-split" data-mtab="' + tab + '">' +
+    '<div class="ws-pane" data-pane="audio" style="flex-basis:50%">' + wsFrameHTML(r, 'audio') + '</div>' +
+    '<div class="ws-divider" data-divider aria-hidden="true"></div>' +
+    '<div class="ws-pane" data-pane="side" style="flex-basis:50%">' +
+    '<div data-side="questions">' + (q ? wsFrameHTML(q, 'tall') : '<p class="muted">Questions ki file library me hai — "40 IELTS Listening Tests".</p>') + '</div>' +
+    '<div data-side="answers" hidden>' + (shown ? wsFrameHTML(ansRes, 'tall') + scoreErrorHTML(date, t) : answersGateHTML(date)) + '</div>' +
+    '</div></div>' +
+    '<p class="muted">Desktop par beech wali line ghaseet kar audio/questions ka size badlo. Mobile par upar ke tabs use karo.</p></div>';
+  return h;
+}
+function answersGateHTML(date) {
+  return '<div class="score-box"><p><strong>Answers abhi chhupe hain.</strong> Pehle poora test bina dekhe karo — phir dabao.</p>' +
+    '<button class="btn btn-primary" data-show-answers="' + date + '">' + icon('eye', 'sm') + ' Show answers</button></div>';
+}
+function wsReading(date, t, r) {
+  const shown = !!S.answersShown[date];
+  return '<div class="ws">' + timerHTML('rd-' + date, 20 * 60, 'Per-passage timer — 20 min me ek passage') +
+    wsFrameHTML(r, 'tall') +
+    (shown ? '<div class="score-box"><p><strong>Answer key:</strong> isi book ke aakhir me hai (Answer Key section) — upar wale viewer me aakhri pages kholo.</p>' + scoreErrorHTML(date, t) + '</div>'
+           : answersGateHTML(date)) + '</div>';
+}
+function wsWriting(date, t, r) {
+  const key = date + '|' + t.id;
+  const submitted = !!(S.selfChecks[key] && S.selfChecks[key].submitted);
+  const mins = t.minutes >= 40 ? 40 : 20;
+  let h = '<div class="ws"><p class="muted" style="margin-top:0">Pehle prompt padho, phir bina ruke likho. Draft apne aap save hota hai.</p>' +
+    wsFrameHTML(r, '') +
+    timerHTML('wr-' + date + '-' + t.id, mins * 60, 'Writing timer — ' + mins + ' min') +
+    '<textarea class="editor" data-draft="' + esc(key) + '" placeholder="Yaha apna jawab likho…">' + esc(S.drafts[key] || '') + '</textarea>' +
+    '<div class="wc-row"><span class="tnum"><strong data-wc="' + esc(key) + '">0</strong> words</span><span class="muted" data-draft-status="' + esc(key) + '">Draft saved</span>' +
+    '<span style="flex:1"></span><button class="btn btn-primary" data-submit-writing="' + esc(key) + '">Submit for self-check</button></div>';
+  if (submitted) {
+    const checks = (S.selfChecks[key] && S.selfChecks[key].items) || [false, false, false, false];
+    const labels = ['Task Response — sawal ka poora jawab diya?', 'Coherence — paragraphs aur linking words saaf hain?', 'Vocabulary — topic words aur synonyms use hue?', 'Grammar — sentence variety aur galtiyan kam hain?'];
+    h += '<div class="score-box"><p><strong>Model answer</strong> — ab apne jawab se compare karo:</p>' + wsFrameHTML(r, 'tall') +
+      '<h3>Self-check (4 criteria)</h3><ul class="selfcheck">' +
+      labels.map((lb, i) => '<li><label><input type="checkbox" data-selfcheck="' + esc(key) + '" data-sci="' + i + '"' + (checks[i] ? ' checked' : '') + '><span>' + lb + '</span></label></li>').join('') +
+      '</ul></div>';
+  }
+  return h + '</div>';
+}
+function wsSpeaking(date, t, r) {
+  const key = date + '|' + t.id;
+  const shown = !!S.answersShown[date + '|sample'];
+  return '<div class="ws">' + wsFrameHTML(r, 'tall') +
+    '<h3>Prep — 1 minute socho</h3>' + timerHTML('sp-prep-' + date, 60, 'Sirf points socho, poora jawab mat likho') +
+    '<h3>Speaking — 2 minute bolo</h3>' + timerHTML('sp-talk-' + date, 120, 'Bina ruke bolo, record karo') +
+    '<div class="rec-row"><button class="btn rec-btn" data-rec="' + esc(key) + '">' + icon('mic', 'sm') + ' Record</button>' +
+    '<span class="muted" data-rec-status="' + esc(key) + '"></span></div>' +
+    '<div data-rec-slot="' + esc(key) + '"></div>' +
+    '<p class="muted">Recordings sirf isi device ke browser me save hoti hain (IndexedDB) — cloud par nahi jaati, koi aur nahi sun sakta.</p>' +
+    (shown ? '<div class="score-box"><p><strong>Sample answer</strong> — upar wali file me hi model jawab hain, apni recording se compare karo.</p></div>'
+           : '<button class="btn" data-show-sample="' + date + '">' + icon('eye', 'sm') + ' Sample answer dekho (recording ke baad)</button>') +
+    '</div>';
+}
+function wsGrammarVocab(date, t, r) {
+  const vals = S.learn3[date] || ['', '', ''];
+  return '<div class="ws">' + wsFrameHTML(r, 'tall') +
+    '<h3>3 things I learned</h3><div class="learn3">' +
+    [0, 1, 2].map(i => '<input data-learn3="' + i + '" placeholder="' + (i + 1) + '. …" value="' + esc(vals[i] || '') + '">').join('') +
+    '</div></div>';
+}
+function wsVideo(date, t, r) {
+  const key = date + '|' + t.id;
+  return '<div class="ws">' + wsFrameHTML(r, 'tall') +
+    '<label class="notes-label" for="tn-' + esc(t.id) + '">Video notes</label>' +
+    '<textarea id="tn-' + esc(t.id) + '" class="day-notes" rows="3" data-task-note="' + esc(key) + '" placeholder="Video se kya seekha…">' + esc(S.taskNotes[key] || '') + '</textarea></div>';
+}
+function wsGeneric(date, t, r) {
+  const key = date + '|' + t.id;
+  let h = '<div class="ws">' + wsFrameHTML(r, 'tall');
+  if (t.type === 'test') {
+    const shown = !!S.answersShown[date];
+    h += shown ? '<div class="score-box"><p><strong>Answer key:</strong> isi file ke aakhir me hai.</p>' + scoreErrorHTML(date, t) + '</div>' : answersGateHTML(date);
+  }
+  h += '<label class="notes-label" for="tn-' + esc(t.id) + '">Notes</label>' +
+    '<textarea id="tn-' + esc(t.id) + '" class="day-notes" rows="3" data-task-note="' + esc(key) + '" placeholder="Is task ke notes…">' + esc(S.taskNotes[key] || '') + '</textarea></div>';
+  return h;
+}
+function scoreErrorHTML(date, t) {
+  const saved = (S.scoreLog || []).filter(x => x.date === date);
+  const errs = S.errorLog[date] || [];
+  const reasons = ['spelling', 'distractor', 'time', 'vocabulary', 'grammar', 'misread', 'other'];
+  return '<div class="score-box"><h3>Score entry</h3>' +
+    '<div class="timer-row"><label>Score <input type="number" min="0" max="40" data-score-raw="' + date + '" placeholder="31"></label>' +
+    '<span>/</span><input type="number" min="1" max="40" value="40" data-score-total="' + date + '" aria-label="Total">' +
+    '<span class="muted">' + esc(t.skill) + '</span><span data-band-out="' + date + '"></span>' +
+    '<button class="btn btn-small btn-primary" data-score-save="' + date + '" data-skill="' + esc(t.skill) + '">Save score</button></div>' +
+    (saved.length ? '<p class="muted">Saved: ' + saved.map(x => x.raw + '/' + x.total + ' ≈ Band ' + x.band).join(' · ') + ' (approximate)</p>' : '') +
+    '<h3>Error Log — galtiyan likho</h3><div class="errlog-rows">' +
+    errs.map((e, i) => '<div class="errlog-row"><input class="qno" data-err="' + i + '" data-errf="q" placeholder="Q no." value="' + esc(e.q) + '">' +
+      '<input class="qtype" data-err="' + i + '" data-errf="t" placeholder="Question type (jaise MCQ, matching)" value="' + esc(e.t) + '">' +
+      '<select data-err="' + i + '" data-errf="r">' + reasons.map(x => '<option' + (e.r === x ? ' selected' : '') + '>' + x + '</option>').join('') + '</select>' +
+      '<button class="btn btn-small" data-err-del="' + i + '">Hatao</button></div>').join('') +
+    '</div><button class="btn btn-small" data-err-add="' + date + '">+ Ek galti aur jodo</button>' +
+    '<p class="muted">Band conversion approximate hai — asal band examiner deta hai.</p></div>';
+}
+function workspaceFor(date, t) {
+  const r = resOf(t);
+  if (!r) return '<div class="ws"><p class="muted">Is task ke liye koi file linked nahi hai — upar wale notes me apna kaam likh lo.</p></div>';
+  if (t.type === 'listen' || (t.skill === 'Listening' && r.type === 'audio')) return wsListening(date, t, r);
+  if (t.skill === 'Reading' && (t.type === 'test' || t.type === 'read')) return wsReading(date, t, r);
+  if (t.type === 'write') return wsWriting(date, t, r);
+  if (t.type === 'speak') return wsSpeaking(date, t, r);
+  if (t.type === 'watch') return wsVideo(date, t, r);
+  if (t.skill === 'Grammar' || t.skill === 'Vocabulary') return wsGrammarVocab(date, t, r);
+  return wsGeneric(date, t, r);
+}
+
+/* ---------- Day render (focused workspace) ---------- */
+function humanMinutes(min) {
+  if (min < 60) return min + ' min';
+  const h = Math.floor(min / 60), m = min % 60;
+  return h + ' ghanta' + (m ? ' ' + m + ' min' : '');
+}
 function renderDayInto(body, date, inPlan) {
   const d = DAY_BY_DATE[date];
   if (!d) { body.innerHTML = '<p class="empty">Ye din plan me nahi hai.</p>'; return; }
+  if (!S.dayUi[date]) S.dayUi[date] = { task: 0, tab: 'audio' };
   const st = dayStatus(date);
   const tasks = dayTasks(date);
   const prev = addDays(date, -1), next = addDays(date, 1);
@@ -632,61 +877,317 @@ function renderDayInto(body, date, inPlan) {
       renderPlanView();
     }));
   }
+  const p = dayProgress(date);
   let html = '<div class="dayview-head">' +
-    (DAY_BY_DATE[prev] ? '<button class="btn btn-small" data-nav-day="' + prev + '">← Pichla din</button>' : '') +
+    (DAY_BY_DATE[prev] ? '<button class="btn btn-small" data-nav-day="' + prev + '">' + icon('chevL', 'sm') + ' Pichla din</button>' : '') +
     '<span class="spacer"></span>' +
     '<span class="status-pill ' + (st === 'done' ? 'completed' : st === 'today' ? 'current' : '') + '">' +
-    (st === 'done' ? '✅ Done' : st === 'today' ? '📍 Today' : st === 'missed' ? '⚠️ Missed' : st === 'rest' ? '🌿 Light day' : 'Upcoming') + '</span>' +
-    (DAY_BY_DATE[next] ? '<button class="btn btn-small" data-nav-day="' + next + '">Agla din →</button>' : '') +
+    (st === 'done' ? 'Done' : st === 'today' ? 'Today' : st === 'missed' ? 'Missed' : st === 'rest' ? 'Light day' : 'Upcoming') + '</span>' +
+    (DAY_BY_DATE[next] ? '<button class="btn btn-small" data-nav-day="' + next + '">Agla din ' + icon('chevR', 'sm') + '</button>' : '') +
     '</div>' +
-    '<div class="day-goal-box"><p class="eyebrow">Day ' + d.dayNumber + ' of 365 · ' + fmtDate(date) + ' · ' + esc(d.theme) + '</p>' +
-    '<h2>🎯 ' + esc(d.goal) + '</h2>' +
-    '<p class="muted">Kul ~' + d.estimatedMinutes + ' min · ' + esc(d.phase) + '</p></div>';
+    '<div class="day-goal-box"><p class="eyebrow">Day ' + d.dayNumber + ' of 365 · ' + fmtDate(date) + ' · ' + esc(d.phase) + '</p>' +
+    '<h2>' + esc(d.goal) + '</h2>' +
+    '<p class="muted">Aaj ka kaam: ' + tasks.length + ' tasks, kul ~' + humanMinutes(d.estimatedMinutes) + ' · ' + esc(d.theme) + '</p>' +
+    '<div class="slim-progress"><div style="width:' + Math.round(p.pct * 100) + '%"></div></div>' +
+    '<p class="muted" style="margin:.35rem 0 0">' + p.done + '/' + p.total + ' tasks ho gaye</p></div>';
   if (st === 'missed') {
     html += '<div class="catchup-box"><strong>Ye din chhoot gaya — koi baat nahi.</strong> ' +
       'Baaki tasks ko aane wale halke din (buffer) me daal do, plan apne aap sambhal jayega.<br>' +
-      '<button class="btn btn-primary btn-small" data-catchup="' + date + '" style="margin-top:.5rem">↪ Catch up — tasks buffer day par shift karo</button></div>';
+      '<button class="btn btn-primary btn-small" data-catchup="' + date + '" style="margin-top:.5rem">Catch up — tasks buffer day par shift karo</button></div>';
   }
-  html += tasks.map(t => {
+  html += tasks.map((t, i) => {
     const r = resOf(t);
     const done = isTaskDone(date, t);
-    return '<article class="card task-card' + (done ? ' done' : '') + '">' +
+    const cur = (S.dayUi[date].task || 0) === i;
+    return '<article class="card task-card' + (done ? ' done' : '') + (cur ? ' is-current' : '') + '" data-task-card="' + i + '">' +
       '<input type="checkbox" data-task-check="' + esc(t.id) + '"' + (done ? ' checked' : '') + ' aria-label="Task done">' +
-      '<div class="tc-body"><h3>' + esc(t.title) + '</h3>' +
+      '<div class="tc-body"><p class="tc-step">Step ' + (i + 1) + ' of ' + tasks.length + '</p><h3>' + esc(t.title) + '</h3>' +
       (t.detail ? '<p class="muted">' + esc(t.detail) + '</p>' : '') +
       '<div class="tc-meta"><span class="pill">' + skillIcon(t.skill) + ' ' + esc(t.skill) + '</span>' +
-      '<span class="pill">⏱ ' + t.minutes + ' min</span>' +
+      '<span class="pill">' + icon('clock', 'sm') + ' ' + t.minutes + ' min</span>' +
       (r ? '<span class="pill">' + typeIcon(r.type) + ' ' + esc(r.title) + '</span>' : '') +
       (t.catchup ? '<span class="pill catchup">Catch-up · ' + fmtDateShort(t.fromDate) + ' se</span>' : '') +
-      (t.transcriptId && RES_BY_ID[t.transcriptId] ? '<button class="btn btn-small" data-open-res="' + t.transcriptId + '">📝 Transcript</button>' : '') +
-      '</div></div>' +
-      (r ? '<button class="btn btn-primary btn-small" data-open-res="' + r.id + '">Open</button>' : '') +
-      '</article>';
+      '</div>' + workspaceFor(date, t) + '</div></article>';
   }).join('');
-  html += '<label class="notes-label" for="dayNotesArea">📝 Aaj ke notes</label>' +
+  html += '<label class="notes-label" for="dayNotesArea">Aaj ke notes</label>' +
     '<textarea id="dayNotesArea" class="day-notes" rows="4" placeholder="Aaj kya seekha, kaha atke… apne aap save hota hai.">' + esc(S.dayNotes[date] || '') + '</textarea>' +
     '<p class="muted"><span id="dayNotesSaved">Saved</span></p>' +
-    '<button class="btn btn-primary btn-big" id="btnDayDone">' + (S.dayDonePlan[date] ? '✓ Done hai — undo karo' : '✓ Mark day done') + '</button>';
+    '<button class="btn btn-primary btn-big" id="btnDayDone">' + (S.dayDonePlan[date] ? 'Done hai — undo karo' : 'Mark day done') + '</button>';
+  if (isDayDone(date)) {
+    const mins = tasks.reduce((a, t) => a + t.minutes, 0);
+    const scores = (S.scoreLog || []).filter(x => x.date === date);
+    const tm = DAY_BY_DATE[next];
+    html += '<div class="card complete-screen"><svg class="checkmark" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="25"/><path d="M17 29.5 24.5 37 39 21"/></svg>' +
+      '<h2>Day ' + d.dayNumber + ' complete</h2>' +
+      '<p class="muted">Time: ~' + humanMinutes(mins) + ' · Tasks: ' + tasks.length + '/' + tasks.length + ' done' +
+      (scores.length ? ' · Score: ' + scores.map(x => x.skill + ' ' + x.raw + '/' + x.total + ' ≈ Band ' + x.band).join(', ') : '') + '</p>' +
+      (tm ? '<p><strong>Kal:</strong> Day ' + tm.dayNumber + ' — ' + esc(tm.goal) + '</p>' +
+        '<button class="btn btn-primary" data-open-day="' + tm.date + '">Kal ka din dekho</button>' : '<p>Ye plan ka aakhri din tha.</p>') +
+      '</div>';
+  }
+  html += '<div class="day-actionbar"><button class="btn" data-act="prev">' + icon('chevL', 'sm') + ' Pichla task</button>' +
+    '<button class="btn btn-primary" data-act="done">Mark done</button>' +
+    '<button class="btn" data-act="next">Agla task ' + icon('chevR', 'sm') + '</button></div>';
   body.innerHTML = html;
+  wireDayWorkspace(body, date, inPlan);
+  const curCard = $('[data-task-card="' + (S.dayUi[date].task || 0) + '"]', body);
+  if (curCard) activateFrames(curCard);
+  // Prefetch: agle task ki file pehle se halki si load rakho
+  const nxt = tasks[(S.dayUi[date].task || 0) + 1];
+  if (nxt && resOf(nxt)) {
+    const rr = resOf(nxt);
+    const link = document.createElement('link');
+    link.rel = 'prefetch'; link.href = isDrive(rr.url) ? drivePreview(rr.url) : rr.url;
+    document.head.appendChild(link);
+    setTimeout(() => link.remove(), 15000);
+  }
+}
+const REC_STATE = {};
+function wireDayWorkspace(body, date, inPlan) {
+  const rerender = () => renderDayInto(body, date, inPlan);
   $$('[data-nav-day]', body).forEach(b => b.addEventListener('click', () => { planNav.date = b.dataset.navDay; planNav.week = DAY_BY_DATE[planNav.date].weekNumber; planNav.month = DAY_BY_DATE[planNav.date].month; renderPlanView(); }));
   $$('[data-catchup]', body).forEach(b => b.addEventListener('click', () => { catchUpDay(b.dataset.catchup); renderPlanView(); }));
-  wireTaskList(body, date, () => renderDayInto(body, date, inPlan));
-  const na = $('#dayNotesArea');
-  let nt = null;
-  na.addEventListener('input', () => {
-    $('#dayNotesSaved').textContent = 'Saving…';
-    clearTimeout(nt);
-    nt = setTimeout(() => { S.dayNotes[date] = na.value; save(); $('#dayNotesSaved').textContent = 'Saved ✓'; }, 500);
+  $$('[data-open-day]', body).forEach(b => b.addEventListener('click', () => openDay(b.dataset.openDay)));
+  $$('[data-task-check]', body).forEach(cb => cb.addEventListener('change', () => {
+    if (cb.checked) S.taskDone[taskKey(date, cb.dataset.taskCheck)] = 1;
+    else delete S.taskDone[taskKey(date, cb.dataset.taskCheck)];
+    save(); rerender(); renderSidebarProgress();
+  }));
+  wireTimers(body);
+  /* listening tabs + divider + exam mode */
+  $$('[data-wtab]', body).forEach(b => b.addEventListener('click', () => {
+    S.dayUi[date].tab = b.dataset.wtab; save();
+    const split = b.closest('.ws').querySelector('.ws-split');
+    if (split) {
+      split.dataset.mtab = b.dataset.wtab;
+      $$('[data-wtab]', b.closest('.ws')).forEach(x => x.classList.toggle('is-active', x === b));
+      const q = split.querySelector('[data-side="questions"]'), an = split.querySelector('[data-side="answers"]');
+      if (q && an) { q.hidden = b.dataset.wtab === 'answers'; an.hidden = b.dataset.wtab !== 'answers'; }
+      activateFrames(split);
+    }
+  }));
+  $$('[data-divider]', body).forEach(dv => {
+    dv.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      const split = dv.closest('.ws-split'); const left = split.querySelector('[data-pane="audio"]'); const right = split.querySelector('[data-pane="side"]');
+      const rect = split.getBoundingClientRect();
+      const move = ev => {
+        let pct = ((ev.clientX - rect.left) / rect.width) * 100;
+        pct = Math.max(22, Math.min(78, pct));
+        left.style.flexBasis = pct + '%'; right.style.flexBasis = (100 - pct) + '%';
+      };
+      const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+      window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+    });
   });
-  $('#btnDayDone').addEventListener('click', () => {
+  $$('[data-exam-mode]', body).forEach(sw => sw.addEventListener('change', () => {
+    const slot = body.querySelector('[data-exam-slot="' + sw.dataset.examMode + '"]');
+    if (!slot) return;
+    if (sw.checked) {
+      const t = dayTasks(date).find(x => x.id === sw.dataset.examMode);
+      slot.innerHTML = timerHTML('ex-' + date, (t ? t.minutes : 40) * 60, 'Exam timer') +
+        '<p class="exam-note">Exam mode ON: timer chal raha hai aur answers band hain. Sach ye hai — Drive ke player ke andar seek rokna mere haath me nahi; asal imtihan ki practice yehi hai ki audio dobara mat chalao.</p>';
+      wireTimers(slot);
+    } else slot.innerHTML = '';
+  }));
+  /* answers reveal */
+  $$('[data-show-answers]', body).forEach(b => b.addEventListener('click', () => { S.answersShown[date] = 1; save(); rerender(); }));
+  $$('[data-show-sample]', body).forEach(b => b.addEventListener('click', () => { S.answersShown[date + '|sample'] = 1; save(); rerender(); }));
+  /* writing drafts + submit + selfcheck */
+  $$('[data-draft]', body).forEach(ta => {
+    const key = ta.dataset.draft;
+    const wc = body.querySelector('[data-wc="' + CSS.escape(key) + '"]');
+    const upd = () => { if (wc) wc.textContent = ta.value.trim() ? ta.value.trim().split(/\s+/).length : 0; };
+    upd();
+    let dt = null;
+    ta.addEventListener('input', () => {
+      upd();
+      const st = body.querySelector('[data-draft-status="' + CSS.escape(key) + '"]');
+      if (st) st.textContent = 'Saving…';
+      clearTimeout(dt);
+      dt = setTimeout(() => { S.drafts[key] = ta.value; save(); if (st) st.textContent = 'Draft saved'; }, 500);
+    });
+  });
+  $$('[data-submit-writing]', body).forEach(b => b.addEventListener('click', () => {
+    const key = b.dataset.submitWriting;
+    S.selfChecks[key] = S.selfChecks[key] || { items: [false, false, false, false] };
+    S.selfChecks[key].submitted = 1; save(); rerender();
+  }));
+  $$('[data-selfcheck]', body).forEach(cb => cb.addEventListener('change', () => {
+    const key = cb.dataset.selfcheck;
+    S.selfChecks[key] = S.selfChecks[key] || { items: [false, false, false, false], submitted: 1 };
+    S.selfChecks[key].items[parseInt(cb.dataset.sci, 10)] = cb.checked; save();
+  }));
+  /* learn3 + task notes + day notes */
+  $$('[data-learn3]', body).forEach(inp => inp.addEventListener('input', () => {
+    S.learn3[date] = S.learn3[date] || ['', '', ''];
+    S.learn3[date][parseInt(inp.dataset.learn3, 10)] = inp.value; save();
+  }));
+  $$('[data-task-note]', body).forEach(ta => {
+    let nt = null;
+    ta.addEventListener('input', () => { clearTimeout(nt); nt = setTimeout(() => { S.taskNotes[ta.dataset.taskNote] = ta.value; save(); }, 500); });
+  });
+  const na = $('#dayNotesArea', body);
+  if (na) {
+    let nt = null;
+    na.addEventListener('input', () => {
+      const sv = $('#dayNotesSaved', body); if (sv) sv.textContent = 'Saving…';
+      clearTimeout(nt);
+      nt = setTimeout(() => { S.dayNotes[date] = na.value; save(); if (sv) sv.textContent = 'Saved'; }, 500);
+    });
+  }
+  const dd = $('#btnDayDone', body);
+  if (dd) dd.addEventListener('click', () => {
     if (S.dayDonePlan[date]) { delete S.dayDonePlan[date]; toast('Day wapas open kar diya.'); }
     else {
       S.dayDonePlan[date] = 1;
       dayTasks(date).forEach(t => { S.taskDone[taskKey(date, t.id)] = 1; });
-      celebrate(); toast('Day ' + d.dayNumber + ' complete! 🎉');
+      toast('Day complete.');
     }
-    save(); renderDayInto(body, date, inPlan); renderSidebarProgress();
+    save(); rerender(); renderSidebarProgress();
   });
+  /* score + error log */
+  $$('[data-score-raw]', body).forEach(inp => inp.addEventListener('input', () => {
+    const total = parseInt((body.querySelector('[data-score-total="' + date + '"]') || {}).value || '40', 10);
+    const out = body.querySelector('[data-band-out="' + date + '"]');
+    const raw = parseInt(inp.value || '0', 10);
+    if (out && raw > 0) out.innerHTML = '<span class="band-badge">≈ Band ' + bandFor(inp.closest('.score-box').querySelector('[data-score-save]').dataset.skill, raw, total) + '</span> <span class="muted">(approximate)</span>';
+  }));
+  $$('[data-score-save]', body).forEach(b => b.addEventListener('click', () => {
+    const raw = parseInt((body.querySelector('[data-score-raw="' + date + '"]') || {}).value || '0', 10);
+    const total = parseInt((body.querySelector('[data-score-total="' + date + '"]') || {}).value || '40', 10);
+    if (!raw) { toast('Pehle score likho.'); return; }
+    const band = bandFor(b.dataset.skill, raw, total);
+    S.scoreLog = (S.scoreLog || []).filter(x => !(x.date === date && x.skill === b.dataset.skill));
+    S.scoreLog.push({ date, skill: b.dataset.skill, raw, total, band });
+    save(); toast('Score save: ' + raw + '/' + total + ' ≈ Band ' + band + ' (approximate)');
+    rerender();
+  }));
+  $$('[data-err]', body).forEach(inp => inp.addEventListener('input', () => {
+    const i = parseInt(inp.dataset.err, 10);
+    S.errorLog[date] = S.errorLog[date] || [];
+    S.errorLog[date][i] = S.errorLog[date][i] || { q: '', t: '', r: 'other' };
+    S.errorLog[date][i][inp.dataset.errf] = inp.value; save();
+  }));
+  $$('[data-err-add]', body).forEach(b => b.addEventListener('click', () => {
+    S.errorLog[date] = S.errorLog[date] || [];
+    S.errorLog[date].push({ q: '', t: '', r: 'other' }); save(); rerender();
+  }));
+  $$('[data-err-del]', body).forEach(b => b.addEventListener('click', () => {
+    S.errorLog[date].splice(parseInt(b.dataset.errDel, 10), 1); save(); rerender();
+  }));
+  /* speaking recorder */
+  $$('[data-rec]', body).forEach(btn => {
+    const key = btn.dataset.rec;
+    const slot = body.querySelector('[data-rec-slot="' + CSS.escape(key) + '"]');
+    const status = body.querySelector('[data-rec-status="' + CSS.escape(key) + '"]');
+    idbGet(key).then(blob => {
+      if (blob && slot) {
+        slot.innerHTML = '';
+        const au = document.createElement('audio');
+        au.controls = true; au.src = URL.createObjectURL(blob); au.style.width = '100%';
+        const del = document.createElement('button');
+        del.className = 'btn btn-small'; del.textContent = 'Recording hatao';
+        del.addEventListener('click', async () => { await idbDel(key); rerender(); });
+        slot.appendChild(au); slot.appendChild(del);
+        if (status) status.textContent = 'Purani recording mil gayi — neeche play karo.';
+      }
+    }).catch(() => {});
+    btn.addEventListener('click', async () => {
+      const st = REC_STATE[key];
+      if (st && st.mr && st.mr.state === 'recording') { st.mr.stop(); return; }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mr = new MediaRecorder(stream);
+        const chunks = [];
+        mr.ondataavailable = e => chunks.push(e.data);
+        mr.onstop = async () => {
+          stream.getTracks().forEach(x => x.stop());
+          btn.classList.remove('recording'); btn.innerHTML = icon('mic', 'sm') + ' Record';
+          const blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' });
+          await idbPut(key, blob);
+          if (status) status.textContent = 'Recording save ho gayi (sirf is device par).';
+          rerender();
+        };
+        REC_STATE[key] = { mr };
+        mr.start();
+        btn.classList.add('recording'); btn.textContent = 'Stop';
+        if (status) status.textContent = 'Recording chal rahi hai…';
+      } catch (e) {
+        if (status) status.textContent = 'Microphone ki permission nahi mili — browser settings se allow karo.';
+      }
+    });
+  });
+  /* action bar + task focus */
+  const setTask = n => {
+    const tasks = dayTasks(date);
+    const idx = Math.max(0, Math.min(tasks.length - 1, n));
+    S.dayUi[date].task = idx; save();
+    $$('[data-task-card]', body).forEach(c => c.classList.toggle('is-current', parseInt(c.dataset.taskCard, 10) === idx));
+    const card = $('[data-task-card="' + idx + '"]', body);
+    if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); activateFrames(card); }
+  };
+  $$('[data-act]', body).forEach(b => b.addEventListener('click', () => {
+    const cur = S.dayUi[date].task || 0;
+    if (b.dataset.act === 'prev') setTask(cur - 1);
+    if (b.dataset.act === 'next') setTask(cur + 1);
+    if (b.dataset.act === 'done') {
+      const t = dayTasks(date)[cur];
+      if (t) {
+        if (isTaskDone(date, t)) delete S.taskDone[taskKey(date, t.id)];
+        else S.taskDone[taskKey(date, t.id)] = 1;
+        save(); rerender(); renderSidebarProgress();
+      }
+    }
+  }));
+  $$('[data-task-card]', body).forEach(c => c.addEventListener('click', e => {
+    if (e.target.closest('button, input, textarea, select, a, iframe, .ws-divider, label')) return;
+    setTask(parseInt(c.dataset.taskCard, 10));
+  }));
+}
+/* Day keyboard: ←/→ tasks, a = answers, n = notes */
+document.addEventListener('keydown', e => {
+  if (currentView !== 'plan' || planNav.level !== 'day' || !planNav.date) return;
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+  const date = planNav.date;
+  const cur = (S.dayUi[date] && S.dayUi[date].task) || 0;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    const btn = document.querySelector(e.key === 'ArrowRight' ? '[data-act="next"]' : '[data-act="prev"]');
+    if (btn) { e.preventDefault(); btn.click(); }
+  } else if (e.key === 'a') {
+    if (S.answersShown[date]) { delete S.answersShown[date]; save(); renderPlanView(); }
+    else { const b = document.querySelector('[data-show-answers]'); if (b) b.click(); }
+  } else if (e.key === 'n') {
+    const na = document.getElementById('dayNotesArea');
+    if (na) { e.preventDefault(); na.focus(); }
+  }
+});
+/* ---------- Stats: score trend + error summary ---------- */
+function renderScoreTrend() {
+  const el = $('#scoreTrend'); if (!el) return;
+  const log = (S.scoreLog || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  if (!log.length) { el.innerHTML = '<p class="muted">Abhi koi score nahi hai. Kisi test day par "Show answers" ke baad score entry aati hai — wahi se trend banega.</p>'; return; }
+  const W = 520, H = 170, pad = 34;
+  const x = i => pad + (log.length === 1 ? (W - 2 * pad) / 2 : i * (W - 2 * pad) / (log.length - 1));
+  const y = band => H - pad - ((band - 3) / 6.5) * (H - 2 * pad);
+  const pts = log.map((s, i) => x(i).toFixed(1) + ',' + y(s.band).toFixed(1)).join(' ');
+  el.innerHTML = '<svg class="trend-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Band score trend">' +
+    [4, 5, 6, 7, 8, 9].map(b => '<line x1="' + pad + '" y1="' + y(b) + '" x2="' + (W - pad) + '" y2="' + y(b) + '" stroke="var(--border)"/><text x="4" y="' + (y(b) + 4) + '" font-size="12" fill="var(--muted)">' + b + '</text>').join('') +
+    '<polyline points="' + pts + '" fill="none" stroke="var(--accent)" stroke-width="2.5"/>' +
+    log.map((s, i) => '<circle cx="' + x(i) + '" cy="' + y(s.band) + '" r="4.5" fill="var(--accent)"><title>' + s.date + ' ' + s.skill + ' ' + s.raw + '/' + s.total + ' ≈ Band ' + s.band + '</title></circle>').join('') +
+    '</svg>' +
+    '<p class="muted">' + log.map(s => fmtDateShort(s.date) + ' ' + s.skill + ' ≈ ' + s.band).join(' · ') + '</p>';
+}
+function renderErrSummary() {
+  const el = $('#errSummary'); if (!el) return;
+  const counts = {};
+  Object.values(S.errorLog || {}).forEach(rows => (rows || []).forEach(r => { if (r && (r.q || r.t)) counts[r.r || 'other'] = (counts[r.r || 'other'] || 0) + 1; }));
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) { el.innerHTML = '<p class="muted">Abhi Error Log khaali hai. Test ke baad galtiyan wahi likhna — yaha pata chalega sabse zyada galti kis wajah se hoti hai.</p>'; return; }
+  const max = entries[0][1];
+  el.innerHTML = entries.map(([k, v]) => '<div class="timer-row"><span style="min-width:110px;text-transform:capitalize">' + esc(k) + '</span><div class="mini-track" style="flex:1;margin:0"><div class="mini-fill" style="width:' + Math.round(v / max * 100) + '%"></div></div><strong>' + v + '</strong></div>').join('') +
+    '<p class="muted">Sabse upar wali wajah = sabse pehle wahi sudharo.</p>';
 }
 
 /* =====================================================================
@@ -714,7 +1215,7 @@ function renderImportant() {
   const cheatIds = new Set(cheat.map(r => r.id));
   let html = '';
   if (cheat.length) {
-    html += '<div class="imp-group"><h2>🏆 Band 8 cheat sheets</h2><div class="chapter-grid">' +
+    html += '<div class="imp-group"><h2>' + icon('star') + ' Band 8 cheat sheets</h2><div class="chapter-grid">' +
       cheat.map(r => resourceCardHTML(r, false)).join('') + '</div></div>';
   }
   ['Listening', 'Reading', 'Writing', 'Speaking', 'Grammar', 'Vocabulary', 'Mixed'].forEach(skill => {
@@ -793,7 +1294,7 @@ function renderChapters() {
     const st = statusOf(c.id);
     const card = document.createElement('article');
     card.className = 'card chapter-card'; card.tabIndex = 0; card.setAttribute('role', 'button');
-    const icons = [(c.videos || []).length ? '🎬 ' + c.videos.length : '', (c.audios || []).length ? '🎧 ' + c.audios.length : '', (c.pdfs || []).length ? '📄 ' + c.pdfs.length : ''].filter(Boolean).join(' · ');
+    const icons = [(c.videos || []).length ? icon('film','sm') + ' ' + c.videos.length : '', (c.audios || []).length ? icon('head','sm') + ' ' + c.audios.length : '', (c.pdfs || []).length ? icon('note','sm') + ' ' + c.pdfs.length : ''].filter(Boolean).join(' · ');
     card.innerHTML = '<div class="cc-top"><span class="cc-num">#' + (i + 1) + '</span><h3>' + esc(c.title) + '</h3>' +
       '<button class="fav-btn" aria-label="Favorite">' + (S.favorites.includes(c.id) ? '★' : '☆') + '</button></div>' +
       '<p class="muted">' + esc(c.description || '') + '</p>' + (icons ? '<p class="cc-icons">' + icons + '</p>' : '') +
@@ -854,7 +1355,7 @@ function updateMarkDoneBtn() {
 $('#btnMarkDone').addEventListener('click', () => {
   const id = currentChapterId; if (!id) return;
   if (statusOf(id) === 'done') { S.progress[id] = 'progress'; delete S.completedOn[id]; toast('Chapter wapas In progress.'); }
-  else { S.progress[id] = 'done'; S.completedOn[id] = todayStr(); celebrate(); toast('Chapter complete 🎉'); }
+  else { S.progress[id] = 'done'; S.completedOn[id] = todayStr(); celebrate(); toast('Chapter complete.'); }
   save(); updateMarkDoneBtn();
 });
 $('#btnFavChapter').addEventListener('click', () => {
@@ -904,7 +1405,7 @@ function renderVideoTab(c) {
   vids.forEach((v, i) => {
     const li = document.createElement('li');
     const b = document.createElement('button');
-    b.innerHTML = '<span>' + (isRumble(v) ? '▶' : '🎬') + '</span><span>' + esc(v.title) + '</span>';
+    b.innerHTML = '<span>' + icon('film','sm') + '</span><span>' + esc(v.title) + '</span>';
     b.addEventListener('click', () => playVideoAt(i));
     li.appendChild(b); list.appendChild(li);
   });
@@ -973,7 +1474,7 @@ function renderAudioTab(c) {
     const li = document.createElement('li');
     const b = document.createElement('button');
     const pos = S.positions[c.id + ':a' + i];
-    b.innerHTML = '<span>🎧</span><span>' + esc(a.title) + '</span>' + (pos && !isDrive(a.url) ? '<span class="done-mark">' + fmtTime(pos) + ' se aage</span>' : '');
+    b.innerHTML = '<span>' + icon('head','sm') + '</span><span>' + esc(a.title) + '</span>' + (pos && !isDrive(a.url) ? '<span class="done-mark">' + fmtTime(pos) + ' se aage</span>' : '');
     b.addEventListener('click', () => playAudioAt(i));
     li.appendChild(b); list.appendChild(li);
   });
@@ -994,7 +1495,7 @@ function playAudioAt(i, autoplay = true) {
     $('#aDriveWrap').hidden = true; $('#aSkeleton').hidden = true;
     $('#localAudioCard').hidden = false;
     const el = audioEl();
-    $('#aNowTitle').textContent = '▶ ' + a.title;
+    $('#aNowTitle').textContent = a.title;
     el.src = a.url;
     el.playbackRate = parseFloat($('#aSpeed').value);
     el.onloadedmetadata = () => {
@@ -1033,7 +1534,7 @@ function updateMediaSession(c, a) {
     }
     if (sleepEndAt) {
       const left = Math.max(0, Math.round((sleepEndAt - Date.now()) / 1000));
-      $('#aSleepLeft').textContent = left > 0 ? '💤 ' + fmtTime(left) : '';
+      $('#aSleepLeft').textContent = left > 0 ? 'Sleep: ' + fmtTime(left) : '';
     }
   });
   el.addEventListener('ended', () => {
@@ -1055,7 +1556,7 @@ function updateMediaSession(c, a) {
     const min = parseInt(e.target.value, 10);
     if (min > 0) {
       sleepEndAt = Date.now() + min * 60000;
-      sleepTimerId = setTimeout(() => { el.pause(); toast('Sleep timer: audio band. Shubh raatri 🌙'); }, min * 60000);
+      sleepTimerId = setTimeout(() => { el.pause(); toast('Sleep timer: audio band. Shubh raatri.'); }, min * 60000);
       toast('Sleep timer set: ' + min + ' min');
     }
   });
@@ -1065,7 +1566,7 @@ function updateMediaSession(c, a) {
     const label = prompt('Bookmark note (' + fmtTime(t) + '):', '');
     if (label === null) return;
     (S.bookmarks[currentChapterId] = S.bookmarks[currentChapterId] || []).push({ t, label: label || 'Bookmark', a: aIdx });
-    save(); renderBookmarkList(); toast('Bookmark save 🔖');
+    save(); renderBookmarkList(); toast('Bookmark save ho gaya.');
   });
 })();
 function renderBookmarkList() {
@@ -1101,7 +1602,7 @@ function renderPdfTab(c) {
   pdfs.forEach((p, i) => {
     const b = document.createElement('button');
     b.className = 'chip' + (i === pdfIdx ? ' is-active' : '');
-    b.textContent = '📄 ' + p.title;
+    b.textContent = p.title;
     b.addEventListener('click', () => loadPdfAt(i));
     tabs.appendChild(b);
   });
@@ -1243,6 +1744,8 @@ function renderStats() {
     col.innerHTML = '<div class="bar" style="height:' + Math.round(byWeek[x] / max * 120 + 4) + 'px"></div><strong>' + byWeek[x] + '</strong><small>W' + x + '</small>';
     chart.appendChild(col);
   });
+  renderScoreTrend();
+  renderErrSummary();
 }
 function renderProfile() {
   $('#reminderTime').value = S.reminder || '07:00';
@@ -1372,7 +1875,7 @@ $('#cfDelete').addEventListener('click', () => {
 function applyTheme() {
   const dark = S.theme ? S.theme === 'dark' : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  $('#btnTheme').textContent = dark ? '☀️' : '🌙';
+  $('#btnTheme').innerHTML = icon(dark ? 'sun' : 'moon');
 }
 function toggleTheme() {
   S.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -1406,8 +1909,8 @@ function pomoTick() {
   if (pomo.mode === 'focus') { S.focusByDate[todayStr()] = (S.focusByDate[todayStr()] || 0) + 1; save(); }
   if (pomo.left <= 0) {
     clearInterval(pomo.timer); pomo.running = false;
-    if (pomo.mode === 'focus') { toast('Focus session poora! 5 min break ☕'); pomo.mode = 'break'; pomo.left = 5 * 60; }
-    else { toast('Break khatm — wapas padhai par 💪'); pomo.mode = 'focus'; pomo.left = 25 * 60; }
+    if (pomo.mode === 'focus') { toast('Focus session poora. 5 min break.'); pomo.mode = 'break'; pomo.left = 5 * 60; }
+    else { toast('Break khatm — wapas padhai par.'); pomo.mode = 'focus'; pomo.left = 25 * 60; }
   }
   pomoRender();
 }
