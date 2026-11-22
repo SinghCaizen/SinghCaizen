@@ -731,13 +731,22 @@ async function idbDel(key) { const db = await idbOpen(); return new Promise((res
 function questionsBook() {
   return RES.find(r => /40 ielts listening tests/i.test(r.title)) || RES.find(r => /listening/i.test(r.title) && r.type === 'pdf' && r.bucket === 'CORE');
 }
+const WS_Q = {};
+function listeningSectionFiles() {
+  return RES.filter(r => /40 ielts listening tests/i.test(r.title))
+    .sort((x, y) => x.title.localeCompare(y.title));
+}
 function wsListening(date, t, r) {
-  const q = questionsBook();
+  const sections = listeningSectionFiles();
+  const q = (WS_Q[date] && sections.find(s => s.id === WS_Q[date])) || sections[0] || questionsBook();
   const ansRes = (t.transcriptId && RES_BY_ID[t.transcriptId]) || q;
   const shown = !!S.answersShown[date];
   const ui = S.dayUi[date] || {};
   const tab = ui.tab || 'audio';
-  let h = '<div class="ws"><div class="timer-row"><label class="switch-row"><span class="switch"><input type="checkbox" data-exam-mode="' + t.id + '"><span class="tr"></span></span> Exam mode</label>' +
+  const secChips = sections.length > 1
+    ? '<div class="ws-tabs">' + sections.map(s => '<button class="ws-tab' + (q && s.id === q.id ? ' is-active' : '') + '" data-qsec="' + s.id + '">' + esc(s.title.replace('40 IELTS Listening Tests - ', '').replace(' (with answers)', '')) + '</button>').join('') + '</div>'
+    : '';
+  return '<div class="ws"><div class="timer-row"><label class="switch-row"><span class="switch"><input type="checkbox" data-exam-mode="' + t.id + '"><span class="tr"></span></span> Exam mode</label>' +
     '<span data-exam-slot="' + t.id + '"></span></div>' +
     '<div class="ws-tabs" role="tablist">' +
     ['audio', 'questions', 'answers'].map(x => '<button class="ws-tab' + (tab === x ? ' is-active' : '') + '" data-wtab="' + x + '">' + (x === 'audio' ? 'Audio' : x === 'questions' ? 'Questions' : 'Answers') + '</button>').join('') + '</div>' +
@@ -745,11 +754,11 @@ function wsListening(date, t, r) {
     '<div class="ws-pane" data-pane="audio" style="flex-basis:50%">' + wsFrameHTML(r, 'audio') + '</div>' +
     '<div class="ws-divider" data-divider aria-hidden="true"></div>' +
     '<div class="ws-pane" data-pane="side" style="flex-basis:50%">' +
-    '<div data-side="questions">' + (q ? wsFrameHTML(q, 'tall') : '<p class="muted">Questions ki file library me hai — "40 IELTS Listening Tests".</p>') + '</div>' +
-    '<div data-side="answers" hidden>' + (shown ? wsFrameHTML(ansRes, 'tall') + scoreErrorHTML(date, t) : answersGateHTML(date)) + '</div>' +
+    '<div data-side="questions"' + (tab === 'answers' ? ' hidden' : '') + '>' + secChips + '<div data-qframe>' + (q ? wsFrameHTML(q, 'tall') : '<p class="muted">Questions ki file library me hai.</p>') + '</div>' +
+    '<p class="muted">Agar kisi section ki preview na khule, to woh file Drive par hi preview nahi hoti — dusra section chip dabakar dekho, ya Library se file kholo.</p></div>' +
+    '<div data-side="answers"' + (tab === 'answers' ? '' : ' hidden') + '>' + (shown ? '<p><strong>Transcript</strong> — apne jawab isse milao. Number-wise answer key Questions wali file ke aakhir me hai.</p>' + wsFrameHTML(ansRes, 'tall') + scoreErrorHTML(date, t) : answersGateHTML(date)) + '</div>' +
     '</div></div>' +
     '<p class="muted">Desktop par beech wali line ghaseet kar audio/questions ka size badlo. Mobile par upar ke tabs use karo.</p></div>';
-  return h;
 }
 function answersGateHTML(date) {
   return '<div class="score-box"><p><strong>Answers abhi chhupe hain.</strong> Pehle poora test bina dekhe karo — phir dabao.</p>' +
@@ -964,6 +973,16 @@ function wireDayWorkspace(body, date, inPlan) {
       const q = split.querySelector('[data-side="questions"]'), an = split.querySelector('[data-side="answers"]');
       if (q && an) { q.hidden = b.dataset.wtab === 'answers'; an.hidden = b.dataset.wtab !== 'answers'; }
       activateFrames(split);
+    }
+  }));
+  $$('[data-qsec]', body).forEach(b => b.addEventListener('click', () => {
+    WS_Q[date] = b.dataset.qsec;
+    const res = RES_BY_ID[b.dataset.qsec];
+    const holder = b.closest('[data-side="questions"]').querySelector('[data-qframe]');
+    if (res && holder) {
+      holder.innerHTML = wsFrameHTML(res, 'tall');
+      activateFrames(holder);
+      $$('[data-qsec]', body).forEach(x => x.classList.toggle('is-active', x === b));
     }
   }));
   $$('[data-divider]', body).forEach(dv => {
