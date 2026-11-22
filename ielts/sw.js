@@ -8,7 +8,7 @@ const SHELL = [
   'styles.css?v=4',
   'app.js?v=5',
   'auth.js?v=4',
-  'firebase-config.js?v=4',
+  'firebase-config.js?v=6',
   'data/chapters.js?v=4',
   'manifest.webmanifest'
 ];

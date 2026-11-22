@@ -1,17 +1,15 @@
 /* =====================================================================
-   FIREBASE CONFIG — sirf ye ek file badalni hai cloud login/sync ke liye.
-   ---------------------------------------------------------------------
-   Jab tak neeche wale values "PASTE_" se shuru hote hain, website
-   LOCAL mode me chalegi (bina login ke, progress isi browser me save).
-   Apna Firebase web config yaha paste karte hi Sign Up / Sign In aur
-   cloud sync apne aap ON ho jayega. Poore steps: Settings → Cloud Sync.
-   Sirf PUBLIC config yaha aata hai — koi secret/private key kabhi nahi.
+   FIREBASE CONFIG — Folio wala hi project (singhcaizenfinance), shared.
+   LILA ke kehne par 2026-11-22 ko Folio (portfolio) ki config yaha lagayi
+   gayi hai, taaki IELTS website par bhi wahi login + cloud sync chale.
+   Ye values PUBLIC hoti hain (website code me hi rehti hain) — asal
+   suraksha login + Firestore rules se hoti hai, key se nahi.
    ===================================================================== */
 window.FIREBASE_CONFIG = {
-  apiKey: "PASTE_YOUR_API_KEY",
-  authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
-  projectId: "PASTE_YOUR_PROJECT_ID",
-  storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyAQbLQWRacE09oR4NvWNYBw7UkniybcPMo",
+  authDomain: "singhcaizenfinance.firebaseapp.com",
+  projectId: "singhcaizenfinance",
+  storageBucket: "singhcaizenfinance.firebasestorage.app",
+  messagingSenderId: "540160355480",
+  appId: "1:540160355480:web:c5e512e45c47d05c6374ed"
 };
