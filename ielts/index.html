@@ -4,19 +4,58 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>IELTS Study — Noor's Classroom</title>
-<meta name="description" content="Personal IELTS study website: chapters, built-in video/audio/PDF players and a yearly study planner.">
+<meta name="description" content="LILA's personal IELTS study website: chapters, built-in video/audio/PDF players, yearly planner and cloud progress.">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#b3543f">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23b3543f'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23fff7ec' font-family='Georgia'%3EN%3C/text%3E%3C/svg%3E">
-<link rel="stylesheet" href="styles.css?v=3">
-<!-- PDF.js (pinned version, cdnjs) — PDFs render INSIDE this site on a canvas -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=4">
+<!-- PDF.js (pinned, cdnjs) — sirf LOCAL /media PDFs ke liye; Drive PDFs Drive viewer se chalte hain -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
+<!-- ======================= AUTH GATE ======================= -->
+<div id="authGate" class="auth-gate" hidden>
+  <div id="authLoading" class="auth-card">
+    <div class="brand-mark big">N</div>
+    <p>Ek second… tumhara account check ho raha hai.</p>
+  </div>
+  <div id="authCard" class="auth-card" hidden>
+    <div class="brand-mark big">N</div>
+    <h1 id="authTitle">Welcome back</h1>
+    <p class="muted" id="authSub">Sign in karke apni progress har device par pao.</p>
+    <div class="auth-tabs">
+      <button id="tabSignIn" class="chip is-active" type="button">Sign In</button>
+      <button id="tabSignUp" class="chip" type="button">Sign Up</button>
+    </div>
+    <form id="authForm" class="form-grid">
+      <label>Email <input id="authEmail" type="email" autocomplete="email" required placeholder="you@example.com"></label>
+      <label>Password
+        <span class="pass-wrap">
+          <input id="authPass" type="password" autocomplete="current-password" required placeholder="••••••••">
+          <button id="authPassToggle" type="button" class="icon-btn" aria-label="Show or hide password">👁</button>
+        </span>
+      </label>
+      <p id="authError" class="auth-error" hidden></p>
+      <button id="authSubmit" class="btn btn-primary" type="submit">Sign In</button>
+      <button id="btnGoogle" class="btn" type="button">Continue with Google</button>
+      <button id="authForgot" class="link-btn" type="button">Forgot password?</button>
+    </form>
+    <div id="authLocalNote" hidden>
+      <hr class="soft">
+      <p class="muted">Cloud login abhi setup nahi hua hai (Firebase config baaki hai). Tab tak website **local mode** me chalegi — progress isi browser me save hogi.</p>
+      <button id="btnContinueLocal" class="btn btn-primary" type="button">Local mode me aage badho →</button>
+    </div>
+  </div>
+</div>
+
 <!-- ======================= TOP BAR ======================= -->
 <header class="topbar">
-  <button id="btnSidebar" class="icon-btn only-mobile" aria-label="Open chapter list">☰</button>
+  <button id="btnSidebar" class="icon-btn only-mobile" aria-label="Open menu">☰</button>
+  <button id="btnCollapse" class="icon-btn only-desktop" aria-label="Collapse sidebar">⇤</button>
   <div class="brand">
     <span class="brand-mark">N</span>
     <div class="brand-text">
@@ -25,28 +64,25 @@
     </div>
   </div>
   <div class="topbar-actions">
+    <span id="savedDot" class="saved-dot" title="Save status">● Local</span>
     <button id="btnTheme" class="icon-btn" aria-label="Toggle dark / light mode">🌙</button>
     <button id="btnFont" class="icon-btn" aria-label="Change font size">A±</button>
     <button id="btnFocus" class="icon-btn" aria-label="Focus mode">◎</button>
     <button id="btnShortcuts" class="icon-btn" aria-label="Keyboard shortcuts help">?</button>
+    <button id="btnProfileTop" class="icon-btn avatar-btn" aria-label="Profile">L</button>
   </div>
 </header>
 
-<!-- In-app reminder banner (Today page) -->
 <div id="todayBanner" class="banner" hidden>
   <span>📚 Today's chapter is waiting — <strong id="todayBannerText"></strong></span>
   <button id="todayBannerBtn" class="btn btn-small">Open</button>
   <button id="todayBannerClose" class="icon-btn" aria-label="Dismiss">✕</button>
 </div>
-
-<!-- Missed-days banner (Planner) -->
 <div id="missedBanner" class="banner banner-warn" hidden>
   <span id="missedBannerText"></span>
   <button id="missedReschedBtn" class="btn btn-small">Reschedule missed chapters</button>
   <button id="missedBannerClose" class="icon-btn" aria-label="Dismiss">✕</button>
 </div>
-
-<!-- Backup reminder banner -->
 <div id="backupBanner" class="banner" hidden>
   <span>💾 7 din se backup nahi liya. Apni progress safe rakhne ke liye backup le lo.</span>
   <button id="backupNowBtn" class="btn btn-small">Backup now</button>
@@ -54,18 +90,18 @@
 </div>
 
 <div class="layout">
-
   <!-- ======================= SIDEBAR ======================= -->
-  <aside id="sidebar" class="sidebar" aria-label="Chapters">
+  <aside id="sidebar" class="sidebar" aria-label="Navigation and chapters">
     <nav class="main-nav">
-      <button class="nav-item" data-nav="today">🏠 Today — Aaj ka plan</button>
-      <button class="nav-item" data-nav="home">📖 All Chapters</button>
-      <button class="nav-item" data-nav="plan">🗓️ Planner / Calendar</button>
+      <button class="nav-item" data-nav="home">🏠 Home</button>
+      <button class="nav-item" data-nav="chapters">📖 Chapters</button>
+      <button class="nav-item" data-nav="plan">🗓️ Plan</button>
+      <button class="nav-item" data-nav="notes">📝 Notes</button>
       <button class="nav-item" data-nav="stats">📊 Stats</button>
-      <button class="nav-item" data-nav="settings">⚙️ Settings</button>
+      <button class="nav-item" data-nav="profile">⚙️ Profile</button>
     </nav>
     <div class="side-progress">
-      <div class="side-progress-label"><span id="sideProgressText">0 of 10 chapters done</span></div>
+      <div class="side-progress-label"><span id="sideProgressText">0 of 12 chapters done</span></div>
       <div class="progress-track"><div id="sideProgressBar" class="progress-fill" style="width:0%"></div></div>
     </div>
     <h3 class="side-heading">Chapters</h3>
@@ -76,43 +112,48 @@
   <!-- ======================= MAIN ======================= -->
   <main id="main" class="main">
 
-    <!-- ========== VIEW: TODAY ========== -->
-    <section id="view-today" class="view">
-      <div class="today-grid">
-        <article class="card today-card">
-          <p class="eyebrow">Aaj ka plan</p>
-          <h1 id="todayDate" class="today-date">—</h1>
-          <p id="todayMotive" class="motive"></p>
-          <div id="todayChapters" class="today-chapters"></div>
-          <div class="today-progress-row">
-            <div class="ring-wrap">
-              <svg class="ring" viewBox="0 0 80 80" width="80" height="80" aria-hidden="true">
-                <circle cx="40" cy="40" r="34" class="ring-bg"></circle>
-                <circle id="goalRing" cx="40" cy="40" r="34" class="ring-fg"></circle>
-              </svg>
-              <div class="ring-label"><strong id="goalRingText">0/0</strong><small>today</small></div>
-            </div>
-            <div class="today-stats">
-              <p id="todayProgressText">—</p>
-              <p>🔥 Streak: <strong id="streakText">0 days</strong> · Best: <strong id="bestStreakText">0</strong></p>
-              <p id="planStatusText">—</p>
-              <button id="btnMarkTodayDone" class="btn btn-primary">✓ Mark today done</button>
-            </div>
+    <!-- ========== VIEW: HOME (dashboard) ========== -->
+    <section id="view-home" class="view">
+      <p class="eyebrow" id="dashDate">—</p>
+      <h1 class="dash-greet">Namaste, <span id="greetName">LILA</span> 🙏</h1>
+      <p id="dashMotiv" class="motive"></p>
+      <div class="dash-grid">
+        <article class="card dash-progress-card">
+          <div class="ring-wrap big">
+            <svg class="ring" viewBox="0 0 80 80" width="104" height="104" aria-hidden="true">
+              <circle cx="40" cy="40" r="34" class="ring-bg"></circle>
+              <circle id="dashRing" cx="40" cy="40" r="34" class="ring-fg"></circle>
+            </svg>
+            <div class="ring-label"><strong id="dashRingText">0%</strong><small>complete</small></div>
+          </div>
+          <div>
+            <h2>Overall progress</h2>
+            <p id="dashProgressText" class="muted">—</p>
+            <p>🔥 Streak: <strong id="dashStreak">0 days</strong> · Best: <strong id="dashBest">0</strong></p>
+            <p id="dashGoalText" class="muted">—</p>
           </div>
         </article>
-
         <article class="card">
-          <h2>Kal ka preview</h2>
-          <div id="tomorrowPreview"></div>
+          <h2>📚 Aaj ka plan</h2>
+          <div id="dashToday"></div>
+          <button id="btnDashMarkDone" class="btn btn-primary">✓ Mark today done</button>
+        </article>
+        <article class="card">
+          <h2>▶ Continue where you left off</h2>
+          <div id="dashContinue"></div>
           <hr class="soft">
-          <h2>Continue where you left off</h2>
-          <div id="continueBox"></div>
+          <h2>Kal ka preview</h2>
+          <div id="dashTomorrow"></div>
+        </article>
+        <article class="card">
+          <h2>🕘 Recently opened</h2>
+          <div id="recentGrid" class="recent-grid"></div>
         </article>
       </div>
     </section>
 
-    <!-- ========== VIEW: HOME / ALL CHAPTERS ========== -->
-    <section id="view-home" class="view" hidden>
+    <!-- ========== VIEW: CHAPTERS ========== -->
+    <section id="view-chapters" class="view" hidden>
       <div class="home-head">
         <h1>All Chapters</h1>
         <div class="search-box">
@@ -120,8 +161,8 @@
         </div>
       </div>
       <div class="overall-progress">
-        <div class="progress-track big"><div id="homeProgressBar" class="progress-fill" style="width:0%"></div></div>
-        <span id="homeProgressText">0 of 10 chapters done</span>
+        <div class="progress-track big"><div id="chaptersProgressBar" class="progress-fill" style="width:0%"></div></div>
+        <span id="chaptersProgressText">0 of 12 chapters done</span>
       </div>
       <div class="filter-row" role="group" aria-label="Filters">
         <button class="chip is-active" data-filter="all">All</button>
@@ -148,7 +189,7 @@
     <!-- ========== VIEW: CHAPTER ========== -->
     <section id="view-chapter" class="view" hidden>
       <div class="chapter-head">
-        <button id="btnBackHome" class="btn btn-small">← All chapters</button>
+        <button id="btnBackChapters" class="btn btn-small">← All chapters</button>
         <div>
           <h1 id="chTitle">—</h1>
           <p id="chDesc" class="muted"></p>
@@ -170,9 +211,16 @@
 
       <!-- VIDEO TAB -->
       <div id="tab-video" class="tab-panel">
-        <div id="videoStage" class="video-stage">
-          <div id="videoSkeleton" class="skeleton" hidden>Loading video…</div>
-          <div id="rumbleWrap" class="rumble-wrap" hidden></div>
+        <div class="stage">
+          <div id="vSkeleton" class="skeleton" hidden>Loading video…</div>
+          <div id="vDriveWrap" class="frame-wrap ratio-16x9" hidden>
+            <iframe id="vDriveFrame" title="Video player" allow="autoplay; fullscreen" allowfullscreen></iframe>
+            <div class="popout-shield" title="Video yahi chalega"></div>
+          </div>
+          <div id="vRumbleWrap" class="frame-wrap ratio-16x9" hidden>
+            <iframe id="vRumbleFrame" title="Rumble video" allow="autoplay; fullscreen" allowfullscreen></iframe>
+            <div class="popout-shield"></div>
+          </div>
           <div id="fileVideoWrap" hidden>
             <video id="fileVideo" playsinline preload="metadata"></video>
             <div class="player-controls">
@@ -191,18 +239,23 @@
               <button id="vFull" class="pbtn" aria-label="Fullscreen">⛶</button>
             </div>
           </div>
-          <div id="videoError" class="player-error" hidden>
-            <p>Video load nahi ho paya. Internet check karke dobara try karo.</p>
+          <div id="vError" class="player-error" hidden>
+            <p>File not opening? Check that the Drive file is shared as "Anyone with the link".</p>
             <button id="vRetry" class="btn btn-small">↻ Retry</button>
           </div>
-          <p id="videoEmpty" class="empty">Is chapter me abhi koi video nahi hai.</p>
+          <p id="vEmpty" class="empty">Is chapter me abhi koi video nahi hai.</p>
         </div>
         <ul id="videoPlaylist" class="playlist"></ul>
       </div>
 
       <!-- AUDIO TAB -->
       <div id="tab-audio" class="tab-panel" hidden>
-        <div class="audio-player card">
+        <div id="aSkeleton" class="skeleton" hidden>Loading audio…</div>
+        <div id="aDriveWrap" class="frame-wrap audio-frame" hidden>
+          <iframe id="aDriveFrame" title="Audio player" allow="autoplay"></iframe>
+          <div class="popout-shield"></div>
+        </div>
+        <div id="localAudioCard" class="audio-player card" hidden>
           <p id="aNowTitle" class="now-title">Koi audio chuna nahi gaya</p>
           <audio id="audioEl" preload="metadata"></audio>
           <div class="player-controls">
@@ -229,14 +282,14 @@
             <span id="aSleepLeft" class="muted"></span>
             <button id="aBookmark" class="btn btn-small">🔖 Bookmark this moment</button>
           </div>
-          <div id="aError" class="player-error" hidden>
-            <p>Audio chal nahi paya.</p>
-            <button id="aRetry" class="btn btn-small">↻ Retry</button>
-          </div>
           <div class="bookmarks">
             <h3>Bookmarks</h3>
             <ul id="aBookmarkList"></ul>
           </div>
+        </div>
+        <div id="aError" class="player-error" hidden>
+          <p>File not opening? Check that the Drive file is shared as "Anyone with the link".</p>
+          <button id="aRetry" class="btn btn-small">↻ Retry</button>
         </div>
         <ul id="audioPlaylist" class="playlist"></ul>
         <p id="audioEmpty" class="empty" hidden>Is chapter me abhi koi audio nahi hai.</p>
@@ -245,28 +298,35 @@
       <!-- PDF TAB -->
       <div id="tab-pdf" class="tab-panel" hidden>
         <div id="pdfTabs" class="pdf-tabs"></div>
-        <div class="pdf-toolbar">
-          <button id="pdfPrev" class="pbtn" aria-label="Previous page">←</button>
-          <span class="pdf-pagebox">
-            <input id="pdfJump" type="number" min="1" value="1" aria-label="Page number"> / <span id="pdfTotal">–</span>
-          </span>
-          <button id="pdfNext" class="pbtn" aria-label="Next page">→</button>
-          <button id="pdfZoomOut" class="pbtn" aria-label="Zoom out">−</button>
-          <span id="pdfZoomLabel">100%</span>
-          <button id="pdfZoomIn" class="pbtn" aria-label="Zoom in">＋</button>
-          <button id="pdfFit" class="btn btn-small">Fit width</button>
-          <button id="pdfFull" class="btn btn-small">⛶ Fullscreen</button>
-          <span id="pdfCounter" class="muted"></span>
+        <div id="pSkeleton" class="skeleton" hidden>Loading PDF…</div>
+        <div id="pdfDriveWrap" class="frame-wrap pdf-frame" hidden>
+          <iframe id="pdfDriveFrame" title="PDF viewer" allow="autoplay"></iframe>
+          <div class="popout-shield"></div>
         </div>
-        <div id="pdfStage" class="pdf-stage">
-          <p id="pdfLoading" class="empty" hidden>PDF load ho raha hai… <span id="pdfLoadPct"></span></p>
-          <div id="pdfError" class="player-error" hidden>
-            <p>PDF khul nahi paya.</p>
-            <button id="pdfRetry" class="btn btn-small">↻ Retry</button>
+        <div id="pdfLocalWrap" hidden>
+          <div class="pdf-toolbar">
+            <button id="pdfPrev" class="pbtn" aria-label="Previous page">←</button>
+            <span class="pdf-pagebox">
+              <input id="pdfJump" type="number" min="1" value="1" aria-label="Page number"> / <span id="pdfTotal">–</span>
+            </span>
+            <button id="pdfNext" class="pbtn" aria-label="Next page">→</button>
+            <button id="pdfZoomOut" class="pbtn" aria-label="Zoom out">−</button>
+            <span id="pdfZoomLabel">100%</span>
+            <button id="pdfZoomIn" class="pbtn" aria-label="Zoom in">＋</button>
+            <button id="pdfFit" class="btn btn-small">Fit width</button>
+            <button id="pdfFull" class="btn btn-small">⛶ Fullscreen</button>
+            <span id="pdfCounter" class="muted"></span>
           </div>
-          <canvas id="pdfCanvas"></canvas>
-          <p id="pdfEmpty" class="empty">Is chapter me abhi koi PDF nahi hai.</p>
+          <div id="pdfStage" class="pdf-stage">
+            <p id="pdfLoading" class="empty" hidden>PDF load ho raha hai… <span id="pdfLoadPct"></span></p>
+            <canvas id="pdfCanvas"></canvas>
+          </div>
         </div>
+        <div id="pdfError" class="player-error" hidden>
+          <p>File not opening? Check that the Drive file is shared as "Anyone with the link".</p>
+          <button id="pdfRetry" class="btn btn-small">↻ Retry</button>
+        </div>
+        <p id="pdfEmpty" class="empty">Is chapter me abhi koi PDF nahi hai.</p>
       </div>
 
       <!-- NOTES TAB -->
@@ -293,13 +353,11 @@
         </div>
       </div>
       <p id="planSummary" class="muted"></p>
-
       <div class="plan-view-switch" role="group" aria-label="Calendar view">
         <button class="chip is-active" data-pview="month">Month</button>
         <button class="chip" data-pview="year">Year heatmap</button>
         <button class="chip" data-pview="week">Next 7 days</button>
       </div>
-
       <div id="planMonth" class="plan-pane">
         <div class="month-head">
           <button id="monthPrev" class="pbtn" aria-label="Previous month">←</button>
@@ -313,7 +371,6 @@
         </div>
         <div id="monthGrid" class="month-grid"></div>
       </div>
-
       <div id="planYear" class="plan-pane" hidden>
         <div class="legend">
           <span><i class="dot done"></i> Done</span><span><i class="dot missed"></i> Missed</span>
@@ -322,10 +379,16 @@
         </div>
         <div id="yearHeat" class="year-heat"></div>
       </div>
-
       <div id="planWeek" class="plan-pane" hidden>
         <ul id="weekList" class="week-list"></ul>
       </div>
+    </section>
+
+    <!-- ========== VIEW: NOTES (all) ========== -->
+    <section id="view-notes" class="view" hidden>
+      <h1>My Notes</h1>
+      <p class="muted">Har chapter ke notes ek jagah. Kisi par bhi tap karo, chapter khul jayega.</p>
+      <div id="notesList" class="notes-list"></div>
     </section>
 
     <!-- ========== VIEW: STATS ========== -->
@@ -342,9 +405,32 @@
       </article>
     </section>
 
-    <!-- ========== VIEW: SETTINGS ========== -->
-    <section id="view-settings" class="view" hidden>
-      <h1>Settings</h1>
+    <!-- ========== VIEW: PROFILE / SETTINGS ========== -->
+    <section id="view-profile" class="view" hidden>
+      <h1>Profile & Settings</h1>
+
+      <article class="card">
+        <h2>👤 Account</h2>
+        <div id="accountInfo"></div>
+        <button id="btnSignOut" class="btn" hidden>Sign Out</button>
+        <p id="syncStatus" class="muted"></p>
+        <details class="steps-box">
+          <summary><strong>☁️ Cloud Sync setup — exact steps (ek baar karna hai)</strong></summary>
+          <ol>
+            <li>Apne phone/computer par <strong>console.firebase.google.com</strong> kholo, apne Google account se sign in karo.</li>
+            <li><strong>"Add project"</strong> (ya "Create a project") dabao → naam do: <strong>ielts-study</strong> → Google Analytics band karke <strong>Create project</strong>.</li>
+            <li>Project khulne par left menu me <strong>Build → Authentication</strong> → <strong>Get started</strong>.</li>
+            <li><strong>Sign-in method</strong> tab me pehle <strong>Email/Password</strong> ko Enable karo, phir <strong>Google</strong> ko bhi Enable karo (apna email chun kar Save).</li>
+            <li>Usi page par neeche <strong>Settings → Authorized domains</strong> me <strong>singhcaizen.github.io</strong> add karo.</li>
+            <li>Left menu me <strong>Build → Firestore Database</strong> → <strong>Create database</strong> → <strong>Start in production mode</strong>.</li>
+            <li>Firestore ke <strong>Rules</strong> tab me purana text hata kar ye paste karo aur <strong>Publish</strong> dabao:<br>
+              <code class="rules-code">rules_version = '2';<br>service cloud.firestore {<br>&nbsp;&nbsp;match /databases/{database}/documents {<br>&nbsp;&nbsp;&nbsp;&nbsp;match /users/{uid}/{document=**} {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;allow read, write: if request.auth != null &amp;&amp; request.auth.uid == uid;<br>&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;&nbsp;}<br>}</code></li>
+            <li>Project Overview (home) par <strong>&lt;/&gt; Web app</strong> icon dabao → app ka naam <strong>ielts-web</strong> → <strong>Register app</strong>. Waha ek <strong>firebaseConfig</strong> dikhega.</li>
+            <li>Us config ki values Noor ko bhej do (ye public hoti hain, secret nahi) — mai <strong>firebase-config.js</strong> me daal kar site update kar dungi. Ya khud GitHub par file edit karke paste kar do.</li>
+            <li>Bas! Phir site par <strong>Sign Up</strong> karke account banao — progress cloud me save hone lagegi.</li>
+          </ol>
+        </details>
+      </article>
 
       <article class="card">
         <h2>🗓️ Plan setup</h2>
@@ -379,7 +465,7 @@
       <article class="card">
         <h2>📄 PDF</h2>
         <label class="switch-row"><input type="checkbox" id="setHideDownload" checked> Download button chhupao (default: hidden)</label>
-        <p class="muted">Is website me PDF hamesha andar hi khulta hai; download button default se band hai.</p>
+        <p class="muted">Drive PDFs hamesha website ke andar wale viewer me khulte hain.</p>
       </article>
 
       <article class="card">
@@ -402,10 +488,18 @@
       </article>
     </section>
 
-    <!-- Printable plan (only visible when printing) -->
     <section id="printPlan" class="print-only"></section>
   </main>
 </div>
+
+<!-- ======================= BOTTOM TAB BAR (mobile) ======================= -->
+<nav class="tabbar" aria-label="Main">
+  <button class="tab-item is-active" data-nav="home"><span>🏠</span>Home</button>
+  <button class="tab-item" data-nav="chapters"><span>📖</span>Chapters</button>
+  <button class="tab-item" data-nav="plan"><span>🗓️</span>Plan</button>
+  <button class="tab-item" data-nav="notes"><span>📝</span>Notes</button>
+  <button class="tab-item" data-nav="profile"><span>👤</span>Profile</button>
+</nav>
 
 <!-- ======================= POMODORO ======================= -->
 <div id="pomodoro" class="pomodoro" aria-label="Pomodoro timer">
@@ -424,7 +518,6 @@
 
 <!-- ======================= MODALS ======================= -->
 <div id="modalScrim" class="modal-scrim" hidden>
-  <!-- Chapter add/edit form -->
   <div id="chapterFormModal" class="modal" hidden>
     <h2 id="cfTitle">Add chapter</h2>
     <form id="chapterForm" class="form-grid">
@@ -432,11 +525,11 @@
       <label>Description <input id="cfDesc"></label>
       <label>Tags (comma se alag) <input id="cfTags" placeholder="listening, test"></label>
       <label>Videos — har line: title | type (rumble/file) | url
-        <textarea id="cfVideos" rows="3" placeholder="My video | file | media/video/v1.mp4"></textarea></label>
+        <textarea id="cfVideos" rows="3" placeholder="My video | file | https://drive.google.com/file/d/XXXX/view"></textarea></label>
       <label>Audios — har line: title | url
-        <textarea id="cfAudios" rows="3" placeholder="Test 1 | media/audio/t1.mp3"></textarea></label>
+        <textarea id="cfAudios" rows="3" placeholder="Test 1 | https://drive.google.com/file/d/XXXX/view"></textarea></label>
       <label>PDFs — har line: title | url
-        <textarea id="cfPdfs" rows="3" placeholder="Book | media/pdf/book.pdf"></textarea></label>
+        <textarea id="cfPdfs" rows="3" placeholder="Book | https://drive.google.com/file/d/XXXX/view"></textarea></label>
       <div class="modal-btns">
         <button type="submit" class="btn btn-primary">Save chapter</button>
         <button type="button" id="cfDelete" class="btn btn-danger" hidden>Delete chapter</button>
@@ -445,7 +538,6 @@
     </form>
   </div>
 
-  <!-- Day details -->
   <div id="dayModal" class="modal" hidden>
     <h2 id="dayTitle">—</h2>
     <div id="dayBody"></div>
@@ -455,7 +547,6 @@
     </div>
   </div>
 
-  <!-- Move chapter to date -->
   <div id="moveModal" class="modal" hidden>
     <h2>Chapter ko dusri date par le jao</h2>
     <p id="moveInfo" class="muted"></p>
@@ -466,25 +557,23 @@
     </div>
   </div>
 
-  <!-- Reschedule missed -->
   <div id="reschedModal" class="modal" hidden>
     <h2>Missed chapters ko reschedule karo</h2>
     <p id="reschedInfo" class="muted"></p>
     <div class="form-grid">
-      <button class="btn" data-resched="push"> (a) Poora plan aage dhakelo</button>
+      <button class="btn" data-resched="push">(a) Poora plan aage dhakelo</button>
       <button class="btn" data-resched="spread">(b) Aane wale kuch dino me baant do</button>
       <button class="btn" data-resched="revision">(c) Agle revision day par daal do</button>
       <button class="btn" data-close>Cancel</button>
     </div>
   </div>
 
-  <!-- Shortcuts help -->
   <div id="shortcutsModal" class="modal" hidden>
     <h2>Keyboard shortcuts</h2>
     <ul class="shortcut-list">
       <li><kbd>/</kbd> Search</li>
       <li><kbd>←</kbd> <kbd>→</kbd> Previous / next chapter</li>
-      <li><kbd>Space</kbd> Play / pause (player khula ho to)</li>
+      <li><kbd>Space</kbd> Play / pause (local player)</li>
       <li><kbd>d</kbd> Dark / light mode</li>
       <li><kbd>?</kbd> Ye help</li>
     </ul>
@@ -492,15 +581,23 @@
   </div>
 </div>
 
+<!-- Debug panel (?debug=1 par dikhta hai) -->
+<div id="debugPanel" class="debug-panel" hidden>
+  <div class="debug-head"><strong>🐞 Debug — files & converted URLs</strong><button id="debugClose" class="icon-btn">✕</button></div>
+  <div id="debugList" class="debug-list"></div>
+</div>
+
 <div id="confetti" class="confetti" hidden aria-hidden="true"></div>
 <div id="toast" class="toast" hidden></div>
 
-<script src="data/chapters.js?v=3"></script>
-<script src="app.js?v=3"></script>
+<script src="data/chapters.js?v=4"></script>
+<script src="firebase-config.js?v=4"></script>
+<script src="app.js?v=4"></script>
+<script type="module" src="auth.js?v=4"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
-      navigator.serviceWorker.register('sw.js').catch(function () { /* offline shell is a bonus, site works without it */ });
+      navigator.serviceWorker.register('sw.js').catch(function () {});
     });
   }
 </script>

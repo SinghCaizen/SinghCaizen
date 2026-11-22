@@ -540,6 +540,215 @@ window.IELTS_CHAPTERS = [
         "url": "https://drive.google.com/file/d/1ezAHZO8aSBuSw-5N8uHz_X9bWMaW-cGL/view?usp=sharing"
       }
     ]
+  },
+  {
+    "id": "writing-video-course",
+    "title": "Video Course: IELTS Writing (Full)",
+    "description": "Poora Writing video course, lesson 001 se 033 tak — Task 2 model answers, planning, grammar, demo essays — plus Coherence & Cohesion aur Grammar wale extra lessons.",
+    "tags": [
+      "writing",
+      "video",
+      "course",
+      "task 2"
+    ],
+    "videos": [
+      {
+        "title": "001 An Introduction to the Course",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1PY8Nru9kP904cTHoAx5ZesAte2omwC4q/view"
+      },
+      {
+        "title": "002 An Introduction to the IELTS Exam with Walkthrough",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/13Y-AvCAjm6_H60F4oX0xu5u9fwqv_OvA/view"
+      },
+      {
+        "title": "003 Understanding Writing Task 2",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1ysescWOBl05aBul-imXIVsRU2B0ziUHe/view"
+      },
+      {
+        "title": "006 Top Marks - A Brief Look at a Task 2 Model Answer",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1B9R6msi18299D0eSIcwuqAALvfrTmYkF/view"
+      },
+      {
+        "title": "007 Planning Your Essay",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1SXBEsZ71W2tjBaqgmrHrpEqKh0Yr7LMz/view"
+      },
+      {
+        "title": "008 Handling Time Constraints and Word Counts",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1vN8-hnaRJ0SKkjJpGDcMqeS0vtrr-2jN/view"
+      },
+      {
+        "title": "009 Dont Make These Mistakes",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1RRxpNnGYzSKFr6ysEuaomNExnMun8KLa/view"
+      },
+      {
+        "title": "010 Incredibly Fast Introductions",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1TyFsQXmS0mlm7YvnpiRRZPMyOL-AlTVn/view"
+      },
+      {
+        "title": "011 Building Body Paragraphs",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1rXW67C-3s2855aGrMBI9w95f9c4XyOYU/view"
+      },
+      {
+        "title": "012 Quick Conclusions",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1FpHwDY2_GNd8fvLXe3uZtNcc6LpdqX6N/view"
+      },
+      {
+        "title": "013 Cohesive Devices and Referencing",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1nWLxCUfn_lcdjWGuU04ujTwICEvHMUvi/view"
+      },
+      {
+        "title": "014 Finding Ideas",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1xwgo_n4VPdcFLNla4rb_gfNFI40lsVXT/view"
+      },
+      {
+        "title": "015 Developing Ideas and Using Examples",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1fjRvJkFIRMkfbLw8uwGhsqzgt6qve4Xj/view"
+      },
+      {
+        "title": "016 Creating and Maintaining a Position",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/19vEumBUOM55RKJNJhBVjUGlYAtEinuLn/view"
+      },
+      {
+        "title": "017 Stop Making Generalisations",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1RD8HJW51dGh06xx-R7f9aKqjFBa-0RK5/view"
+      },
+      {
+        "title": "018 Whats Your Topic",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1Yemu_927v06vlpGmCC9IdREcjfeIr9Y1/view"
+      },
+      {
+        "title": "019 The Importance of Collocations",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1bG8NWUuVP6AgrUXxrNiMXy1mbHA39W1B/view"
+      },
+      {
+        "title": "020 Word Formation",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1ViAvFakNSAUsM69LuLza9oBTVYqbTeAD/view"
+      },
+      {
+        "title": "021 Synonyms and Paraphrasing",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1KCSqV0qcjIakEACrglL10HIihV9ka35y/view"
+      },
+      {
+        "title": "022 Simple Sentences and Common Errors",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1j5RXWIWjykAlRNYnL8qF8eDHUGw3gLjT/view"
+      },
+      {
+        "title": "023 What Makes a Complex Sentence",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1X6dAB-mWBJufZ1sxqjmr5Kb3o_o5DZZi/view"
+      },
+      {
+        "title": "024 Punctuation",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1pNgqiK5O2nXDbN6AHMT2Y4vrYhe83ghH/view"
+      },
+      {
+        "title": "025 Conditional Sentences",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1yPSCZU3ToHH1EWODasxn-ADR3l_g9ros/view"
+      },
+      {
+        "title": "026 Relative Clauses",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1lOecvOJ51vh_maU6TSi_JYdEPPbm1TEE/view"
+      },
+      {
+        "title": "027 Checking The Essay Articles  Prepositions  Pronouns",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1m7z37OLqFzfJuuf_-iHpT5L-MDlAM4Bf/view"
+      },
+      {
+        "title": "028 Demo Answering Task 2 From Start to Finish - PART 1",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1CWpQyA1n7d1qeQ1kqyxQlDpeMrUkqBiY/view"
+      },
+      {
+        "title": "029 Demo Answering Task 2 From Start to Finish - PART 2",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1R3JxwlIoA9URaoFf03-aaNdI9Q2F5-og/view"
+      },
+      {
+        "title": "030 Secrets to Success - Tips and Techniques",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1AagfYJpmSouGOrQjlhlY2hTjNrbS6S8H/view"
+      },
+      {
+        "title": "031 How to Practice Effectively",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/167YKW1JNfCWy9xQjMCtY5LZY1TZu8PLz/view"
+      },
+      {
+        "title": "032 Getting Guidance",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/10llnprrsKSheixXVAnCAawNUNteI7sxX/view"
+      },
+      {
+        "title": "033 Good Luck",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1Ti5-PVvFvYSg54Ye4ei6s6JiDyCNVWgs/view"
+      },
+      {
+        "title": "2 IELTS Writing Coherence & Cohesion Improve your English & IELTS",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1x2VaK26WSUfiH-lKy1LS0aDUVjVPuzTW/view"
+      },
+      {
+        "title": "3 IELTS Writing Grammar improve your English and IELTS writing",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/14otTcl22PC-Asp3Gu3n4vKBZOQoJeRph/view"
+      }
+    ],
+    "audios": [],
+    "pdfs": []
+  },
+  {
+    "id": "webinars-expert",
+    "title": "Webinars & Expert Sessions",
+    "description": "IDP expert webinars — IELTS Talks: Meet the Expert, aur ek Band 8 test-taker ke saath session, plus ek recorded session.",
+    "tags": [
+      "webinar",
+      "idp",
+      "expert"
+    ],
+    "videos": [
+      {
+        "title": "Free IDP Webinar #8  IELTS Talks - Meet the Expert",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1I_htqgOeJJJALi0eQUsH96YWqOSHL3sL/view"
+      },
+      {
+        "title": "Free-IDP-Webinar-4-IELTS-Talks-Meet-a-Band-8-test-taker",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1QEiHWZmX-ftSd43yYAsELjjU0SSUvBUu/view"
+      },
+      {
+        "title": "Recorded Session",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/12E9xXQQFptO0nskla-0nGjGmWnEa7-BT/view"
+      }
+    ],
+    "audios": [],
+    "pdfs": []
   }
 ];
 

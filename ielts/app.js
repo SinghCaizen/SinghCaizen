@@ -1,8 +1,10 @@
 /* =====================================================================
-   IELTS STUDY — app.js
-   Pure vanilla JS. Sab kuch ISI website ke andar khulta/chalta hai:
-   video (Rumble embed + file player), audio player, PDF.js viewer,
-   notes, planner, calendar, stats — koi bahar ka redirect nahi.
+   IELTS STUDY — app.js (v4)
+   Saara media website ke ANDAR chalta hai:
+   - Google Drive files -> /preview iframe (browser-tested, kaam karta hai)
+   - Rumble -> embed iframe
+   - Local /media files -> custom players + PDF.js
+   Progress localStorage me + (Firebase config ho to) cloud sync.
    ===================================================================== */
 'use strict';
 
@@ -43,57 +45,54 @@ function celebrate() {
     p.style.left = Math.random() * 100 + 'vw';
     p.style.background = colors[i % colors.length];
     p.style.animationDelay = (Math.random() * 0.35) + 's';
-    p.style.transform = 'rotate(' + (Math.random() * 180) + 'deg)';
     box.appendChild(p);
   }
   setTimeout(() => { box.hidden = true; box.innerHTML = ''; }, 2200);
 }
 
-/* ---------------- Google Drive link conversion ----------------
-   Drive share link -> direct stream/download address.
-   drive.usercontent.google.com har origin ko allow karta hai (CORS *),
-   isiliye audio/PDF website ke ANDAR hi chalte hain. */
+/* ---------------- Drive link helper ----------------
+   Koi bhi Drive link format chalega:
+   /file/d/ID/view, open?id=ID, uc?id=ID, download?id=ID, ya sirf ID.
+   Sab ko https://drive.google.com/file/d/ID/preview me badla jata hai —
+   yahi ek format hai jo browser ke andar sach me chalta hai (Phase 0 test). */
 function driveId(url) {
   if (!url) return null;
-  let m = String(url).match(/drive\.google\.com\/file\/d\/([A-Za-z0-9_-]+)/);
+  const s = String(url).trim();
+  if (/^[A-Za-z0-9_-]{25,}$/.test(s)) return s;
+  let m = s.match(/drive\.google\.com\/file\/d\/([A-Za-z0-9_-]+)/);
   if (m) return m[1];
-  m = String(url).match(/[?&]id=([A-Za-z0-9_-]{20,})/);
+  m = s.match(/[?&]id=([A-Za-z0-9_-]{20,})/);
   return m ? m[1] : null;
 }
-function mediaURL(url) {
+function isDrive(url) { return !!driveId(url); }
+function drivePreview(url) {
   const id = driveId(url);
-  if (id) return 'https://drive.usercontent.google.com/download?id=' + id + '&export=download';
-  return url;
+  return id ? 'https://drive.google.com/file/d/' + id + '/preview' : url;
 }
+function isLocalPath(url) { return !!url && !/^https?:\/\//.test(url); }
 function isRumble(item) {
   return item.type === 'rumble' || /rumble\.com\/embed/.test(item.url || '');
 }
-function isLocalPath(url) { return url && !/^https?:\/\//.test(url); }
+
+/* Debug registry: har file ka converted URL + load status (?debug=1) */
+const DEBUG_LOADS = {};
+function debugRegister(kind, title, url, converted) {
+  DEBUG_LOADS[converted] = { kind, title, url, converted, status: 'pending' };
+}
+function debugSet(converted, status) {
+  if (DEBUG_LOADS[converted]) { DEBUG_LOADS[converted].status = status; renderDebugPanel(); }
+}
 
 /* ---------------- State (localStorage) ---------------- */
 function defaultState() {
   return {
-    progress: {},            // chapterId -> 'progress' | 'done'
-    completedOn: {},         // chapterId -> date completed
-    notes: {},               // chapterId -> text
-    bookmarks: {},           // chapterId -> [{t, label}]
-    positions: {},           // mediaKey -> seconds
-    pdfPage: {},             // mediaKey -> page number
-    favorites: [],
-    theme: null, font: 'm', focus: false,
-    custom: [],              // user-added chapters
-    edits: {},               // chapterId -> edited chapter (base chapters)
-    deleted: [],             // base chapter ids deleted by user
-    plan: null,              // {settings, assign:{date:{chapters:[],revision:bool}}, fixed:{}}
-    dayDone: {},             // date -> true
-    focusByDate: {},         // date -> seconds of pomodoro focus
-    lastBackup: 0,
-    reminder: '07:00', notifiedOn: null,
-    hideDownload: true,
-    lastOpen: null,          // {chId, tab}
-    recent: {},              // chapterId -> timestamp last opened
-    planView: 'month', monthCursor: null,
-    backupBannerOff: 0
+    progress: {}, completedOn: {}, notes: {}, bookmarks: {}, positions: {},
+    pdfPage: {}, favorites: [], theme: null, font: 'm', focus: false,
+    custom: [], edits: {}, deleted: [],
+    plan: null, dayDone: {}, focusByDate: {},
+    lastBackup: 0, reminder: '07:00', notifiedOn: null,
+    hideDownload: true, lastOpen: null, recent: {},
+    planView: 'month', backupBannerOff: 0, localModeAck: false
   };
 }
 let S = defaultState();
@@ -105,11 +104,27 @@ let saveTimer = null;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) { /* storage full etc. */ }
-  }, 150);
+    try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {}
+    if (window.CloudSync && window.CloudSync.enabled) window.CloudSync.save(S);
+  }, 200);
 }
+/* auth.js cloud se state laaye to yaha apply hota hai */
+window.applyCloudState = function (cloudState) {
+  if (!cloudState || typeof cloudState !== 'object') return;
+  S = Object.assign(defaultState(), cloudState);
+  try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {}
+  applyTheme(); applyFont();
+  renderSidebar();
+  showView(currentView || 'home');
+  toast('Cloud progress load ho gaya ☁️✓');
+};
+window.getLocalState = function () { return S; };
+window.setSavedStatus = function (text, isCloud) {
+  const el = $('#savedDot');
+  if (el) { el.textContent = text; el.classList.toggle('cloud', !!isCloud); }
+};
 
-/* ---------------- Chapters data (data/chapters.js + user edits) ---------------- */
+/* ---------------- Chapters data ---------------- */
 function allChapters() {
   const base = (window.IELTS_CHAPTERS || [])
     .filter(c => !S.deleted.includes(c.id))
@@ -122,26 +137,30 @@ function chapterNum(id) { const i = chapterIndex(id); return i >= 0 ? i + 1 : '?
 function statusOf(id) { return S.progress[id] || 'new'; }
 
 /* ---------------- Navigation ---------------- */
-let currentView = 'today';
+let currentView = 'home';
 let currentChapterId = null;
 let currentTab = 'video';
+const VIEWS = ['home', 'chapters', 'chapter', 'plan', 'notes', 'stats', 'profile'];
 
 function showView(name) {
   currentView = name;
-  ['today', 'home', 'chapter', 'plan', 'stats', 'settings'].forEach(v => {
-    $('#view-' + v).hidden = v !== name;
-  });
+  VIEWS.forEach(v => { $('#view-' + v).hidden = v !== name; });
   $$('.nav-item').forEach(b => b.classList.toggle('is-active', b.dataset.nav === name));
+  $$('.tab-item').forEach(b => b.classList.toggle('is-active', b.dataset.nav === name));
   closeSidebarMobile();
-  if (name === 'today') renderToday();
   if (name === 'home') renderHome();
+  if (name === 'chapters') renderChapters();
   if (name === 'plan') renderPlan();
+  if (name === 'notes') renderNotesView();
   if (name === 'stats') renderStats();
-  if (name === 'settings') renderSettings();
+  if (name === 'profile') renderProfile();
+  const main = $('#main');
+  main.style.animation = 'none'; void main.offsetWidth; main.style.animation = '';
   window.scrollTo({ top: 0 });
 }
 $$('.nav-item').forEach(b => b.addEventListener('click', () => showView(b.dataset.nav)));
-
+$$('.tab-item').forEach(b => b.addEventListener('click', () => showView(b.dataset.nav)));
+$('#btnProfileTop').addEventListener('click', () => showView('profile'));
 function closeSidebarMobile() {
   $('#sidebar').classList.remove('open');
   $('#sidebarScrim').hidden = true;
@@ -151,6 +170,7 @@ $('#btnSidebar').addEventListener('click', () => {
   $('#sidebarScrim').hidden = false;
 });
 $('#sidebarScrim').addEventListener('click', closeSidebarMobile);
+$('#btnCollapse').addEventListener('click', () => document.body.classList.toggle('sidebar-collapsed'));
 
 /* ---------------- Sidebar + progress ---------------- */
 function doneCount() { return allChapters().filter(c => S.progress[c.id] === 'done').length; }
@@ -168,19 +188,140 @@ function renderSidebar() {
     li.appendChild(b); list.appendChild(li);
   });
   const total = allChapters().length, done = doneCount();
+  const pct = total ? Math.round(done / total * 100) : 0;
   $('#sideProgressText').textContent = done + ' of ' + total + ' chapters done';
-  $('#sideProgressBar').style.width = total ? (done / total * 100) + '%' : '0%';
-  $('#homeProgressText').textContent = done + ' of ' + total + ' chapters done';
-  $('#homeProgressBar').style.width = total ? (done / total * 100) + '%' : '0%';
+  $('#sideProgressBar').style.width = pct + '%';
+  $('#chaptersProgressText').textContent = done + ' of ' + total + ' chapters done';
+  $('#chaptersProgressBar').style.width = pct + '%';
 }
 
-/* ---------------- Home: search, filters, cards ---------------- */
+/* ---------------- HOME (dashboard) ---------------- */
+const MOTIVES = [
+  'Chhota kadam roz, bada result saal ke ant me. 🌱',
+  'Band 8 sapna nahi, roz ka system hai. Aaj ka chapter khatm karo. 💪',
+  'Consistency hi asli talent hai. Bas aaj ka kaam. 🎯',
+  'Kal ki chinta chhodo, aaj ka page kholo. 📖',
+  'Har din 2 ghante — yehi tumhari superpower hai. ⏰',
+  'Galtiyaan error log me, seekh dimaag me. ✍️',
+  'Slow progress bhi progress hai. Rukna mana hai. 🚶'
+];
+function mediaButtonsHTML(c) {
+  let h = '';
+  if ((c.videos || []).length) h += '<button class="btn btn-small" data-open-media="video">🎬 Video</button>';
+  if ((c.audios || []).length) h += '<button class="btn btn-small" data-open-media="audio">🎧 Audio</button>';
+  if ((c.pdfs || []).length) h += '<button class="btn btn-small" data-open-media="pdf">📄 PDF</button>';
+  h += '<button class="btn btn-small" data-open-media="notes">📝 Notes</button>';
+  return h;
+}
+function wireMediaButtons(root, chapterId) {
+  $$('[data-open-media]', root).forEach(b => b.addEventListener('click', () => {
+    openChapter(chapterId, b.dataset.openMedia);
+  }));
+}
+function renderHome() {
+  renderSidebar();
+  const t = todayStr();
+  $('#dashDate').textContent = fmtDate(t);
+  $('#dashMotiv').textContent = MOTIVES[parseDate(t).getDate() % MOTIVES.length];
+  const total = allChapters().length, done = doneCount();
+  const pct = total ? done / total : 0;
+  $('#dashRing').style.strokeDashoffset = String(213.6 * (1 - pct));
+  $('#dashRingText').textContent = Math.round(pct * 100) + '%';
+  $('#dashProgressText').textContent = done + ' of ' + total + ' chapters done';
+  const st = computeStreak();
+  $('#dashStreak').textContent = st.streak + ' days';
+  $('#dashBest').textContent = st.best + ' days';
+  // Today's plan card
+  const box = $('#dashToday'); box.innerHTML = '';
+  const e = dayEntry(t);
+  const todays = e ? e.chapters : [];
+  if (!S.plan) {
+    box.innerHTML = '<p class="muted">Abhi plan bana nahi hai.</p><button class="btn btn-primary" id="dashMakePlan">Plan banao</button>';
+    const b = $('#dashMakePlan'); if (b) b.addEventListener('click', () => showView('profile'));
+  } else if (e && e.off) {
+    box.innerHTML = '<p>🌿 Aaj off day hai. Aaram karo, ya revision kar lo.</p>';
+  } else if (!todays.length) {
+    box.innerHTML = '<p class="muted">' + (e && e.revision ? '🔁 Aaj revision day hai — is hafte ke chapters dohrao.' : 'Aaj ke liye koi chapter set nahi hai. Kal se plan shuru hota hai.') + '</p>';
+  }
+  if (e && e.revision && todays.length) {
+    const p = document.createElement('p'); p.className = 'muted'; p.textContent = '🔁 Aaj revision day hai — ye chapters dohrao:';
+    box.appendChild(p);
+  }
+  const wrap = document.createElement('div'); wrap.className = 'today-chapters';
+  todays.forEach(id => {
+    const c = chapterById(id); if (!c) return;
+    const row = document.createElement('div');
+    row.className = 'today-chapter';
+    row.innerHTML = '<strong>' + (statusOf(id) === 'done' ? '✅ ' : '') + 'Chapter ' + chapterNum(id) + ': ' + esc(c.title) + '</strong>' + mediaButtonsHTML(c);
+    wireMediaButtons(row, id);
+    wrap.appendChild(row);
+  });
+  box.appendChild(wrap);
+  const doneToday = todays.filter(id => statusOf(id) === 'done').length;
+  $('#dashGoalText').textContent = todays.length
+    ? 'Daily goal: ' + doneToday + ' / ' + todays.length + ' chapters (aaj)'
+    : 'Daily goal: aaj koi chapter nahi';
+  $('#btnDashMarkDone').style.display = todays.length ? '' : 'none';
+  // Tomorrow
+  const tm = addDays(t, 1), te = dayEntry(tm);
+  const tp = $('#dashTomorrow');
+  if (te && te.chapters.length) {
+    tp.innerHTML = te.chapters.map(id => {
+      const c = chapterById(id);
+      return c ? '<p>Chapter ' + chapterNum(id) + ': <strong>' + esc(c.title) + '</strong>' + (te.revision ? ' (revision)' : '') + '</p>' : '';
+    }).join('');
+  } else tp.innerHTML = '<p class="muted">' + (te && te.off ? '🌿 Kal off day hai.' : 'Kal ke liye kuch set nahi hai.') + '</p>';
+  // Continue
+  const cb = $('#dashContinue');
+  if (S.lastOpen && chapterById(S.lastOpen.chId)) {
+    const c = chapterById(S.lastOpen.chId);
+    cb.innerHTML = '<div class="continue-item"><span>Chapter ' + chapterNum(c.id) + ': <strong>' + esc(c.title) + '</strong></span>' +
+      '<button class="btn btn-small btn-primary" id="btnContinue">▶ Continue</button></div>';
+    $('#btnContinue').addEventListener('click', () => openChapter(c.id, S.lastOpen.tab));
+  } else cb.innerHTML = '<p class="muted">Jaha chhoda tha, wahi se shuru hoga. Koi chapter kholo.</p>';
+  // Recently opened
+  const rg = $('#recentGrid'); rg.innerHTML = '';
+  const recent = Object.entries(S.recent).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  if (!recent.length) rg.innerHTML = '<p class="muted">Abhi kuch khola nahi gaya.</p>';
+  recent.forEach(([id]) => {
+    const c = chapterById(id); if (!c) return;
+    const b = document.createElement('button');
+    b.className = 'recent-item';
+    b.innerHTML = '<span>Ch ' + chapterNum(id) + '</span><strong>' + esc(c.title) + '</strong>' +
+      '<span class="st">' + (statusOf(id) === 'done' ? '✅' : '') + '</span>';
+    b.addEventListener('click', () => openChapter(id));
+    rg.appendChild(b);
+  });
+  // Banner
+  const banner = $('#todayBanner');
+  if (todays.length && !isDayDone(t)) {
+    $('#todayBannerText').textContent = todays.map(id => { const c = chapterById(id); return c ? c.title : ''; }).filter(Boolean).join(', ');
+    banner.hidden = false;
+  } else banner.hidden = true;
+}
+$('#btnDashMarkDone').addEventListener('click', markTodayDone);
+function markTodayDone() {
+  const t = todayStr();
+  const e = dayEntry(t);
+  if (e) e.chapters.forEach(id => {
+    if (statusOf(id) !== 'done') { S.progress[id] = 'done'; S.completedOn[id] = t; }
+  });
+  S.dayDone[t] = true; save();
+  celebrate(); toast('Aaj ka plan complete! 🎉');
+  renderHome(); renderSidebar();
+}
+$('#todayBannerBtn').addEventListener('click', () => {
+  const e = dayEntry(todayStr());
+  if (e && e.chapters.length) openChapter(e.chapters[0]);
+});
+$('#todayBannerClose').addEventListener('click', () => { $('#todayBanner').hidden = true; });
+
+/* ---------------- CHAPTERS (grid, search, filters) ---------------- */
 let homeFilter = 'all';
 function fuzzyScore(text, q) {
   text = (text || '').toLowerCase(); q = (q || '').toLowerCase().trim();
   if (!q) return 1;
   if (text.includes(q)) return 100 - text.indexOf(q);
-  // subsequence match
   let ti = 0, score = 0;
   for (const ch of q) {
     const idx = text.indexOf(ch, ti);
@@ -192,7 +333,7 @@ function fuzzyScore(text, q) {
 function chapterSearchText(c) {
   return [c.title, c.description, (c.tags || []).join(' '), S.notes[c.id] || ''].join(' ');
 }
-function renderHome() {
+function renderChapters() {
   renderSidebar();
   const q = $('#searchInput').value || '';
   let items = allChapters().map((c, i) => ({ c, i, score: fuzzyScore(chapterSearchText(c), q) }));
@@ -234,7 +375,7 @@ function renderHome() {
       '<span class="badge ' + st + '">' + (st === 'done' ? '✓ Done' : st === 'progress' ? 'In progress' : 'Not started') + '</span>';
     card.addEventListener('click', () => openChapter(c.id));
     card.addEventListener('keydown', e => { if (e.key === 'Enter') openChapter(c.id); });
-    $('.fav-btn', card).addEventListener('click', e => { e.stopPropagation(); toggleFav(c.id); renderHome(); });
+    $('.fav-btn', card).addEventListener('click', e => { e.stopPropagation(); toggleFav(c.id); renderChapters(); });
     grid.appendChild(card);
   });
   $('#homeEmpty').hidden = items.length > 0;
@@ -244,23 +385,24 @@ function toggleFav(id) {
   if (i >= 0) S.favorites.splice(i, 1); else S.favorites.push(id);
   save();
 }
-$('#searchInput').addEventListener('input', renderHome);
-$('#sortSelect').addEventListener('change', renderHome);
+$('#searchInput').addEventListener('input', renderChapters);
+$('#sortSelect').addEventListener('change', renderChapters);
 $$('.chip[data-filter]').forEach(ch => ch.addEventListener('click', () => {
   homeFilter = ch.dataset.filter;
   $$('.chip[data-filter]').forEach(x => x.classList.toggle('is-active', x === ch));
-  renderHome();
+  renderChapters();
 }));
 $('#btnAddChapter').addEventListener('click', () => openChapterForm(null));
 
 /* =====================================================================
    CHAPTER PAGE + PLAYERS
+   Drive file -> /preview iframe | Rumble -> embed | Local -> custom
    ===================================================================== */
 function openChapter(id, tab, mediaIdx) {
   const c = chapterById(id);
   if (!c) return;
   currentChapterId = id;
-  if (statusOf(id) === 'new') { S.progress[id] = 'progress'; }
+  if (statusOf(id) === 'new') S.progress[id] = 'progress';
   S.recent[id] = Date.now();
   S.lastOpen = { chId: id, tab: tab || currentTab || 'video' };
   save();
@@ -279,8 +421,8 @@ function openChapter(id, tab, mediaIdx) {
   }
 }
 function bestTabFor(c) {
-  if ((c.audios || []).length) return 'audio';
   if ((c.videos || []).length) return 'video';
+  if ((c.audios || []).length) return 'audio';
   if ((c.pdfs || []).length) return 'pdf';
   return 'notes';
 }
@@ -303,7 +445,7 @@ $('#btnFavChapter').addEventListener('click', () => {
   toggleFav(currentChapterId);
   $('#btnFavChapter').textContent = S.favorites.includes(currentChapterId) ? '★' : '☆';
 });
-$('#btnBackHome').addEventListener('click', () => showView('home'));
+$('#btnBackChapters').addEventListener('click', () => showView('chapters'));
 $('#btnEditChapter').addEventListener('click', () => openChapterForm(currentChapterId));
 $('#btnPrevChapter').addEventListener('click', () => stepChapter(-1));
 $('#btnNextChapter').addEventListener('click', () => stepChapter(1));
@@ -314,7 +456,6 @@ function stepChapter(dir) {
   if (n) openChapter(n.id);
   else toast(dir > 0 ? 'Ye aakhri chapter hai.' : 'Ye pehla chapter hai.');
 }
-
 function switchTab(tab) {
   currentTab = tab;
   if (currentChapterId) { S.lastOpen = { chId: currentChapterId, tab }; save(); }
@@ -329,12 +470,31 @@ function switchTab(tab) {
 }
 $$('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
+/* --- Iframe loader: skeleton + 8s timeout + debug status --- */
+function loadIframe(frame, wrap, skeleton, errorBox, src, kind, title) {
+  wrap.hidden = true; errorBox.hidden = true; skeleton.hidden = false;
+  debugRegister(kind, title, src, src);
+  let done = false;
+  const timer = setTimeout(() => {
+    if (!done) {
+      skeleton.hidden = true; wrap.hidden = false; errorBox.hidden = false;
+      debugSet(src, 'timeout (>8s)');
+    }
+  }, 8000);
+  frame.onload = () => {
+    done = true; clearTimeout(timer);
+    skeleton.hidden = true; wrap.hidden = false;
+    debugSet(src, 'loaded ✓');
+  };
+  frame.src = src;
+}
+
 /* ---------------- VIDEO ---------------- */
 let vIdx = 0, vKey = null;
 function renderVideoTab(c) {
   const list = $('#videoPlaylist'); list.innerHTML = '';
   const vids = c.videos || [];
-  $('#videoEmpty').hidden = vids.length > 0;
+  $('#vEmpty').hidden = vids.length > 0;
   vids.forEach((v, i) => {
     const li = document.createElement('li');
     const b = document.createElement('button');
@@ -342,44 +502,34 @@ function renderVideoTab(c) {
     b.addEventListener('click', () => playVideoAt(i));
     li.appendChild(b); list.appendChild(li);
   });
-  if (vids.length) playVideoAt(Math.min(vIdx, vids.length - 1), true);
+  if (vids.length) playVideoAt(Math.min(vIdx, vids.length - 1));
+  else { $('#vDriveWrap').hidden = true; $('#vRumbleWrap').hidden = true; $('#fileVideoWrap').hidden = true; }
 }
-function playVideoAt(i, keepPaused) {
+function playVideoAt(i) {
   const c = chapterById(currentChapterId); if (!c) return;
   const vids = c.videos || []; const v = vids[i]; if (!v) return;
   vIdx = i; vKey = currentChapterId + ':v' + i;
   $$('#videoPlaylist button').forEach((b, bi) => b.classList.toggle('is-playing', bi === i));
-  $('#videoError').hidden = true;
-  const rw = $('#rumbleWrap'), fw = $('#fileVideoWrap'), vid = $('#fileVideo');
+  $('#vError').hidden = true;
+  const vid = $('#fileVideo');
   if (isRumble(v)) {
-    fw.hidden = true; vid.pause();
-    rw.hidden = false;
-    $('#videoSkeleton').hidden = false;
-    rw.innerHTML = '';
-    const f = document.createElement('iframe');
-    f.src = v.url; f.allowFullscreen = true; f.loading = 'lazy';
-    f.setAttribute('allow', 'autoplay; fullscreen');
-    f.title = v.title;
-    f.addEventListener('load', () => { $('#videoSkeleton').hidden = true; });
-    rw.appendChild(f);
-    // Embed fail-safe: 9s me load na ho to error + Retry (koi external link nahi)
-    setTimeout(() => {
-      if (!rw.hidden && $('#videoSkeleton').hidden === false) {
-        $('#videoSkeleton').hidden = true; $('#videoError').hidden = false;
-      }
-    }, 9000);
+    $('#vDriveWrap').hidden = true; $('#fileVideoWrap').hidden = true; vid.pause();
+    loadIframe($('#vRumbleFrame'), $('#vRumbleWrap'), $('#vSkeleton'), $('#vError'), v.url, 'video-rumble', v.title);
+  } else if (isDrive(v.url)) {
+    $('#vRumbleWrap').hidden = true; $('#fileVideoWrap').hidden = true; vid.pause();
+    loadIframe($('#vDriveFrame'), $('#vDriveWrap'), $('#vSkeleton'), $('#vError'), drivePreview(v.url), 'video-drive', v.title);
   } else {
-    rw.hidden = true; rw.innerHTML = '';
-    fw.hidden = false;
-    $('#videoSkeleton').hidden = true;
-    vid.src = mediaURL(v.url);
+    $('#vDriveWrap').hidden = true; $('#vRumbleWrap').hidden = true;
+    $('#vSkeleton').hidden = true;
+    $('#fileVideoWrap').hidden = false;
+    vid.src = v.url;
     vid.playbackRate = parseFloat($('#vSpeed').value);
     const pos = S.positions[vKey];
     vid.onloadedmetadata = () => {
       if (pos && pos > 5 && pos < vid.duration - 5) vid.currentTime = pos;
-      if (!keepPaused) vid.play().catch(() => {});
     };
-    vid.onerror = () => { $('#videoError').hidden = false; };
+    vid.onerror = () => { $('#vError').hidden = false; };
+    debugRegister('video-local', v.title, v.url, v.url); debugSet(v.url, 'local file');
   }
 }
 $('#vRetry').addEventListener('click', () => playVideoAt(vIdx));
@@ -396,7 +546,7 @@ $('#vRetry').addEventListener('click', () => playVideoAt(vIdx));
   });
   vid.addEventListener('ended', () => {
     const c = chapterById(currentChapterId);
-    if (c && vIdx + 1 < (c.videos || []).length) playVideoAt(vIdx + 1); // autoplay next
+    if (c && vIdx + 1 < (c.videos || []).length) playVideoAt(vIdx + 1);
   });
   $('#vPlay').addEventListener('click', () => { vid.paused ? vid.play() : vid.pause(); });
   $('#vBack').addEventListener('click', () => { vid.currentTime = Math.max(0, vid.currentTime - 10); });
@@ -424,37 +574,47 @@ function renderAudioTab(c) {
     const b = document.createElement('button');
     const pos = S.positions[c.id + ':a' + i];
     b.innerHTML = '<span>🎧</span><span>' + esc(a.title) + '</span>' +
-      (pos ? '<span class="done-mark">' + fmtTime(pos) + ' se aage</span>' : '');
+      (pos && !isDrive(a.url) ? '<span class="done-mark">' + fmtTime(pos) + ' se aage</span>' : '');
     b.addEventListener('click', () => playAudioAt(i));
     li.appendChild(b); list.appendChild(li);
   });
+  if (auds.length && aIdx < 0) playAudioAt(0, false);
   renderBookmarkList();
 }
 function playAudioAt(i, autoplay = true) {
   const c = chapterById(currentChapterId); if (!c) return;
   const auds = c.audios || []; const a = auds[i]; if (!a) return;
-  const el = audioEl();
   aIdx = i; aKey = currentChapterId + ':a' + i;
   $$('#audioPlaylist button').forEach((b, bi) => b.classList.toggle('is-playing', bi === i));
-  $('#aNowTitle').textContent = '▶ ' + a.title;
   $('#aError').hidden = true;
-  el.src = mediaURL(a.url);
-  el.playbackRate = parseFloat($('#aSpeed').value);
-  el.onloadedmetadata = () => {
-    const pos = S.positions[aKey];
-    if (pos && pos > 5 && pos < el.duration - 10) el.currentTime = pos;
-    if (autoplay) el.play().catch(() => { $('#aError').hidden = false; });
-    updateMediaSession(c, a);
-  };
-  el.onerror = () => { $('#aError').hidden = false; };
+  if (isDrive(a.url)) {
+    // Drive audio -> preview iframe (compact player, site ke andar)
+    $('#localAudioCard').hidden = true;
+    audioEl().pause();
+    loadIframe($('#aDriveFrame'), $('#aDriveWrap'), $('#aSkeleton'), $('#aError'), drivePreview(a.url), 'audio-drive', a.title);
+  } else {
+    // Local audio -> apna custom player (speed, bookmarks, position sab)
+    $('#aDriveWrap').hidden = true; $('#aSkeleton').hidden = true;
+    $('#localAudioCard').hidden = false;
+    const el = audioEl();
+    $('#aNowTitle').textContent = '▶ ' + a.title;
+    el.src = a.url;
+    el.playbackRate = parseFloat($('#aSpeed').value);
+    el.onloadedmetadata = () => {
+      const pos = S.positions[aKey];
+      if (pos && pos > 5 && pos < el.duration - 10) el.currentTime = pos;
+      if (autoplay) el.play().catch(() => { $('#aError').hidden = false; });
+      updateMediaSession(c, a);
+    };
+    el.onerror = () => { $('#aError').hidden = false; };
+    debugRegister('audio-local', a.title, a.url, a.url); debugSet(a.url, 'local file');
+  }
   renderBookmarkList();
 }
 $('#aRetry').addEventListener('click', () => { if (aIdx >= 0) playAudioAt(aIdx); });
 function updateMediaSession(c, a) {
   if (!('mediaSession' in navigator)) return;
-  navigator.mediaSession.metadata = new MediaMetadata({
-    title: a.title, artist: c.title, album: 'IELTS Study'
-  });
+  navigator.mediaSession.metadata = new MediaMetadata({ title: a.title, artist: c.title, album: 'IELTS Study' });
   navigator.mediaSession.setActionHandler('play', () => audioEl().play());
   navigator.mediaSession.setActionHandler('pause', () => audioEl().pause());
   navigator.mediaSession.setActionHandler('seekbackward', () => { audioEl().currentTime -= 10; });
@@ -483,7 +643,7 @@ function updateMediaSession(c, a) {
   el.addEventListener('ended', () => {
     if (aKey) { S.positions[aKey] = 0; save(); }
     const c = chapterById(currentChapterId);
-    if (c && aIdx + 1 < (c.audios || []).length) playAudioAt(aIdx + 1); // autoplay next
+    if (c && aIdx + 1 < (c.audios || []).length) playAudioAt(aIdx + 1);
   });
   $('#aPlay').addEventListener('click', () => {
     if (aIdx < 0) { const c = chapterById(currentChapterId); if (c && (c.audios || []).length) playAudioAt(0); return; }
@@ -504,7 +664,7 @@ function updateMediaSession(c, a) {
     }
   });
   $('#aBookmark').addEventListener('click', () => {
-    if (aIdx < 0 || !currentChapterId) { toast('Pehle koi audio chalao.'); return; }
+    if (aIdx < 0 || !currentChapterId) { toast('Pehle koi local audio chalao.'); return; }
     const t = Math.floor(el.currentTime);
     const label = prompt('Bookmark note (' + fmtTime(t) + '):', '');
     if (label === null) return;
@@ -516,8 +676,8 @@ function renderBookmarkList() {
   const ul = $('#aBookmarkList'); if (!ul) return;
   ul.innerHTML = '';
   const items = (S.bookmarks[currentChapterId] || []).slice().sort((x, y) => x.t - y.t);
-  if (!items.length) { ul.innerHTML = '<li class="muted">Abhi koi bookmark nahi hai.</li>'; return; }
-  items.forEach((bm, i) => {
+  if (!items.length) { ul.innerHTML = '<li class="muted">Abhi koi bookmark nahi hai. (Bookmarks sirf local audio par chalte hain.)</li>'; return; }
+  items.forEach(bm => {
     const li = document.createElement('li');
     li.innerHTML = '<button class="bm-time">' + fmtTime(bm.t) + '</button><span>' + esc(bm.label) + '</span>' +
       '<button class="bm-del icon-btn" aria-label="Delete bookmark">✕</button>';
@@ -535,7 +695,7 @@ function renderBookmarkList() {
   });
 }
 
-/* ---------------- PDF VIEWER (PDF.js — canvas, site ke andar) ---------------- */
+/* ---------------- PDF ---------------- */
 let pdfDoc = null, pdfIdx = 0, pdfPageNum = 1, pdfScale = 1, pdfKey = null, pdfRendering = false;
 if (window.pdfjsLib) {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -553,7 +713,7 @@ function renderPdfTab(c) {
     tabs.appendChild(b);
   });
   if (pdfs.length) loadPdfAt(Math.min(pdfIdx, pdfs.length - 1));
-  else { pdfDoc = null; const cv = $('#pdfCanvas'); cv.width = 0; cv.height = 0; $('#pdfCounter').textContent = ''; }
+  else { $('#pdfDriveWrap').hidden = true; $('#pdfLocalWrap').hidden = true; }
 }
 function loadPdfAt(i) {
   const c = chapterById(currentChapterId); if (!c) return;
@@ -561,9 +721,21 @@ function loadPdfAt(i) {
   pdfIdx = i; pdfKey = currentChapterId + ':p' + i;
   $$('#pdfTabs .chip').forEach((b, bi) => b.classList.toggle('is-active', bi === i));
   $('#pdfError').hidden = true; $('#pdfEmpty').hidden = true;
+  if (isDrive(p.url)) {
+    // Drive PDF -> preview iframe (lamba viewer, site ke andar)
+    $('#pdfLocalWrap').hidden = true;
+    loadIframe($('#pdfDriveFrame'), $('#pdfDriveWrap'), $('#pSkeleton'), $('#pdfError'), drivePreview(p.url), 'pdf-drive', p.title);
+  } else {
+    // Local PDF -> PDF.js canvas viewer
+    $('#pdfDriveWrap').hidden = true; $('#pSkeleton').hidden = true;
+    $('#pdfLocalWrap').hidden = false;
+    loadLocalPdf(p);
+  }
+}
+function loadLocalPdf(p) {
+  if (!window.pdfjsLib) { $('#pdfError').hidden = false; return; }
   $('#pdfLoading').hidden = false; $('#pdfLoadPct').textContent = '';
-  if (!window.pdfjsLib) { $('#pdfLoading').hidden = true; $('#pdfError').hidden = false; return; }
-  const task = pdfjsLib.getDocument({ url: mediaURL(p.url), withCredentials: false });
+  const task = pdfjsLib.getDocument({ url: p.url, withCredentials: false });
   task.onProgress = pr => {
     if (pr && pr.total) $('#pdfLoadPct').textContent = Math.round(pr.loaded / pr.total * 100) + '%';
   };
@@ -573,9 +745,7 @@ function loadPdfAt(i) {
     $('#pdfTotal').textContent = doc.numPages;
     $('#pdfLoading').hidden = true;
     renderPdfPage();
-  }).catch(() => {
-    $('#pdfLoading').hidden = true; $('#pdfError').hidden = false;
-  });
+  }).catch(() => { $('#pdfLoading').hidden = true; $('#pdfError').hidden = false; });
 }
 function renderPdfPage() {
   if (!pdfDoc || pdfRendering) return;
@@ -619,8 +789,7 @@ $('#pdfRetry').addEventListener('click', () => loadPdfAt(pdfIdx));
 /* ---------------- NOTES ---------------- */
 let notesTimer = null;
 function renderNotesTab(c) {
-  const ta = $('#notesArea');
-  ta.value = S.notes[c.id] || '';
+  $('#notesArea').value = S.notes[c.id] || '';
   updateNotesMeta();
 }
 function updateNotesMeta() {
@@ -636,19 +805,25 @@ $('#notesArea').addEventListener('input', () => {
     $('#notesSaved').textContent = 'Saved ✓';
   }, 500);
 });
+function renderNotesView() {
+  const list = $('#notesList'); list.innerHTML = '';
+  const withNotes = allChapters().filter(c => (S.notes[c.id] || '').trim());
+  if (!withNotes.length) {
+    list.innerHTML = '<p class="empty">Abhi koi notes nahi hain. Kisi chapter ke Notes tab me likho, yaha sab ikattha dikhega.</p>';
+    return;
+  }
+  withNotes.forEach(c => {
+    const card = document.createElement('article');
+    card.className = 'card note-card'; card.tabIndex = 0;
+    card.innerHTML = '<h3>Chapter ' + chapterNum(c.id) + ': ' + esc(c.title) + '</h3><p>' + esc(S.notes[c.id]) + '</p>';
+    card.addEventListener('click', () => openChapter(c.id, 'notes'));
+    list.appendChild(card);
+  });
+}
 
 /* =====================================================================
    YEARLY STUDY PLANNER
    ===================================================================== */
-const MOTIVES = [
-  'Chhota kadam roz, bada result saal ke ant me. 🌱',
-  'Band 8 sapna nahi, roz ka system hai. Aaj ka chapter khatm karo. 💪',
-  'Consistency hi asli talent hai. Bas aaj ka kaam. 🎯',
-  'Kal ki chinta chhodo, aaj ka page kholo. 📖',
-  'Har din 2 ghante — yehi tumhari superpower hai. ⏰',
-  'Galtiyaan error log me, seekh dimaag me. ✍️',
-  'Slow progress bhi progress hai. Rukna mana hai. 🚶'
-];
 function planSettings() {
   return (S.plan && S.plan.settings) || Object.assign({}, window.PLAN_DEFAULTS || {
     startDate: todayStr(), endDate: addDays(todayStr(), 364), chaptersPerDay: 1, offDays: [0], revisionEvery: 7
@@ -667,15 +842,11 @@ function isDayDone(dateStr) {
   if (!e || !e.chapters.length) return false;
   return e.chapters.every(id => statusOf(id) === 'done');
 }
-
-/* --- Auto-generate: chapters chapter-order me, off days skip,
-       har Nth study day = revision, IELTS_SCHEDULE dates fix --- */
 function generatePlan(settings) {
   const fixed = {};
   Object.entries(window.IELTS_SCHEDULE || {}).forEach(([d, ids]) => {
     if (d >= settings.startDate && d <= settings.endDate) fixed[d] = ids.slice();
   });
-  // Purani manual fixes bhi bacha kar rakho
   if (S.plan && S.plan.fixed) Object.assign(fixed, S.plan.fixed);
   const fixedIds = new Set(Object.values(fixed).flat());
   const queue = allChapters().map(c => c.id).filter(id => !fixedIds.has(id));
@@ -704,7 +875,6 @@ function generatePlan(settings) {
       todays.push(current); repeatLeft--;
       if (repeatLeft > 0) break;
     }
-    // dedupe same-day repeats
     assign[d] = { chapters: [...new Set(todays)], revision: false };
     todays.forEach(id => { if (!weekChapters.includes(id)) weekChapters.push(id); });
   }
@@ -712,22 +882,18 @@ function generatePlan(settings) {
   save();
   return S.plan;
 }
-
-/* --- Streak --- */
 function computeStreak() {
   const settings = planSettings();
-  let streak = 0, best = 0, run = 0;
+  let best = 0, run = 0;
   if (!S.plan) return { streak: 0, best: 0 };
   const start = S.plan.settings.startDate;
   for (let d = start; d <= todayStr(); d = addDays(d, 1)) {
     const e = dayEntry(d);
-    const off = isOffDay(d, settings) || (e && e.off);
-    if (off) continue;                       // off day streak nahi todta
+    if (isOffDay(d, settings) || (e && e.off)) continue;
     if (isDayDone(d)) { run++; best = Math.max(best, run); }
     else if (d < todayStr()) run = 0;
   }
-  // current streak: aaj se peeche gino (aaj pending ho to kal se)
-  streak = 0;
+  let streak = 0;
   let d = todayStr();
   if (!isDayDone(d) && !isOffDay(d, settings)) d = addDays(d, -1);
   while (d >= start) {
@@ -737,8 +903,6 @@ function computeStreak() {
   }
   return { streak, best: Math.max(best, streak) };
 }
-
-/* --- Plan status: on track / behind / ahead + predicted finish --- */
 function planStatus() {
   if (!S.plan) return null;
   const settings = S.plan.settings, t = todayStr();
@@ -754,7 +918,6 @@ function planStatus() {
   });
   const total = seen.size;
   const diff = actual - expected;
-  // pace: done chapters / elapsed study days
   let elapsed = 0;
   for (let d = settings.startDate; d <= t && d <= settings.endDate; d = addDays(d, 1)) {
     if (!isOffDay(d, settings)) elapsed++;
@@ -762,13 +925,10 @@ function planStatus() {
   let predicted = '—';
   if (actual > 0 && elapsed > 0 && total > actual) {
     const pace = actual / elapsed;
-    const daysLeft = Math.ceil((total - actual) / pace);
-    predicted = fmtDate(addDays(t, daysLeft));
+    predicted = fmtDate(addDays(t, Math.ceil((total - actual) / pace)));
   } else if (total && actual >= total) predicted = 'Complete 🎉';
   return { expected, actual, total, diff, predicted };
 }
-
-/* --- Missed days --- */
 function missedChapters() {
   if (!S.plan) return [];
   const t = todayStr(), out = [];
@@ -796,7 +956,7 @@ $('#missedReschedBtn').addEventListener('click', () => {
 });
 $$('#reschedModal [data-resched]').forEach(btn => btn.addEventListener('click', () => {
   rescheduleMissed(btn.dataset.resched);
-  closeModals(); renderPlan(); renderToday(); checkMissedBanner();
+  closeModals(); renderPlan(); renderHome(); checkMissedBanner();
   toast('Plan reschedule ho gaya ✓');
 }));
 function rescheduleMissed(mode) {
@@ -805,16 +965,14 @@ function rescheduleMissed(mode) {
   const missed = missedChapters();
   if (!missed.length) return;
   const missedIds = [...new Set(missed.map(m => m.id))];
-  // missed entries ko purani dates se hatao
   missed.forEach(m => {
     const e = S.plan.assign[m.date];
     if (e) e.chapters = e.chapters.filter(id => id !== m.id);
   });
   if (mode === 'push') {
-    // Aaj se aage ka saara sequence ikattha karke settings ke hisaab se dobara baanto
     const futureIds = [];
     Object.entries(S.plan.assign).sort().forEach(([d, e]) => {
-      if (d >= t && !e.revision && !e.fixed) { e.chapters.forEach(id => { if (!futureIds.includes(id)) futureIds.push(id); }); }
+      if (d >= t && !e.revision && !e.fixed) e.chapters.forEach(id => { if (!futureIds.includes(id)) futureIds.push(id); });
     });
     const seq = missedIds.concat(futureIds.filter(id => !missedIds.includes(id)));
     let qi = 0;
@@ -836,14 +994,12 @@ function rescheduleMissed(mode) {
   } else if (mode === 'revision') {
     let placed = false;
     for (let off = 0; off < 30 && !placed; off++) {
-      const d = addDays(t, off);
-      const e = S.plan.assign[d];
+      const e = S.plan.assign[addDays(t, off)];
       if (e && e.revision) { e.chapters = [...new Set(e.chapters.concat(missedIds))]; placed = true; }
     }
-    if (!placed) { // koi revision day nahi mila — agle study day ko revision banao
+    if (!placed) {
       for (let off = 0; off < 30 && !placed; off++) {
-        const d = addDays(t, off);
-        const e = S.plan.assign[d];
+        const e = S.plan.assign[addDays(t, off)];
         if (e && !e.off) { e.revision = true; e.chapters = [...new Set(e.chapters.concat(missedIds))]; placed = true; }
       }
     }
@@ -851,103 +1007,7 @@ function rescheduleMissed(mode) {
   save();
 }
 
-/* ---------------- TODAY PAGE ---------------- */
-function mediaButtonsHTML(c) {
-  let h = '';
-  if ((c.videos || []).length) h += '<button class="btn btn-small" data-open-media="video">🎬 Video</button>';
-  if ((c.audios || []).length) h += '<button class="btn btn-small" data-open-media="audio">🎧 Audio</button>';
-  if ((c.pdfs || []).length) h += '<button class="btn btn-small" data-open-media="pdf">📄 PDF</button>';
-  h += '<button class="btn btn-small" data-open-media="notes">📝 Notes</button>';
-  return h;
-}
-function wireMediaButtons(root, chapterId) {
-  $$('[data-open-media]', root).forEach(b => b.addEventListener('click', () => {
-    openChapter(chapterId, b.dataset.openMedia);
-  }));
-}
-function renderToday() {
-  const t = todayStr();
-  $('#todayDate').textContent = fmtDate(t);
-  $('#todayMotive').textContent = MOTIVES[parseDate(t).getDate() % MOTIVES.length];
-  const box = $('#todayChapters'); box.innerHTML = '';
-  const e = dayEntry(t);
-  let todays = e ? e.chapters : [];
-  if (!S.plan) {
-    box.innerHTML = '<p class="muted">Abhi plan bana nahi hai. Settings me jaakar "Auto-generate my plan" dabao — ya ek second, default plan taiyaar mil jayega wahi se.</p>' +
-      '<button class="btn btn-primary" onclick="document.querySelector(\'[data-nav=settings]\').click()">Plan banao</button>';
-  } else if (e && e.off) {
-    box.innerHTML = '<p>🌿 Aaj off day hai. Aaram karo, ya revision kar lo.</p>';
-  } else if (!todays.length) {
-    box.innerHTML = '<p class="muted">' + (e && e.revision ? '🔁 Aaj revision day hai — is hafte ke chapters dohrao (neeche chapters me jaakar).' : 'Aaj ke liye koi chapter set nahi hai.') + '</p>';
-  }
-  if (e && e.revision && todays.length) {
-    const p = document.createElement('p'); p.className = 'muted'; p.textContent = '🔁 Aaj revision day hai — ye chapters dohrao:';
-    box.appendChild(p);
-  }
-  todays.forEach(id => {
-    const c = chapterById(id); if (!c) return;
-    const row = document.createElement('div');
-    row.className = 'today-chapter';
-    row.innerHTML = '<strong>' + (statusOf(id) === 'done' ? '✅ ' : '') + 'Chapter ' + chapterNum(id) + ': ' + esc(c.title) + '</strong>' + mediaButtonsHTML(c);
-    wireMediaButtons(row, id);
-    box.appendChild(row);
-  });
-  const doneToday = todays.filter(id => statusOf(id) === 'done').length;
-  const total = todays.length;
-  $('#todayProgressText').textContent = total ? doneToday + ' of ' + total + ' chapters done (aaj)' : 'Aaj koi chapter nahi';
-  const ring = $('#goalRing');
-  const frac = total ? doneToday / total : (S.dayDone[t] ? 1 : 0);
-  ring.style.strokeDashoffset = String(213.6 * (1 - frac));
-  $('#goalRingText').textContent = total ? doneToday + '/' + total : (S.dayDone[t] ? '✓' : '—');
-  const st = computeStreak();
-  $('#streakText').textContent = st.streak + ' days';
-  $('#bestStreakText').textContent = st.best + ' days';
-  const ps = planStatus();
-  $('#planStatusText').textContent = ps
-    ? (ps.diff === 0 ? '📍 On track' : ps.diff < 0 ? '📍 ' + Math.abs(ps.diff) + ' chapters behind' : '📍 ' + ps.diff + ' chapters ahead') +
-      ' · Predicted finish: ' + ps.predicted
-    : '';
-  // Tomorrow preview
-  const tm = addDays(t, 1), te = dayEntry(tm);
-  const tp = $('#tomorrowPreview');
-  if (te && te.chapters.length) {
-    tp.innerHTML = te.chapters.map(id => {
-      const c = chapterById(id);
-      return c ? '<p>Chapter ' + chapterNum(id) + ': <strong>' + esc(c.title) + '</strong> ' + (te.revision ? '(revision)' : '') + '</p>' : '';
-    }).join('');
-  } else tp.innerHTML = '<p class="muted">' + (te && te.off ? '🌿 Kal off day hai.' : 'Kal ke liye kuch set nahi hai.') + '</p>';
-  // Continue
-  const cb = $('#continueBox');
-  if (S.lastOpen && chapterById(S.lastOpen.chId)) {
-    const c = chapterById(S.lastOpen.chId);
-    cb.innerHTML = '<div class="continue-item"><span>Chapter ' + chapterNum(c.id) + ': <strong>' + esc(c.title) + '</strong></span>' +
-      '<button class="btn btn-small btn-primary" id="btnContinue">▶ Continue</button></div>';
-    $('#btnContinue').addEventListener('click', () => openChapter(c.id, S.lastOpen.tab));
-  } else cb.innerHTML = '<p class="muted">Jaha chhoda tha, wahi se shuru hoga. Koi chapter kholo.</p>';
-  // Banner
-  const banner = $('#todayBanner');
-  if (todays.length && !isDayDone(t)) {
-    $('#todayBannerText').textContent = todays.map(id => { const c = chapterById(id); return c ? c.title : ''; }).filter(Boolean).join(', ');
-    banner.hidden = false;
-  } else banner.hidden = true;
-}
-$('#todayBannerBtn').addEventListener('click', () => {
-  const e = dayEntry(todayStr());
-  if (e && e.chapters.length) openChapter(e.chapters[0]);
-});
-$('#todayBannerClose').addEventListener('click', () => { $('#todayBanner').hidden = true; });
-$('#btnMarkTodayDone').addEventListener('click', () => {
-  const t = todayStr();
-  const e = dayEntry(t);
-  if (e) e.chapters.forEach(id => {
-    if (statusOf(id) !== 'done') { S.progress[id] = 'done'; S.completedOn[id] = t; }
-  });
-  S.dayDone[t] = true; save();
-  celebrate(); toast('Aaj ka plan complete! 🎉');
-  renderToday(); renderSidebar();
-});
-
-/* ---------------- PLAN VIEWS (month / year / week) ---------------- */
+/* ---------------- PLAN VIEWS ---------------- */
 let monthCursor = null;
 function renderPlan() {
   if (!S.plan) {
@@ -988,7 +1048,7 @@ function shiftMonth(dir) {
 function dayClass(d) {
   const e = dayEntry(d), t = todayStr(), settings = planSettings();
   const cls = [];
-  if (e && e.off || isOffDay(d, settings) && (!e || !e.chapters.length)) cls.push('off');
+  if ((e && e.off) || (isOffDay(d, settings) && (!e || !e.chapters.length))) cls.push('off');
   if (e && e.revision) cls.push('revision');
   if (isDayDone(d)) cls.push('done');
   else if (d < t && e && e.chapters.length && !e.off) cls.push('missed');
@@ -1004,7 +1064,7 @@ function renderMonthView() {
     const h = document.createElement('div'); h.className = 'dow'; h.textContent = dn; grid.appendChild(h);
   });
   const first = new Date(y, m - 1, 1);
-  let lead = (first.getDay() + 6) % 7;
+  const lead = (first.getDay() + 6) % 7;
   for (let i = 0; i < lead; i++) { const b = document.createElement('div'); b.className = 'day-cell blank'; grid.appendChild(b); }
   const daysInMonth = new Date(y, m, 0).getDate();
   for (let dd = 1; dd <= daysInMonth; dd++) {
@@ -1067,9 +1127,9 @@ function renderWeekView() {
     ul.appendChild(li);
   }
 }
-$('#btnPlanWizard').addEventListener('click', () => showView('settings'));
+$('#btnPlanWizard').addEventListener('click', () => showView('profile'));
 
-/* ---------------- DAY MODAL + MOVE CHAPTER ---------------- */
+/* ---------------- DAY MODAL + MOVE ---------------- */
 let modalDate = null, moveCtx = null;
 function openDayModal(d) {
   modalDate = d;
@@ -1106,7 +1166,7 @@ $('#dayMarkDone').addEventListener('click', () => {
     if (statusOf(id) !== 'done') { S.progress[id] = 'done'; S.completedOn[id] = modalDate; }
   });
   S.dayDone[modalDate] = true; save();
-  celebrate(); closeModals(); renderPlan(); renderToday(); renderSidebar();
+  celebrate(); closeModals(); renderPlan(); renderHome(); renderSidebar();
   toast('Din complete mark ho gaya ✓');
 });
 $('#moveConfirm').addEventListener('click', () => {
@@ -1121,8 +1181,6 @@ $('#moveConfirm').addEventListener('click', () => {
   save(); closeModals(); renderPlan();
   toast('Chapter ' + fmtDate(to) + ' par move ho gaya ✓');
 });
-
-/* ---------------- PRINTABLE PLAN ---------------- */
 $('#btnPrintPlan').addEventListener('click', () => {
   if (!S.plan) { toast('Pehle plan banao.'); return; }
   const rows = Object.entries(S.plan.assign).sort().map(([d, e]) => {
@@ -1153,7 +1211,6 @@ function renderStats() {
   $('#statWeek').innerHTML = '<p>Chapters completed: <strong>' + w.chapters + '</strong></p><p>Days studied: <strong>' + w.days + '</strong></p><p>Focus time: <strong>' + w.focusMin + ' min</strong></p>';
   $('#statMonth').innerHTML = '<p>Chapters completed: <strong>' + m.chapters + '</strong></p><p>Days studied: <strong>' + m.days + '</strong></p><p>Focus time: <strong>' + m.focusMin + ' min</strong></p>';
   $('#statAll').innerHTML = '<p>Chapters completed: <strong>' + doneCount() + ' / ' + total + '</strong></p><p>Plan completed: <strong>' + pct + '%</strong></p><p>Total focus time: <strong>' + all.focusMin + ' min</strong></p><p>Current streak: <strong>' + computeStreak().streak + ' days</strong></p>';
-  // Bar chart: last 8 weeks
   const chart = $('#weekChart'); chart.innerHTML = '';
   const weeks = [];
   for (let i = 7; i >= 0; i--) {
@@ -1169,7 +1226,7 @@ function renderStats() {
 }
 
 /* =====================================================================
-   MODALS
+   MODALS + CHAPTER FORM
    ===================================================================== */
 function openModal(id) {
   $('#modalScrim').hidden = false;
@@ -1184,9 +1241,6 @@ function closeModals() {
 $$('[data-close]').forEach(b => b.addEventListener('click', closeModals));
 $('#modalScrim').addEventListener('click', e => { if (e.target === e.currentTarget) closeModals(); });
 
-/* =====================================================================
-   ADD / EDIT / DELETE CHAPTER FORM
-   ===================================================================== */
 let editingId = null;
 function linesToItems(text, kind) {
   return (text || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
@@ -1232,7 +1286,7 @@ $('#chapterForm').addEventListener('submit', e => {
     S.custom.push(Object.assign({ id }, data));
     toast('Naya chapter jud gaya ✓');
   }
-  save(); closeModals(); renderHome(); renderSidebar();
+  save(); closeModals(); renderChapters(); renderSidebar();
   if (currentChapterId === editingId && currentView === 'chapter') openChapter(editingId);
 });
 $('#cfDelete').addEventListener('click', () => {
@@ -1242,14 +1296,14 @@ $('#cfDelete').addEventListener('click', () => {
   else { S.deleted.push(editingId); delete S.edits[editingId]; }
   delete S.progress[editingId]; delete S.notes[editingId]; delete S.bookmarks[editingId];
   save(); closeModals();
-  if (currentChapterId === editingId) { currentChapterId = null; showView('home'); }
-  renderHome(); renderSidebar(); toast('Chapter delete ho gaya.');
+  if (currentChapterId === editingId) { currentChapterId = null; showView('chapters'); }
+  renderChapters(); renderSidebar(); toast('Chapter delete ho gaya.');
 });
 
 /* =====================================================================
-   SETTINGS: plan form, reminders, backup/restore, appearance
+   PROFILE / SETTINGS
    ===================================================================== */
-function renderSettings() {
+function renderProfile() {
   const st = planSettings();
   $('#pfStart').value = st.startDate || '';
   $('#pfEnd').value = st.endDate || '';
@@ -1263,6 +1317,7 @@ function renderSettings() {
   $('#lastBackupText').textContent = S.lastBackup
     ? 'Aakhri backup: ' + new Date(S.lastBackup).toLocaleString('en-IN')
     : 'Abhi tak koi backup nahi liya.';
+  if (window.renderAccountInfo) window.renderAccountInfo();
 }
 $('#planForm').addEventListener('submit', e => {
   e.preventDefault();
@@ -1272,15 +1327,14 @@ $('#planForm').addEventListener('submit', e => {
   const days = parseInt($('#pfDays').value, 10);
   if (!end && days) end = addDays(start, days - 1);
   if (!end) { toast('End date ya total days — ek do.'); return; }
-  const settings = {
+  generatePlan({
     startDate: start, endDate: end,
     chaptersPerDay: parseFloat($('#pfPerDay').value) || 1,
     revisionEvery: parseInt($('#pfRevision').value, 10) || 0,
     offDays: $$('.pfOff').filter(cb => cb.checked).map(cb => parseInt(cb.value, 10))
-  };
-  generatePlan(settings);
-  toast('Plan ban gaya ✓ Aaj ka plan dekho.');
-  renderPlan(); showView('today');
+  });
+  toast('Plan ban gaya ✓');
+  showView('plan');
 });
 $('#reminderTime').addEventListener('change', e => { S.reminder = e.target.value; save(); toast('Reminder time set: ' + S.reminder); });
 $('#btnNotifyPerm').addEventListener('click', async () => {
@@ -1290,8 +1344,6 @@ $('#btnNotifyPerm').addEventListener('click', async () => {
 });
 $('#setHideDownload').addEventListener('change', e => { S.hideDownload = e.target.checked; save(); });
 $('#fontSizeSel').addEventListener('change', e => { S.font = e.target.value; applyFont(); save(); });
-
-/* Backup = poori state (progress, notes, bookmarks, positions, plan, streak sab) */
 $('#btnBackup').addEventListener('click', doBackup);
 $('#backupNowBtn').addEventListener('click', doBackup);
 function doBackup() {
@@ -1304,7 +1356,7 @@ function doBackup() {
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   S.lastBackup = Date.now(); save();
   $('#backupBanner').hidden = true;
-  renderSettings();
+  renderProfile();
   toast('Backup download ho gaya ✓');
 }
 $('#fileRestore').addEventListener('change', e => {
@@ -1316,7 +1368,7 @@ $('#fileRestore').addEventListener('change', e => {
       if (!data.state) throw new Error('bad file');
       S = Object.assign(defaultState(), data.state);
       save(); applyTheme(); applyFont();
-      renderSidebar(); renderToday();
+      renderSidebar(); renderHome();
       toast('Backup restore ho gaya ✓');
     } catch (err) { toast('Ye file sahi backup nahi lagti.'); }
   };
@@ -1324,7 +1376,7 @@ $('#fileRestore').addEventListener('change', e => {
   e.target.value = '';
 });
 $('#btnExportChapters').addEventListener('click', () => {
-  const header = '/* Exported from IELTS Study website — is file ko data/chapters.js se badal sakte ho. */\n';
+  const header = '/* Exported from IELTS Study website */\n';
   const body = 'window.IELTS_CHAPTERS = ' + JSON.stringify(allChapters(), null, 2) + ';\n' +
     'window.IELTS_SCHEDULE = ' + JSON.stringify((S.plan && S.plan.fixed) || window.IELTS_SCHEDULE || {}, null, 2) + ';\n' +
     'window.PLAN_DEFAULTS = ' + JSON.stringify(planSettings(), null, 2) + ';\n';
@@ -1338,7 +1390,7 @@ $('#backupBannerClose').addEventListener('click', () => {
 });
 
 /* =====================================================================
-   APPEARANCE: theme, font, focus mode
+   APPEARANCE
    ===================================================================== */
 function applyTheme() {
   const dark = S.theme ? S.theme === 'dark'
@@ -1368,15 +1420,14 @@ $('#btnFocus').addEventListener('click', () => {
 $('#btnShortcuts').addEventListener('click', () => openModal('shortcutsModal'));
 
 /* =====================================================================
-   POMODORO (25/5) — focus time Stats me bhi jata hai
+   POMODORO
    ===================================================================== */
 const pomo = { mode: 'focus', left: 25 * 60, running: false, timer: null };
 function pomoRender() {
   $('#pomoTime').textContent = fmtTime(pomo.left);
   $('#pomoMode').textContent = pomo.mode === 'focus' ? 'Focus · 25 min' : 'Break · 5 min';
   $('#pomoStart').textContent = pomo.running ? 'Pause' : 'Start';
-  const todaySec = S.focusByDate[todayStr()] || 0;
-  $('#pomoToday').textContent = Math.round(todaySec / 60) + ' min';
+  $('#pomoToday').textContent = Math.round((S.focusByDate[todayStr()] || 0) / 60) + ' min';
 }
 function pomoTick() {
   pomo.left--;
@@ -1412,28 +1463,23 @@ $('#pomoToggle').addEventListener('click', () => {
 });
 
 /* =====================================================================
-   KEYBOARD SHORTCUTS
+   SHORTCUTS + REMINDERS
    ===================================================================== */
 document.addEventListener('keydown', e => {
   const tag = (e.target.tagName || '').toLowerCase();
   const typing = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable;
   if (e.key === 'Escape') { closeModals(); closeSidebarMobile(); return; }
   if (typing) return;
-  if (e.key === '/') { e.preventDefault(); showView('home'); $('#searchInput').focus(); }
+  if (e.key === '/') { e.preventDefault(); showView('chapters'); $('#searchInput').focus(); }
   else if (e.key === 'd') toggleTheme();
   else if (e.key === '?') openModal('shortcutsModal');
-  else if (e.key === ' ' && currentView === 'chapter') {
-    e.preventDefault();
-    if (currentTab === 'audio') { const el = audioEl(); el.paused ? el.play() : el.pause(); }
-    else if (currentTab === 'video') { const v = $('#fileVideo'); if (v && !$('#fileVideoWrap').hidden) v.paused ? v.play() : v.pause(); }
+  else if (e.key === ' ' && currentView === 'chapter' && currentTab === 'audio') {
+    const el = audioEl();
+    if (!$('#localAudioCard').hidden) { e.preventDefault(); el.paused ? el.play() : el.pause(); }
   }
   else if (e.key === 'ArrowRight' && currentView === 'chapter') stepChapter(1);
   else if (e.key === 'ArrowLeft' && currentView === 'chapter') stepChapter(-1);
 });
-
-/* =====================================================================
-   REMINDERS (Notification API — PWA me sabse achha chalta hai)
-   ===================================================================== */
 setInterval(() => {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const now = new Date();
@@ -1449,24 +1495,55 @@ setInterval(() => {
 }, 30000);
 
 /* =====================================================================
+   DEBUG PANEL (?debug=1)
+   ===================================================================== */
+function renderDebugPanel() {
+  const panel = $('#debugPanel');
+  if (!panel || panel.hidden) return;
+  // Saari files pehle se register karo (jo abhi tak load nahi hui)
+  allChapters().forEach(c => {
+    (c.videos || []).forEach(v => {
+      const conv = isRumble(v) ? v.url : isDrive(v.url) ? drivePreview(v.url) : v.url;
+      if (!DEBUG_LOADS[conv]) DEBUG_LOADS[conv] = { kind: 'video', title: c.title + ' — ' + v.title, url: v.url, converted: conv, status: 'not opened yet' };
+    });
+    (c.audios || []).forEach(a => {
+      const conv = isDrive(a.url) ? drivePreview(a.url) : a.url;
+      if (!DEBUG_LOADS[conv]) DEBUG_LOADS[conv] = { kind: 'audio', title: c.title + ' — ' + a.title, url: a.url, converted: conv, status: 'not opened yet' };
+    });
+    (c.pdfs || []).forEach(p => {
+      const conv = isDrive(p.url) ? drivePreview(p.url) : p.url;
+      if (!DEBUG_LOADS[conv]) DEBUG_LOADS[conv] = { kind: 'pdf', title: c.title + ' — ' + p.title, url: p.url, converted: conv, status: 'not opened yet' };
+    });
+  });
+  $('#debugList').innerHTML = Object.values(DEBUG_LOADS).map(x =>
+    '<div>[' + esc(x.kind) + '] ' + esc(x.title) + ' — <span class="' +
+    (x.status.includes('✓') ? 'ok' : x.status.includes('timeout') ? 'bad' : '') + '">' + esc(x.status) +
+    '</span><br><code>' + esc(x.converted) + '</code></div>'
+  ).join('');
+}
+$('#debugClose').addEventListener('click', () => { $('#debugPanel').hidden = true; });
+
+/* =====================================================================
    INIT
    ===================================================================== */
 (function init() {
   applyTheme(); applyFont();
   document.body.classList.toggle('focus-on', !!S.focus);
   $('#main').classList.toggle('focus-mode', !!S.focus);
-  // Pehli baar: default plan (PLAN_DEFAULTS + IELTS_SCHEDULE) khud ban jaye
   if (!S.plan && window.PLAN_DEFAULTS) {
-    try { generatePlan(Object.assign({}, window.PLAN_DEFAULTS)); } catch (e) { /* settings se ban jayega */ }
+    try { generatePlan(Object.assign({}, window.PLAN_DEFAULTS)); } catch (e) {}
   }
-  if (S.monthCursor) monthCursor = S.monthCursor;
   renderSidebar();
-  showView('today');
+  showView('home');
   pomoRender();
   checkMissedBanner();
-  // 7-din backup reminder
   if (S.lastBackup && Date.now() - S.lastBackup > 7 * 24 * 3600 * 1000 &&
       Date.now() - (S.backupBannerOff || 0) > 24 * 3600 * 1000) {
     $('#backupBanner').hidden = false;
   }
+  if (/[?&]debug=1/.test(location.search)) {
+    $('#debugPanel').hidden = false;
+    renderDebugPanel();
+  }
+  if (!window.FIREBASE_CONFIGURED) window.setSavedStatus('● Local', false);
 })();

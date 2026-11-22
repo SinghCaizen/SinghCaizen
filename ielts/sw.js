@@ -1,35 +1,37 @@
-/* IELTS Study — service worker
-   App shell ke liye NETWORK-FIRST strategy: pehle hamesha taaza file,
-   network na ho tab cache. Isse har update turant milta hai.
-   Study media (Drive/audio/PDF) hamesha network se aata hai. */
-const CACHE = 'ielts-study-v2';
-const SHELL = ['./', './index.html', './styles.css', './app.js', './data/chapters.js', './manifest.webmanifest'];
+/* IELTS Study — service worker (v4)
+   Network-first: hamesha taaza version pehle, offline par cache.
+   Media (Drive iframes) isme cache nahi hote — wo Google serve karta hai. */
+const CACHE = 'ielts-study-v3';
+const SHELL = [
+  './',
+  'index.html',
+  'styles.css?v=4',
+  'app.js?v=4',
+  'auth.js?v=4',
+  'firebase-config.js?v=4',
+  'data/chapters.js?v=4',
+  'manifest.webmanifest'
+];
 
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())
-  );
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
-
-self.addEventListener('activate', event => {
-  event.waitUntil(
+self.addEventListener('activate', e => {
+  e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
-
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  if (url.origin === self.location.origin && event.request.method === 'GET') {
-    event.respondWith(
-      fetch(event.request)
-        .then(res => {
-          const copy = res.clone();
-          caches.open(CACHE).then(cache => cache.put(event.request, copy));
-          return res;
-        })
-        .catch(() => caches.match(event.request))
-    );
-  }
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  e.respondWith(
+    fetch(e.request).then(res => {
+      if (res.ok && new URL(e.request.url).origin === location.origin) {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+      }
+      return res;
+    }).catch(() => caches.match(e.request, { ignoreSearch: true }))
+  );
 });
