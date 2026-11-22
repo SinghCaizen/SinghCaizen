@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>IELTS Study — Noor's Classroom</title>
+<meta name="description" content="Personal IELTS study website: chapters, built-in video/audio/PDF players and a yearly study planner.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#b3543f">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23b3543f'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23fff7ec' font-family='Georgia'%3EN%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+<!-- PDF.js (pinned version, cdnjs) — PDFs render INSIDE this site on a canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<!-- ======================= TOP BAR ======================= -->
+<header class="topbar">
+  <button id="btnSidebar" class="icon-btn only-mobile" aria-label="Open chapter list">☰</button>
+  <div class="brand">
+    <span class="brand-mark">N</span>
+    <div class="brand-text">
+      <strong>IELTS Study</strong>
+      <small>Band 8 · 23 Nov 2026 – 22 Nov 2027</small>
+    </div>
+  </div>
+  <div class="topbar-actions">
+    <button id="btnTheme" class="icon-btn" aria-label="Toggle dark / light mode">🌙</button>
+    <button id="btnFont" class="icon-btn" aria-label="Change font size">A±</button>
+    <button id="btnFocus" class="icon-btn" aria-label="Focus mode">◎</button>
+    <button id="btnShortcuts" class="icon-btn" aria-label="Keyboard shortcuts help">?</button>
+  </div>
+</header>
+
+<!-- In-app reminder banner (Today page) -->
+<div id="todayBanner" class="banner" hidden>
+  <span>📚 Today's chapter is waiting — <strong id="todayBannerText"></strong></span>
+  <button id="todayBannerBtn" class="btn btn-small">Open</button>
+  <button id="todayBannerClose" class="icon-btn" aria-label="Dismiss">✕</button>
+</div>
+
+<!-- Missed-days banner (Planner) -->
+<div id="missedBanner" class="banner banner-warn" hidden>
+  <span id="missedBannerText"></span>
+  <button id="missedReschedBtn" class="btn btn-small">Reschedule missed chapters</button>
+  <button id="missedBannerClose" class="icon-btn" aria-label="Dismiss">✕</button>
+</div>
+
+<!-- Backup reminder banner -->
+<div id="backupBanner" class="banner" hidden>
+  <span>💾 7 din se backup nahi liya. Apni progress safe rakhne ke liye backup le lo.</span>
+  <button id="backupNowBtn" class="btn btn-small">Backup now</button>
+  <button id="backupBannerClose" class="icon-btn" aria-label="Dismiss">✕</button>
+</div>
+
+<div class="layout">
+
+  <!-- ======================= SIDEBAR ======================= -->
+  <aside id="sidebar" class="sidebar" aria-label="Chapters">
+    <nav class="main-nav">
+      <button class="nav-item" data-nav="today">🏠 Today — Aaj ka plan</button>
+      <button class="nav-item" data-nav="home">📖 All Chapters</button>
+      <button class="nav-item" data-nav="plan">🗓️ Planner / Calendar</button>
+      <button class="nav-item" data-nav="stats">📊 Stats</button>
+      <button class="nav-item" data-nav="settings">⚙️ Settings</button>
+    </nav>
+    <div class="side-progress">
+      <div class="side-progress-label"><span id="sideProgressText">0 of 10 chapters done</span></div>
+      <div class="progress-track"><div id="sideProgressBar" class="progress-fill" style="width:0%"></div></div>
+    </div>
+    <h3 class="side-heading">Chapters</h3>
+    <ul id="sideChapterList" class="side-chapters"></ul>
+  </aside>
+  <div id="sidebarScrim" class="scrim" hidden></div>
+
+  <!-- ======================= MAIN ======================= -->
+  <main id="main" class="main">
+
+    <!-- ========== VIEW: TODAY ========== -->
+    <section id="view-today" class="view">
+      <div class="today-grid">
+        <article class="card today-card">
+          <p class="eyebrow">Aaj ka plan</p>
+          <h1 id="todayDate" class="today-date">—</h1>
+          <p id="todayMotive" class="motive"></p>
+          <div id="todayChapters" class="today-chapters"></div>
+          <div class="today-progress-row">
+            <div class="ring-wrap">
+              <svg class="ring" viewBox="0 0 80 80" width="80" height="80" aria-hidden="true">
+                <circle cx="40" cy="40" r="34" class="ring-bg"></circle>
+                <circle id="goalRing" cx="40" cy="40" r="34" class="ring-fg"></circle>
+              </svg>
+              <div class="ring-label"><strong id="goalRingText">0/0</strong><small>today</small></div>
+            </div>
+            <div class="today-stats">
+              <p id="todayProgressText">—</p>
+              <p>🔥 Streak: <strong id="streakText">0 days</strong> · Best: <strong id="bestStreakText">0</strong></p>
+              <p id="planStatusText">—</p>
+              <button id="btnMarkTodayDone" class="btn btn-primary">✓ Mark today done</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Kal ka preview</h2>
+          <div id="tomorrowPreview"></div>
+          <hr class="soft">
+          <h2>Continue where you left off</h2>
+          <div id="continueBox"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ========== VIEW: HOME / ALL CHAPTERS ========== -->
+    <section id="view-home" class="view" hidden>
+      <div class="home-head">
+        <h1>All Chapters</h1>
+        <div class="search-box">
+          <input id="searchInput" type="search" placeholder="Search chapters… ( / )" aria-label="Search chapters">
+        </div>
+      </div>
+      <div class="overall-progress">
+        <div class="progress-track big"><div id="homeProgressBar" class="progress-fill" style="width:0%"></div></div>
+        <span id="homeProgressText">0 of 10 chapters done</span>
+      </div>
+      <div class="filter-row" role="group" aria-label="Filters">
+        <button class="chip is-active" data-filter="all">All</button>
+        <button class="chip" data-filter="video">🎬 Video</button>
+        <button class="chip" data-filter="audio">🎧 Audio</button>
+        <button class="chip" data-filter="pdf">📄 PDF</button>
+        <button class="chip" data-filter="done">✓ Done</button>
+        <button class="chip" data-filter="pending">Pending</button>
+        <button class="chip" data-filter="fav">★ Favorites</button>
+        <label class="sort-label">Sort
+          <select id="sortSelect" aria-label="Sort chapters">
+            <option value="order">Chapter order</option>
+            <option value="title">Title A–Z</option>
+            <option value="progress">Progress</option>
+            <option value="recent">Recently opened</option>
+          </select>
+        </label>
+        <button id="btnAddChapter" class="btn btn-small">＋ Add chapter</button>
+      </div>
+      <div id="chapterGrid" class="chapter-grid"></div>
+      <p id="homeEmpty" class="empty" hidden>Kuch nahi mila. Search ya filter badal kar dekho.</p>
+    </section>
+
+    <!-- ========== VIEW: CHAPTER ========== -->
+    <section id="view-chapter" class="view" hidden>
+      <div class="chapter-head">
+        <button id="btnBackHome" class="btn btn-small">← All chapters</button>
+        <div>
+          <h1 id="chTitle">—</h1>
+          <p id="chDesc" class="muted"></p>
+          <p id="chTags" class="tags"></p>
+        </div>
+        <div class="chapter-head-actions">
+          <button id="btnFavChapter" class="icon-btn" aria-label="Favorite">☆</button>
+          <button id="btnEditChapter" class="btn btn-small">Edit</button>
+          <button id="btnMarkDone" class="btn btn-primary">✓ Mark as done</button>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab is-active" data-tab="video" role="tab">🎬 Video</button>
+        <button class="tab" data-tab="audio" role="tab">🎧 Audio</button>
+        <button class="tab" data-tab="pdf" role="tab">📄 PDF</button>
+        <button class="tab" data-tab="notes" role="tab">📝 Notes</button>
+      </div>
+
+      <!-- VIDEO TAB -->
+      <div id="tab-video" class="tab-panel">
+        <div id="videoStage" class="video-stage">
+          <div id="videoSkeleton" class="skeleton" hidden>Loading video…</div>
+          <div id="rumbleWrap" class="rumble-wrap" hidden></div>
+          <div id="fileVideoWrap" hidden>
+            <video id="fileVideo" playsinline preload="metadata"></video>
+            <div class="player-controls">
+              <button id="vPlay" class="pbtn" aria-label="Play or pause">▶</button>
+              <button id="vBack" class="pbtn" aria-label="Back 10 seconds">−10s</button>
+              <button id="vFwd" class="pbtn" aria-label="Forward 10 seconds">+10s</button>
+              <input id="vSeek" type="range" min="0" max="1000" value="0" aria-label="Seek">
+              <span id="vTime" class="ptime">0:00 / 0:00</span>
+              <label class="pspeed">Speed
+                <select id="vSpeed" aria-label="Playback speed">
+                  <option>0.5</option><option>0.75</option><option selected>1</option>
+                  <option>1.25</option><option>1.5</option><option>2</option>
+                </select>
+              </label>
+              <input id="vVol" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume">
+              <button id="vFull" class="pbtn" aria-label="Fullscreen">⛶</button>
+            </div>
+          </div>
+          <div id="videoError" class="player-error" hidden>
+            <p>Video load nahi ho paya. Internet check karke dobara try karo.</p>
+            <button id="vRetry" class="btn btn-small">↻ Retry</button>
+          </div>
+          <p id="videoEmpty" class="empty">Is chapter me abhi koi video nahi hai.</p>
+        </div>
+        <ul id="videoPlaylist" class="playlist"></ul>
+      </div>
+
+      <!-- AUDIO TAB -->
+      <div id="tab-audio" class="tab-panel" hidden>
+        <div class="audio-player card">
+          <p id="aNowTitle" class="now-title">Koi audio chuna nahi gaya</p>
+          <audio id="audioEl" preload="metadata"></audio>
+          <div class="player-controls">
+            <button id="aPlay" class="pbtn big" aria-label="Play or pause">▶</button>
+            <button id="aBack" class="pbtn" aria-label="Back 10 seconds">−10s</button>
+            <button id="aFwd" class="pbtn" aria-label="Forward 10 seconds">+10s</button>
+            <input id="aSeek" type="range" min="0" max="1000" value="0" aria-label="Seek">
+            <span id="aTime" class="ptime">0:00 / 0:00</span>
+          </div>
+          <div class="player-controls wrap">
+            <label class="pspeed">Speed
+              <select id="aSpeed" aria-label="Playback speed">
+                <option>0.75</option><option selected>1</option><option>1.25</option>
+                <option>1.5</option><option>1.75</option><option>2</option>
+              </select>
+            </label>
+            <label>Volume <input id="aVol" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></label>
+            <label>Sleep timer
+              <select id="aSleep" aria-label="Sleep timer">
+                <option value="0">Off</option><option value="15">15 min</option>
+                <option value="30">30 min</option><option value="60">60 min</option>
+              </select>
+            </label>
+            <span id="aSleepLeft" class="muted"></span>
+            <button id="aBookmark" class="btn btn-small">🔖 Bookmark this moment</button>
+          </div>
+          <div id="aError" class="player-error" hidden>
+            <p>Audio chal nahi paya.</p>
+            <button id="aRetry" class="btn btn-small">↻ Retry</button>
+          </div>
+          <div class="bookmarks">
+            <h3>Bookmarks</h3>
+            <ul id="aBookmarkList"></ul>
+          </div>
+        </div>
+        <ul id="audioPlaylist" class="playlist"></ul>
+        <p id="audioEmpty" class="empty" hidden>Is chapter me abhi koi audio nahi hai.</p>
+      </div>
+
+      <!-- PDF TAB -->
+      <div id="tab-pdf" class="tab-panel" hidden>
+        <div id="pdfTabs" class="pdf-tabs"></div>
+        <div class="pdf-toolbar">
+          <button id="pdfPrev" class="pbtn" aria-label="Previous page">←</button>
+          <span class="pdf-pagebox">
+            <input id="pdfJump" type="number" min="1" value="1" aria-label="Page number"> / <span id="pdfTotal">–</span>
+          </span>
+          <button id="pdfNext" class="pbtn" aria-label="Next page">→</button>
+          <button id="pdfZoomOut" class="pbtn" aria-label="Zoom out">−</button>
+          <span id="pdfZoomLabel">100%</span>
+          <button id="pdfZoomIn" class="pbtn" aria-label="Zoom in">＋</button>
+          <button id="pdfFit" class="btn btn-small">Fit width</button>
+          <button id="pdfFull" class="btn btn-small">⛶ Fullscreen</button>
+          <span id="pdfCounter" class="muted"></span>
+        </div>
+        <div id="pdfStage" class="pdf-stage">
+          <p id="pdfLoading" class="empty" hidden>PDF load ho raha hai… <span id="pdfLoadPct"></span></p>
+          <div id="pdfError" class="player-error" hidden>
+            <p>PDF khul nahi paya.</p>
+            <button id="pdfRetry" class="btn btn-small">↻ Retry</button>
+          </div>
+          <canvas id="pdfCanvas"></canvas>
+          <p id="pdfEmpty" class="empty">Is chapter me abhi koi PDF nahi hai.</p>
+        </div>
+      </div>
+
+      <!-- NOTES TAB -->
+      <div id="tab-notes" class="tab-panel" hidden>
+        <label class="notes-label" for="notesArea">Apne notes — apne aap save hote hain</label>
+        <textarea id="notesArea" rows="14" placeholder="Yaha likho… sab kuch isi website me save rahega."></textarea>
+        <p class="muted"><span id="notesWords">0</span> words · <span id="notesSaved">Saved</span></p>
+      </div>
+
+      <div class="chapter-foot">
+        <button id="btnPrevChapter" class="btn">← Previous chapter</button>
+        <button id="btnNextChapter" class="btn">Next chapter →</button>
+      </div>
+    </section>
+
+    <!-- ========== VIEW: PLAN ========== -->
+    <section id="view-plan" class="view" hidden>
+      <div class="home-head">
+        <h1>Yearly Study Planner</h1>
+        <div class="plan-actions">
+          <button id="btnJumpToday" class="btn btn-small">Jump to today</button>
+          <button id="btnPrintPlan" class="btn btn-small">🖨 Print plan</button>
+          <button id="btnPlanWizard" class="btn btn-small btn-primary">⚙ Plan setup / Auto-generate</button>
+        </div>
+      </div>
+      <p id="planSummary" class="muted"></p>
+
+      <div class="plan-view-switch" role="group" aria-label="Calendar view">
+        <button class="chip is-active" data-pview="month">Month</button>
+        <button class="chip" data-pview="year">Year heatmap</button>
+        <button class="chip" data-pview="week">Next 7 days</button>
+      </div>
+
+      <div id="planMonth" class="plan-pane">
+        <div class="month-head">
+          <button id="monthPrev" class="pbtn" aria-label="Previous month">←</button>
+          <h2 id="monthTitle">—</h2>
+          <button id="monthNext" class="pbtn" aria-label="Next month">→</button>
+        </div>
+        <div class="legend">
+          <span><i class="dot done"></i> Done</span><span><i class="dot missed"></i> Missed</span>
+          <span><i class="dot today"></i> Today</span><span><i class="dot upcoming"></i> Upcoming</span>
+          <span><i class="dot off"></i> Off day</span><span><i class="dot revision"></i> Revision</span>
+        </div>
+        <div id="monthGrid" class="month-grid"></div>
+      </div>
+
+      <div id="planYear" class="plan-pane" hidden>
+        <div class="legend">
+          <span><i class="dot done"></i> Done</span><span><i class="dot missed"></i> Missed</span>
+          <span><i class="dot today"></i> Today</span><span><i class="dot upcoming"></i> Upcoming</span>
+          <span><i class="dot off"></i> Off day</span>
+        </div>
+        <div id="yearHeat" class="year-heat"></div>
+      </div>
+
+      <div id="planWeek" class="plan-pane" hidden>
+        <ul id="weekList" class="week-list"></ul>
+      </div>
+    </section>
+
+    <!-- ========== VIEW: STATS ========== -->
+    <section id="view-stats" class="view" hidden>
+      <h1>Stats</h1>
+      <div class="stats-grid">
+        <article class="card"><h2>This week</h2><div id="statWeek"></div></article>
+        <article class="card"><h2>This month</h2><div id="statMonth"></div></article>
+        <article class="card"><h2>Poora plan</h2><div id="statAll"></div></article>
+      </div>
+      <article class="card">
+        <h2>Chapters completed per week</h2>
+        <div id="weekChart" class="bar-chart"></div>
+      </article>
+    </section>
+
+    <!-- ========== VIEW: SETTINGS ========== -->
+    <section id="view-settings" class="view" hidden>
+      <h1>Settings</h1>
+
+      <article class="card">
+        <h2>🗓️ Plan setup</h2>
+        <form id="planForm" class="form-grid">
+          <label>Start date <input type="date" id="pfStart" required></label>
+          <label>End date <input type="date" id="pfEnd"></label>
+          <label>Ya total days <input type="number" id="pfDays" min="1" placeholder="365"></label>
+          <label>Chapters per day <input type="number" id="pfPerDay" min="0.25" step="0.25" value="1"></label>
+          <label>Revision har kitne din me (0 = band) <input type="number" id="pfRevision" min="0" step="1" value="7"></label>
+          <fieldset class="offdays">
+            <legend>Weekly off days</legend>
+            <label><input type="checkbox" class="pfOff" value="1"> Mon</label>
+            <label><input type="checkbox" class="pfOff" value="2"> Tue</label>
+            <label><input type="checkbox" class="pfOff" value="3"> Wed</label>
+            <label><input type="checkbox" class="pfOff" value="4"> Thu</label>
+            <label><input type="checkbox" class="pfOff" value="5"> Fri</label>
+            <label><input type="checkbox" class="pfOff" value="6"> Sat</label>
+            <label><input type="checkbox" class="pfOff" value="0"> Sun</label>
+          </fieldset>
+          <button type="submit" class="btn btn-primary">✦ Auto-generate my plan</button>
+          <p class="muted">Chapters chapter-order me baant diye jayenge, off days chhod kar. data/chapters.js me fix ki hui dates (IELTS_SCHEDULE) hamesha waisi hi rahengi.</p>
+        </form>
+      </article>
+
+      <article class="card">
+        <h2>🔔 Daily reminder</h2>
+        <label>Reminder time <input type="time" id="reminderTime"></label>
+        <button id="btnNotifyPerm" class="btn btn-small">Notification ki permission do</button>
+        <p class="muted">Note: web reminders tab sabse achhe chalte hain jab app PWA ki tarah install ho. Browser poori tarah band ho to reminder nahi bhi baj sakta hai — isiliye app kholte hi "Aaj ka plan" banner bhi dikhta hai.</p>
+      </article>
+
+      <article class="card">
+        <h2>📄 PDF</h2>
+        <label class="switch-row"><input type="checkbox" id="setHideDownload" checked> Download button chhupao (default: hidden)</label>
+        <p class="muted">Is website me PDF hamesha andar hi khulta hai; download button default se band hai.</p>
+      </article>
+
+      <article class="card">
+        <h2>💾 Backup / Restore</h2>
+        <p class="muted">Progress, notes, bookmarks, positions, plan, streak — sab ek JSON file me.</p>
+        <button id="btnBackup" class="btn">⬇ Export backup (JSON)</button>
+        <label class="btn file-btn">⬆ Restore backup <input id="fileRestore" type="file" accept=".json,application/json" hidden></label>
+        <button id="btnExportChapters" class="btn">⬇ Export chapters.js</button>
+        <p id="lastBackupText" class="muted"></p>
+      </article>
+
+      <article class="card">
+        <h2>🎨 Appearance</h2>
+        <button id="btnTheme2" class="btn">🌙 Dark / Light mode</button>
+        <label>Font size
+          <select id="fontSizeSel">
+            <option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option>
+          </select>
+        </label>
+      </article>
+    </section>
+
+    <!-- Printable plan (only visible when printing) -->
+    <section id="printPlan" class="print-only"></section>
+  </main>
+</div>
+
+<!-- ======================= POMODORO ======================= -->
+<div id="pomodoro" class="pomodoro" aria-label="Pomodoro timer">
+  <div class="pomo-head"><span>🍅 Pomodoro</span><button id="pomoToggle" class="icon-btn" aria-label="Collapse">–</button></div>
+  <div id="pomoBody">
+    <div id="pomoTime" class="pomo-time">25:00</div>
+    <p id="pomoMode" class="muted">Focus · 25 min</p>
+    <div class="pomo-btns">
+      <button id="pomoStart" class="btn btn-small btn-primary">Start</button>
+      <button id="pomoReset" class="btn btn-small">Reset</button>
+      <button id="pomoSwitch" class="btn btn-small">Break 5</button>
+    </div>
+    <p class="muted">Aaj ka focus: <span id="pomoToday">0 min</span></p>
+  </div>
+</div>
+
+<!-- ======================= MODALS ======================= -->
+<div id="modalScrim" class="modal-scrim" hidden>
+  <!-- Chapter add/edit form -->
+  <div id="chapterFormModal" class="modal" hidden>
+    <h2 id="cfTitle">Add chapter</h2>
+    <form id="chapterForm" class="form-grid">
+      <label>Title <input id="cfName" required></label>
+      <label>Description <input id="cfDesc"></label>
+      <label>Tags (comma se alag) <input id="cfTags" placeholder="listening, test"></label>
+      <label>Videos — har line: title | type (rumble/file) | url
+        <textarea id="cfVideos" rows="3" placeholder="My video | file | media/video/v1.mp4"></textarea></label>
+      <label>Audios — har line: title | url
+        <textarea id="cfAudios" rows="3" placeholder="Test 1 | media/audio/t1.mp3"></textarea></label>
+      <label>PDFs — har line: title | url
+        <textarea id="cfPdfs" rows="3" placeholder="Book | media/pdf/book.pdf"></textarea></label>
+      <div class="modal-btns">
+        <button type="submit" class="btn btn-primary">Save chapter</button>
+        <button type="button" id="cfDelete" class="btn btn-danger" hidden>Delete chapter</button>
+        <button type="button" class="btn" data-close>Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Day details -->
+  <div id="dayModal" class="modal" hidden>
+    <h2 id="dayTitle">—</h2>
+    <div id="dayBody"></div>
+    <div class="modal-btns">
+      <button id="dayMarkDone" class="btn btn-primary">✓ Mark day done</button>
+      <button class="btn" data-close>Close</button>
+    </div>
+  </div>
+
+  <!-- Move chapter to date -->
+  <div id="moveModal" class="modal" hidden>
+    <h2>Chapter ko dusri date par le jao</h2>
+    <p id="moveInfo" class="muted"></p>
+    <label>New date <input type="date" id="moveDate"></label>
+    <div class="modal-btns">
+      <button id="moveConfirm" class="btn btn-primary">Move</button>
+      <button class="btn" data-close>Cancel</button>
+    </div>
+  </div>
+
+  <!-- Reschedule missed -->
+  <div id="reschedModal" class="modal" hidden>
+    <h2>Missed chapters ko reschedule karo</h2>
+    <p id="reschedInfo" class="muted"></p>
+    <div class="form-grid">
+      <button class="btn" data-resched="push"> (a) Poora plan aage dhakelo</button>
+      <button class="btn" data-resched="spread">(b) Aane wale kuch dino me baant do</button>
+      <button class="btn" data-resched="revision">(c) Agle revision day par daal do</button>
+      <button class="btn" data-close>Cancel</button>
+    </div>
+  </div>
+
+  <!-- Shortcuts help -->
+  <div id="shortcutsModal" class="modal" hidden>
+    <h2>Keyboard shortcuts</h2>
+    <ul class="shortcut-list">
+      <li><kbd>/</kbd> Search</li>
+      <li><kbd>←</kbd> <kbd>→</kbd> Previous / next chapter</li>
+      <li><kbd>Space</kbd> Play / pause (player khula ho to)</li>
+      <li><kbd>d</kbd> Dark / light mode</li>
+      <li><kbd>?</kbd> Ye help</li>
+    </ul>
+    <div class="modal-btns"><button class="btn" data-close>Close</button></div>
+  </div>
+</div>
+
+<div id="confetti" class="confetti" hidden aria-hidden="true"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="data/chapters.js"></script>
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* offline shell is a bonus, site works without it */ });
+    });
+  }
+</script>
+</body>
+</html>
