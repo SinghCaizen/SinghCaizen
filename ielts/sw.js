@@ -6,7 +6,7 @@ const SHELL = [
   './',
   'index.html',
   'styles.css?v=4',
-  'app.js?v=4',
+  'app.js?v=5',
   'auth.js?v=4',
   'firebase-config.js?v=4',
   'data/chapters.js?v=4',

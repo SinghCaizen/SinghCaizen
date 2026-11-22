@@ -1018,7 +1018,7 @@ function renderPlan() {
   const ps = planStatus();
   $('#planSummary').textContent =
     'Plan: ' + fmtDate(S.plan.settings.startDate) + ' → ' + fmtDate(S.plan.settings.endDate) +
-    ' · ' + (ps ? ps.actual + ' / ' + ps.total + ' chapters done (' + Math.round(ps.total ? ps.actual / ps.total * 100 : 0) + '%)' : '') +
+    ' · ' + (ps ? ps.actual + ' / ' + ps.total + ' planned chapters done (' + Math.round(ps.total ? ps.actual / ps.total * 100 : 0) + '%)' : '') +
     ' · ' + (ps ? (ps.diff === 0 ? 'On track' : ps.diff < 0 ? Math.abs(ps.diff) + ' chapters behind' : ps.diff + ' chapters ahead') : '') +
     ' · Predicted finish: ' + (ps ? ps.predicted : '—');
   $$('.chip[data-pview]').forEach(ch => ch.classList.toggle('is-active', ch.dataset.pview === S.planView));
