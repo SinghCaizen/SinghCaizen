@@ -1,7 +1,8 @@
 /* IELTS Study — service worker
-   Sirf app shell (HTML/CSS/JS) cache hota hai taaki site offline bhi khule.
+   App shell ke liye NETWORK-FIRST strategy: pehle hamesha taaza file,
+   network na ho tab cache. Isse har update turant milta hai.
    Study media (Drive/audio/PDF) hamesha network se aata hai. */
-const CACHE = 'ielts-study-v1';
+const CACHE = 'ielts-study-v2';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './data/chapters.js', './manifest.webmanifest'];
 
 self.addEventListener('install', event => {
@@ -20,10 +21,15 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-  // Sirf apne hi shell files ko cache-first do; baaki sab (Drive, cdnjs) network.
-  if (url.origin === self.location.origin) {
+  if (url.origin === self.location.origin && event.request.method === 'GET') {
     event.respondWith(
-      caches.match(event.request).then(hit => hit || fetch(event.request))
+      fetch(event.request)
+        .then(res => {
+          const copy = res.clone();
+          caches.open(CACHE).then(cache => cache.put(event.request, copy));
+          return res;
+        })
+        .catch(() => caches.match(event.request))
     );
   }
 });

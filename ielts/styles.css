@@ -18,6 +18,7 @@ html[data-theme="dark"]{
 html[data-font="s"]{ --fs:14px; } html[data-font="l"]{ --fs:18px; }
 
 *{ box-sizing:border-box; }
+[hidden]{ display:none !important; } /* hidden attribute hamesha jeetega — overlay/banner bug fix */
 html{ scroll-behavior:smooth; }
 body{
   margin:0; background:var(--bg); color:var(--text);
