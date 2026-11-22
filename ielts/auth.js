@@ -42,20 +42,33 @@ if (!configured) {
   const loading = $('#authLoading');
   gate.hidden = false; card.hidden = true; loading.hidden = false;
 
-  /* ---------- Cloud sync: 1s debounce + Saved indicator + offline queue ---------- */
+  /* ---------- Cloud sync: 1s debounce + honest status + offline queue ---------- */
+  let lastPushOk = false;
   async function pushState(state) {
     if (!uid) return;
     try {
-      if (window.setSavedStatus) window.setSavedStatus('Saving…', true);
+      if (window.setSavedStatus) window.setSavedStatus('Syncing…', true);
       await setDoc(doc(db, 'users', uid, 'data', 'state'), {
         state: state, updatedAt: new Date().toISOString()
       });
-      if (window.setSavedStatus) window.setSavedStatus('Saved ✓', true);
+      lastPushOk = true;
+      pendingState = null;
+      if (window.setSyncBlocked) window.setSyncBlocked(false);
+      if (window.setSavedStatus) window.setSavedStatus('Synced ✓', true);
+      const ss = $('#syncStatus'); if (ss) ss.textContent = 'Sync: Synced ✓ (cloud)';
     } catch (e) {
-      pendingState = state; // offline queue — 'online' event par dobara try
-      if (window.setSavedStatus) window.setSavedStatus('Offline — queue me hai', true);
+      pendingState = state; // queue — retry hota rahega
+      if (e && e.code === 'permission-denied') {
+        // Firestore rules is path ko rok rahe hain — ye offline nahi, rules ki dikkat hai
+        if (window.setSyncBlocked) window.setSyncBlocked(true);
+        const ss = $('#syncStatus'); if (ss) ss.textContent = 'Sync: BLOCKED — Firestore rules update chahiye (neeche wala box dekho)';
+      } else {
+        if (window.setSavedStatus) window.setSavedStatus('Offline — will retry', true);
+        const ss = $('#syncStatus'); if (ss) ss.textContent = 'Sync: Offline — connection aate hi sync hoga';
+      }
     }
   }
+  setInterval(() => { if (pendingState && uid) pushState(pendingState); }, 30000);
   window.CloudSync = {
     enabled: true,
     save: function (state) {
@@ -78,7 +91,7 @@ if (!configured) {
     }
     uid = user.uid;
     gate.hidden = true;
-    if (window.setSavedStatus) window.setSavedStatus('Saved ✓', true);
+    if (window.setSavedStatus) window.setSavedStatus('Syncing…', true);
     if (window.renderAccountInfo) window.renderAccountInfo();
 
     // Cloud state load karo
@@ -105,6 +118,9 @@ if (!configured) {
       }
     }
     if (cloudState) window.applyCloudState(cloudState);
+    // Writability test + taaza state cloud par pakka karo (rules ki dikkat yahi pakdi jayegi)
+    const cur = window.getLocalState ? window.getLocalState() : null;
+    if (cur) pushState(cur);
   });
 
   function mergeStates(cloud, local) {

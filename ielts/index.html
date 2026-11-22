@@ -4,15 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>IELTS Study — Noor's Classroom</title>
-<meta name="description" content="LILA's personal IELTS study website: chapters, built-in video/audio/PDF players, yearly planner and cloud progress.">
+<meta name="description" content="LILA's personal IELTS study website: 365-day Band 8 plan, built-in viewers, important material, library and cloud progress.">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#b3543f">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23b3543f'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23fff7ec' font-family='Georgia'%3EN%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=4">
-<!-- PDF.js (pinned, cdnjs) — sirf LOCAL /media PDFs ke liye; Drive PDFs Drive viewer se chalte hain -->
+<link rel="stylesheet" href="styles.css?v=6">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
@@ -46,7 +45,7 @@
     </form>
     <div id="authLocalNote" hidden>
       <hr class="soft">
-      <p class="muted">Cloud login abhi setup nahi hua hai (Firebase config baaki hai). Tab tak website **local mode** me chalegi — progress isi browser me save hogi.</p>
+      <p class="muted">Cloud login abhi setup nahi hua hai. Tab tak website **local mode** me chalegi — progress isi browser me save hogi.</p>
       <button id="btnContinueLocal" class="btn btn-primary" type="button">Local mode me aage badho →</button>
     </div>
   </div>
@@ -59,12 +58,13 @@
   <div class="brand">
     <span class="brand-mark">N</span>
     <div class="brand-text">
-      <strong>IELTS Study</strong>
-      <small>Band 8 · 23 Nov 2026 – 22 Nov 2027</small>
+      <strong>Noor's Classroom</strong>
+      <small>IELTS Band 8 · 23 Nov 2026 – 22 Nov 2027</small>
     </div>
   </div>
   <div class="topbar-actions">
-    <span id="savedDot" class="saved-dot" title="Save status">● Local</span>
+    <span id="savedDot" class="saved-dot" title="Save / sync status">● Local</span>
+    <button id="btnJumpTodayTop" class="btn btn-small only-desktop">📍 Jump to today</button>
     <button id="btnTheme" class="icon-btn" aria-label="Toggle dark / light mode">🌙</button>
     <button id="btnFont" class="icon-btn" aria-label="Change font size">A±</button>
     <button id="btnFocus" class="icon-btn" aria-label="Focus mode">◎</button>
@@ -73,16 +73,6 @@
   </div>
 </header>
 
-<div id="todayBanner" class="banner" hidden>
-  <span>📚 Today's chapter is waiting — <strong id="todayBannerText"></strong></span>
-  <button id="todayBannerBtn" class="btn btn-small">Open</button>
-  <button id="todayBannerClose" class="icon-btn" aria-label="Dismiss">✕</button>
-</div>
-<div id="missedBanner" class="banner banner-warn" hidden>
-  <span id="missedBannerText"></span>
-  <button id="missedReschedBtn" class="btn btn-small">Reschedule missed chapters</button>
-  <button id="missedBannerClose" class="icon-btn" aria-label="Dismiss">✕</button>
-</div>
 <div id="backupBanner" class="banner" hidden>
   <span>💾 7 din se backup nahi liya. Apni progress safe rakhne ke liye backup le lo.</span>
   <button id="backupNowBtn" class="btn btn-small">Backup now</button>
@@ -91,52 +81,56 @@
 
 <div class="layout">
   <!-- ======================= SIDEBAR ======================= -->
-  <aside id="sidebar" class="sidebar" aria-label="Navigation and chapters">
+  <aside id="sidebar" class="sidebar" aria-label="Navigation">
     <nav class="main-nav">
       <button class="nav-item" data-nav="home">🏠 Home</button>
-      <button class="nav-item" data-nav="chapters">📖 Chapters</button>
       <button class="nav-item" data-nav="plan">🗓️ Plan</button>
+      <button class="nav-item" data-nav="important">⭐ Important</button>
+      <button class="nav-item" data-nav="library">📚 Library</button>
       <button class="nav-item" data-nav="notes">📝 Notes</button>
       <button class="nav-item" data-nav="stats">📊 Stats</button>
       <button class="nav-item" data-nav="profile">⚙️ Profile</button>
     </nav>
     <div class="side-progress">
-      <div class="side-progress-label"><span id="sideProgressText">0 of 12 chapters done</span></div>
+      <div class="side-progress-label"><span id="sideProgressText">Plan loading…</span></div>
       <div class="progress-track"><div id="sideProgressBar" class="progress-fill" style="width:0%"></div></div>
+      <p class="muted side-sub" id="sideStreakText"></p>
     </div>
-    <h3 class="side-heading">Chapters</h3>
-    <ul id="sideChapterList" class="side-chapters"></ul>
+    <div class="side-box">
+      <h3 class="side-heading">Course chapters</h3>
+      <p class="muted side-sub">Purane 12 chapters aur unki progress yahi se khulti hai — kuch delete nahi hua.</p>
+      <button id="btnOpenChapters" class="btn btn-small">📖 Chapters kholo</button>
+    </div>
   </aside>
   <div id="sidebarScrim" class="scrim" hidden></div>
 
   <!-- ======================= MAIN ======================= -->
   <main id="main" class="main">
 
-    <!-- ========== VIEW: HOME (dashboard) ========== -->
+    <!-- ========== VIEW: HOME (Today) ========== -->
     <section id="view-home" class="view">
       <p class="eyebrow" id="dashDate">—</p>
       <h1 class="dash-greet">Namaste, <span id="greetName">LILA</span> 🙏</h1>
       <p id="dashMotiv" class="motive"></p>
       <div class="dash-grid">
-        <article class="card dash-progress-card">
-          <div class="ring-wrap big">
-            <svg class="ring" viewBox="0 0 80 80" width="104" height="104" aria-hidden="true">
-              <circle cx="40" cy="40" r="34" class="ring-bg"></circle>
-              <circle id="dashRing" cx="40" cy="40" r="34" class="ring-fg"></circle>
-            </svg>
-            <div class="ring-label"><strong id="dashRingText">0%</strong><small>complete</small></div>
+        <article class="card today-card">
+          <div class="today-head">
+            <div>
+              <h2 id="todayTitle">Aaj ka plan</h2>
+              <p id="todayGoal" class="muted">—</p>
+              <p id="todayMeta" class="muted"></p>
+            </div>
+            <div class="ring-wrap big">
+              <svg class="ring" viewBox="0 0 80 80" width="104" height="104" aria-hidden="true">
+                <circle cx="40" cy="40" r="34" class="ring-bg"></circle>
+                <circle id="dashRing" cx="40" cy="40" r="34" class="ring-fg"></circle>
+              </svg>
+              <div class="ring-label"><strong id="dashRingText">0%</strong><small>aaj</small></div>
+            </div>
           </div>
-          <div>
-            <h2>Overall progress</h2>
-            <p id="dashProgressText" class="muted">—</p>
-            <p>🔥 Streak: <strong id="dashStreak">0 days</strong> · Best: <strong id="dashBest">0</strong></p>
-            <p id="dashGoalText" class="muted">—</p>
-          </div>
-        </article>
-        <article class="card">
-          <h2>📚 Aaj ka plan</h2>
-          <div id="dashToday"></div>
-          <button id="btnDashMarkDone" class="btn btn-primary">✓ Mark today done</button>
+          <div id="dashTasks" class="dash-tasks"></div>
+          <button id="btnStartToday" class="btn btn-primary btn-big">▶ Start today's study</button>
+          <p class="muted">🔥 Streak: <strong id="dashStreak">0 days</strong> · Best: <strong id="dashBest">0</strong> · Poora saal: <strong id="dashYearPct">0%</strong></p>
         </article>
         <article class="card">
           <h2>▶ Continue where you left off</h2>
@@ -145,51 +139,91 @@
           <h2>Kal ka preview</h2>
           <div id="dashTomorrow"></div>
         </article>
-        <article class="card">
-          <h2>🕘 Recently opened</h2>
-          <div id="recentGrid" class="recent-grid"></div>
-        </article>
       </div>
     </section>
 
-    <!-- ========== VIEW: CHAPTERS ========== -->
-    <section id="view-chapters" class="view" hidden>
+    <!-- ========== VIEW: PLAN (drill-down) ========== -->
+    <section id="view-plan" class="view" hidden>
+      <div class="plan-topbar">
+        <button id="btnPlanBack" class="btn btn-small" hidden>← Back</button>
+        <nav id="planCrumbs" class="crumbs" aria-label="Breadcrumb"></nav>
+        <button id="btnJumpToday" class="btn btn-small btn-primary">📍 Jump to today</button>
+      </div>
+      <div id="planBody"></div>
+    </section>
+
+    <!-- ========== VIEW: IMPORTANT ========== -->
+    <section id="view-important" class="view" hidden>
+      <h1>⭐ Important — sabse keemti material</h1>
+      <p class="muted">Official tests, Band 9 models, cue cards, Murphy — ye pinned hai. Star dabakar apna bookmark banao.</p>
+      <div id="importantBody"></div>
+    </section>
+
+    <!-- ========== VIEW: LIBRARY ========== -->
+    <section id="view-library" class="view" hidden>
       <div class="home-head">
-        <h1>All Chapters</h1>
+        <h1>📚 Library</h1>
         <div class="search-box">
-          <input id="searchInput" type="search" placeholder="Search chapters… ( / )" aria-label="Search chapters">
+          <input id="libSearch" type="search" placeholder="Search library… ( / )" aria-label="Search library">
         </div>
       </div>
-      <div class="overall-progress">
-        <div class="progress-track big"><div id="chaptersProgressBar" class="progress-fill" style="width:0%"></div></div>
-        <span id="chaptersProgressText">0 of 12 chapters done</span>
+      <div class="filter-row" role="group" aria-label="Library filters">
+        <button class="chip is-active" data-lfilter="all">All</button>
+        <button class="chip" data-lfilter="Listening">🎧 Listening</button>
+        <button class="chip" data-lfilter="Reading">📖 Reading</button>
+        <button class="chip" data-lfilter="Writing">✍️ Writing</button>
+        <button class="chip" data-lfilter="Speaking">🗣️ Speaking</button>
+        <button class="chip" data-lfilter="Grammar">📐 Grammar</button>
+        <button class="chip" data-lfilter="Vocabulary">🔤 Vocabulary</button>
+        <button class="chip" data-lfilter="star">★ My stars</button>
+        <label class="sort-label">Type
+          <select id="libType" aria-label="Filter by type">
+            <option value="all">All types</option><option value="pdf">PDF</option>
+            <option value="audio">Audio</option><option value="video">Video</option><option value="doc">Doc</option>
+          </select>
+        </label>
+        <label class="sort-label">Level
+          <select id="libLevel" aria-label="Filter by level">
+            <option value="all">All levels</option><option value="foundation">Foundation</option>
+            <option value="intermediate">Intermediate</option><option value="advanced">Advanced</option>
+          </select>
+        </label>
       </div>
-      <div class="filter-row" role="group" aria-label="Filters">
+      <p id="libCount" class="muted"></p>
+      <div id="libGrid" class="chapter-grid"></div>
+      <p id="libEmpty" class="empty" hidden>Kuch nahi mila. Search ya filter badal kar dekho.</p>
+      <hr class="soft">
+      <h2>📖 Course Chapters</h2>
+      <p class="muted">Tumhare 12 chapters — videos, audios, PDFs apne players ke saath. Progress pehle jaisi hi save hai.</p>
+      <div class="filter-row">
+        <div class="search-box"><input id="searchInput" type="search" placeholder="Search chapters…" aria-label="Search chapters"></div>
         <button class="chip is-active" data-filter="all">All</button>
         <button class="chip" data-filter="video">🎬 Video</button>
         <button class="chip" data-filter="audio">🎧 Audio</button>
         <button class="chip" data-filter="pdf">📄 PDF</button>
         <button class="chip" data-filter="done">✓ Done</button>
-        <button class="chip" data-filter="pending">Pending</button>
         <button class="chip" data-filter="fav">★ Favorites</button>
         <label class="sort-label">Sort
           <select id="sortSelect" aria-label="Sort chapters">
             <option value="order">Chapter order</option>
             <option value="title">Title A–Z</option>
-            <option value="progress">Progress</option>
             <option value="recent">Recently opened</option>
           </select>
         </label>
         <button id="btnAddChapter" class="btn btn-small">＋ Add chapter</button>
       </div>
+      <div class="overall-progress">
+        <div class="progress-track big"><div id="chaptersProgressBar" class="progress-fill" style="width:0%"></div></div>
+        <span id="chaptersProgressText">—</span>
+      </div>
       <div id="chapterGrid" class="chapter-grid"></div>
-      <p id="homeEmpty" class="empty" hidden>Kuch nahi mila. Search ya filter badal kar dekho.</p>
+      <p id="homeEmpty" class="empty" hidden>Kuch nahi mila.</p>
     </section>
 
-    <!-- ========== VIEW: CHAPTER ========== -->
+    <!-- ========== VIEW: CHAPTER (players) ========== -->
     <section id="view-chapter" class="view" hidden>
       <div class="chapter-head">
-        <button id="btnBackChapters" class="btn btn-small">← All chapters</button>
+        <button id="btnBackChapters" class="btn btn-small">← Library / Chapters</button>
         <div>
           <h1 id="chTitle">—</h1>
           <p id="chDesc" class="muted"></p>
@@ -201,21 +235,18 @@
           <button id="btnMarkDone" class="btn btn-primary">✓ Mark as done</button>
         </div>
       </div>
-
       <div class="tabs" role="tablist">
         <button class="tab is-active" data-tab="video" role="tab">🎬 Video</button>
         <button class="tab" data-tab="audio" role="tab">🎧 Audio</button>
         <button class="tab" data-tab="pdf" role="tab">📄 PDF</button>
         <button class="tab" data-tab="notes" role="tab">📝 Notes</button>
       </div>
-
-      <!-- VIDEO TAB -->
       <div id="tab-video" class="tab-panel">
         <div class="stage">
           <div id="vSkeleton" class="skeleton" hidden>Loading video…</div>
           <div id="vDriveWrap" class="frame-wrap ratio-16x9" hidden>
             <iframe id="vDriveFrame" title="Video player" allow="autoplay; fullscreen" allowfullscreen></iframe>
-            <div class="popout-shield" title="Video yahi chalega"></div>
+            <div class="popout-shield"></div>
           </div>
           <div id="vRumbleWrap" class="frame-wrap ratio-16x9" hidden>
             <iframe id="vRumbleFrame" title="Rumble video" allow="autoplay; fullscreen" allowfullscreen></iframe>
@@ -247,8 +278,6 @@
         </div>
         <ul id="videoPlaylist" class="playlist"></ul>
       </div>
-
-      <!-- AUDIO TAB -->
       <div id="tab-audio" class="tab-panel" hidden>
         <div id="aSkeleton" class="skeleton" hidden>Loading audio…</div>
         <div id="aDriveWrap" class="frame-wrap audio-frame" hidden>
@@ -294,8 +323,6 @@
         <ul id="audioPlaylist" class="playlist"></ul>
         <p id="audioEmpty" class="empty" hidden>Is chapter me abhi koi audio nahi hai.</p>
       </div>
-
-      <!-- PDF TAB -->
       <div id="tab-pdf" class="tab-panel" hidden>
         <div id="pdfTabs" class="pdf-tabs"></div>
         <div id="pSkeleton" class="skeleton" hidden>Loading PDF…</div>
@@ -328,66 +355,24 @@
         </div>
         <p id="pdfEmpty" class="empty">Is chapter me abhi koi PDF nahi hai.</p>
       </div>
-
-      <!-- NOTES TAB -->
       <div id="tab-notes" class="tab-panel" hidden>
         <label class="notes-label" for="notesArea">Apne notes — apne aap save hote hain</label>
         <textarea id="notesArea" rows="14" placeholder="Yaha likho… sab kuch isi website me save rahega."></textarea>
         <p class="muted"><span id="notesWords">0</span> words · <span id="notesSaved">Saved</span></p>
       </div>
-
       <div class="chapter-foot">
         <button id="btnPrevChapter" class="btn">← Previous chapter</button>
         <button id="btnNextChapter" class="btn">Next chapter →</button>
       </div>
     </section>
 
-    <!-- ========== VIEW: PLAN ========== -->
-    <section id="view-plan" class="view" hidden>
-      <div class="home-head">
-        <h1>Yearly Study Planner</h1>
-        <div class="plan-actions">
-          <button id="btnJumpToday" class="btn btn-small">Jump to today</button>
-          <button id="btnPrintPlan" class="btn btn-small">🖨 Print plan</button>
-          <button id="btnPlanWizard" class="btn btn-small btn-primary">⚙ Plan setup / Auto-generate</button>
-        </div>
-      </div>
-      <p id="planSummary" class="muted"></p>
-      <div class="plan-view-switch" role="group" aria-label="Calendar view">
-        <button class="chip is-active" data-pview="month">Month</button>
-        <button class="chip" data-pview="year">Year heatmap</button>
-        <button class="chip" data-pview="week">Next 7 days</button>
-      </div>
-      <div id="planMonth" class="plan-pane">
-        <div class="month-head">
-          <button id="monthPrev" class="pbtn" aria-label="Previous month">←</button>
-          <h2 id="monthTitle">—</h2>
-          <button id="monthNext" class="pbtn" aria-label="Next month">→</button>
-        </div>
-        <div class="legend">
-          <span><i class="dot done"></i> Done</span><span><i class="dot missed"></i> Missed</span>
-          <span><i class="dot today"></i> Today</span><span><i class="dot upcoming"></i> Upcoming</span>
-          <span><i class="dot off"></i> Off day</span><span><i class="dot revision"></i> Revision</span>
-        </div>
-        <div id="monthGrid" class="month-grid"></div>
-      </div>
-      <div id="planYear" class="plan-pane" hidden>
-        <div class="legend">
-          <span><i class="dot done"></i> Done</span><span><i class="dot missed"></i> Missed</span>
-          <span><i class="dot today"></i> Today</span><span><i class="dot upcoming"></i> Upcoming</span>
-          <span><i class="dot off"></i> Off day</span>
-        </div>
-        <div id="yearHeat" class="year-heat"></div>
-      </div>
-      <div id="planWeek" class="plan-pane" hidden>
-        <ul id="weekList" class="week-list"></ul>
-      </div>
-    </section>
-
-    <!-- ========== VIEW: NOTES (all) ========== -->
+    <!-- ========== VIEW: NOTES ========== -->
     <section id="view-notes" class="view" hidden>
       <h1>My Notes</h1>
-      <p class="muted">Har chapter ke notes ek jagah. Kisi par bhi tap karo, chapter khul jayega.</p>
+      <p class="muted">Din ke notes aur chapter notes — sab ek jagah.</p>
+      <h2>🗓️ Day notes</h2>
+      <div id="dayNotesList" class="notes-list"></div>
+      <h2>📖 Chapter notes</h2>
       <div id="notesList" class="notes-list"></div>
     </section>
 
@@ -395,88 +380,54 @@
     <section id="view-stats" class="view" hidden>
       <h1>Stats</h1>
       <div class="stats-grid">
+        <article class="card"><h2>Plan progress</h2><div id="statPlan"></div></article>
         <article class="card"><h2>This week</h2><div id="statWeek"></div></article>
         <article class="card"><h2>This month</h2><div id="statMonth"></div></article>
-        <article class="card"><h2>Poora plan</h2><div id="statAll"></div></article>
+        <article class="card"><h2>Chapters</h2><div id="statAll"></div></article>
       </div>
       <article class="card">
-        <h2>Chapters completed per week</h2>
+        <h2>Tasks completed per week (plan)</h2>
         <div id="weekChart" class="bar-chart"></div>
       </article>
     </section>
 
-    <!-- ========== VIEW: PROFILE / SETTINGS ========== -->
+    <!-- ========== VIEW: PROFILE ========== -->
     <section id="view-profile" class="view" hidden>
       <h1>Profile & Settings</h1>
-
       <article class="card">
         <h2>👤 Account</h2>
         <div id="accountInfo"></div>
         <button id="btnSignOut" class="btn" hidden>Sign Out</button>
         <p id="syncStatus" class="muted"></p>
-        <details class="steps-box">
-          <summary><strong>☁️ Cloud Sync setup — exact steps (ek baar karna hai)</strong></summary>
-          <ol>
-            <li>Apne phone/computer par <strong>console.firebase.google.com</strong> kholo, apne Google account se sign in karo.</li>
-            <li><strong>"Add project"</strong> (ya "Create a project") dabao → naam do: <strong>ielts-study</strong> → Google Analytics band karke <strong>Create project</strong>.</li>
-            <li>Project khulne par left menu me <strong>Build → Authentication</strong> → <strong>Get started</strong>.</li>
-            <li><strong>Sign-in method</strong> tab me pehle <strong>Email/Password</strong> ko Enable karo, phir <strong>Google</strong> ko bhi Enable karo (apna email chun kar Save).</li>
-            <li>Usi page par neeche <strong>Settings → Authorized domains</strong> me <strong>singhcaizen.github.io</strong> add karo.</li>
-            <li>Left menu me <strong>Build → Firestore Database</strong> → <strong>Create database</strong> → <strong>Start in production mode</strong>.</li>
-            <li>Firestore ke <strong>Rules</strong> tab me purana text hata kar ye paste karo aur <strong>Publish</strong> dabao:<br>
-              <code class="rules-code">rules_version = '2';<br>service cloud.firestore {<br>&nbsp;&nbsp;match /databases/{database}/documents {<br>&nbsp;&nbsp;&nbsp;&nbsp;match /users/{uid}/{document=**} {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;allow read, write: if request.auth != null &amp;&amp; request.auth.uid == uid;<br>&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;&nbsp;}<br>}</code></li>
-            <li>Project Overview (home) par <strong>&lt;/&gt; Web app</strong> icon dabao → app ka naam <strong>ielts-web</strong> → <strong>Register app</strong>. Waha ek <strong>firebaseConfig</strong> dikhega.</li>
-            <li>Us config ki values Noor ko bhej do (ye public hoti hain, secret nahi) — mai <strong>firebase-config.js</strong> me daal kar site update kar dungi. Ya khud GitHub par file edit karke paste kar do.</li>
-            <li>Bas! Phir site par <strong>Sign Up</strong> karke account banao — progress cloud me save hone lagegi.</li>
+        <div id="syncFixBox" hidden>
+          <p><strong>⚠️ Cloud sync ruka hua hai — Firestore rules purane hain.</strong> Fix (2 minute):</p>
+          <ol class="steps-list">
+            <li><strong>console.firebase.google.com</strong> kholo → project <strong>singhcaizenfinance</strong> chuno.</li>
+            <li>Left menu: <strong>Build → Firestore Database → Rules</strong> tab.</li>
+            <li>Purana text hata kar ye paste karo aur <strong>Publish</strong> dabao:</li>
           </ol>
+          <code class="rules-code">rules_version = '2';<br>service cloud.firestore {<br>&nbsp;&nbsp;match /databases/{database}/documents {<br>&nbsp;&nbsp;&nbsp;&nbsp;match /users/{uid}/{document=**} {<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;allow read, write: if request.auth != null &amp;&amp; request.auth.uid == uid;<br>&nbsp;&nbsp;&nbsp;&nbsp;}<br>&nbsp;&nbsp;}<br>}</code>
+          <p class="muted">Ye rules Folio ko bhi waise hi chalate hain (har user sirf apna data). Publish ke baad page refresh karo — "Synced ✓" dikhne lagega.</p>
+        </div>
+        <details class="steps-box">
+          <summary><strong>☁️ Cloud Sync — poori jankari</strong></summary>
+          <p>Login Folio wale hi Firebase project (singhcaizenfinance) se hota hai — wahi email/password yaha bhi chalega. Authorized domain (singhcaizen.github.io) pehle se added hai. Agar "Continue with Google" par error aaye to Firebase Console → Authentication → Sign-in method me Google ko Enable karna hoga (ek toggle).</p>
         </details>
       </article>
-
-      <article class="card">
-        <h2>🗓️ Plan setup</h2>
-        <form id="planForm" class="form-grid">
-          <label>Start date <input type="date" id="pfStart" required></label>
-          <label>End date <input type="date" id="pfEnd"></label>
-          <label>Ya total days <input type="number" id="pfDays" min="1" placeholder="365"></label>
-          <label>Chapters per day <input type="number" id="pfPerDay" min="0.25" step="0.25" value="1"></label>
-          <label>Revision har kitne din me (0 = band) <input type="number" id="pfRevision" min="0" step="1" value="7"></label>
-          <fieldset class="offdays">
-            <legend>Weekly off days</legend>
-            <label><input type="checkbox" class="pfOff" value="1"> Mon</label>
-            <label><input type="checkbox" class="pfOff" value="2"> Tue</label>
-            <label><input type="checkbox" class="pfOff" value="3"> Wed</label>
-            <label><input type="checkbox" class="pfOff" value="4"> Thu</label>
-            <label><input type="checkbox" class="pfOff" value="5"> Fri</label>
-            <label><input type="checkbox" class="pfOff" value="6"> Sat</label>
-            <label><input type="checkbox" class="pfOff" value="0"> Sun</label>
-          </fieldset>
-          <button type="submit" class="btn btn-primary">✦ Auto-generate my plan</button>
-          <p class="muted">Chapters chapter-order me baant diye jayenge, off days chhod kar. data/chapters.js me fix ki hui dates (IELTS_SCHEDULE) hamesha waisi hi rahengi.</p>
-        </form>
-      </article>
-
       <article class="card">
         <h2>🔔 Daily reminder</h2>
         <label>Reminder time <input type="time" id="reminderTime"></label>
         <button id="btnNotifyPerm" class="btn btn-small">Notification ki permission do</button>
-        <p class="muted">Note: web reminders tab sabse achhe chalte hain jab app PWA ki tarah install ho. Browser poori tarah band ho to reminder nahi bhi baj sakta hai — isiliye app kholte hi "Aaj ka plan" banner bhi dikhta hai.</p>
+        <p class="muted">Web reminders PWA install par sabse achhe chalte hain; browser band ho to nahi bhi baj sakte.</p>
       </article>
-
-      <article class="card">
-        <h2>📄 PDF</h2>
-        <label class="switch-row"><input type="checkbox" id="setHideDownload" checked> Download button chhupao (default: hidden)</label>
-        <p class="muted">Drive PDFs hamesha website ke andar wale viewer me khulte hain.</p>
-      </article>
-
       <article class="card">
         <h2>💾 Backup / Restore</h2>
-        <p class="muted">Progress, notes, bookmarks, positions, plan, streak — sab ek JSON file me.</p>
+        <p class="muted">Progress, notes, bookmarks, plan ki tick-marks — sab ek JSON me.</p>
         <button id="btnBackup" class="btn">⬇ Export backup (JSON)</button>
         <label class="btn file-btn">⬆ Restore backup <input id="fileRestore" type="file" accept=".json,application/json" hidden></label>
         <button id="btnExportChapters" class="btn">⬇ Export chapters.js</button>
         <p id="lastBackupText" class="muted"></p>
       </article>
-
       <article class="card">
         <h2>🎨 Appearance</h2>
         <button id="btnTheme2" class="btn">🌙 Dark / Light mode</button>
@@ -485,19 +436,39 @@
             <option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option>
           </select>
         </label>
+        <p class="muted">Plan ka data <strong>data/plan.json</strong> se aata hai (365 din) aur material <strong>data/resources.json</strong> se — kuch bhi hardcoded nahi hai.</p>
       </article>
     </section>
-
-    <section id="printPlan" class="print-only"></section>
   </main>
 </div>
 
-<!-- ======================= BOTTOM TAB BAR (mobile) ======================= -->
+<!-- ======================= VIEWER OVERLAY ======================= -->
+<div id="viewerOverlay" class="viewer-overlay" hidden role="dialog" aria-label="File viewer">
+  <div class="viewer-bar">
+    <button id="viewerClose" class="btn btn-small">✕ Close</button>
+    <strong id="viewerTitle">—</strong>
+    <span id="viewerMeta" class="muted"></span>
+    <button id="viewerChapterBtn" class="btn btn-small" hidden>📖 Chapter me kholo</button>
+  </div>
+  <div class="viewer-body">
+    <div id="viewerSkeleton" class="skeleton" hidden>Loading…</div>
+    <div id="viewerFrameWrap" class="frame-wrap viewer-frame" hidden>
+      <iframe id="viewerFrame" title="File viewer" allow="autoplay; fullscreen" allowfullscreen></iframe>
+      <div class="popout-shield"></div>
+    </div>
+    <div id="viewerError" class="player-error" hidden>
+      <p>File not opening? Check that the Drive file is shared as "Anyone with the link".</p>
+      <button id="viewerRetry" class="btn btn-small">↻ Retry</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= BOTTOM TAB BAR ======================= -->
 <nav class="tabbar" aria-label="Main">
   <button class="tab-item is-active" data-nav="home"><span>🏠</span>Home</button>
-  <button class="tab-item" data-nav="chapters"><span>📖</span>Chapters</button>
   <button class="tab-item" data-nav="plan"><span>🗓️</span>Plan</button>
-  <button class="tab-item" data-nav="notes"><span>📝</span>Notes</button>
+  <button class="tab-item" data-nav="important"><span>⭐</span>Important</button>
+  <button class="tab-item" data-nav="library"><span>📚</span>Library</button>
   <button class="tab-item" data-nav="profile"><span>👤</span>Profile</button>
 </nav>
 
@@ -537,41 +508,10 @@
       </div>
     </form>
   </div>
-
-  <div id="dayModal" class="modal" hidden>
-    <h2 id="dayTitle">—</h2>
-    <div id="dayBody"></div>
-    <div class="modal-btns">
-      <button id="dayMarkDone" class="btn btn-primary">✓ Mark day done</button>
-      <button class="btn" data-close>Close</button>
-    </div>
-  </div>
-
-  <div id="moveModal" class="modal" hidden>
-    <h2>Chapter ko dusri date par le jao</h2>
-    <p id="moveInfo" class="muted"></p>
-    <label>New date <input type="date" id="moveDate"></label>
-    <div class="modal-btns">
-      <button id="moveConfirm" class="btn btn-primary">Move</button>
-      <button class="btn" data-close>Cancel</button>
-    </div>
-  </div>
-
-  <div id="reschedModal" class="modal" hidden>
-    <h2>Missed chapters ko reschedule karo</h2>
-    <p id="reschedInfo" class="muted"></p>
-    <div class="form-grid">
-      <button class="btn" data-resched="push">(a) Poora plan aage dhakelo</button>
-      <button class="btn" data-resched="spread">(b) Aane wale kuch dino me baant do</button>
-      <button class="btn" data-resched="revision">(c) Agle revision day par daal do</button>
-      <button class="btn" data-close>Cancel</button>
-    </div>
-  </div>
-
   <div id="shortcutsModal" class="modal" hidden>
     <h2>Keyboard shortcuts</h2>
     <ul class="shortcut-list">
-      <li><kbd>/</kbd> Search</li>
+      <li><kbd>/</kbd> Library search</li>
       <li><kbd>←</kbd> <kbd>→</kbd> Previous / next chapter</li>
       <li><kbd>Space</kbd> Play / pause (local player)</li>
       <li><kbd>d</kbd> Dark / light mode</li>
@@ -581,7 +521,6 @@
   </div>
 </div>
 
-<!-- Debug panel (?debug=1 par dikhta hai) -->
 <div id="debugPanel" class="debug-panel" hidden>
   <div class="debug-head"><strong>🐞 Debug — files & converted URLs</strong><button id="debugClose" class="icon-btn">✕</button></div>
   <div id="debugList" class="debug-list"></div>
@@ -590,10 +529,10 @@
 <div id="confetti" class="confetti" hidden aria-hidden="true"></div>
 <div id="toast" class="toast" hidden></div>
 
-<script src="data/chapters.js?v=4"></script>
+<script src="data/chapters.js?v=5"></script>
 <script src="firebase-config.js?v=6"></script>
-<script src="app.js?v=5"></script>
-<script type="module" src="auth.js?v=4"></script>
+<script src="app.js?v=6"></script>
+<script type="module" src="auth.js?v=6"></script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
