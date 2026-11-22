@@ -736,8 +736,9 @@ function renderLibrary() {
   if (type !== 'all') items = items.filter(r => r.type === type);
   if (level !== 'all') items = items.filter(r => r.level === level);
   if (q) items = items.filter(r => (r.title + ' ' + r.skill + ' ' + (r.note || '')).toLowerCase().includes(q));
-  items = items.slice(0, 120);
-  $('#libCount').textContent = items.length + ' files (REFERENCE library — excluded files yaha kabhi nahi dikhte)';
+  const totalLib = items.length;
+  items = items.slice(0, 400);
+  $('#libCount').textContent = totalLib + ' files library me hain (' + items.length + ' dikh rahe hain) — excluded files yaha kabhi nahi dikhte';
   $('#libGrid').innerHTML = items.map(r => resourceCardHTML(r, true)).join('');
   $('#libEmpty').hidden = items.length > 0;
   wireResourceCards($('#libGrid'));
