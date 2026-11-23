@@ -285,7 +285,7 @@ $('#btnCollapse').addEventListener('click', () => document.body.classList.toggle
 function renderSidebarProgress() {
   if (!DAYS.length) { $('#sideProgressText').textContent = 'Plan load ho raha hai…'; return; }
   const all = rangeProgress(DAYS.map(d => d.date));
-  $('#sideProgressText').textContent = 'Band 8 plan: ' + all.done + ' / ' + all.total + ' tasks (' + Math.round(all.pct * 100) + '%)';
+  $('#sideProgressText').textContent = 'Lucy B1 plan: ' + all.done + ' / ' + all.total + ' tasks (' + Math.round(all.pct * 100) + '%)';
   $('#sideProgressBar').style.width = Math.round(all.pct * 100) + '%';
   const st = planStreak();
   $('#sideStreakText').textContent = 'Streak ' + st.streak + ' din · Best ' + st.best;
@@ -400,7 +400,7 @@ function skillIcon(s) {
    ===================================================================== */
 const MOTIVES = [
   'Chhota kadam roz, bada result saal ke ant me. ',
-  'Band 8 sapna nahi, roz ka system hai. Aaj ke tasks khatm karo. ',
+  'Roz 2 lessons — yehi system hai. Aaj ke dono lessons khatm karo. ',
   'Consistency hi asli talent hai. Bas aaj ka kaam. ',
   'Kal ki chinta chhodo, aaj ka page kholo. ',
   'Har din 2 ghante — yehi tumhari superpower hai. ⏰',
@@ -440,15 +440,15 @@ function renderHome() {
     const first = DAYS[0], last = DAYS[DAYS.length - 1];
     $('#todayTitle').textContent = t < (first && first.date) ? 'Plan ' + fmtDateShort(first.date) + ' se shuru hota hai' : 'Plan poora ho gaya';
     $('#todayGoal').textContent = t < (first && first.date)
-      ? 'Kal Day 1 hai — Diagnostic Week. Aaj aaram se site ghuma lo, Important wala hissa dekh lo.'
-      : '365 din ka safar khatm. Ab sirf revision aur exam!';
+      ? 'Kal Day 1 hai — Lucy B1 ka pehla din. Aaj aaram se site ghuma lo, chapters dekh lo.'
+      : 'Lucy B1 course khatm! Ab revision aur practice ka time hai.';
     $('#todayMeta').textContent = '';
     box.innerHTML = '';
     $('#btnStartToday').style.display = 'none';
     $('#dashRingText').textContent = '—';
   } else {
     $('#btnStartToday').style.display = '';
-    $('#todayTitle').textContent = 'Day ' + day.dayNumber + ' of 365 · ' + parseDate(t).toLocaleDateString('en-IN', { weekday: 'long' });
+    $('#todayTitle').textContent = 'Day ' + day.dayNumber + ' of ' + DAYS.length + ' · ' + parseDate(t).toLocaleDateString('en-IN', { weekday: 'long' });
     $('#todayGoal').textContent = day.goal;
     const tasks = dayTasks(t);
     $('#todayMeta').textContent = day.theme + ' · ' + day.estimatedMinutes + ' min · ' + tasks.length + ' tasks';
@@ -542,10 +542,10 @@ function renderPlanView() {
 
   if (planNav.level === 'year') {
     back.hidden = true;
-    crumbs.innerHTML = '<span class="here">' + icon('cal') + ' Year Plan</span>';
+    crumbs.innerHTML = '<span class="here">' + icon('cal') + ' Poora Plan</span>';
     const months = monthsOfPlan();
-    body.innerHTML = '<h1>Year Plan — Nov 2026 to Nov 2027</h1>' +
-      '<p class="muted">365 din · ' + DAYS.reduce((a, d) => a + d.tasks.length, 0) + ' tasks · Target Band 8. Kisi month par tap karo.</p>' +
+    body.innerHTML = '<h1>Lucy B1 Plan — 24 Nov to 24 Dec 2026</h1>' +
+      '<p class="muted">' + DAYS.length + ' din · ' + DAYS.reduce((a, d) => a + d.tasks.length, 0) + ' tasks · English with Lucy B1 — roz 2 lessons. Kisi month par tap karo.</p>' +
       '<div class="year-grid">' + months.map(m => {
         const p = rangeProgress(m.days.map(d => d.date));
         const st = monthStatus(m);
@@ -901,7 +901,7 @@ function renderDayInto(body, date, inPlan) {
     (st === 'done' ? 'Done' : st === 'today' ? 'Today' : st === 'missed' ? 'Missed' : st === 'rest' ? 'Light day' : 'Upcoming') + '</span>' +
     (DAY_BY_DATE[next] ? '<button class="btn btn-small" data-nav-day="' + next + '">Agla din ' + icon('chevR', 'sm') + '</button>' : '') +
     '</div>' +
-    '<div class="day-goal-box"><p class="eyebrow">Day ' + d.dayNumber + ' of 365 · ' + fmtDate(date) + ' · ' + esc(d.phase) + '</p>' +
+    '<div class="day-goal-box"><p class="eyebrow">Day ' + d.dayNumber + ' of ' + DAYS.length + ' · ' + fmtDate(date) + ' · ' + esc(d.phase) + '</p>' +
     '<h2>' + esc(d.goal) + '</h2>' +
     '<p class="muted">Aaj ka kaam: ' + tasks.length + ' tasks, kul ~' + humanMinutes(d.estimatedMinutes) + ' · ' + esc(d.theme) + '</p>' +
     '<div class="slim-progress"><div style="width:' + Math.round(p.pct * 100) + '%"></div></div>' +
@@ -1858,8 +1858,7 @@ function renderStats() {
   renderScoreTrend();
   renderErrSummary();
   const sv = $('#statVideos');
-  if (sv) sv.innerHTML = '<p><strong>' + Object.values(S.videoProgress || {}).filter(x => x.watched).length + '</strong> / 365 din ke videos dekhe</p>' +
-    '<p class="muted">Har din ke page par "Aaj ka video" hota hai — dekhte hi progress apne aap record hoti hai.</p>';
+  if (sv) sv.innerHTML = '<p class="muted">Is course ke saare videos har din ke lesson tasks me hi lage hain — wahi se dekho, progress tasks me apne aap gin jayegi.</p>';
 }
 function renderProfile() {
   $('#reminderTime').value = S.reminder || '07:00';

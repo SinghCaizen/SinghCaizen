@@ -1,775 +1,939 @@
 /* =====================================================================
-   IELTS STUDY WEBSITE — SAARA CONTENT SIRF IS EK FILE ME HAI
-   =====================================================================
-   HOW TO ADD A NEW CHAPTER (plain language):
-   1. Neeche window.IELTS_CHAPTERS wali list me ek naya block jodo,
-      pichhle block ke baad comma (,) lagana mat bhoolna.
-   2. Har chapter me ye cheezein hoti hain:
-        id          : chhota unique naam, sirf a-z 0-9 aur - (jaise "my-chapter")
-        title       : chapter ka naam
-        description : ek line me chapter kis baare me hai
-        tags        : ["listening", "test"] jaise shabdon ki list
-        videos      : [{ "title": "...", "type": "rumble" | "file", "url": "..." }]
-        audios      : [{ "title": "...", "url": "..." }]
-        pdfs        : [{ "title": "...", "url": "..." }]
-   3. URL kya ho sakta hai:
-        - Google Drive share link  -> apne aap direct play/preview me badal jayega
-        - Seedha file link (.mp3 / .mp4 / .webm / .pdf)
-        - Isi website ke media folder ka path, jaise "media/audio/ch1.mp3"
-        - Rumble embed link (type: "rumble" rakho)
-   4. File save karo aur page refresh karo. Bas, naya chapter aa jayega.
-   ---------------------------------------------------------------------
-   OPTIONAL SCHEDULE (window.IELTS_SCHEDULE):
-   Kisi khaas date par khaas chapter fix karna ho to neeche wale
-   schedule me date -> chapter ids likh do. Planner in dates ko
-   hamesha samman dega (auto-generate inhe hilayega nahi).
-   Example:
-     "2026-11-23": ["speaking"],
-     "2026-11-24": ["listening-test-audio"]
+   ENGLISH WITH LUCY B1 — site ka saara content is file me hai
+   (purana IELTS content 2026-11-23 ko hataya gaya; backup:
+    ielts-site-backup-before-lucy-2026-11-23)
+   Har chapter ek Unit hai. Videos/PDFs Google Drive se preview hote hain.
    ===================================================================== */
 
 window.IELTS_CHAPTERS = [
   {
-    "id": "writing-task1-charts",
-    "title": "Writing Task 1: Charts & Diagrams",
-    "description": "Bar charts, line graphs, pie charts, process diagrams and maps — with model Task 1 answers and a full Writing Task 1 book.",
+    "id": "unit-1",
+    "title": "Unit 1",
+    "description": "8 lessons · Grammar, Listening, Pronunciation, Reading, Vocabulary — English with Lucy B1",
     "tags": [
-      "writing",
-      "task 1",
-      "charts"
-    ],
-    "videos": [],
-    "audios": [],
-    "pdfs": [
-      {
-        "title": "IELTS Bar and Line Graph",
-        "url": "https://drive.google.com/file/d/1GyAou2NBZWE2br-8uK4MQpngHoqdUgDB/view?usp=sharing"
-      },
-      {
-        "title": "IELTS Line and Bar Chart",
-        "url": "https://drive.google.com/file/d/11Sm0OkxFpsjLkjMDMEC2L98Y_C1lFXLD/view?usp=sharing"
-      },
-      {
-        "title": "IELTS Pie and Bar Chart",
-        "url": "https://drive.google.com/file/d/181swcLJk8aiA6-wmpbjLwBi4Ca1US1ke/view?usp=sharing"
-      },
-      {
-        "title": "IELTS Process Diagram",
-        "url": "https://drive.google.com/file/d/1qvBmyyGWz-pzzbQA6hRsq0WEVOXc_wxo/view?usp=sharing"
-      },
-      {
-        "title": "IELTS Line Graph Examples",
-        "url": "https://drive.google.com/file/d/1aQy_SLoym1nqtaURL-aC3SCAd5n8eeNR/view?usp=sharing"
-      },
-      {
-        "title": "IELTS Map — Model Task 1 Answer",
-        "url": "https://drive.google.com/file/d/1oNYadtyiJduFlno-TL8SFZBSvEClLOap/view?usp=sharing"
-      },
-      {
-        "title": "Writing Task 1 Book (MrNiner)",
-        "url": "https://drive.google.com/file/d/1NiNFJfg4iWtPbfhgRbFLPrXyvgAGU-gN/view?usp=sharing"
-      }
-    ]
-  },
-  {
-    "id": "grammar-murphy",
-    "title": "Grammar: Murphy English Grammar in Use",
-    "description": "Raymond Murphy's English Grammar in Use, 5th Edition — the Month 1 grammar book: tenses, articles, past simple vs present perfect, and it/there sentences.",
-    "tags": [
+      "unit 1",
+      "lucy",
+      "b1",
       "grammar",
-      "month 1"
-    ],
-    "videos": [],
-    "audios": [],
-    "pdfs": [
-      {
-        "title": "English Grammar in Use, 5th Edition (Raymond Murphy)",
-        "url": "https://drive.google.com/file/d/1kt7H_k1ZO1_GEggYEkXKx6iOfEwT_s58/view?usp=sharing"
-      }
-    ]
-  },
-  {
-    "id": "cambridge-practice",
-    "title": "Cambridge Practice Books",
-    "description": "Full Cambridge IELTS practice books with answers — Books 5, 6, 7, 8, 9, 17 and 18 for timed mock tests in all four skills.",
-    "tags": [
-      "cambridge",
-      "mock tests",
-      "practice"
-    ],
-    "videos": [],
-    "audios": [],
-    "pdfs": [
-      {
-        "title": "Cambridge IELTS 5 with Answers",
-        "url": "https://drive.google.com/file/d/1ldw_L5ub_Yq8ATxHGsIbv13hdgBHoCkq/view?usp=sharing"
-      },
-      {
-        "title": "Cambridge IELTS 6 — Test 1",
-        "url": "https://drive.google.com/file/d/1Nhyaq-1cR4mNhPNg1FC5Cx0lPfuyRxeX/view?usp=sharing"
-      },
-      {
-        "title": "Cambridge IELTS 6 — Test 2",
-        "url": "https://drive.google.com/file/d/1SicFdzpd17txwNggxTyaCEoe7VkkEbDk/view?usp=sharing"
-      },
-      {
-        "title": "Cambridge IELTS 6 — Test 3",
-        "url": "https://drive.google.com/file/d/1smH9CbkR0sclLjf4tka3Ebhp3ZpmZ1SY/view?usp=sharing"
-      },
-      {
-        "title": "Cambridge IELTS 6 — Test 4",
-        "url": "https://drive.google.com/file/d/1d1BCuYvMavbyDbm4UjHLwp10dbDPnBzt/view?usp=sharing"
-      },
-      {
-        "title": "Cambridge IELTS 7",
-        "url": "https://drive.google.com/file/d/17-Yk80blNv81Ca2YkTEhX7digggjFzlf/view?usp=sharing"
-      },
-      {
-        "title": "Cambridge IELTS 8",
-        "url": "https://drive.google.com/file/d/1GIIkeyQdjqd5gFw-F8OC1cJZdl3yAVQl/view?usp=sharing"
-      },
-      {
-        "title": "Cambridge IELTS 9",
-        "url": "https://drive.google.com/file/d/1eVxllSxaPemjeaFd6WvorPIcpOUYpMLu/view?usp=sharing"
-      },
-      {
-        "title": "Cambridge IELTS 17",
-        "url": "https://drive.google.com/file/d/1TXoExkuCxwlFV9LRbOh9N9vswMqlPvTK/view?usp=sharing"
-      },
-      {
-        "title": "Cambridge IELTS 18",
-        "url": "https://drive.google.com/file/d/1gQe0jVxHVsFo4sP2Yh8vydvxNf3qo76t/view?usp=sharing"
-      }
-    ]
-  },
-  {
-    "id": "writing-task2-essays",
-    "title": "Writing Task 2: Essays",
-    "description": "Essay structure, Band 9 model essays, and a pre-intermediate writing course — for the four official criteria: Task Response, Coherence & Cohesion, Lexical Resource, Grammar.",
-    "tags": [
-      "writing",
-      "task 2",
-      "essays"
-    ],
-    "videos": [],
-    "audios": [],
-    "pdfs": [
-      {
-        "title": "IELTS Writing Maximiser",
-        "url": "https://drive.google.com/file/d/1cAhw4euuslpw8ktoXwduhc6NLT_pX154/view?usp=sharing"
-      },
-      {
-        "title": "Band 9 Essays (Charles)",
-        "url": "https://drive.google.com/file/d/1prDFb3RcwVXGq7RBOSAkAlNT6RpKQIrW/view?usp=sharing"
-      },
-      {
-        "title": "Get Ready for IELTS Writing (Pre-Intermediate)",
-        "url": "https://drive.google.com/file/d/10AcJT5orxDX0z6-53Drv17lf8KtmE6HW/view?usp=sharing"
-      }
-    ]
-  },
-  {
-    "id": "listening-practice",
-    "title": "Listening Practice",
-    "description": "Listening strategies plus full practice test sets — 40 Listening Tests (Section 1, with answers) and 404 Essential Tests for IELTS.",
-    "tags": [
       "listening",
-      "practice tests"
-    ],
-    "videos": [],
-    "audios": [],
-    "pdfs": [
-      {
-        "title": "Listening Strategies for the IELTS Test",
-        "url": "https://drive.google.com/file/d/1DUHkIgbw_ZskMrPXwNdeBIiggYY85kSw/view?usp=sharing"
-      },
-      {
-        "title": "40 IELTS Listening Tests — Section 1 (with answers)",
-        "url": "https://drive.google.com/file/d/14MfWQ2h5TERJFRddVxE1gYSLHe0QX1cP/view?usp=sharing"
-      },
-      {
-        "title": "404 Essential Tests for IELTS",
-        "url": "https://drive.google.com/file/d/1F62Y9pyuQDhl-VIydyQxLk23k0zWdtVD/view?usp=sharing"
-      }
-    ]
-  },
-  {
-    "id": "reading-practice",
-    "title": "Reading Practice",
-    "description": "40 Reading Tests (Passage 1), every reading question type explained, and a pre-intermediate reading course.",
-    "tags": [
+      "pronunciation",
       "reading",
-      "practice tests"
+      "vocabulary"
     ],
-    "videos": [],
+    "videos": [
+      {
+        "title": "1.1 Listening — Big Plans",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1CoNDjratT1vMYJ1Vn7514nRWpxaA8mzW/view"
+      },
+      {
+        "title": "1.2 Grammar — Present Tenses 1",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1RnfaFYLcg9p3ELQEB-4v4fmQE-qE22mv/view"
+      },
+      {
+        "title": "1.4 Grammar — Present Tenses 2",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1pK_B5tFubz8YNiY5tvVC-1yfpVlFAkpi/view"
+      },
+      {
+        "title": "1.5 Grammar — Present Perfect Adverbs",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1SgJSXIV5dPjFzRYyipyl-p8i3xVhr918/view"
+      },
+      {
+        "title": "1.6 Vocabulary — Introductions and Family",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/14nnYURZWErZN7iy_oXQYnxoBs0XOzu9z/view"
+      },
+      {
+        "title": "1.7 Grammar — Common Mistakes",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1Wxael_dZBvtR-UeCc4cBUJ2rn0lbbwuX/view"
+      },
+      {
+        "title": "1.8 Pronunciation — Vowel Sounds",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1HPiL0hOjmJpDHnZMtwrf6JMYx9dAxz9F/view"
+      }
+    ],
     "audios": [],
     "pdfs": [
       {
-        "title": "40 IELTS Reading Tests — Passage 1",
-        "url": "https://drive.google.com/file/d/188NDiAuJvGh-nRHVSjr1fSvdmZsog-6z/view?usp=sharing"
+        "title": "1.1 Listening — Big Plans — Lesson Script",
+        "url": "https://drive.google.com/file/d/1Q0W1bY6QZcGdn_ed6PdEDozzpA-AQYbO/view"
       },
       {
-        "title": "Reading Question Types (CEFR & IELTS)",
-        "url": "https://drive.google.com/file/d/1pU_qjlHIRZcZnLeQD4J_p1GRNK8mntVo/view?usp=sharing"
+        "title": "1.1 Listening — Big Plans — Accessible Script",
+        "url": "https://drive.google.com/file/d/1geTYeOUeWMD5t0SpLTeUlZKkPplkTERg/view"
       },
       {
-        "title": "Get Ready for IELTS Reading (Pre-Intermediate)",
-        "url": "https://drive.google.com/file/d/1eZIGM8SGU0O_ee1V7MFNUZuAfogvOYc2/view?usp=sharing"
+        "title": "1.2 Grammar — Present Tenses 1 — Lesson Script",
+        "url": "https://drive.google.com/file/d/1t10q2HkEPzAvHQS5o1uVsnIEiJncfO26/view"
+      },
+      {
+        "title": "1.2 Grammar — Present Tenses 1 — Accessible Script",
+        "url": "https://drive.google.com/file/d/1QyRqlLg6UWIMDNGknDbWDdfRN-trGZRF/view"
+      },
+      {
+        "title": "1.3 Reading — Lesson Script",
+        "url": "https://drive.google.com/file/d/1JGQzCUs0Str_nDoLRqSgEoyPk0si4i4p/view"
+      },
+      {
+        "title": "1.3 Reading — Accessible Script",
+        "url": "https://drive.google.com/file/d/1M32LJKb4sOMXoj9zfLJHkuWbCXEUl30Y/view"
+      },
+      {
+        "title": "1.4 Grammar — Present Tenses 2 — Lesson Script",
+        "url": "https://drive.google.com/file/d/1cDrIOhzZzBTiZ8_9XZrD1ZL0HwoILTky/view"
+      },
+      {
+        "title": "1.4 Grammar — Present Tenses 2 — Accessible Script",
+        "url": "https://drive.google.com/file/d/1ucERMo8eQTLiP7g0C8LWAq63qc0dWOO7/view"
+      },
+      {
+        "title": "1.5 Grammar — Present Perfect Adverbs — Lesson Script",
+        "url": "https://drive.google.com/file/d/1gU9VE3pSwRr60ITYhCt0ecXzi6SMIzHz/view"
+      },
+      {
+        "title": "1.5 Grammar — Present Perfect Adverbs — Accessible Script",
+        "url": "https://drive.google.com/file/d/1yk6NXZSkUZ7Qy1j50kvXXnPdJFxES6S8/view"
+      },
+      {
+        "title": "1.6 Vocabulary — Introductions and Family — Lesson Script",
+        "url": "https://drive.google.com/file/d/103Hdp-oA4TC5BXDwR_Z0y0MOfxmKBMRF/view"
+      },
+      {
+        "title": "1.6 Vocabulary — Introductions and Family — Accessible Script",
+        "url": "https://drive.google.com/file/d/12QMG0jPeoYEMl27G_3v4O8iDKXg1Hxue/view"
+      },
+      {
+        "title": "1.7 Grammar — Common Mistakes — Lesson Script",
+        "url": "https://drive.google.com/file/d/1_kSyavs2Jw5vB1gx_dqGBUWXI5qfvNJD/view"
+      },
+      {
+        "title": "1.7 Grammar — Common Mistakes — Accessible Script",
+        "url": "https://drive.google.com/file/d/1vEnibe8WZfhGt_MVEqSiHH892rjIlzeY/view"
+      },
+      {
+        "title": "1.8 Pronunciation — Vowel Sounds — Lesson Script",
+        "url": "https://drive.google.com/file/d/1erjSFM0uJ1APywjl2zeygSGUB3X2S8DO/view"
+      },
+      {
+        "title": "1.8 Pronunciation — Vowel Sounds — Accessible Script",
+        "url": "https://drive.google.com/file/d/1hM62tWK5b1rxsTB-fW4hCVd0c3NDVChH/view"
+      },
+      {
+        "title": "Week 1 — Weekly Language Prompts",
+        "url": "https://drive.google.com/file/d/1pkTrnc-dYggw9OQt-vbrGlI_dko0uQqj/view"
       }
     ]
   },
   {
-    "id": "speaking",
-    "title": "Speaking",
-    "description": "Speaking strategies by Rachel Mitchell and a pre-intermediate speaking course — for Part 1, Part 2 cue cards and Part 3 discussion.",
+    "id": "unit-2",
+    "title": "Unit 2",
+    "description": "7 lessons · Conversation, Grammar, Listening, Pronunciation, Reading, Vocabulary — English with Lucy B1",
     "tags": [
-      "speaking",
-      "strategies"
-    ],
-    "videos": [],
-    "audios": [],
-    "pdfs": [
-      {
-        "title": "IELTS Speaking Strategies (Rachel Mitchell)",
-        "url": "https://drive.google.com/file/d/1By-qBLQEx7Sj3oSE2FWiYVwCRr0wpiq3/view?usp=sharing"
-      },
-      {
-        "title": "Get Ready for IELTS Speaking (Pre-Intermediate)",
-        "url": "https://drive.google.com/file/d/1GRKAs0NrecX0PcxXZTgGUR_mswQK-lZ-/view?usp=sharing"
-      }
-    ]
-  },
-  {
-    "id": "vocabulary-synonyms",
-    "title": "Vocabulary & Synonyms",
-    "description": "IELTS synonyms, fluent vocabulary and idioms — the words that lift Lexical Resource in Writing and Speaking.",
-    "tags": [
-      "vocabulary",
-      "words"
-    ],
-    "videos": [],
-    "audios": [],
-    "pdfs": [
-      {
-        "title": "Synonyms for IELTS",
-        "url": "https://drive.google.com/file/d/1nvcWXwk1dRi2KpVpJjtvP3wVS8sWnM5k/view?usp=sharing"
-      },
-      {
-        "title": "English Vocabulary Fluent 2022",
-        "url": "https://drive.google.com/file/d/1Qgf3UreiXrFxvuU4XhgzP1E5b993CH2R/view?usp=sharing"
-      },
-      {
-        "title": "English Vocabulary Idioms 2022",
-        "url": "https://drive.google.com/file/d/1WrbqITBwkbavws4UoRyDX_5GiOxk0kKL/view?usp=sharing"
-      }
-    ]
-  },
-  {
-    "id": "listening-test-audio",
-    "title": "Listening Test Audio: Tests 1–26",
-    "description": "Full listening test recordings, Tests 1 to 26 — Tests 11–15 are split into their four sections. Play them here in the website's own audio player, with resume, speed control and bookmarks.",
-    "tags": [
+      "unit 2",
+      "lucy",
+      "b1",
+      "conversation",
+      "grammar",
       "listening",
-      "audio",
-      "tests"
+      "pronunciation",
+      "reading",
+      "vocabulary"
     ],
-    "videos": [],
-    "audios": [
+    "videos": [
       {
-        "title": "Test 1",
-        "url": "https://drive.google.com/file/d/1CjdAclThqxdnyirw512ux8qVsbLFxqgJ/view?usp=sharing"
+        "title": "2.2 Grammar — Past Tenses 1",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1L2R-M-HU_63MdeoxRApf3wOYVIPoeQPH/view"
       },
       {
-        "title": "Test 2",
-        "url": "https://drive.google.com/file/d/1vLwV2lHy4tulTSj4iJlIbZh_D13arDOM/view?usp=sharing"
+        "title": "2.3 Pronunciation — ed Endings",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1fw3QCvmTAOpex7PJQhoOyTdedRc6_W2p/view"
       },
       {
-        "title": "Test 3",
-        "url": "https://drive.google.com/file/d/1pcGSAi2U8yKryWOVYJc7qcJ9eCJmsJB9/view?usp=sharing"
+        "title": "2.4 Listening — My New Relatives",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1bO35ifHToeGCYAbEUKCxSS2TYDXG5NXO/view"
       },
       {
-        "title": "Test 4",
-        "url": "https://drive.google.com/file/d/1vXJcRPw8AgmRy2T-_i4ThUTL38rIHi-L/view?usp=sharing"
+        "title": "2.5 Grammar — Irregular Verbs",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1qfQ_hsvjkXTxqI_MpOO_60sk0-tZQAg0/view"
       },
       {
-        "title": "Test 5",
-        "url": "https://drive.google.com/file/d/17qRa259gRUAOfqUjN23QuYbNxc3cR2F1/view?usp=sharing"
+        "title": "2.6 Vocabulary — Relationships and",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1rzhrCrYhc96pHsgwIVSp0XULSv_6RCH3/view"
       },
       {
-        "title": "Test 6",
-        "url": "https://drive.google.com/file/d/1eisL9B99peLZMpgSnr3RbSZa6QCSJMcR/view?usp=sharing"
-      },
-      {
-        "title": "Test 7",
-        "url": "https://drive.google.com/file/d/1KoLhtcgK4dWXleGmWrfWgGcBEDBud_9S/view?usp=sharing"
-      },
-      {
-        "title": "Test 8",
-        "url": "https://drive.google.com/file/d/1Bo28iACmZvZN4AdDsEniSPfzg8nBhIRD/view?usp=sharing"
-      },
-      {
-        "title": "Test 9",
-        "url": "https://drive.google.com/file/d/12HFhdzPVEqiCAUioNXkm-i2jACo0bodP/view?usp=sharing"
-      },
-      {
-        "title": "Test 10",
-        "url": "https://drive.google.com/file/d/1h11799gl2GE_fdpMpx5TV83ruH48Nrlo/view?usp=sharing"
-      },
-      {
-        "title": "Test 11 · Section 1",
-        "url": "https://drive.google.com/file/d/1t7lfhlAjtdL3Agm9EaSNlWDYr4m2TLZn/view?usp=sharing"
-      },
-      {
-        "title": "Test 11 · Section 2",
-        "url": "https://drive.google.com/file/d/17vzb3NrJhSgKHawXk7bu5IDpzgr1JqCF/view?usp=sharing"
-      },
-      {
-        "title": "Test 11 · Section 3",
-        "url": "https://drive.google.com/file/d/16fifFV34VmyjvsYzYNY7x5Z8CSWVl1pR/view?usp=sharing"
-      },
-      {
-        "title": "Test 11 · Section 4",
-        "url": "https://drive.google.com/file/d/14lmnsQeOilA7Z9X0eibMqttSV3w9RX-2/view?usp=sharing"
-      },
-      {
-        "title": "Test 12 · Section 1",
-        "url": "https://drive.google.com/file/d/1UOlHoLmW4BDhDJqDxynd-J_dret1vGiA/view?usp=sharing"
-      },
-      {
-        "title": "Test 12 · Section 2",
-        "url": "https://drive.google.com/file/d/1p3MQTfZP_jkKfDE8VPOYlSZNrIW1jjn4/view?usp=sharing"
-      },
-      {
-        "title": "Test 12 · Section 3",
-        "url": "https://drive.google.com/file/d/1w85R66C9s0FMlfxP8cTKuqDbend7VW1d/view?usp=sharing"
-      },
-      {
-        "title": "Test 12 · Section 4",
-        "url": "https://drive.google.com/file/d/1Pn7yeNaI-7ClhYps2wTTmGfSUX-DHXz7/view?usp=sharing"
-      },
-      {
-        "title": "Test 13 · Section 1",
-        "url": "https://drive.google.com/file/d/1j4ce4vS515fcQL0yfsWyQKUYB0QdEG9e/view?usp=sharing"
-      },
-      {
-        "title": "Test 13 · Section 2",
-        "url": "https://drive.google.com/file/d/11GddHRKGsk4V3_12LvSLIfnG2bvm4ZRT/view?usp=sharing"
-      },
-      {
-        "title": "Test 13 · Section 3",
-        "url": "https://drive.google.com/file/d/1t6do9xaFBAeZIKgGjojrSRRZKUic8pvE/view?usp=sharing"
-      },
-      {
-        "title": "Test 13 · Section 4",
-        "url": "https://drive.google.com/file/d/1enBQ6zpKCbfbe4NQxI9p8oM9aEFZpOwQ/view?usp=sharing"
-      },
-      {
-        "title": "Test 14 · Section 1",
-        "url": "https://drive.google.com/file/d/1jaMaCc7ggV2jDYp_hbo5lOUg39reBKD3/view?usp=sharing"
-      },
-      {
-        "title": "Test 14 · Section 2",
-        "url": "https://drive.google.com/file/d/15MwH5xAUSEYFU6oVM4Q0jhD_dpYTWjnd/view?usp=sharing"
-      },
-      {
-        "title": "Test 14 · Section 3",
-        "url": "https://drive.google.com/file/d/143514lBIUOS--zWCtI77ji-jkzE3Soj5/view?usp=sharing"
-      },
-      {
-        "title": "Test 14 · Section 4",
-        "url": "https://drive.google.com/file/d/1UBUfwodDxcjH2WLd2ZxO_A1DAfENjYrf/view?usp=sharing"
-      },
-      {
-        "title": "Test 15 · Section 1",
-        "url": "https://drive.google.com/file/d/1CudBQPrHrJidt2XDDyC4FF9IDMEQKexL/view?usp=sharing"
-      },
-      {
-        "title": "Test 15 · Section 2",
-        "url": "https://drive.google.com/file/d/1VW3Ib7M57qLc1WpASwusZxIlOjPrI7Cc/view?usp=sharing"
-      },
-      {
-        "title": "Test 15 · Section 3",
-        "url": "https://drive.google.com/file/d/1KdtG0XBRe5JUWxMIfjYFk1FO-jnR9iFI/view?usp=sharing"
-      },
-      {
-        "title": "Test 15 · Section 4",
-        "url": "https://drive.google.com/file/d/1ZdinDeAuCq3TjIvoXuHhXabCKEomqVoy/view?usp=sharing"
-      },
-      {
-        "title": "Test 16",
-        "url": "https://drive.google.com/file/d/10D5tQ9RIXns9NQaxeN-QiYeLFQtmsR-I/view?usp=sharing"
-      },
-      {
-        "title": "Test 17",
-        "url": "https://drive.google.com/file/d/15vxgKSDBe9HQEMpwRb83wwDH_9o7tkZ_/view?usp=sharing"
-      },
-      {
-        "title": "Test 18",
-        "url": "https://drive.google.com/file/d/1FO9lvir8GPM3XgDmdCfhPzADHCv1L73X/view?usp=sharing"
-      },
-      {
-        "title": "Test 19",
-        "url": "https://drive.google.com/file/d/1yYq7GlPFCP-iyZZqrduOnUGsiXcRIw-o/view?usp=sharing"
-      },
-      {
-        "title": "Test 20",
-        "url": "https://drive.google.com/file/d/1IVpcni_S_fsLxOzpn3r44wigT4JgE-ir/view?usp=sharing"
-      },
-      {
-        "title": "Test 21",
-        "url": "https://drive.google.com/file/d/1juk_1aIElYOrRBgsygUoHv3a0O-9pxzY/view?usp=sharing"
-      },
-      {
-        "title": "Test 22",
-        "url": "https://drive.google.com/file/d/1y-0H74aPQPIhvH6M2Lb-7aKb_sxO8L7E/view?usp=sharing"
-      },
-      {
-        "title": "Test 23",
-        "url": "https://drive.google.com/file/d/1-iPFexlRbcDZ_xBxpIA14SWubjMqB_zY/view?usp=sharing"
-      },
-      {
-        "title": "Test 24",
-        "url": "https://drive.google.com/file/d/142ZCeAJ0j7ilmTKQgZldwXSu5SS8qSFZ/view?usp=sharing"
-      },
-      {
-        "title": "Test 25",
-        "url": "https://drive.google.com/file/d/1X-hbQSSUCUfAQ-Rpn0tWcwIz7rZ2O9pY/view?usp=sharing"
-      },
-      {
-        "title": "Test 26",
-        "url": "https://drive.google.com/file/d/1TLy--6gjYzCkVClhfJabRkzE05NJM32p/view?usp=sharing"
+        "title": "2.7 Conversation — Meet the speaker",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1545g77R2nlR7GixbCjB3iBhmY0tRciZx/view"
       }
     ],
-    "pdfs": []
-  },
-  {
-    "id": "mindset-foundation",
-    "title": "MindSet for IELTS Foundation",
-    "description": "The MindSet for IELTS Foundation Student's Book with its full CD audio — Tracks 01 to 20, ready to play inside the website.",
-    "tags": [
-      "mindset",
-      "foundation",
-      "course book"
-    ],
-    "videos": [],
-    "audios": [
-      {
-        "title": "Track 01",
-        "url": "https://drive.google.com/file/d/1tlXW293X-Bw10YMmBEPJ7OHSL-zc1_U8/view?usp=sharing"
-      },
-      {
-        "title": "Track 02",
-        "url": "https://drive.google.com/file/d/1lNVB-gGtapxDOQd0DXOVip6NFtE0VOib/view?usp=sharing"
-      },
-      {
-        "title": "Track 03",
-        "url": "https://drive.google.com/file/d/1w19SHjwSRP4qa-qiaYGQpLVkHBdXqjp5/view?usp=sharing"
-      },
-      {
-        "title": "Track 04",
-        "url": "https://drive.google.com/file/d/1B4034XL7MrOGaEnQpCyWJJCpGjGV4LI7/view?usp=sharing"
-      },
-      {
-        "title": "Track 05",
-        "url": "https://drive.google.com/file/d/1VwQsddE-gjsX5YkhlQ0hX8fzd_JX7d00/view?usp=sharing"
-      },
-      {
-        "title": "Track 06",
-        "url": "https://drive.google.com/file/d/1CO2deEqTcsQe3qv8z1D0fDuAb7Cr27Cm/view?usp=sharing"
-      },
-      {
-        "title": "Track 07",
-        "url": "https://drive.google.com/file/d/167NEerQiaLcXKEFpmA0K2PJTjcYIv-3m/view?usp=sharing"
-      },
-      {
-        "title": "Track 08",
-        "url": "https://drive.google.com/file/d/1oBejEzZQD6KLL3yVSgzFahDP3_nlfF3C/view?usp=sharing"
-      },
-      {
-        "title": "Track 09",
-        "url": "https://drive.google.com/file/d/13IHzcPXHq_k9z7HxaVa7NeOTYjOmX-pL/view?usp=sharing"
-      },
-      {
-        "title": "Track 10",
-        "url": "https://drive.google.com/file/d/13EIdKSK7b2TMNO8tP31NKYBLroO4QVnK/view?usp=sharing"
-      },
-      {
-        "title": "Track 11",
-        "url": "https://drive.google.com/file/d/1JiaV8oYwmEDM2ro-qrl33tRCX1T_qmdh/view?usp=sharing"
-      },
-      {
-        "title": "Track 12",
-        "url": "https://drive.google.com/file/d/1YVqJx2lSPKoK6hXQu2ednsEBqKISIbJ8/view?usp=sharing"
-      },
-      {
-        "title": "Track 13",
-        "url": "https://drive.google.com/file/d/1jXzykHPq9XcDvOaYxcubFITMM_iBNQDr/view?usp=sharing"
-      },
-      {
-        "title": "Track 14",
-        "url": "https://drive.google.com/file/d/15uO7ScfNthIJ5CQoz6GHfXh27dNdQcqF/view?usp=sharing"
-      },
-      {
-        "title": "Track 15",
-        "url": "https://drive.google.com/file/d/142xM_pGnQLik4Ie3J4Yq6n8S-DFYc5ot/view?usp=sharing"
-      },
-      {
-        "title": "Track 16",
-        "url": "https://drive.google.com/file/d/1wxrED92VSTMUp1NERd0uf3rTCYhbkfkq/view?usp=sharing"
-      },
-      {
-        "title": "Track 17",
-        "url": "https://drive.google.com/file/d/13wnoFoQEAyEVEcTqVG3h7IeqwdJay5DO/view?usp=sharing"
-      },
-      {
-        "title": "Track 18",
-        "url": "https://drive.google.com/file/d/1lobj4lRe1GdEVXpEGiU9ppMJzk-NnNAA/view?usp=sharing"
-      },
-      {
-        "title": "Track 19",
-        "url": "https://drive.google.com/file/d/1TYoEBW18UTlpS30zeVh_RMK1QsteJiW4/view?usp=sharing"
-      },
-      {
-        "title": "Track 20",
-        "url": "https://drive.google.com/file/d/1OtTZJNVJECGTJQpBkfMrcrW_SGTYtHAJ/view?usp=sharing"
-      }
-    ],
+    "audios": [],
     "pdfs": [
       {
-        "title": "MindSet for IELTS Foundation Student's Book",
-        "url": "https://drive.google.com/file/d/1ezAHZO8aSBuSw-5N8uHz_X9bWMaW-cGL/view?usp=sharing"
+        "title": "2.1 Reading — Lesson Script",
+        "url": "https://drive.google.com/file/d/1KURFEVGzuOxR8eAZCpTE6sEigMeGopgq/view"
+      },
+      {
+        "title": "2.1 Reading — Accessible Script",
+        "url": "https://drive.google.com/file/d/1GfvgNPOqWPacJA7fuxgn2BEjv8WnSlin/view"
+      },
+      {
+        "title": "2.2 Grammar — Past Tenses 1 — Lesson Script",
+        "url": "https://drive.google.com/file/d/1IRSdGZh5jTd5MFsNnQPe0xCLwFg8Vx_E/view"
+      },
+      {
+        "title": "2.2 Grammar — Past Tenses 1 — Accessible Script",
+        "url": "https://drive.google.com/file/d/1V5vRgKQOOZmJk1mYDgBxoiqFnY5aPh0E/view"
+      },
+      {
+        "title": "2.3 Pronunciation — ed Endings — Lesson Script",
+        "url": "https://drive.google.com/file/d/1pB0kjMMtxgzhHXIyB3l1hdgE2edDwxyb/view"
+      },
+      {
+        "title": "2.3 Pronunciation — ed Endings — Accessible Script",
+        "url": "https://drive.google.com/file/d/1xer64HUd6_6lB-rpDX9fef9Hp02F5Isb/view"
+      },
+      {
+        "title": "2.4 Listening — My New Relatives — Lesson Script",
+        "url": "https://drive.google.com/file/d/1Wb26Cr220BVDJs95wGRnYJjL6GCb8rfm/view"
+      },
+      {
+        "title": "2.4 Listening — My New Relatives — Accessible Script",
+        "url": "https://drive.google.com/file/d/1U9e0neQZFYu5ChOWfnchWRbXN2kXeYKx/view"
+      },
+      {
+        "title": "2.5 Grammar — Irregular Verbs — Lesson Script",
+        "url": "https://drive.google.com/file/d/1oB98Rjx4XVqEyZcHwzNN4PHzzx2VfYfK/view"
+      },
+      {
+        "title": "2.5 Grammar — Irregular Verbs — Accessible Script",
+        "url": "https://drive.google.com/file/d/10e1TOCOG97p3xy20UxLZDcbuenlJjAn3/view"
+      },
+      {
+        "title": "2.6 Vocabulary — Relationships and — Accessible Script",
+        "url": "https://drive.google.com/file/d/1hDwFGagp2l9siLHQWrljMEG3jMr2ky-B/view"
+      },
+      {
+        "title": "Week 2 — Weekly Language Prompts",
+        "url": "https://drive.google.com/file/d/1y7ZlkS8a-Ogv39Gt6r_nL8fMwaD4r1i4/view"
       }
     ]
   },
   {
-    "id": "writing-video-course",
-    "title": "Video Course: IELTS Writing (Full)",
-    "description": "Poora Writing video course, lesson 001 se 033 tak — Task 2 model answers, planning, grammar, demo essays — plus Coherence & Cohesion aur Grammar wale extra lessons.",
+    "id": "unit-3",
+    "title": "Unit 3",
+    "description": "7 lessons · Grammar, Listening, Reading, Vocabulary — English with Lucy B1",
     "tags": [
-      "writing",
-      "video",
-      "course",
-      "task 2"
+      "unit 3",
+      "lucy",
+      "b1",
+      "grammar",
+      "listening",
+      "reading",
+      "vocabulary"
     ],
     "videos": [
       {
-        "title": "001 An Introduction to the Course",
+        "title": "3.1 Listening — Stereotypes Listening",
         "type": "file",
-        "url": "https://drive.google.com/file/d/1PY8Nru9kP904cTHoAx5ZesAte2omwC4q/view"
+        "url": "https://drive.google.com/file/d/1-J8xoXf1hnhYksPEabrorL4LZ0OcwIvS/view"
       },
       {
-        "title": "002 An Introduction to the IELTS Exam with Walkthrough",
+        "title": "3.2 Grammar — Adverbs of Frequency",
         "type": "file",
-        "url": "https://drive.google.com/file/d/13Y-AvCAjm6_H60F4oX0xu5u9fwqv_OvA/view"
+        "url": "https://drive.google.com/file/d/1LoANi04D7mk34I831zJgOMQjRoZ-iJ4W/view"
       },
       {
-        "title": "003 Understanding Writing Task 2",
+        "title": "3.4 Grammar — Making Comparisons",
         "type": "file",
-        "url": "https://drive.google.com/file/d/1ysescWOBl05aBul-imXIVsRU2B0ziUHe/view"
+        "url": "https://drive.google.com/file/d/18pY2yO9CVm3cOgqrELxcCs4eu8GueAlQ/view"
       },
       {
-        "title": "006 Top Marks - A Brief Look at a Task 2 Model Answer",
+        "title": "3.5 Vocabulary — Describing People",
         "type": "file",
-        "url": "https://drive.google.com/file/d/1B9R6msi18299D0eSIcwuqAALvfrTmYkF/view"
+        "url": "https://drive.google.com/file/d/1tD4Tlw9Cm_EEP6CUMJ2oLHPfatYVOX5r/view"
       },
       {
-        "title": "007 Planning Your Essay",
+        "title": "3.6 Vocabulary — Similes",
         "type": "file",
-        "url": "https://drive.google.com/file/d/1SXBEsZ71W2tjBaqgmrHrpEqKh0Yr7LMz/view"
+        "url": "https://drive.google.com/file/d/1Y1eWK9mAj7_axNG5otRZ60UzIOUb8_7e/view"
       },
       {
-        "title": "008 Handling Time Constraints and Word Counts",
+        "title": "3.7 Grammar — Same, Similar, Identical",
         "type": "file",
-        "url": "https://drive.google.com/file/d/1vN8-hnaRJ0SKkjJpGDcMqeS0vtrr-2jN/view"
-      },
-      {
-        "title": "009 Dont Make These Mistakes",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1RRxpNnGYzSKFr6ysEuaomNExnMun8KLa/view"
-      },
-      {
-        "title": "010 Incredibly Fast Introductions",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1TyFsQXmS0mlm7YvnpiRRZPMyOL-AlTVn/view"
-      },
-      {
-        "title": "011 Building Body Paragraphs",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1rXW67C-3s2855aGrMBI9w95f9c4XyOYU/view"
-      },
-      {
-        "title": "012 Quick Conclusions",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1FpHwDY2_GNd8fvLXe3uZtNcc6LpdqX6N/view"
-      },
-      {
-        "title": "013 Cohesive Devices and Referencing",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1nWLxCUfn_lcdjWGuU04ujTwICEvHMUvi/view"
-      },
-      {
-        "title": "014 Finding Ideas",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1xwgo_n4VPdcFLNla4rb_gfNFI40lsVXT/view"
-      },
-      {
-        "title": "015 Developing Ideas and Using Examples",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1fjRvJkFIRMkfbLw8uwGhsqzgt6qve4Xj/view"
-      },
-      {
-        "title": "016 Creating and Maintaining a Position",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/19vEumBUOM55RKJNJhBVjUGlYAtEinuLn/view"
-      },
-      {
-        "title": "017 Stop Making Generalisations",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1RD8HJW51dGh06xx-R7f9aKqjFBa-0RK5/view"
-      },
-      {
-        "title": "018 Whats Your Topic",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1Yemu_927v06vlpGmCC9IdREcjfeIr9Y1/view"
-      },
-      {
-        "title": "019 The Importance of Collocations",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1bG8NWUuVP6AgrUXxrNiMXy1mbHA39W1B/view"
-      },
-      {
-        "title": "020 Word Formation",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1ViAvFakNSAUsM69LuLza9oBTVYqbTeAD/view"
-      },
-      {
-        "title": "021 Synonyms and Paraphrasing",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1KCSqV0qcjIakEACrglL10HIihV9ka35y/view"
-      },
-      {
-        "title": "022 Simple Sentences and Common Errors",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1j5RXWIWjykAlRNYnL8qF8eDHUGw3gLjT/view"
-      },
-      {
-        "title": "023 What Makes a Complex Sentence",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1X6dAB-mWBJufZ1sxqjmr5Kb3o_o5DZZi/view"
-      },
-      {
-        "title": "024 Punctuation",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1pNgqiK5O2nXDbN6AHMT2Y4vrYhe83ghH/view"
-      },
-      {
-        "title": "025 Conditional Sentences",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1yPSCZU3ToHH1EWODasxn-ADR3l_g9ros/view"
-      },
-      {
-        "title": "026 Relative Clauses",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1lOecvOJ51vh_maU6TSi_JYdEPPbm1TEE/view"
-      },
-      {
-        "title": "027 Checking The Essay Articles  Prepositions  Pronouns",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1m7z37OLqFzfJuuf_-iHpT5L-MDlAM4Bf/view"
-      },
-      {
-        "title": "028 Demo Answering Task 2 From Start to Finish - PART 1",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1CWpQyA1n7d1qeQ1kqyxQlDpeMrUkqBiY/view"
-      },
-      {
-        "title": "029 Demo Answering Task 2 From Start to Finish - PART 2",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1R3JxwlIoA9URaoFf03-aaNdI9Q2F5-og/view"
-      },
-      {
-        "title": "030 Secrets to Success - Tips and Techniques",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1AagfYJpmSouGOrQjlhlY2hTjNrbS6S8H/view"
-      },
-      {
-        "title": "031 How to Practice Effectively",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/167YKW1JNfCWy9xQjMCtY5LZY1TZu8PLz/view"
-      },
-      {
-        "title": "032 Getting Guidance",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/10llnprrsKSheixXVAnCAawNUNteI7sxX/view"
-      },
-      {
-        "title": "033 Good Luck",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1Ti5-PVvFvYSg54Ye4ei6s6JiDyCNVWgs/view"
-      },
-      {
-        "title": "2 IELTS Writing Coherence & Cohesion Improve your English & IELTS",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/1x2VaK26WSUfiH-lKy1LS0aDUVjVPuzTW/view"
-      },
-      {
-        "title": "3 IELTS Writing Grammar improve your English and IELTS writing",
-        "type": "file",
-        "url": "https://drive.google.com/file/d/14otTcl22PC-Asp3Gu3n4vKBZOQoJeRph/view"
+        "url": "https://drive.google.com/file/d/1Roia8Yx-DcrvJZl7J0Xx_KSv5LhjxSw_/view"
       }
     ],
     "audios": [],
-    "pdfs": []
+    "pdfs": [
+      {
+        "title": "3.3 Reading — Lesson Script",
+        "url": "https://drive.google.com/file/d/1YXHdD2Wq2HF0lioFwD4AdDXDbiQeLxN1/view"
+      },
+      {
+        "title": "3.4 Grammar — Making Comparisons — Lesson Script",
+        "url": "https://drive.google.com/file/d/1c4w3VBa3T_IOnj30suDJNZdwM5oGTbtt/view"
+      },
+      {
+        "title": "3.5 Vocabulary — Describing People — Lesson Script",
+        "url": "https://drive.google.com/file/d/1DRnCCv9-dCoTnLjqxSsA0cSmoqqnkeZW/view"
+      },
+      {
+        "title": "3.5 Vocabulary — Describing People — Accessible Script",
+        "url": "https://drive.google.com/file/d/1Ro6XyYpkiPkIm7bHEPCg2Zo-_Hoo34Zr/view"
+      },
+      {
+        "title": "3.6 Vocabulary — Similes — Lesson Script",
+        "url": "https://drive.google.com/file/d/1844TZ5u6iAmRTKzg5jo3bNnL1nScAPi1/view"
+      },
+      {
+        "title": "3.6 Vocabulary — Similes — Accessible Script",
+        "url": "https://drive.google.com/file/d/11zvknqUmyEorQSEbQ4CSBiYU4Kitsx7E/view"
+      },
+      {
+        "title": "3.7 Grammar — Same, Similar, Identical — Lesson Script",
+        "url": "https://drive.google.com/file/d/1xIYDu126KC2LAGDvA4Gc7VNp9Np8jAtp/view"
+      },
+      {
+        "title": "3.7 Grammar — Same, Similar, Identical — Accessible Script",
+        "url": "https://drive.google.com/file/d/10IswiEdrK5t-NzXwFV9yasYx8m6h6wwl/view"
+      },
+      {
+        "title": "Week 3 — Weekly Language Prompts",
+        "url": "https://drive.google.com/file/d/1eyNjjpQnZam0AzV_yj1W9H1ur2aW2CIg/view"
+      }
+    ]
   },
   {
-    "id": "webinars-expert",
-    "title": "Webinars & Expert Sessions",
-    "description": "IDP expert webinars — IELTS Talks: Meet the Expert, aur ek Band 8 test-taker ke saath session, plus ek recorded session.",
+    "id": "unit-4",
+    "title": "Unit 4",
+    "description": "8 lessons · Conversation, Grammar, Listening, Pronunciation, Reading, Vocabulary — English with Lucy B1",
     "tags": [
-      "webinar",
-      "idp",
-      "expert"
+      "unit 4",
+      "lucy",
+      "b1",
+      "conversation",
+      "grammar",
+      "listening",
+      "pronunciation",
+      "reading",
+      "vocabulary"
     ],
     "videos": [
       {
-        "title": "Free IDP Webinar #8  IELTS Talks - Meet the Expert",
+        "title": "4.2 Grammar — Order of Adjectives",
         "type": "file",
-        "url": "https://drive.google.com/file/d/1I_htqgOeJJJALi0eQUsH96YWqOSHL3sL/view"
+        "url": "https://drive.google.com/file/d/14AQrp7ZxIy8FiTOdfI-8DVLMtOQtT5UK/view"
       },
       {
-        "title": "Free-IDP-Webinar-4-IELTS-Talks-Meet-a-Band-8-test-taker",
+        "title": "4.3 Grammar — There is and There are",
         "type": "file",
-        "url": "https://drive.google.com/file/d/1QEiHWZmX-ftSd43yYAsELjjU0SSUvBUu/view"
+        "url": "https://drive.google.com/file/d/1osHUmjQJq0HBDPqMqbRprUmKGPn_e_fs/view"
       },
       {
-        "title": "Recorded Session",
+        "title": "4.4 Listening — Travel Tips for Scotland Lis",
         "type": "file",
-        "url": "https://drive.google.com/file/d/12E9xXQQFptO0nskla-0nGjGmWnEa7-BT/view"
+        "url": "https://drive.google.com/file/d/1hxhu9A4ak7ddwb8v4FmsDpaqygXnPcO1/view"
+      },
+      {
+        "title": "4.5 Grammar — Modal Verbs",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1jlCxDG3n62hVmQ-nOGJNDJlF1BNoX3Yz/view"
+      },
+      {
+        "title": "4.6 Vocabulary — Scotland and Travel",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/13ysyNNsWL0iHQvrfF2IugwyE271i0HLV/view"
+      },
+      {
+        "title": "4.7 Pronunciation — The Schwa Sound",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/19iB6EpA4b0obKPsNazRtSFi6_NBChWTu/view"
+      },
+      {
+        "title": "4.8 Conversation — Meet the speaker",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/10qCXNkFwXcXt74UKYeuKtsWkTL2pHPCM/view"
       }
     ],
     "audios": [],
-    "pdfs": []
+    "pdfs": [
+      {
+        "title": "4.1 Reading — Lesson Script",
+        "url": "https://drive.google.com/file/d/1ZVWfhJ3hLpYrCsKRrWe-Ck4tHgx25lTS/view"
+      },
+      {
+        "title": "4.1 Reading — Accessible Script",
+        "url": "https://drive.google.com/file/d/1bE_TFSOPK1x67pYD5zg8lfLilXo_b5kT/view"
+      },
+      {
+        "title": "4.2 Grammar — Order of Adjectives — Lesson Script",
+        "url": "https://drive.google.com/file/d/18ERJLa21f9tOv-xL1FjSU429jss-DL9i/view"
+      },
+      {
+        "title": "4.2 Grammar — Order of Adjectives — Accessible Script",
+        "url": "https://drive.google.com/file/d/1BGqYhDDpPdmZm1w1bFiQT-V5gcauC005/view"
+      },
+      {
+        "title": "4.3 Grammar — There is and There are — Lesson Script",
+        "url": "https://drive.google.com/file/d/1mP2fBbkTTO_FKM0f3ApcU-xNiXJL1SM6/view"
+      },
+      {
+        "title": "4.3 Grammar — There is and There are — Accessible Script",
+        "url": "https://drive.google.com/file/d/12CkcSbVaBR2KCRGS7fM5Lfb2wdCRrsTG/view"
+      },
+      {
+        "title": "4.4 Listening — Travel Tips for Scotland Lis — Lesson Script",
+        "url": "https://drive.google.com/file/d/1vcQ6eIBqhCi_hVDD5nusOPg6qpCljqR3/view"
+      },
+      {
+        "title": "4.4 Listening — Travel Tips for Scotland Lis — Accessible Script",
+        "url": "https://drive.google.com/file/d/1F77ImCBcnHc0IOoZkmQQ1qQgIax7353R/view"
+      },
+      {
+        "title": "4.5 Grammar — Modal Verbs — Lesson Script",
+        "url": "https://drive.google.com/file/d/1o0Y4tkuvKhld9O7dZcyUysWr4UoMD-re/view"
+      },
+      {
+        "title": "4.5 Grammar — Modal Verbs — Accessible Script",
+        "url": "https://drive.google.com/file/d/1cPioDno4C9c1O-j9xuqCrmAw4iASaD7A/view"
+      },
+      {
+        "title": "4.6 Vocabulary — Scotland and Travel — Lesson Script",
+        "url": "https://drive.google.com/file/d/1XocRV4FdjDfm0ouPZlHIcew1xaGZ7RsE/view"
+      },
+      {
+        "title": "4.6 Vocabulary — Scotland and Travel — Accessible Script",
+        "url": "https://drive.google.com/file/d/1gB-rwS2pYmQ--QiX8CQ2xgK7Cp2roCoU/view"
+      },
+      {
+        "title": "4.7 Pronunciation — The Schwa Sound — Lesson Script",
+        "url": "https://drive.google.com/file/d/11BAAXyP-WKprd3NCucWxkI2U2O0oH68L/view"
+      },
+      {
+        "title": "4.7 Pronunciation — The Schwa Sound — Accessible Script",
+        "url": "https://drive.google.com/file/d/1Aeklbb28cfHVS49pEqWF8VTDJ33sI3sb/view"
+      },
+      {
+        "title": "4.8 Conversation — Meet the speaker — Lesson Script",
+        "url": "https://drive.google.com/file/d/1yNNAgO0A8D1_twiBR6rdkJxS8Reg1-st/view"
+      },
+      {
+        "title": "4.8 Conversation — Meet the speaker — Accessible Script",
+        "url": "https://drive.google.com/file/d/1Uy_NuLBeG8lvrxS4GaoAR2Wz7YzB5Xf5/view"
+      },
+      {
+        "title": "Week 4 — Weekly Language Prompts",
+        "url": "https://drive.google.com/file/d/1vlkStErZSdlSsefwM9bnYLZZUwVLL98E/view"
+      }
+    ]
+  },
+  {
+    "id": "unit-5",
+    "title": "Unit 5",
+    "description": "5 lessons · Grammar, Listening, Reading, Vocabulary — English with Lucy B1",
+    "tags": [
+      "unit 5",
+      "lucy",
+      "b1",
+      "grammar",
+      "listening",
+      "reading",
+      "vocabulary"
+    ],
+    "videos": [
+      {
+        "title": "5.2 Grammar — Past Tenses 2",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1p7BaIBputqmOtzGCNq0jJdSLk9m_lVyN/view"
+      },
+      {
+        "title": "5.3 Listening — Tourism in Australia Listeni",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1LwXQjiK4ZplzjnSWF-HUDaPPXONlv33T/view"
+      },
+      {
+        "title": "5.4 Grammar — Phrasal Verbs",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1FliDoVlzsX-gYc79-vec9bVnxhqPfXXS/view"
+      },
+      {
+        "title": "5.5 Vocabulary — Travelling",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1b9sTIlQ-lLy4UGHftYBdyCBPL5wve0BW/view"
+      }
+    ],
+    "audios": [],
+    "pdfs": [
+      {
+        "title": "5.1 Reading — Lesson Script",
+        "url": "https://drive.google.com/file/d/1-Eb4nExHX2Ha_YxjYibJEcvRhZo8ghpw/view"
+      },
+      {
+        "title": "5.1 Reading — Accessible Script",
+        "url": "https://drive.google.com/file/d/1ZHiVBszKMvZDZ3YN7y-WmoHwhpUJUpAW/view"
+      },
+      {
+        "title": "5.2 Grammar — Past Tenses 2 — Lesson Script",
+        "url": "https://drive.google.com/file/d/1SXKosdDOZ03ZY8_FcMZLZQgwMKGD_O1y/view"
+      },
+      {
+        "title": "5.2 Grammar — Past Tenses 2 — Accessible Script",
+        "url": "https://drive.google.com/file/d/10Ik5oDZYtchdat2c9n8iAhYM4EpBeUEo/view"
+      },
+      {
+        "title": "5.3 Listening — Tourism in Australia Listeni — Lesson Script",
+        "url": "https://drive.google.com/file/d/1MB3lsc4sQQo1zaZMCsHQT8_rcJ2xt3Qf/view"
+      },
+      {
+        "title": "5.3 Listening — Tourism in Australia Listeni — Accessible Script",
+        "url": "https://drive.google.com/file/d/1pq0FMYqfBKxjI82ykCTKx_tpzoV7xSMW/view"
+      },
+      {
+        "title": "5.4 Grammar — Phrasal Verbs — Lesson Script",
+        "url": "https://drive.google.com/file/d/1UJKzOe66MXxQ5l694AnVlekDdieQ7HuY/view"
+      },
+      {
+        "title": "5.4 Grammar — Phrasal Verbs — Accessible Script",
+        "url": "https://drive.google.com/file/d/15ohKST-sPMe9i--SiLQH94Hi7ieGS-ZD/view"
+      },
+      {
+        "title": "5.5 Vocabulary — Travelling — Lesson Script",
+        "url": "https://drive.google.com/file/d/1eAcQedNLV-FNEnjPG0OzbsTgdMtmQqF2/view"
+      },
+      {
+        "title": "5.5 Vocabulary — Travelling — Accessible Script",
+        "url": "https://drive.google.com/file/d/19D8wLO53swvno0nUEaE56OzywAq2ZsuC/view"
+      },
+      {
+        "title": "Week 5 — Weekly Language Prompts",
+        "url": "https://drive.google.com/file/d/1Kt1sO3XdsOU8nH_I1VAmpC7otwS66bBZ/view"
+      }
+    ]
+  },
+  {
+    "id": "unit-6",
+    "title": "Unit 6",
+    "description": "8 lessons · Conversation, Grammar, Listening, Pronunciation, Reading, Vocabulary — English with Lucy B1",
+    "tags": [
+      "unit 6",
+      "lucy",
+      "b1",
+      "conversation",
+      "grammar",
+      "listening",
+      "pronunciation",
+      "reading",
+      "vocabulary"
+    ],
+    "videos": [
+      {
+        "title": "6.1 Listening — New Hobbies Listening",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/10FTR4xoGy-ZYX_JoLPAGn9VfD2eAqUxO/view"
+      },
+      {
+        "title": "6.2 Grammar — Gerunds and Infinitives",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1t0Ts0oz18DZhDKLgawnGdgidacyuXSLh/view"
+      },
+      {
+        "title": "6.3 Pronunciation — Consonant Sounds 1",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1U66EE762ajKf4srZVFh4gC7qcU9EaPf1/view"
+      },
+      {
+        "title": "6.5 Grammar — Prepositions of Place",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/12cg2psjufyCOnhB85zFQ_u_0LOdWg5vB/view"
+      },
+      {
+        "title": "6.6 Vocabulary — Likes, Dislikes and Cooking",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1ZgmaXRublk5-GAqhkfxhvuCFtpbaJMrx/view"
+      },
+      {
+        "title": "6.7 Grammar — Conjunctions",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1j6IkxTtlanD1SSaJWgj2HqeWJX-5hISD/view"
+      },
+      {
+        "title": "6.8 Conversation — Meet the speaker",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1tKtd50bmtKLuIsxPzSTNqOermDFW0w5C/view"
+      }
+    ],
+    "audios": [],
+    "pdfs": [
+      {
+        "title": "6.1 Listening — New Hobbies Listening — Lesson Script",
+        "url": "https://drive.google.com/file/d/1ZR_SAJiGE4UiKB3_0_rfsiz16zCw8cp0/view"
+      },
+      {
+        "title": "6.1 Listening — New Hobbies Listening — Accessible Script",
+        "url": "https://drive.google.com/file/d/1f1V2SU0jJ_OOop5bVqSWQtgiXDn_iBg_/view"
+      },
+      {
+        "title": "6.2 Grammar — Gerunds and Infinitives — Lesson Script",
+        "url": "https://drive.google.com/file/d/1YfFFyix1q0gu60suAJZI-9pJGGfhF7f0/view"
+      },
+      {
+        "title": "6.2 Grammar — Gerunds and Infinitives — Accessible Script",
+        "url": "https://drive.google.com/file/d/1WhNysLUAienYn5dZAnBWMEanJMh6Y3JN/view"
+      },
+      {
+        "title": "6.3 Pronunciation — Consonant Sounds 1 — Accessible Script",
+        "url": "https://drive.google.com/file/d/1AxrLtC5Uk4uDFzoX08TeCkJyFVidXS-_/view"
+      },
+      {
+        "title": "6.4 Reading — Lesson Script",
+        "url": "https://drive.google.com/file/d/1FAWLdFAf-vbJ0hvoz-T-vHiQFG6FjdUJ/view"
+      },
+      {
+        "title": "6.4 Reading — Accessible Script",
+        "url": "https://drive.google.com/file/d/1vBSA5il2gIlLNBD9SErdFAtN8J1Bee0O/view"
+      },
+      {
+        "title": "6.5 Grammar — Prepositions of Place — Lesson Script",
+        "url": "https://drive.google.com/file/d/1ZB9degml_c932BloXr1B7v5uwrB25tug/view"
+      },
+      {
+        "title": "6.5 Grammar — Prepositions of Place — Accessible Script",
+        "url": "https://drive.google.com/file/d/1B7hhflJAZMSkVqJpNbeZEQ7dCEGYGl17/view"
+      },
+      {
+        "title": "6.6 Vocabulary — Likes, Dislikes and Cooking — Lesson Script",
+        "url": "https://drive.google.com/file/d/1CGV99jeNc0TWD_76YiN8lCVALBcgzdvK/view"
+      },
+      {
+        "title": "6.6 Vocabulary — Likes, Dislikes and Cooking — Accessible Script",
+        "url": "https://drive.google.com/file/d/1PsUo0levBcqCcV5KFgDVTigwrlq6Ce9r/view"
+      },
+      {
+        "title": "6.7 Grammar — Conjunctions — Lesson Script",
+        "url": "https://drive.google.com/file/d/1LjEhSm7SWcEOMw6mHRJBJ04fHWZsqvko/view"
+      },
+      {
+        "title": "6.7 Grammar — Conjunctions — Accessible Script",
+        "url": "https://drive.google.com/file/d/1JUYdm0FAKtGBiw8WUuvkvei7PSgZh9SB/view"
+      },
+      {
+        "title": "6.8 Conversation — Meet the speaker — Lesson Script",
+        "url": "https://drive.google.com/file/d/1NSvFw8-OaJyeLlrS-AHHkfGg8aTIunKJ/view"
+      },
+      {
+        "title": "6.8 Conversation — Meet the speaker — Accessible Script",
+        "url": "https://drive.google.com/file/d/1WR3dkt5lh1Khl0vMZYpK7JVpmXhupKp2/view"
+      },
+      {
+        "title": "Week 6 — Weekly Language Prompts",
+        "url": "https://drive.google.com/file/d/1Nbv3MtxZcsXPcERgOYCa2eRMWvKZWbjQ/view"
+      }
+    ]
+  },
+  {
+    "id": "unit-7",
+    "title": "Unit 7",
+    "description": "7 lessons · Grammar, Listening, Pronunciation, Reading, Vocabulary — English with Lucy B1",
+    "tags": [
+      "unit 7",
+      "lucy",
+      "b1",
+      "grammar",
+      "listening",
+      "pronunciation",
+      "reading",
+      "vocabulary"
+    ],
+    "videos": [
+      {
+        "title": "7.2 Grammar — Prepositions of Time",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1wQx3r27AdfdKlTR_ip2io8rzcLgNW-Am/view"
+      },
+      {
+        "title": "7.3 Grammar — Passive Voice",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/14jclasluhoj3ZH5bvqsRnf7PlGznxk8k/view"
+      },
+      {
+        "title": "7.4 Listening — Social Media and Travel",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1m2rl5oId-ONP6hfvOJAVZXDRk-qaO9YI/view"
+      },
+      {
+        "title": "7.5 Grammar — Reflexive Pronouns",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1eiUmoxSX--x09W3MjUuh6pKVH8bHsrao/view"
+      },
+      {
+        "title": "7.6 Vocabulary — Landscapes and Social Media",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1LkoaXlHzEXkFa7yXX1Tp5bA_Tqp1nQk8/view"
+      },
+      {
+        "title": "7.7 Pronunciation — Consonant Sounds 2",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1Ysq4ITjCkg97isevFyGxwSFzvZ9hXER2/view"
+      }
+    ],
+    "audios": [],
+    "pdfs": [
+      {
+        "title": "7.1 Reading — Lesson Script",
+        "url": "https://drive.google.com/file/d/1HzsqIBsS8EQzm5UcC9J1WvNiR__nCQ2b/view"
+      },
+      {
+        "title": "7.1 Reading — Accessible Script",
+        "url": "https://drive.google.com/file/d/1SxoG5tF9Pf5jbd8ARUmnpKX9kG4B7n6R/view"
+      },
+      {
+        "title": "7.2 Grammar — Prepositions of Time — Lesson Script",
+        "url": "https://drive.google.com/file/d/1WcgZxH2bYS8twoE9Nukv0XTNj8DysULy/view"
+      },
+      {
+        "title": "7.2 Grammar — Prepositions of Time — Accessible Script",
+        "url": "https://drive.google.com/file/d/1jcFSfdTSkc7_pkduRed54GRpCGgjB5rb/view"
+      },
+      {
+        "title": "7.3 Grammar — Passive Voice — Lesson Script",
+        "url": "https://drive.google.com/file/d/1GIjvL8GE-udFN6Qyw2mMflaMlLi-Fxyb/view"
+      },
+      {
+        "title": "7.3 Grammar — Passive Voice — Accessible Script",
+        "url": "https://drive.google.com/file/d/1DFBj1-LZ00a-VmhcOeLWPyaJlqlcL_NX/view"
+      },
+      {
+        "title": "7.4 Listening — Social Media and Travel — Lesson Script",
+        "url": "https://drive.google.com/file/d/1BbVpq-aK1vzfGen8IjnX-gT2YbF_Dzjz/view"
+      },
+      {
+        "title": "7.4 Listening — Social Media and Travel — Accessible Script",
+        "url": "https://drive.google.com/file/d/1wHnhxs_Jyk-p5gRMZxq0GoH1PnmQYWMn/view"
+      },
+      {
+        "title": "7.5 Grammar — Reflexive Pronouns — Lesson Script",
+        "url": "https://drive.google.com/file/d/1aC_I7EZjOJUwhnE8T3jv_sbIdm1UR9x9/view"
+      },
+      {
+        "title": "7.5 Grammar — Reflexive Pronouns — Accessible Script",
+        "url": "https://drive.google.com/file/d/1-aODnupS9QrH6ziQlcBtl-em5jnNQ8FW/view"
+      },
+      {
+        "title": "7.6 Vocabulary — Landscapes and Social Media — Lesson Script",
+        "url": "https://drive.google.com/file/d/1QxDzIfdyfeUjf95EiFgY4821BUzSDvqQ/view"
+      },
+      {
+        "title": "7.6 Vocabulary — Landscapes and Social Media — Accessible Script",
+        "url": "https://drive.google.com/file/d/1lgnr95yeafIyi5h1Amkkv33vKiK6M4pw/view"
+      },
+      {
+        "title": "7.7 Pronunciation — Consonant Sounds 2 — Lesson Script",
+        "url": "https://drive.google.com/file/d/1_sMBmshxlWYAFU6St-rQO6T8lai5loSX/view"
+      },
+      {
+        "title": "7.7 Pronunciation — Consonant Sounds 2 — Accessible Script",
+        "url": "https://drive.google.com/file/d/1OyLhf1bID4HiRywOVrbDqBPGy1pTIZsX/view"
+      },
+      {
+        "title": "Week 7 — Weekly Language Prompts",
+        "url": "https://drive.google.com/file/d/12jXImrItfkBmpuIQWxL7m0tIPX8MHoas/view"
+      }
+    ]
+  },
+  {
+    "id": "unit-8",
+    "title": "Unit 8",
+    "description": "7 lessons · Conversation, Grammar, Listening, Reading, Vocabulary — English with Lucy B1",
+    "tags": [
+      "unit 8",
+      "lucy",
+      "b1",
+      "conversation",
+      "grammar",
+      "listening",
+      "reading",
+      "vocabulary"
+    ],
+    "videos": [
+      {
+        "title": "8.1 Listening — Getting Fit Listening",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1zGkCdECwcsXtb7ttMzmZudrtVQ6amU8G/view"
+      },
+      {
+        "title": "8.2 Grammar — Future Tenses",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/193FBdZ3Iy0Q0G9CiqmcuAT0emFpEk8bi/view"
+      },
+      {
+        "title": "8.3 Vocabulary — Illness",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1oaDIUQ2fhCTUGv54urhfjKdEgisjcv1N/view"
+      },
+      {
+        "title": "8.5 Grammar — Pronouns",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1K0Cos4CAERuKEQ0sWTmT0EyZV7ny8vVr/view"
+      },
+      {
+        "title": "8.6 Vocabulary — Health and Fitness",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1fJeYRv_foylBSLXNm1iYX6ZdIT-Ot8NO/view"
+      },
+      {
+        "title": "8.7 Conversation — Meet the speaker",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1L0Z7EFySjQKF4oTMH5YZ1FkeIWtjcH5Z/view"
+      }
+    ],
+    "audios": [],
+    "pdfs": [
+      {
+        "title": "8.1 Listening — Getting Fit Listening — Lesson Script",
+        "url": "https://drive.google.com/file/d/1RyCc7caUMavaVajj6NaJhgu-4RjKOmMm/view"
+      },
+      {
+        "title": "8.1 Listening — Getting Fit Listening — Accessible Script",
+        "url": "https://drive.google.com/file/d/1kQqQCjTYpbSZzSaS6ZJYuJtgV94mF9r1/view"
+      },
+      {
+        "title": "8.2 Grammar — Future Tenses — Lesson Script",
+        "url": "https://drive.google.com/file/d/1D0ceQFkYjzh3Q6Iw7xDUw9gbQ-TL5XHw/view"
+      },
+      {
+        "title": "8.2 Grammar — Future Tenses — Accessible Script",
+        "url": "https://drive.google.com/file/d/1Fv-uuhBBVj8-j4ppcCXz4yysCpxDUPDJ/view"
+      },
+      {
+        "title": "8.3 Vocabulary — Illness — Lesson Script",
+        "url": "https://drive.google.com/file/d/1Mj-C00Ma0RL8qrKLb49ELGIiSGjeGibZ/view"
+      },
+      {
+        "title": "8.3 Vocabulary — Illness — Accessible Script",
+        "url": "https://drive.google.com/file/d/1e2hsd_UCowmmnO4611Ku-umvrfU0ysiL/view"
+      },
+      {
+        "title": "8.4 Reading — Accessible Script",
+        "url": "https://drive.google.com/file/d/1xvPxOVcgzl0-JYr-m6w9muYSdaBabZX2/view"
+      },
+      {
+        "title": "Week 8 — Weekly Language Prompts",
+        "url": "https://drive.google.com/file/d/1WdDlRnDsIU7se5DbymcqyEiEKhq0QAWt/view"
+      }
+    ]
+  },
+  {
+    "id": "unit-9",
+    "title": "Unit 9",
+    "description": "5 lessons · Grammar, Listening, Pronunciation, Vocabulary — English with Lucy B1",
+    "tags": [
+      "unit 9",
+      "lucy",
+      "b1",
+      "grammar",
+      "listening",
+      "pronunciation",
+      "vocabulary"
+    ],
+    "videos": [
+      {
+        "title": "9.2 Grammar — Zero, First and Second Conditi",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1vi2p7P7aMJ2HJ-H50lUSxvkeDGLAPQvw/view"
+      },
+      {
+        "title": "9.3 Pronunciation — Connected Speech",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1NDJa4Wj6Zfx6IwXT_pW3isP7822RMpRo/view"
+      },
+      {
+        "title": "9.4 Listening — All about the Job",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1GpDpPkoQLlhORbBHX7rUB7q0h78WHT-0/view"
+      },
+      {
+        "title": "9.5 Grammar — Third Conditional",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1bl_UkblABUn_D8buQy5P7Tfh8_yqI_gv/view"
+      },
+      {
+        "title": "9.6 Vocabulary — The World of Work",
+        "type": "file",
+        "url": "https://drive.google.com/file/d/1v3lAUoY965S4yRB7_uRKcvfwIDJSLw_C/view"
+      }
+    ],
+    "audios": [],
+    "pdfs": [
+      {
+        "title": "Week 9 — Weekly Language Prompts",
+        "url": "https://drive.google.com/file/d/1Vu2OpDF4qsOpGNe8zOW-mUC5OrILKWls/view"
+      }
+    ]
+  },
+  {
+    "id": "notes-tasks",
+    "title": "Notes & Tasks — Interactive Exercises",
+    "description": "Lucy ke interactive H5P exercises — 10 parts. Ye files Drive par khulti hain.",
+    "tags": [
+      "tasks",
+      "exercises",
+      "lucy"
+    ],
+    "videos": [],
+    "audios": [],
+    "pdfs": [
+      {
+        "title": "Notes & Tasks — Part 1",
+        "url": "https://drive.google.com/file/d/1wUK7qP8xfLcG908a3Pvr6hcjlZGU-eky/view"
+      },
+      {
+        "title": "Notes & Tasks — Part 2",
+        "url": "https://drive.google.com/file/d/1JhayI_wXNzJiEs7Y7WcnrIC_0EUbaNL6/view"
+      },
+      {
+        "title": "Notes & Tasks — Part 3",
+        "url": "https://drive.google.com/file/d/1Yb58jmRL-HFzf4pvpFbWNDNqkyr2OqJz/view"
+      },
+      {
+        "title": "Notes & Tasks — Part 4",
+        "url": "https://drive.google.com/file/d/16dkkQb2Pf2xopNCX9FN3bUkN89y2rant/view"
+      },
+      {
+        "title": "Notes & Tasks — Part 5",
+        "url": "https://drive.google.com/file/d/1Y555IbkfHyoW9rc_SXz5OyqGEN-Qv_Ir/view"
+      },
+      {
+        "title": "Notes & Tasks — Part 6",
+        "url": "https://drive.google.com/file/d/1MOxBiRfpZwHjpfefGv4uw523a6Mf1XfM/view"
+      },
+      {
+        "title": "Notes & Tasks — Part 7",
+        "url": "https://drive.google.com/file/d/12ohbTexdL1qOVFcIHSRgiu_0FN8PfsJJ/view"
+      },
+      {
+        "title": "Notes & Tasks — Part 8",
+        "url": "https://drive.google.com/file/d/1adNGbdlPFIX_nX09cQXloSOPGnxLAnpb/view"
+      },
+      {
+        "title": "Notes & Tasks — Part 9",
+        "url": "https://drive.google.com/file/d/1tu12_f1xrnd3cCqG4bWFEPTH_9RQG-4n/view"
+      },
+      {
+        "title": "Notes & Tasks — Part 10",
+        "url": "https://drive.google.com/file/d/10B9EbXXwWb4ukjmKrwj9T_RLNhrKf6Oz/view"
+      }
+    ]
   }
 ];
 
-
-/* Pehle hafte (Week 1: 23-29 Nov 2026) ka diagnostic schedule —
-   ye dates fix hain, baaki saal ka plan Planner khud banata hai. */
-window.IELTS_SCHEDULE = {
-  "2026-11-23": ["speaking"],
-  "2026-11-24": ["listening-test-audio"],
-  "2026-11-25": ["reading-practice"],
-  "2026-11-26": ["writing-task1-charts"],
-  "2026-11-27": ["writing-task2-essays"],
-  "2026-11-28": ["speaking"],
-  "2026-11-29": []
-};
-
-/* Planner ke liye pehle se bhare hue defaults (Settings me badal sakte ho) */
-window.PLAN_DEFAULTS = {
-  "startDate": "2026-11-23",
-  "endDate": "2027-11-22",
-  "chaptersPerDay": 1,
-  "offDays": [0],
-  "revisionEvery": 7
-};
+window.IELTS_SCHEDULE = {};

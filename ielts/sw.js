@@ -1,15 +1,15 @@
 /* IELTS Study — service worker (v5)
    Network-first: hamesha taaza version pehle, offline par cache.
    Media (Drive iframes) isme cache nahi hote — wo Google serve karta hai. */
-const CACHE = 'ielts-study-v5';
+const CACHE = 'ielts-study-v6';
 const SHELL = [
   './',
   'index.html',
   'styles.css?v=8',
-  'app.js?v=10',
+  'app.js?v=11',
   'auth.js?v=6',
   'firebase-config.js?v=6',
-  'data/chapters.js?v=5',
+  'data/chapters.js?v=6',
   'data/plan.json',
   'data/resources.json',
   'data/videos.json',
