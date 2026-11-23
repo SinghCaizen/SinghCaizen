@@ -84,7 +84,7 @@ function defaultState() {
     taskDone: {}, dayDonePlan: {}, movedTasks: {}, catchup: {},
     dayNotes: {}, resStars: [], lastResource: null,
     drafts: {}, selfChecks: {}, scoreLog: [], errorLog: {},
-    learn3: {}, taskNotes: {}, dayUi: {}, answersShown: {}
+    learn3: {}, taskNotes: {}, dayUi: {}, answersShown: {}, videoProgress: {}
   };
 }
 let S = defaultState();
@@ -126,6 +126,7 @@ window.setSyncBlocked = function (blocked) {
 
 /* ---------------- Plan + Resources data ---------------- */
 let PLAN = null, RES = [], RES_BY_ID = {}, DAY_BY_DATE = {}, DAYS = [];
+const VIDEO_POOL = {}, DAY_VIDEO = {};
 async function loadData() {
   try {
     const [pr, rr] = await Promise.all([fetch('data/plan.json'), fetch('data/resources.json')]);
@@ -137,6 +138,11 @@ async function loadData() {
     DAYS = PLAN.days || [];
     DAY_BY_DATE = {};
     DAYS.forEach(d => { DAY_BY_DATE[d.date] = d; });
+    try {
+      const vj = await (await fetch('data/videos.json')).json();
+      (vj.pool || []).forEach((v, i) => { VIDEO_POOL[i] = v; });
+      Object.entries(vj.days || {}).forEach(([dt, i]) => { DAY_VIDEO[dt] = VIDEO_POOL[i]; });
+    } catch (e2) { /* videos optional hain */ }
   } catch (e) {
     toast('Plan data load nahi ho paya — internet check karke refresh karo.');
   }
@@ -598,7 +604,8 @@ function renderPlanView() {
       '<div class="day-grid">' + wdays.map(d => {
         const st = dayStatus(d.date);
         const p = dayProgress(d.date);
-        const icons = [...new Set(d.tasks.map(x => skillIcon(x.skill)))].join(' ');
+        const icons = [...new Set(d.tasks.map(x => skillIcon(x.skill)))].join(' ') +
+          (DAY_VIDEO[d.date] ? ' <span title="' + ((S.videoProgress[d.date] || {}).watched ? 'Video dekha' : 'Aaj ka video') + '">' + icon('film', 'sm') + ((S.videoProgress[d.date] || {}).watched ? icon('check', 'sm') : '') + '</span>' : '');
         return '<article class="card day-card ' + st + '" data-day="' + d.date + '" tabindex="0" role="button">' +
           '<div class="dc-top"><strong>' + parseDate(d.date).toLocaleDateString('en-IN', { weekday: 'short' }) + '</strong>' +
           '<span class="muted">' + fmtDateShort(d.date) + '</span></div>' +
@@ -899,6 +906,18 @@ function renderDayInto(body, date, inPlan) {
     '<p class="muted">Aaj ka kaam: ' + tasks.length + ' tasks, kul ~' + humanMinutes(d.estimatedMinutes) + ' · ' + esc(d.theme) + '</p>' +
     '<div class="slim-progress"><div style="width:' + Math.round(p.pct * 100) + '%"></div></div>' +
     '<p class="muted" style="margin:.35rem 0 0">' + p.done + '/' + p.total + ' tasks ho gaye</p></div>';
+  const v = DAY_VIDEO[date];
+  if (v) {
+    const vp = S.videoProgress[date] || {};
+    html += '<article class="card vid-card"><div class="vid-head">' + icon('film') + '<div><h3 style="margin:0">Aaj ka video</h3>' +
+      '<p class="muted" style="margin:0">' + esc(v.title) + (v.channel ? ' · ' + esc(v.channel) : '') + ' · ' + esc(v.skill) + '</p></div>' +
+      (vp.watched ? '<span class="status-pill completed">' + icon('check', 'sm') + ' Dekh liya</span>' : '') + '</div>' +
+      '<div class="yt-facade" data-vid-play="' + date + '" data-vid-id="' + v.id + '" role="button" tabindex="0" aria-label="Video chalao">' +
+      '<img src="https://i.ytimg.com/vi/' + v.id + '/hqdefault.jpg" alt="" loading="lazy"><span class="yt-play">' + icon('play') + '</span></div>' +
+      '<div class="vid-progress"><div data-vid-bar="' + date + '" style="width:' + (vp.pct || 0) + '%"></div></div>' +
+      '<div class="timer-row"><span class="muted" data-vid-pct="' + date + '">' + (vp.pct || 0) + '% dekha' + (vp.watched ? ' · Dekh liya' : '') + '</span>' +
+      '<span style="flex:1"></span><label class="switch-row"><input type="checkbox" data-vid-manual="' + date + '"' + (vp.watched ? ' checked' : '') + '> Video dekh liya</label></div></article>';
+  }
   if (st === 'missed') {
     html += '<div class="catchup-box"><strong>Ye din chhoot gaya — koi baat nahi.</strong> ' +
       'Baaki tasks ko aane wale halke din (buffer) me daal do, plan apne aap sambhal jayega.<br>' +
@@ -950,6 +969,59 @@ function renderDayInto(body, date, inPlan) {
     document.head.appendChild(link);
     setTimeout(() => link.remove(), 15000);
   }
+}
+/* ---------- YouTube daily video: progress recording ---------- */
+let YT_READY_P = null;
+function loadYTApi() {
+  if (YT_READY_P) return YT_READY_P;
+  YT_READY_P = new Promise(res => {
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+    window.onYouTubeIframeAPIReady = () => res(window.YT);
+    setTimeout(() => res(null), 7000);
+  });
+  return YT_READY_P;
+}
+function updateVideoProgress(date, pct) {
+  S.videoProgress[date] = S.videoProgress[date] || {};
+  const cur = S.videoProgress[date].pct || 0;
+  if (pct <= cur) return;
+  S.videoProgress[date].pct = pct;
+  if (pct >= 80 && !S.videoProgress[date].watched) {
+    S.videoProgress[date].watched = 1;
+    toast('Video lagbhag poora dekha — progress save ho gaya.');
+  }
+  save();
+  const bar = document.querySelector('[data-vid-bar="' + date + '"]');
+  if (bar) bar.style.width = pct + '%';
+  const lbl = document.querySelector('[data-vid-pct="' + date + '"]');
+  if (lbl) lbl.textContent = pct + '% dekha' + (S.videoProgress[date].watched ? ' · Dekh liya' : '');
+  const cb = document.querySelector('[data-vid-manual="' + date + '"]');
+  if (cb && S.videoProgress[date].watched) cb.checked = true;
+}
+async function startVideoTracking(date, frameId) {
+  const YT = await loadYTApi();
+  if (!YT || !document.getElementById(frameId)) return;
+  try {
+    const player = new YT.Player(frameId, {
+      events: {
+        onStateChange: e => {
+          const fr = document.getElementById(frameId);
+          if (!fr) return;
+          if (e.data === YT.PlayerState.PLAYING) {
+            clearInterval(fr._piv);
+            fr._piv = setInterval(() => {
+              try {
+                const dur = player.getDuration(), cur2 = player.getCurrentTime();
+                if (dur > 0) updateVideoProgress(date, Math.min(100, Math.round(cur2 / dur * 100)));
+              } catch (_) {}
+            }, 4000);
+          } else clearInterval(fr._piv);
+        }
+      }
+    });
+  } catch (e) { /* API na mile to manual checkbox kaam karega */ }
 }
 const REC_STATE = {};
 function wireDayWorkspace(body, date, inPlan) {
@@ -1137,6 +1209,26 @@ function wireDayWorkspace(body, date, inPlan) {
       }
     });
   });
+  /* daily video */
+  $$('[data-vid-play]', body).forEach(f => {
+    const play = () => {
+      const date2 = f.dataset.vidPlay, vid = f.dataset.vidId;
+      const wrap = document.createElement('div');
+      wrap.className = 'yt-wrap';
+      wrap.innerHTML = '<iframe id="yt-' + date2 + '" src="https://www.youtube-nocookie.com/embed/' + vid + '?enablejsapi=1&rel=0&autoplay=1" title="YouTube video" allow="autoplay; fullscreen; encrypted-media" allowfullscreen></iframe>';
+      f.replaceWith(wrap);
+      startVideoTracking(date2, 'yt-' + date2);
+    };
+    f.addEventListener('click', play);
+    f.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); play(); } });
+  });
+  $$('[data-vid-manual]', body).forEach(cb => cb.addEventListener('change', () => {
+    const date2 = cb.dataset.vidManual;
+    S.videoProgress[date2] = S.videoProgress[date2] || {};
+    if (cb.checked) { S.videoProgress[date2].watched = 1; S.videoProgress[date2].pct = 100; }
+    else { S.videoProgress[date2].watched = 0; }
+    save(); rerender();
+  }));
   /* action bar + task focus */
   const setTask = n => {
     const tasks = dayTasks(date);
@@ -1765,6 +1857,9 @@ function renderStats() {
   });
   renderScoreTrend();
   renderErrSummary();
+  const sv = $('#statVideos');
+  if (sv) sv.innerHTML = '<p><strong>' + Object.values(S.videoProgress || {}).filter(x => x.watched).length + '</strong> / 365 din ke videos dekhe</p>' +
+    '<p class="muted">Har din ke page par "Aaj ka video" hota hai — dekhte hi progress apne aap record hoti hai.</p>';
 }
 function renderProfile() {
   $('#reminderTime').value = S.reminder || '07:00';

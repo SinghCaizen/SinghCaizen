@@ -390,3 +390,16 @@ html[data-theme="dark"] .tab-item.is-active{ color:var(--accent); }
   .ws-split[data-mtab="questions"] .ws-pane[data-pane="side"],
   .ws-split[data-mtab="answers"] .ws-pane[data-pane="side"]{ flex-basis:100% !important; }
 }
+
+/* ---------- Daily YouTube video (v7) ---------- */
+.vid-card{ margin-bottom:1rem; }
+.vid-head{ display:flex; gap:.6rem; align-items:center; margin-bottom:.6rem; }
+.vid-head .status-pill{ margin-left:auto; }
+.yt-facade{ position:relative; border-radius:var(--r-s); overflow:hidden; cursor:pointer; background:#000; aspect-ratio:16/9; }
+.yt-facade img{ width:100%; height:100%; object-fit:cover; display:block; opacity:.92; }
+.yt-play{ position:absolute; inset:0; display:grid; place-items:center; color:#fff; }
+.yt-play svg{ width:30px; height:30px; background:var(--accent); border-radius:50%; padding:19px; box-sizing:content-box; }
+.yt-wrap{ position:relative; aspect-ratio:16/9; border-radius:var(--r-s); overflow:hidden; background:#000; }
+.yt-wrap iframe{ position:absolute; inset:0; width:100%; height:100%; border:0; }
+.vid-progress{ height:6px; background:var(--surface2); border-radius:99px; overflow:hidden; margin-top:.55rem; }
+.vid-progress > div{ height:100%; background:var(--sage); transition:width .4s ease; }

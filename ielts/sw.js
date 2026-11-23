@@ -5,13 +5,14 @@ const CACHE = 'ielts-study-v5';
 const SHELL = [
   './',
   'index.html',
-  'styles.css?v=7',
-  'app.js?v=9',
+  'styles.css?v=8',
+  'app.js?v=10',
   'auth.js?v=6',
   'firebase-config.js?v=6',
   'data/chapters.js?v=5',
   'data/plan.json',
   'data/resources.json',
+  'data/videos.json',
   'manifest.webmanifest'
 ];
 
